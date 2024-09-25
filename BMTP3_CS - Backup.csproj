@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Blake3" Version="1.1.0" />
+    <PackageReference Include="FluentCommandLineParser.NETStandard" Version="1.5.0.31-commands" />
+    <PackageReference Include="MediaDevices" Version="1.10.0" />
+    <PackageReference Include="MetadataExtractor" Version="2.9.0-rc2" />
+    <PackageReference Include="SHA3.Net" Version="2.0.0" />
+    <PackageReference Include="Tomlyn" Version="0.17.0" />
+    <PackageReference Include="TreeBasedCli" Version="3.2.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EditorConfigFiles Remove="D:\Projects.Github\BMTP3_CS\.editorconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="D:\Projects.Github\BMTP3_CS\.editorconfig" />
+  </ItemGroup>
+
+</Project>

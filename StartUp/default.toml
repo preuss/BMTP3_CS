@@ -1,0 +1,120 @@
+[default]
+disabled = false
+compare_by_binary = true
+recursive = true
+use_file_pattern = false
+file_pattern = '${yyyy}\${MM}\${dd}\${originalName}.${ext}'
+file_pattern_if_exist = '${yyyy}\${MM}\${dd}\${originalName}_${count}.${ext}'
+#file_pattern = '${yyyy}\${MM}\${dd}\${yyyy}${MM}${dd}_${HH}${mm}${ss}${fff}_${originalName}.${ext}'
+#file_pattern_if_exist = '${yyyy}\${MM}\${dd}\${yyyy}${MM}${dd}_${HH}${mm}${ss}${fff}_${originalName}_${count}.${ext}'
+
+folder_output = 'D:\Projects\BMTP3_CS_Backup'
+
+[[device_source]]
+enabled = false
+title = "iphone14pro"
+name = 'Apple 100Apple'
+folder_source  = 'Apple iPhone\Internal Storage\DCIM\100APPLE'
+recursive = true
+folder_output = 'D:\Backup\iPhone\100APPLE'
+
+[[device_source]]
+enabled = true
+title = "iPhone14Pro_Personal_Pattern"
+name = 'Apple iPhone'
+folder_source  = 'Apple iPhone\Internal Storage\'
+recursive = true
+compare_by_binary = false
+folder_output = 'F:\Bck_MTP3_iPhone14\Pattern'
+use_file_pattern = true
+file_pattern = '${yyyy}\${MM}\${originalName}.${ext}'
+file_pattern_if_exist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+[[device_source]]
+enabled = false
+title = "iPhone14Pro_Personal_Normal"
+name = 'Apple iPhone'
+folder_source  = 'Apple iPhone\Internal Storage\'
+recursive = true
+compare_by_binary = false
+folder_output = 'F:\Bck_MTP3_iPhone14\Normal'
+use_file_pattern = false
+file_pattern = ''
+file_pattern_if_exist = ''
+
+
+[[device_source]]
+enabled = false
+title = "iPhone14Pro_Personal"
+name = 'Apple iPhone'
+folder_source  = 'Apple iPhone\Internal Storage\202207__'
+recursive = true
+folder_output = 'D:\Bck.iPhone14Pro\202407223\202207__'
+
+
+[[device_source]]
+enabled = false
+title = "ipad"
+name = 'Apple 100Cloud'
+folder_source  = 'Apple iPhone\Internal Storage\DCIM\100CLOUD'
+folder_output = 'D:/Projects/BMTP3_CS_Backup/A20e/iPhone\100CLOUD'
+
+file_pattern = '${yyyy}\${MM}\${originalName}.${ext}'
+file_pattern_if_exist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+
+[[device_source]]
+enabled = true
+compare_by_binary = true
+title = "SM-A202F"
+name = "Galaxy A20e"
+folder_source = "Galaxy A20e/Phone/DCIM"
+folder_output = "D:/Projects/BMTP3_CS_Backup/A20e"
+
+file_pattern = '${yyyy}\${MM}\${originalName}.${ext}'
+file_pattern_if_exist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+
+
+
+[[device_source]]
+enabled = false
+compare_by_binary = true
+title = 'Sonja Tablet All'
+name = 'Lenovo Tab M8'
+folder_source = 'Lenovo Tab M8/Intern delt lagerplads'
+folder_output = 'F:\Bck_MTP3.LenovoTablet\All'
+
+use_file_pattern = false
+file_pattern = '${yyyy}\${MM}\${originalName}.${ext}'
+file_pattern_if_exist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+
+
+
+
+[[device_source]]
+enabled = true
+compare_by_binary = true
+title = 'Sonja Tablet DCIM'
+name = 'Lenovo Tab M8'
+folder_source = 'Intern delt lagerplads/DCIM'
+folder_output = 'F:\Bck_MTP3.LenovoTablet\DCIM'
+
+use_file_pattern = false
+file_pattern = '${yyyy}\${MM}\${originalName}.${ext}'
+file_pattern_if_exist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+
+
+[[device_source]]
+enabled = true
+compare_by_binary = true
+title = 'Sonja Tablet Pictures'
+name = 'Lenovo Tab M8'
+folder_source = 'Intern delt lagerplads/Pictures'
+folder_output = 'F:\Bck_MTP3.LenovoTablet\Pictures'
+
+use_file_pattern = false
+file_pattern = '${yyyy}\${MM}\${originalName}.${ext}'
+file_pattern_if_exist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'

@@ -1,0 +1,120 @@
+[default]
+disabled = false
+compareByBinary = true
+recursive = true
+useFilePattern = false
+filePattern = '${yyyy}\${MM}\${dd}\${originalName}.${ext}'
+filePatternIfExist = '${yyyy}\${MM}\${dd}\${originalName}_${count}.${ext}'
+#filePattern = '${yyyy}\${MM}\${dd}\${yyyy}${MM}${dd}_${HH}${mm}${ss}${fff}_${originalName}.${ext}'
+#filePatternIfExist = '${yyyy}\${MM}\${dd}\${yyyy}${MM}${dd}_${HH}${mm}${ss}${fff}_${originalName}_${count}.${ext}'
+
+folderOutput = 'D:\Projects\BMTP3_CS_Backup'
+
+[[deviceSource]]
+enabled = false
+title = "iphone14pro"
+name = 'Apple 100Apple'
+folderSource  = 'Apple iPhone\Internal Storage\DCIM\100APPLE'
+recursive = true
+folderOutput = 'D:\Backup\iPhone\100APPLE'
+
+[[deviceSource]]
+enabled = true
+title = "iPhone14Pro_Personal_Pattern"
+name = 'Apple iPhone'
+folderSource  = 'Apple iPhone\Internal Storage\'
+recursive = true
+compareByBinary = false
+folderOutput = 'F:\Bck_MTP3_iPhone14\Pattern'
+useFilePattern = true
+filePattern = '${yyyy}\${MM}\${originalName}.${ext}'
+filePatternIfExist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+[[deviceSource]]
+enabled = false
+title = "iPhone14Pro_Personal_Normal"
+name = 'Apple iPhone'
+folderSource  = 'Apple iPhone\Internal Storage\'
+recursive = true
+compareByBinary = false
+folderOutput = 'F:\Bck_MTP3_iPhone14\Normal'
+useFilePattern = false
+filePattern = ''
+filePatternIfExist = ''
+
+
+[[deviceSource]]
+enabled = false
+title = "iPhone14Pro_Personal"
+name = 'Apple iPhone'
+folderSource  = 'Apple iPhone\Internal Storage\202207__'
+recursive = true
+folderOutput = 'D:\Bck.iPhone14Pro\202407223\202207__'
+
+
+[[deviceSource]]
+enabled = false
+title = "ipad"
+name = 'Apple 100Cloud'
+folderSource  = 'Apple iPhone\Internal Storage\DCIM\100CLOUD'
+folderOutput = 'D:/Projects/BMTP3_CS_Backup/A20e/iPhone\100CLOUD'
+
+filePattern = '${yyyy}\${MM}\${originalName}.${ext}'
+filePatternIfExist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+
+[[deviceSource]]
+enabled = true
+compareByBinary = true
+title = "SM-A202F"
+name = "Galaxy A20e"
+folderSource = "Galaxy A20e/Phone/DCIM"
+folderOutput = "D:/Projects/BMTP3_CS_Backup/A20e"
+
+filePattern = '${yyyy}\${MM}\${originalName}.${ext}'
+filePatternIfExist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+
+
+
+[[deviceSource]]
+enabled = false
+compareByBinary = true
+title = 'Sonja Tablet All'
+name = 'Lenovo Tab M8'
+folderSource = 'Lenovo Tab M8/Intern delt lagerplads'
+folderOutput = 'F:\Bck_MTP3.LenovoTablet\All'
+
+useFilePattern = false
+filePattern = '${yyyy}\${MM}\${originalName}.${ext}'
+filePatternIfExist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+
+
+
+
+[[deviceSource]]
+enabled = true
+compareByBinary = true
+title = 'Sonja Tablet DCIM'
+name = 'Lenovo Tab M8'
+folderSource = 'Intern delt lagerplads/DCIM'
+folderOutput = 'F:\Bck_MTP3.LenovoTablet\DCIM'
+
+useFilePattern = false
+filePattern = '${yyyy}\${MM}\${originalName}.${ext}'
+filePatternIfExist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
+
+
+
+[[deviceSource]]
+enabled = true
+compareByBinary = true
+title = 'Sonja Tablet Pictures'
+name = 'Lenovo Tab M8'
+folderSource = 'Intern delt lagerplads/Pictures'
+folderOutput = 'F:\Bck_MTP3.LenovoTablet\Pictures'
+
+useFilePattern = false
+filePattern = '${yyyy}\${MM}\${originalName}.${ext}'
+filePatternIfExist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'

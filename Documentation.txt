@@ -1,0 +1,30 @@
+"Backup.exe" is the name of the program.
+========================================
+
+"Backup.exe" is a program designed to backup data from various devices. It uses configuration files to determine the settings for each device.
+
+
+Arguments:
+----------
+--default [default.toml]
+    This argument specifies the path to the default configuration file (usually 'default.toml'). 
+    This file contains the standard settings for BMTP3. It usually only contains default information.
+
+--backup [config.toml]
+    This argument is used to specify the path to the configuration file for the device you want to backup (e.g., 'iPhone.toml'). 
+    This file contains device-specific settings and usually only contains deviceSource information.
+
+--verify [config.toml]
+
+
+
+Example Usages:
+---------------
+# Example 1: Running the program with the default configuration
+backup.exe --default default.toml
+
+# Example 2: Running the program with a specific device configuration
+backup.exe --backup iPhone.toml
+
+# Example 3: Running the program with both the default and device-specific configuration
+backup.exe --default default.toml --backup iPhone.toml
