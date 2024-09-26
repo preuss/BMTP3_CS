@@ -16,7 +16,7 @@ namespace BMTP3_CS.Handlers {
 			this.sourceConfig = sourceConfig;
 			this.records = records;
 		}
-		public void AddRecord(string uniqueFileId, BackupRecordInfo record) {
+		public void AddRecord(BackupRecordInfo record) {
 			records.Add(record);
 		}
 		public ISourceConfig SourceConfig { get { return sourceConfig; } }
