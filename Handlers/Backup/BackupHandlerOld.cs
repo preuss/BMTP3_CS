@@ -308,7 +308,7 @@ namespace BMTP3_CS.Handlers.Backup {
 					//FileComparer fileComparer = new Md5Comparer(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
 					//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
 					FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
-					// Files are the same and we do not compy this file.
+					// Files are the same and we do not copy this file.
 					if(fileComparer.Compare()) {
 						// Delete temp file and try next file.
 						targetTempFileInfo.Delete();
@@ -433,7 +433,7 @@ namespace BMTP3_CS.Handlers.Backup {
 					//FileComparer fileComparer = new Md5Comparer(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
 					//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
 					FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
-					// Files are the same and we do not compy this file.
+					// Files are the same and we do not copy this file.
 					if(fileComparer.Compare()) {
 						// Delete temp file and try next file.
 						targetTempFileInfo.Delete();
@@ -452,7 +452,7 @@ namespace BMTP3_CS.Handlers.Backup {
 						}
 
 						fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
-						// Files are the same and we do not compy this file.
+						// Files are the same and we do not copy this file.
 						if(fileComparer.Compare()) {
 							// Delete temp file and try next file.
 							targetTempFileInfo.Delete();
