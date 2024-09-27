@@ -1,0 +1,52 @@
+Start comparing files using: ReadFileInChunksAndCompareVector
+Total Time Taken                : 39254 ms
+Total Files Compared            : 2327
+Total Time taken                : 00:39.254
+Total Storage Compared          : 16,35 GB
+Average Compared File Time Taken: 16,86925 ms per file
+Average Compared File Size      : 7368,81 KB
+
+
+Start comparing files using: ReadFileInChunksAndCompareAvx2
+Total Time Taken                : 39032 ms
+Total Files Compared            : 2327
+Total Time taken                : 00:39.032
+Total Storage Compared          : 16,35 GB
+Average Compared File Time Taken: 16,77363 ms per file
+Average Compared File Size      : 7368,81 KB
+
+
+Start comparing files using: ReadWholeFileAtOnceCompareEightByteAtOnce
+Total Time Taken                : 46866 ms
+Total Files Compared            : 2327
+Total Time taken                : 00:46.866
+Total Storage Compared          : 16,35 GB
+Average Compared File Time Taken: 20,14026 ms per file
+Average Compared File Size      : 7368,81 KB
+
+
+Start comparing files using: ReadWholeFileAtOnce
+Total Time Taken                : 85081 ms
+Total Files Compared            : 2327
+Total Time taken                : 01:25.081
+Total Storage Compared          : 16,35 GB
+Average Compared File Time Taken: 36,56258 ms per file
+Average Compared File Size      : 7368,81 KB
+
+
+Start comparing files using: Md5Comparer
+Total Time Taken                : 88546 ms
+Total Files Compared            : 2327
+Total Time taken                : 01:28.546
+Total Storage Compared          : 16,35 GB
+Average Compared File Time Taken: 38,05174 ms per file
+Average Compared File Size      : 7368,81 KB
+
+
+Start comparing files using: ReadWholeFileAtOnceAndCompareUsingLinq
+Total Time Taken                : 149908 ms
+Total Files Compared            : 2327
+Total Time taken                : 02:29.908
+Total Storage Compared          : 16,35 GB
+Average Compared File Time Taken: 64,42152 ms per file
+Average Compared File Size      : 7368,81 KB
