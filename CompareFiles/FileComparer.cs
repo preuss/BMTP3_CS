@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3_CS.FilecCmparer {
+namespace BMTP3_CS.CompareFiles {
 	public abstract class FileComparer {
 		/// <summary>
 		/// Fileinfo for source file

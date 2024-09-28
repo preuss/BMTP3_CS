@@ -4,13 +4,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3_CS.FilecCmparer {
+namespace BMTP3_CS.CompareFiles {
 	public class ReadWholeFileAtOnceCompareEightByteAtOnce : FileComparer {
 		public ReadWholeFileAtOnceCompareEightByteAtOnce(string filePath01, string filePath02) : base(filePath01, filePath02) {
 		}
 		protected override bool OnCompare() {
 			byte[] fileContents01 = File.ReadAllBytes(FileInfo1.FullName);
 			byte[] fileContents02 = File.ReadAllBytes(FileInfo2.FullName);
+
+			// Kontroller, om filerne har samme længde
+			if(fileContents01.Length != fileContents02.Length) {
+				return false;
+			}
 
 			int lastBlockIndex = fileContents01.Length - (fileContents01.Length % sizeof(ulong));
 
@@ -21,6 +26,14 @@ namespace BMTP3_CS.FilecCmparer {
 				}
 				totalProcessed += sizeof(ulong);
 			}
+
+			// Compare last block
+			for(int i = totalProcessed; i < fileContents01.Length; i++) {
+				if(fileContents01[i] != fileContents02[i]) {
+					return false;
+				}
+			}
+
 			return true;
 		}
 	}

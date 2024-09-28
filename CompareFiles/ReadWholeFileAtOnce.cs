@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3_CS.FilecCmparer {
+namespace BMTP3_CS.CompareFiles {
 	public class ReadWholeFileAtOnce : FileComparer {
 		public ReadWholeFileAtOnce(string filePath01, string filePath02) : base(filePath01, filePath02) {
 		}

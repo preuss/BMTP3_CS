@@ -1,7 +1,7 @@
 ﻿using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using MediaDevices;
-using BMTP3_CS.FilecCmparer;
+using BMTP3_CS.CompareFiles;
 using BMTP3_CS.Configs;
 using Fclp;
 using BMTP3_CS.Options;

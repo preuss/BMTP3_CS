@@ -1,4 +1,4 @@
-﻿using BMTP3_CS.FilecCmparer;
+﻿using BMTP3_CS.CompareFiles;
 using BMTP3_CS.Metadata;
 using BMTP3_CS.StringVariableSubstitution;
 using MediaDevices.Progress;

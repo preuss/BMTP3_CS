@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3_CS.FilecCmparer {
+namespace BMTP3_CS.CompareFiles {
 	public abstract class ReadIntoByteBufferInChunks : FileComparer {
 		protected readonly int ChunkSize;
 		protected ReadIntoByteBufferInChunks(string filePath01, string filePath02, int chunkSize) : base(filePath01, filePath02) {

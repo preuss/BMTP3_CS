@@ -5,7 +5,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3_CS.FilecCmparer {
+namespace BMTP3_CS.CompareFiles {
 	public class Md5Comparer : FileComparer {
 		public Md5Comparer(string filePath01, string filePath02) : base(filePath01, filePath02) {
 		}

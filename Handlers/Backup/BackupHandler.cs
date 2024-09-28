@@ -15,7 +15,7 @@ using Newtonsoft.Json;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging;
 using ZLogger;
-using BMTP3_CS.FilecCmparer;
+using BMTP3_CS.CompareFiles;
 using BMTP3_CS.Metadata;
 using BMTP3_CS.StringVariableSubstitution;
 using Newtonsoft.Json.Linq;

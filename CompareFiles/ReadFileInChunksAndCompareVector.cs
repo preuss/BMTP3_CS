@@ -5,7 +5,7 @@ using System.Numerics;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3_CS.FilecCmparer {
+namespace BMTP3_CS.CompareFiles {
 	public class ReadFileInChunksAndCompareVector : ReadIntoByteBufferInChunks {
 		public ReadFileInChunksAndCompareVector(string filePath01, string filePath02, int chunkSize)
 			: base(filePath01, filePath02, chunkSize) {
@@ -20,6 +20,8 @@ namespace BMTP3_CS.FilecCmparer {
 			byte[] buffer1 = new byte[ChunkSize];
 			byte[] buffer2 = new byte[ChunkSize];
 
+			Int32 vectorSize = Vector<byte>.Count;
+
 			while(true) {
 				int count1 = ReadIntoBuffer(stream1, buffer1);
 				int count2 = ReadIntoBuffer(stream2, buffer2);
@@ -31,9 +33,17 @@ namespace BMTP3_CS.FilecCmparer {
 				if(count1 == 0) {
 					return true;
 				}
-
-				if(false == Vector.EqualsAll(new Vector<byte>(buffer1), new Vector<byte>(buffer2))) {
-					return false;
+				int i;
+				for(i = 0; i <= (count1 - vectorSize); i += vectorSize) {
+					if(false == Vector.EqualsAll(new Vector<byte>(buffer1, i), new Vector<byte>(buffer2, i))) {
+						return false;
+					}
+				}
+				// Compare the rest of the bytes. If there are any.
+				for(; i < count1; i++) {
+					if(buffer1[i] != buffer2[i]) {
+						return false;
+					}
 				}
 			}
 		}
