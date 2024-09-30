@@ -1,5 +1,7 @@
-﻿using BMTP3_CS.Configs;
+﻿using BMTP3_CS.BackupSource;
+using BMTP3_CS.Configs;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,7 +16,7 @@ namespace BMTP3_CS.Handlers {
 			this.sourceConfig = sourceConfig;
 			this.records = records;
 		}
-		public void AddRecord(string uniqueFileId, BackupRecordInfo record) {
+		public void AddRecord(BackupRecordInfo record) {
 			records.Add(record);
 		}
 		public ISourceConfig SourceConfig { get { return sourceConfig; } }
@@ -31,7 +33,7 @@ namespace BMTP3_CS.Handlers {
 		}
 		public FileInfo SaveDataStore() {
 			string fileName = GetFileNameFrom(sourceConfig);
-			string json = JsonConvert.SerializeObject(this, Newtonsoft.Json.Formatting.Indented);
+			string json = JsonConvert.SerializeObject(this, Newtonsoft.Json.Formatting.Indented, new SourceTypeConverter());
 
 			File.WriteAllText(fileName, json, Encoding.UTF8);
 
@@ -48,10 +50,54 @@ namespace BMTP3_CS.Handlers {
 
 			string jsonData = File.ReadAllText(fileName);
 
-			return JsonConvert.DeserializeObject<BackupRecordDataStore>(jsonData) ?? throw new NullReferenceException("Problem with readin json file: " + fileName);
+			JsonConverter[] converters = new JsonConverter[] { new SourceTypeConverter(), new SourceConfigConverter() };
+			return JsonConvert.DeserializeObject<BackupRecordDataStore>(jsonData, converters) ?? throw new NullReferenceException("Problem with readin json file: " + fileName);
 		}
 		internal static bool HasDataStore(ISourceConfig sourceConfig) {
 			return Path.Exists(GetFileNameFrom(sourceConfig));
+		}
+	}
+	public class SourceTypeConverter : JsonConverter<SourceType> {
+		public override SourceType ReadJson(JsonReader reader, Type objectType, SourceType existingValue, bool hasExistingValue, JsonSerializer serializer) {
+			JToken token = JToken.Load(reader);
+			if(token.Type == JTokenType.String && token.Value<string>() is string value) {
+				return (SourceType)Enum.Parse(typeof(SourceType), value);
+			} else {
+				throw new Exception("Invalid JSON value for SourceType");
+			}
+		}
+		public override void WriteJson(JsonWriter writer, SourceType value, JsonSerializer serializer) {
+			writer.WriteValue(value.ToString());
+		}
+	}
+	public class SourceConfigConverter : JsonConverter<ISourceConfig> {
+		public override ISourceConfig? ReadJson(JsonReader reader, Type objectType, ISourceConfig? existingValue, bool hasExistingValue, JsonSerializer serializer) {
+			JObject jo = JObject.Load(reader);
+			SourceType? sourceType = jo["SourceType"]?.ToObject<SourceType>();
+
+			if(sourceType == null) {
+				throw new ArgumentException("Invalid source type", nameof(sourceType));
+			}
+
+			switch(sourceType) {
+				case SourceType.Drive:
+					return jo.ToObject<DriveSourceConfig>();
+				case SourceType.Device:
+					return jo.ToObject<DeviceSourceConfig>();
+				default:
+					throw new ArgumentException("Invalid source type", nameof(sourceType));
+			}
+		}
+		public override void WriteJson(JsonWriter writer, ISourceConfig? value, JsonSerializer serializer) {
+			if(value == null) {
+				// Handle the case when value is null
+				// For example, you can throw an exception or write a default value
+				throw new ArgumentNullException(nameof(value));
+			}
+
+			JObject jo = JObject.FromObject(value);
+			jo.Add("SourceType", JToken.FromObject(value.GetType()));
+			jo.WriteTo(writer);
 		}
 	}
 }

@@ -12,7 +12,7 @@ namespace BMTP3_CS.CompareFiles {
 			byte[] fileContents01 = File.ReadAllBytes(FileInfo1.FullName);
 			byte[] fileContents02 = File.ReadAllBytes(FileInfo2.FullName);
 
-			// Kontroller, om filerne har samme længde
+			// Verify if files have same length.
 			if(fileContents01.Length != fileContents02.Length) {
 				return false;
 			}

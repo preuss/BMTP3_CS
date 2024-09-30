@@ -30,6 +30,7 @@ using System.Threading.Tasks.Sources;
 using SHA3.Net;
 using static BMTP3_CS.Handlers.HashCalculator.HashType;
 using BMTP3_CS.BackupSource.PortableDevices;
+using System.IO;
 
 namespace BMTP3_CS.Handlers.Backup {
 	[SupportedOSPlatform("windows7.0")]
@@ -211,15 +212,18 @@ namespace BMTP3_CS.Handlers.Backup {
 									downloadFileTask.Value(report.BytesRead);
 								};
 
+								bool isSaved;
 								if(!config.HasFilePattern()) {
-									throw new InvalidOperationException("Har ikke File Pattern, og mangler at implementere BackupFromPath(device, fromPath, targetDirectoryPath, tempDirectoryInfo);");
+									//throw new InvalidOperationException("Har ikke File Pattern, og mangler at implementere BackupFromPath(device, fromPath, targetDirectoryPath, tempDirectoryInfo);");
+									const bool addSideCarFile = false;
+									isSaved = BackupFromPath(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
 								} else {
 									string filePattern = config.FilePattern!;
 									string filePatternIfExist = config.FilePatternIfExist!;
 
-									BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
-									pendingFileInfo.IsSaved = true;
+									isSaved = BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
 								}
+								pendingFileInfo.IsSaved = isSaved;
 								overallTask.Increment(1);
 							}
 						});
@@ -422,15 +426,17 @@ namespace BMTP3_CS.Handlers.Backup {
 								downloadFileTask.Value(report.BytesRead);
 							};
 
+							bool isSaved;
 							if(!config.HasFilePattern()) {
-								throw new InvalidOperationException("Har ikke File Pattern, og mangler at implementere BackupFromPath(drive, fromPath, targetDirectoryPath, tempDirectoryInfo);");
+								const bool addSideCarFile = false;
+								isSaved = BackupFromPath(backupStartDateTime, drive, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
 							} else {
 								string filePattern = config.FilePattern!;
 								string filePatternIfExist = config.FilePatternIfExist!;
 
-								BackupFromPathWithFilePattern(backupStartDateTime, drive, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
-								pendingFileInfo.IsSaved = true;
+								isSaved = BackupFromPathWithFilePattern(backupStartDateTime, drive, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
 							}
+							pendingFileInfo.IsSaved = isSaved;
 							overallTask.Increment(1);
 						}
 					});
@@ -440,6 +446,110 @@ namespace BMTP3_CS.Handlers.Backup {
 			} finally {
 				backupProgressTracker.SaveDataStore();
 			}
+		}
+		bool BackupFromPath(DateTime backupStartDateTime, MediaDevice mediaDevice, MediaFileInfo sourceMediaFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, IProgress<FileProgressReport> fileProgress) {
+			double kilobytes = sourceMediaFileInfo.Length / 1024.0;
+			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceMediaFileInfo, fileProgress);
+
+			FileInfo? targetTempSideCarFileInfo = null;
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, mediaDevice, targetTempFileInfo, sourceMediaFileInfo);
+			}
+
+			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
+			DateTime? mediaCreatedDateTime = metadataFileInfo.GetCreatedMediaFileDateTime();
+			DateTime fileCreatedDateTime = File.GetCreationTime(targetTempFileInfo.FullName);
+
+			DateTime oldestDateTime = BackupHelper.ToOldestLegalDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
+			string fileName = targetTempFileInfo.Name;
+
+			string newTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, sourceMediaFileInfo.Name);
+
+			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
+
+			if(newTargetFileInfo.Exists) {
+				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
+				//FileComparer fileComparer = new Md5Comparer(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
+				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
+				FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
+
+				// Files are the same and we do not copy this file.
+				if(fileComparer.Compare()) {
+					// Delete temp file and try next file.
+					targetTempFileInfo.Delete();
+					return true;
+				}
+				Console.WriteLine($"Your file {newTargetFilePath} exists and it is different, and I have NOT overwritten it.");
+				return false;
+			}
+			if(!Directory.Exists(newTargetFileInfo.DirectoryName)) {
+				Directory.CreateDirectory(newTargetFileInfo.DirectoryName!);
+			}
+
+			string? newTargetSideCarFilePath = null;
+			if(addSideCarFile) {
+				newTargetSideCarFilePath = newTargetFilePath + ".ini";
+				if(Path.Exists(newTargetSideCarFilePath)) {
+					throw new Exception($"File exists : {newTargetSideCarFilePath}");
+				}
+			}
+			targetTempFileInfo.MoveTo(newTargetFilePath);
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo?.MoveTo(newTargetSideCarFilePath!);
+			}
+			return true;
+		}
+		bool BackupFromPath(DateTime backupStartDateTime, DriveInfo driveInfo, FileInfo sourceFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, IProgress<FileProgressReport> fileProgress) {
+			double kilobytes = sourceFileInfo.Length / 1024.0;
+			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceFileInfo, fileProgress);
+
+			FileInfo? targetTempSideCarFileInfo = null;
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, driveInfo, targetTempFileInfo, sourceFileInfo);
+			}
+
+			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
+			DateTime? mediaCreatedDateTime = metadataFileInfo.GetCreatedMediaFileDateTime();
+			DateTime fileCreatedDateTime = File.GetCreationTime(targetTempFileInfo.FullName);
+
+			DateTime oldestDateTime = BackupHelper.ToOldestLegalDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
+			string fileName = targetTempFileInfo.Name;
+
+			string newTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, sourceFileInfo.Name);
+
+			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
+
+			if(newTargetFileInfo.Exists) {
+				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
+				//FileComparer fileComparer = new Md5Comparer(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
+				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
+				FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
+
+				// Files are the same and we do not copy this file.
+				if(fileComparer.Compare()) {
+					// Delete temp file and try next file.
+					targetTempFileInfo.Delete();
+					return true;
+				}
+				Console.WriteLine($"Your file {newTargetFilePath} exists and it is different, and I have NOT overwritten it.");
+				return false;
+			}
+			if(!Directory.Exists(newTargetFileInfo.DirectoryName)) {
+				Directory.CreateDirectory(newTargetFileInfo.DirectoryName!);
+			}
+
+			string? newTargetSideCarFilePath = null;
+			if(addSideCarFile) {
+				newTargetSideCarFilePath = newTargetFilePath + ".ini";
+				if(Path.Exists(newTargetSideCarFilePath)) {
+					throw new Exception($"File exists : {newTargetSideCarFilePath}");
+				}
+			}
+			targetTempFileInfo.MoveTo(newTargetFilePath);
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo?.MoveTo(newTargetSideCarFilePath!);
+			}
+			return true;
 		}
 
 
@@ -471,11 +581,11 @@ namespace BMTP3_CS.Handlers.Backup {
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
 				FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
 
-				// Files are the same and we do not compy this file.
+				// Files are the same and we do not copy this file.
 				if(fileComparer.Compare()) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
-					return false;
+					return true;
 				}
 				while(true) {
 					counter++;
@@ -490,7 +600,7 @@ namespace BMTP3_CS.Handlers.Backup {
 					}
 
 					fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
-					// Files are the same and we do not compy this file.
+					// Files are the same and we do not copy this file.
 					if(fileComparer.Compare()) {
 						// Delete temp file and try next file.
 						targetTempFileInfo.Delete();
@@ -543,11 +653,11 @@ namespace BMTP3_CS.Handlers.Backup {
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
 				FileComparer fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
 
-				// Files are the same and we do not compy this file.
+				// Files are the same and we do not copy this file.
 				if(fileComparer.Compare()) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
-					return false;
+					return true;
 				}
 				while(true) {
 					counter++;
@@ -562,7 +672,7 @@ namespace BMTP3_CS.Handlers.Backup {
 					}
 
 					fileComparer = new ReadFileInChunksAndCompareVector(targetTempFileInfo.FullName, newTargetFilePath, 8 * 1024);
-					// Files are the same and we do not compy this file.
+					// Files are the same and we do not copy this file.
 					if(fileComparer.Compare()) {
 						// Delete temp file and try next file.
 						targetTempFileInfo.Delete();
