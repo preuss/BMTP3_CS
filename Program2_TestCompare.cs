@@ -22,7 +22,7 @@ namespace BMTP3_CS {
 			int limitCompare = 0; // 0 is not limit.
 
 			//int[] bufferKBSizes = { 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
-			int[] bufferKBSizes = { 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536 };
+			int[] bufferKBSizes = { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288 };
 
 			List<FileCompareResult> results = new List<FileCompareResult>();
 
@@ -66,7 +66,7 @@ namespace BMTP3_CS {
 
 			foreach(var bufferSizeKB in bufferSizesKB) {
 				FileCompareResult result;
-				if(typeof(T) == typeof(ReadIntoByteBufferInChunks)) {
+				if(typeof(ReadIntoByteBufferInChunks).IsAssignableFrom(typeof(T))) {
 					ReadIntoByteBufferInChunks comparer = (ReadIntoByteBufferInChunks)Activator.CreateInstance(typeof(T), bufferSizeKB * 1024)!;
 					result = CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, comparer);
 				} else {
@@ -78,6 +78,7 @@ namespace BMTP3_CS {
 
 			return results;
 		}
+
 
 
 		private FileCompareResult CompareTwoFiles(string sourceFolder, string targetFolder, List<FileInfo> files, FileComparer fileComparer, int limitCompare = 0) {
