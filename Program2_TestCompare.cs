@@ -22,59 +22,74 @@ namespace BMTP3_CS {
 			int limitCompare = 0; // 0 is not limit.
 
 			//int[] bufferKBSizes = { 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
-			int[] bufferKBSizes = { 4096, 8192, 16384, 32768, 65536 };
+			int[] bufferKBSizes = { 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536 };
 
 			List<FileCompareResult> results = new List<FileCompareResult>();
 
 			Console.WriteLine("Start comparing files...");
 			Console.WriteLine($"Count files: {files.Count}");
 
-			Console.WriteLine("Start comparing files using: ReadFileInChunksAndCompareVector");
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(8192), limitCompare, 8192);
+			//Console.WriteLine("Start comparing files using: ReadFileInChunksAndCompareVector");
+			//p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(8192), limitCompare);
 
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVector>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			/*
 			foreach(var bufferKBSize in bufferKBSizes) {
 				var bufferSizeLocal = bufferKBSize * 1024;
 				FileCompareResult result;
 
-				Console.WriteLine("Start comparing files using: ReadFileInChunksAndCompareVector");
-				result = p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(bufferSizeLocal), limitCompare, bufferKBSize);
-				result.CompareType = "ReadFileInChunksAndCompareVector";
+				result = p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(bufferSizeLocal), limitCompare);
 				results.Add(result);
 
-				Console.WriteLine("Start comparing files using: ReadFileInChunksAndCompareAvx2");
-				result = p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareAvx2(bufferSizeLocal), limitCompare, bufferKBSize);
-				result.CompareType = "ReadFileInChunksAndCompareAvx2";
+				result = p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareAvx2(bufferSizeLocal), limitCompare);
+				results.Add(result);
+			}*/
+
+			return;
+			var bufferSizeKB = 8 * 1024;
+			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(bufferSizeKB * 1024), limitCompare);
+
+			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareAvx2(bufferSizeKB * 1024), limitCompare);
+
+			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnceCompareEightByteAtOnce(), limitCompare);
+
+			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnce(), limitCompare);
+
+			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new Md5Comparer(), limitCompare);
+
+			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnceAndCompareUsingLinq(), limitCompare);
+		}
+
+		private List<FileCompareResult> CompareAllOfFileType<T>(string firstCompareFolder, string secondCompareFolder, List<FileInfo> files, int[] bufferSizesKB) where T : FileComparer {
+			List<FileCompareResult> results = new List<FileCompareResult>();
+
+			foreach(var bufferSizeKB in bufferSizesKB) {
+				FileCompareResult result;
+				if(typeof(T) == typeof(ReadIntoByteBufferInChunks)) {
+					ReadIntoByteBufferInChunks comparer = (ReadIntoByteBufferInChunks)Activator.CreateInstance(typeof(T), bufferSizeKB * 1024)!;
+					result = CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, comparer);
+				} else {
+					T comparer = (T)Activator.CreateInstance(typeof(T))!;
+					result = CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, comparer);
+				}
 				results.Add(result);
 			}
 
-			return;
-			Console.WriteLine("Start comparing files using: ReadFileInChunksAndCompareVector");
-			var bufferSizeKB = 8 * 1024;
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(bufferSizeKB * 1024), limitCompare, bufferSizeKB);
-
-			Console.WriteLine("Start comparing files using: ReadFileInChunksAndCompareAvx2");
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareAvx2(bufferSizeKB * 1024), limitCompare, bufferSizeKB);
-
-			Console.WriteLine("Start comparing files using: ReadWholeFileAtOnceCompareEightByteAtOnce");
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnceCompareEightByteAtOnce(), limitCompare, bufferSizeKB);
-
-			Console.WriteLine("Start comparing files using: ReadWholeFileAtOnce");
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnce(), limitCompare, bufferSizeKB);
-
-			Console.WriteLine("Start comparing files using: Md5Comparer");
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new Md5Comparer(), limitCompare, bufferSizeKB);
-
-			Console.WriteLine("Start comparing files using: ReadWholeFileAtOnceAndCompareUsingLinq");
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnceAndCompareUsingLinq(), limitCompare, bufferSizeKB);
+			return results;
 		}
-		private FileCompareResult CompareTwoFiles(string sourceFolder, string targetFolder, List<FileInfo> files, FileComparer fileComparer, int limitCompare = 0, int bufferSizeKB = 8) {
-			//const int BUFFER_SIZE = 8 * 1024;
-			//const int BUFFER_SIZE = 16 * 1024;
-			//const int BUFFER_SIZE = 32 * 1024;
-			//const int BUFFER_SIZE = 64 * 1024;
-			//const int BUFFER_SIZE = 128 * 1024;
-			int BUFFER_SIZE = bufferSizeKB * 1024;
 
+
+		private FileCompareResult CompareTwoFiles(string sourceFolder, string targetFolder, List<FileInfo> files, FileComparer fileComparer, int limitCompare = 0) {
+			return CompareTwoFilesInternal(sourceFolder, targetFolder, files, fileComparer, 0, limitCompare);
+		}
+
+		private FileCompareResult CompareTwoFiles(string sourceFolder, string targetFolder, List<FileInfo> files, ReadIntoByteBufferInChunks fileComparer, int limitCompare = 0) {
+			int bufferSizeKB = fileComparer.ChunkSize / 1024;
+			return CompareTwoFilesInternal(sourceFolder, targetFolder, files, fileComparer, bufferSizeKB, limitCompare);
+		}
+		private FileCompareResult CompareTwoFilesInternal(string sourceFolder, string targetFolder, List<FileInfo> files, FileComparer fileComparer, int bufferSizeKB, int limitCompare) {
+			Console.WriteLine($"Start comparing files using: {fileComparer.GetType().Name}");
 			Stopwatch stopwatch = new Stopwatch();
 			stopwatch.Start();
 
@@ -103,7 +118,9 @@ namespace BMTP3_CS {
 			double averageTimePerFile = timeTaken.TotalMilliseconds / countCompared;
 			double averageFileSize = totalFileSizeKB / countCompared; // Already in KB
 
-			Console.WriteLine($"Buffer Size Used:               : {bufferSizeKB} KB");
+			if(bufferSizeKB > 0) {
+				Console.WriteLine($"Buffer Size Used:               : {bufferSizeKB} KB");
+			}
 			Console.WriteLine($"Total Time Taken                : {stopwatch.ElapsedMilliseconds} ms");
 			Console.WriteLine($"Total Files Compared            : {countCompared}");
 			Console.WriteLine($"Total Time taken                : {timeTaken.Minutes:D2}:{timeTaken.Seconds:D2}.{timeTaken.Milliseconds:D3}");
@@ -117,12 +134,13 @@ namespace BMTP3_CS {
 			Console.WriteLine();
 
 			FileCompareResult result = new FileCompareResult() {
-				BufferSizeKB = bufferSizeKB,
+				BufferSizeKB = bufferSizeKB > 0 ? bufferSizeKB : 0,
 				TotalTimeTakenMS = stopwatch.ElapsedMilliseconds,
 				TotalFilesCompared = countCompared,
 				AverageTimePerFileMS = averageTimePerFile,
 				AverageFileSizeKB = averageFileSize,
-				ComparisonWorksCorrect = (countCompared == countTrue)
+				ComparisonWorksCorrect = (countCompared == countTrue),
+				CompareType = fileComparer.GetType().Name
 			};
 			return result;
 		}

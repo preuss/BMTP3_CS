@@ -6,9 +6,10 @@ using System.Threading.Tasks;
 
 namespace BMTP3_CS.CompareFiles {
 	public abstract class ReadIntoByteBufferInChunks : FileComparer {
-		protected readonly int ChunkSize;
+		private readonly int _chunkSize;
+		public int ChunkSize { get { return _chunkSize; } }
 		protected ReadIntoByteBufferInChunks(int chunkSize) : base() {
-			ChunkSize = chunkSize;
+			_chunkSize = chunkSize;
 		}
 		protected int ReadIntoBuffer(in Stream stream, in byte[] buffer) {
 			int bytesRead = 0;
