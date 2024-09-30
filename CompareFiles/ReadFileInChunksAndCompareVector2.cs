@@ -25,14 +25,14 @@ namespace BMTP3_CS.CompareFiles {
 			var tasks = new List<Task<bool>>();
 
 			while(true) {
-				int count1 = ReadIntoBuffer(stream1, buffer1);
-				int count2 = ReadIntoBuffer(stream2, buffer2);
+				int numBytesRead1 = ReadIntoBuffer(stream1, buffer1);
+				int numBytesRead2 = ReadIntoBuffer(stream2, buffer2);
 
-				if(count1 != count2) {
+				if(numBytesRead1 != numBytesRead2) {
 					return false;
 				}
 
-				if(count1 == 0) {
+				if(numBytesRead1 == 0) {
 					Task.WaitAll(tasks.ToArray());
 					return tasks.All(t => t.Result);
 				}
@@ -42,11 +42,18 @@ namespace BMTP3_CS.CompareFiles {
 
 				var task = Task.Run(() =>
 				{
-					for(int i = 0; i < count1; i += Vector<byte>.Count) {
+					int i = 0;
+					for(; i <= (numBytesRead1 - Vector<byte>.Count); i += Vector<byte>.Count) {
 						var vector1 = new Vector<byte>(buffer1Copy, i);
 						var vector2 = new Vector<byte>(buffer2Copy, i);
 
 						if(!Vector.EqualsAll(vector1, vector2)) {
+							return false;
+						}
+					}
+					// Compare the rest of the bytes. If there are any.
+					for(; i < numBytesRead1; i++) {
+						if(buffer1Copy[i] != buffer2Copy[i]) {
 							return false;
 						}
 					}

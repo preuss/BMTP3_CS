@@ -5,8 +5,8 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3_CS.CompareFiles {
-	public class ReadWholeFileAtOnceCompareXBytesAtOnce : ReadIntoByteBufferInChunks {
-		public ReadWholeFileAtOnceCompareXBytesAtOnce(int chunkSize) : base(chunkSize) {
+	public class ReadFileInChunksAndCompareXBytesAtOnce : ReadIntoByteBufferInChunks {
+		public ReadFileInChunksAndCompareXBytesAtOnce(int chunkSize) : base(chunkSize) {
 		}
 		protected override bool OnCompare(FileInfo fileInfo1, FileInfo fileInfo2) {
 			using(var stream1 = fileInfo1.OpenRead())
@@ -32,8 +32,17 @@ namespace BMTP3_CS.CompareFiles {
 					return true;
 				}
 
-				for(var i = 0; i < count1; i += sizeof(Int64)) {
+				// Compare bytes in groups of sizeof(Int64)
+				int i = 0;
+				for(; i <= count1 - sizeof(Int64); i += sizeof(Int64)) {
 					if(BitConverter.ToInt64(buffer1, i) != BitConverter.ToInt64(buffer2, i)) {
+						return false;
+					}
+				}
+
+				// Compare the remaining bytes
+				for(; i < count1; i++) {
+					if(buffer1[i] != buffer2[i]) {
 						return false;
 					}
 				}
