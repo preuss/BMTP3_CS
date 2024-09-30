@@ -7,12 +7,12 @@ using System.Threading.Tasks;
 
 namespace BMTP3_CS.CompareFiles {
 	public class Md5Comparer : FileComparer {
-		public Md5Comparer(string filePath01, string filePath02) : base(filePath01, filePath02) {
+		public Md5Comparer() : base() {
 		}
-		protected override bool OnCompare() {
+		protected override bool OnCompare(FileInfo fileInfo1, FileInfo fileInfo2) {
 
-			using var fileStream01 = FileInfo1.OpenRead();
-			using var fileStream02 = FileInfo2.OpenRead();
+			using var fileStream01 = fileInfo1.OpenRead();
+			using var fileStream02 = fileInfo2.OpenRead();
 			using var md5Creator = MD5.Create();
 
 			var fileStream01Hash = md5Creator.ComputeHash(fileStream01);

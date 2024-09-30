@@ -9,12 +9,12 @@ using System.Buffers;
 
 namespace BMTP3_CS.CompareFiles {
 	public class ReadFileInChunksAndCompareAvx2 : ReadIntoByteBufferInChunks {
-		public ReadFileInChunksAndCompareAvx2(string filePath01, string filePath02, int chunkSize)
-			: base(filePath01, filePath02, chunkSize) {
+		public ReadFileInChunksAndCompareAvx2(int chunkSize)
+			: base(chunkSize) {
 		}
-		protected override bool OnCompare() {
-			using(var stream1 = FileInfo1.OpenRead())
-			using(var stream2 = FileInfo2.OpenRead()) {
+		protected override bool OnCompare(FileInfo fileInfo1, FileInfo fileInfo2) {
+			using(var stream1 = fileInfo1.OpenRead())
+			using(var stream2 = fileInfo2.OpenRead()) {
 				return StreamAreEqual(stream1, stream2);
 			}
 		}

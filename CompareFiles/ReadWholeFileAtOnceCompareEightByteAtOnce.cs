@@ -6,11 +6,11 @@ using System.Threading.Tasks;
 
 namespace BMTP3_CS.CompareFiles {
 	public class ReadWholeFileAtOnceCompareEightByteAtOnce : FileComparer {
-		public ReadWholeFileAtOnceCompareEightByteAtOnce(string filePath01, string filePath02) : base(filePath01, filePath02) {
+		public ReadWholeFileAtOnceCompareEightByteAtOnce() : base() {
 		}
-		protected override bool OnCompare() {
-			byte[] fileContents01 = File.ReadAllBytes(FileInfo1.FullName);
-			byte[] fileContents02 = File.ReadAllBytes(FileInfo2.FullName);
+		protected override bool OnCompare(FileInfo fileInfo1, FileInfo fileInfo2) {
+			byte[] fileContents01 = File.ReadAllBytes(fileInfo1.FullName);
+			byte[] fileContents02 = File.ReadAllBytes(fileInfo2.FullName);
 
 			// Verify if files have same length.
 			if(fileContents01.Length != fileContents02.Length) {

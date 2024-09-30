@@ -7,47 +7,38 @@ using System.Threading.Tasks;
 namespace BMTP3_CS.CompareFiles {
 	public abstract class FileComparer {
 		/// <summary>
-		/// Fileinfo for source file
-		/// </summary>
-		protected readonly FileInfo FileInfo1;
-
-		/// <summary>
-		/// Fileinfo for target file
-		/// </summary>
-		protected readonly FileInfo FileInfo2;
-
-		/// <summary>
 		/// Base class for creating a file comparer
 		/// </summary>
-		/// <param name="filePath01">Absolute path to source file</param>
-		/// <param name="filePath02">Absolute path to target file</param>
-		protected FileComparer(string filePath01, string filePath02) {
-			FileInfo1 = new FileInfo(filePath01);
-			FileInfo2 = new FileInfo(filePath02);
-			EnsureFilesExist();
+		protected FileComparer() {
 		}
 
 		/// <summary>
 		/// Compares the two given files and returns true if the files are the same
 		/// </summary>
 		/// <returns>true if the files are the same, false otherwise</returns>
-		public bool Compare() {
-			if(IsDifferentLength()) {
+		public bool Compare(string filePath1, string filePath2) {
+			FileInfo fileInfo1 = new FileInfo(filePath1);
+			FileInfo fileInfo2 = new FileInfo(filePath2);
+			return Compare(fileInfo1, fileInfo2);
+		}
+		public bool Compare(FileInfo fileInfo1, FileInfo fileInfo2) {
+			EnsureFilesExist(fileInfo1, fileInfo2);
+			if(IsDifferentLength(fileInfo1, fileInfo2)) {
 				return false;
 			}
-			if(IsSameFile()) {
+			if(IsSameFile(fileInfo1, fileInfo2)) {
 				return true;
 			}
-			return OnCompare();
+			return OnCompare(fileInfo1, fileInfo2);
 		}
 
 		/// <summary>
 		/// Compares the two given files and returns true if the files are the same
 		/// </summary>
 		/// <returns>true if the files are the same, false otherwise</returns>
-		protected abstract bool OnCompare();
+		protected abstract bool OnCompare(FileInfo FileInfo1, FileInfo FileInfo2);
 
-		private bool IsSameFile() {
+		private bool IsSameFile(FileInfo FileInfo1, FileInfo FileInfo2) {
 			return string.Equals(FileInfo1.FullName, FileInfo2.FullName, StringComparison.OrdinalIgnoreCase);
 		}
 
@@ -55,14 +46,14 @@ namespace BMTP3_CS.CompareFiles {
 		/// Does an early comparison by checking files Length, if lengths are not the same, files are definetely different
 		/// </summary>
 		/// <returns>true if different length</returns>
-		private bool IsDifferentLength() {
+		private bool IsDifferentLength(FileInfo FileInfo1, FileInfo FileInfo2) {
 			return FileInfo1.Length != FileInfo2.Length;
 		}
 
 		/// <summary>
 		/// Makes sure files exist
 		/// </summary>
-		private void EnsureFilesExist() {
+		private void EnsureFilesExist(FileInfo FileInfo1, FileInfo FileInfo2) {
 			if(FileInfo1.Exists == false) {
 				throw new ArgumentNullException(nameof(FileInfo1));
 			}

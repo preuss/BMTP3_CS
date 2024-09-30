@@ -10,17 +10,13 @@ using System.IO;
 
 namespace BMTP3_CS.CompareFiles {
 	public class ReadFileInChunksAndCompareAvx2_3 : ReadIntoByteBufferInChunks {
-		public ReadFileInChunksAndCompareAvx2_3(string filePath01, string filePath02, int chunkSize)
-			: base(filePath01, filePath02, chunkSize) {
+		public ReadFileInChunksAndCompareAvx2_3(int chunkSize)
+			: base(chunkSize) {
 		}
-		protected override bool OnCompare() {
-			using(var stream1 = FileInfo1.OpenRead())
-			using(var stream2 = FileInfo2.OpenRead()) {
-				return StreamAreEqual(stream1, stream2);
-			}
+		protected override bool OnCompare(FileInfo fileInfo1, FileInfo fileInfo2) {
+			return StreamAreEqual(fileInfo1, fileInfo2);
 		}
-
-		private unsafe bool StreamAreEqual(in Stream stream1, in Stream stream2) {
+		private unsafe bool StreamAreEqual(FileInfo fileInfo1, FileInfo fileInfo2) {
 			ArrayPool<byte> sharedArrayPool = ArrayPool<byte>.Shared;
 			byte[] buffer1 = sharedArrayPool.Rent(ChunkSize);
 			byte[] buffer2 = sharedArrayPool.Rent(ChunkSize);
@@ -28,11 +24,11 @@ namespace BMTP3_CS.CompareFiles {
 			Array.Fill<byte>(buffer2, 0);
 
 			try {
-				int chunkCount = (int)Math.Ceiling((double)FileInfo1.Length / ChunkSize);
+				int chunkCount = (int)Math.Ceiling((double)fileInfo1.Length / ChunkSize);
 				bool[] results = new bool[chunkCount];
 				Parallel.For(0, chunkCount, i => {
-					using(var localStream1 = FileInfo1.OpenRead())
-					using(var localStream2 = FileInfo2.OpenRead()) {
+					using(var localStream1 = fileInfo1.OpenRead())
+					using(var localStream2 = fileInfo2.OpenRead()) {
 						long offset = i * ChunkSize;
 						int len1 = ReadChunk(localStream1, buffer1, offset);
 						int len2 = ReadChunk(localStream2, buffer2, offset);

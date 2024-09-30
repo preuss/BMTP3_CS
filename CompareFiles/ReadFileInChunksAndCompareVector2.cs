@@ -8,16 +8,13 @@ using System.Threading.Tasks;
 
 namespace BMTP3_CS.CompareFiles {
 	public class ReadFileInChunksAndCompareVector2 : ReadIntoByteBufferInChunks {
-		public ReadFileInChunksAndCompareVector2(string filePath1, string filePath2, int chunkSize)
-			: base(filePath1, filePath2, chunkSize) {
+		public ReadFileInChunksAndCompareVector2(int chunkSize)
+			: base(chunkSize) {
 		}
 
-		protected override bool OnCompare() {
-			if(FileInfo1.Length != FileInfo2.Length) {
-				return false;
-			}
-			using(var file1 = FileInfo1.OpenRead())
-			using(var file2 = FileInfo2.OpenRead()) {
+		protected override bool OnCompare(FileInfo fileInfo1, FileInfo fileInfo2) {
+			using(var file1 = fileInfo1.OpenRead())
+			using(var file2 = fileInfo2.OpenRead()) {
 				return StreamsContentsAreEqual(file1, file2);
 			}
 		}

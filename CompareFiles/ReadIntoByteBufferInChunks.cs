@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace BMTP3_CS.CompareFiles {
 	public abstract class ReadIntoByteBufferInChunks : FileComparer {
 		protected readonly int ChunkSize;
-		protected ReadIntoByteBufferInChunks(string filePath01, string filePath02, int chunkSize) : base(filePath01, filePath02) {
+		protected ReadIntoByteBufferInChunks(int chunkSize) : base() {
 			ChunkSize = chunkSize;
 		}
 		protected int ReadIntoBuffer(in Stream stream, in byte[] buffer) {
