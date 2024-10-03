@@ -5,10 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3_CS.CompareFiles {
-	public abstract class ReadIntoByteBufferInChunks : FileComparer {
+	public abstract class ReadFileInChunks : FileComparer {
 		private readonly int _chunkSize;
 		public int ChunkSize { get { return _chunkSize; } }
-		protected ReadIntoByteBufferInChunks(int chunkSize) : base() {
+		protected ReadFileInChunks(int chunkSize) : base() {
 			_chunkSize = chunkSize;
 		}
 		protected int ReadIntoBuffer(in Stream stream, in byte[] buffer) {

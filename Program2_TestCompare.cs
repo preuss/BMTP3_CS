@@ -23,7 +23,8 @@ namespace BMTP3_CS {
 			int limitCompare = 0; // 0 is not limit.
 
 			//int[] bufferKBSizes = { 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
-			int[] bufferKBSizes = { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288 };
+			//int[] bufferKBSizes = { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288 };
+			int[] bufferKBSizes = { 128, 256, 512, 1024 };
 
 			List<FileCompareResult> results = new List<FileCompareResult>();
 
@@ -33,21 +34,36 @@ namespace BMTP3_CS {
 			//Console.WriteLine("Start comparing files using: ReadFileInChunksAndCompareVector");
 			//p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(8192), limitCompare);
 
+			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVector>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVectorOptimized>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+
+
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareMemoryMapped>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes)); 
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+
+
+			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVectorSharedPool>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVector>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
 			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVector>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2_2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
 
-			
-			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVectorSharedPool>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVector2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareEightByteAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareEightByteAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareXBytesAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
 
-			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceAndCompareUsingLinq>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceAndUseSequenceEquals>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceCompareEightByteAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareXBytesAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<Md5Comparer>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareOneByteAtATimeThreaded>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareOneByteAtATime>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+
+			//			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceAndCompareUsingLinq>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceAndUseSequenceEquals>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceCompareEightByteAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			//			results.AddRange(p.CompareAllOfFileType<Md5Comparer>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
 
 			/*
 			foreach(var bufferKBSize in bufferKBSizes) {
@@ -80,10 +96,10 @@ namespace BMTP3_CS {
 		private List<FileCompareResult> CompareAllOfFileType<T>(string firstCompareFolder, string secondCompareFolder, List<FileInfo> files, int[] bufferSizesKB) where T : FileComparer {
 			List<FileCompareResult> results = new List<FileCompareResult>();
 
-			if(typeof(ReadIntoByteBufferInChunks).IsAssignableFrom(typeof(T))) {
+			if(typeof(ReadFileInChunks).IsAssignableFrom(typeof(T))) {
 				FileCompareResult result;
 				foreach(var bufferSizeKB in bufferSizesKB) {
-					ReadIntoByteBufferInChunks comparer = (ReadIntoByteBufferInChunks)Activator.CreateInstance(typeof(T), bufferSizeKB * 1024)!;
+					ReadFileInChunks comparer = (ReadFileInChunks)Activator.CreateInstance(typeof(T), bufferSizeKB * 1024)!;
 					result = CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, comparer);
 					results.Add(result);
 				}
@@ -102,7 +118,7 @@ namespace BMTP3_CS {
 			return CompareTwoFilesInternal(sourceFolder, targetFolder, files, fileComparer, 0, limitCompare);
 		}
 
-		private FileCompareResult CompareTwoFiles(string sourceFolder, string targetFolder, List<FileInfo> files, ReadIntoByteBufferInChunks fileComparer, int limitCompare = 0) {
+		private FileCompareResult CompareTwoFiles(string sourceFolder, string targetFolder, List<FileInfo> files, ReadFileInChunks fileComparer, int limitCompare = 0) {
 			int bufferSizeKB = fileComparer.ChunkSize / 1024;
 			return CompareTwoFilesInternal(sourceFolder, targetFolder, files, fileComparer, bufferSizeKB, limitCompare);
 		}
@@ -198,10 +214,10 @@ namespace BMTP3_CS {
 		}
 		public static void SaveToCsv(List<FileCompareResult> results, string filePath) {
 			var csv = new StringBuilder();
-			csv.AppendLine("BufferSizeKB;TotalTimeTakenMS;TotalFilesCompared;AverageTimePerFileMS;AverageFileSizeKB;ComparisonWorksCorrect;CompareType");
+			csv.AppendLine("BufferSizeKB;TotalTimeTakenMS;AverageTimePerFileMS;CompareType;ComparisonWorksCorrect;TotalFilesCompared;AverageFileSizeKB");
 
 			foreach(var result in results) {
-				csv.AppendLine($"{result.BufferSizeKB};{result.TotalTimeTakenMS};{result.TotalFilesCompared};{result.AverageTimePerFileMS};{result.AverageFileSizeKB};{result.ComparisonWorksCorrect};{result.CompareType}");
+				csv.AppendLine($"{result.BufferSizeKB};{result.TotalTimeTakenMS};{result.AverageTimePerFileMS};{result.CompareType};{result.ComparisonWorksCorrect};{result.TotalFilesCompared};{result.AverageFileSizeKB}");
 			}
 
 			File.WriteAllText(filePath, csv.ToString());

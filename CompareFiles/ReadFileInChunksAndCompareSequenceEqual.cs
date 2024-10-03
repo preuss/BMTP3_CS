@@ -8,7 +8,12 @@ using System.Threading.Tasks;
 using System.Buffers;
 
 namespace BMTP3_CS.CompareFiles {
-	public class ReadFileInChunksAndCompareSequenceEqual : ReadIntoByteBufferInChunks {
+	public class ReadFileInChunksAndCompareSequenceEqual : ReadFileInChunks {
+		/// <summary>
+		/// 1024 KB is fastest
+		/// 512 KB is second fastest
+		/// </summary>
+		/// <param name="chunkSize"></param>
 		public ReadFileInChunksAndCompareSequenceEqual(int chunkSize)
 			: base(chunkSize) {
 		}
@@ -36,14 +41,8 @@ namespace BMTP3_CS.CompareFiles {
 						return true;
 					}
 
-					if(count1 == ChunkSize) {
-						if(!buffer1.SequenceEqual(buffer2)) {
-							return false;
-						}
-					} else {
-						if(!buffer1.Take(count1).SequenceEqual(buffer2.Take(count1))) {
-							return false;
-						}
+					if(!buffer1.AsSpan(0, count1).SequenceEqual(buffer2.AsSpan(0, count1))) {
+						return false;
 					}
 				}
 			} finally {

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Buffers;
 
 namespace BMTP3_CS.CompareFiles {
-	public class ReadFileInChunksAndCompareAvx2 : ReadIntoByteBufferInChunks {
+	public class ReadFileInChunksAndCompareAvx2 : ReadFileInChunks {
 		public ReadFileInChunksAndCompareAvx2(int chunkSize)
 			: base(chunkSize) {
 		}

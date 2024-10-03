@@ -7,9 +7,10 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Buffers;
 using System.IO;
+using System.Diagnostics;
 
 namespace BMTP3_CS.CompareFiles {
-	public class ReadFileInChunksAndCompareAvx2_2 : ReadIntoByteBufferInChunks {
+	public class ReadFileInChunksAndCompareAvx2_2 : ReadFileInChunks {
 		public ReadFileInChunksAndCompareAvx2_2(int chunkSize)
 			: base(chunkSize) {
 		}
@@ -25,6 +26,7 @@ namespace BMTP3_CS.CompareFiles {
 			byte[] buffer2 = sharedArrayPool.Rent(ChunkSize);
 			Array.Fill<byte>(buffer1, 0);
 			Array.Fill<byte>(buffer2, 0);
+			int vectorSize = Vector256<byte>.Count;
 			try {
 				while(true) {
 					int len1 = 0;
@@ -52,10 +54,16 @@ namespace BMTP3_CS.CompareFiles {
 					unsafe {
 						fixed(byte* pb1 = buffer1) {
 							fixed(byte* pb2 = buffer2) {
-								int vectorSize = Vector256<byte>.Count;
-								for(int processed = 0; processed < len1; processed += vectorSize) {
+								int processed;
+								for(processed = 0; processed < len1; processed += vectorSize) {
 									Vector256<byte> result = Avx2.CompareEqual(Avx.LoadVector256(pb1 + processed), Avx.LoadVector256(pb2 + processed));
 									if(Avx2.MoveMask(result) != -1) {
+										return false;
+									}
+								}
+								// Compare the remaining bytes
+								for(int i = processed; i < len1; i++) {
+									if(buffer1[i] != buffer2[i]) {
 										return false;
 									}
 								}
