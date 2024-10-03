@@ -47,13 +47,17 @@ namespace BMTP3_CS.Handlers.Backup {
 		private readonly CancellationToken _cancellationToken;
 		private readonly BackupHelper _backupHelper;
 
+		private readonly FileComparer _fileComparer;
+
 		private BackupHelper BackupHelper { get { return _backupHelper; } }
 
-		public BackupHandler(IAnsiConsole console, CancellationTokenGenerator cancellationTokenGenerator, BackupHelper backupHelper) {
+		public BackupHandler(IAnsiConsole console, CancellationTokenGenerator cancellationTokenGenerator, BackupHelper backupHelper, FileComparer fileComparer) {
 			Console = console;
 			_cancellationTokenGenerator = cancellationTokenGenerator;
 			_cancellationToken = cancellationTokenGenerator.Token;
 			_backupHelper = backupHelper;
+
+			_fileComparer = fileComparer;
 		}
 
 		Action<int> CreateIncrementCallback(Action<int> updateAction) {
@@ -471,7 +475,7 @@ namespace BMTP3_CS.Handlers.Backup {
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(8 * 1024);
 				//FileComparer fileComparer = new Md5Comparer(8 * 1024);
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
-				FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
+				FileComparer fileComparer = _fileComparer;
 
 				// Files are the same and we do not copy this file.
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
@@ -523,7 +527,7 @@ namespace BMTP3_CS.Handlers.Backup {
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(8 * 1024);
 				//FileComparer fileComparer = new Md5Comparer(8 * 1024);
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
-				FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
+				FileComparer fileComparer = _fileComparer;
 
 				// Files are the same and we do not copy this file.
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
@@ -579,7 +583,7 @@ namespace BMTP3_CS.Handlers.Backup {
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(8 * 1024);
 				//FileComparer fileComparer = new Md5Comparer(8 * 1024);
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
-				FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
+				FileComparer fileComparer = _fileComparer;
 
 				// Files are the same and we do not copy this file.
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
@@ -651,7 +655,7 @@ namespace BMTP3_CS.Handlers.Backup {
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(8 * 1024);
 				//FileComparer fileComparer = new Md5Comparer(8 * 1024);
 				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
-				FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
+				FileComparer fileComparer = _fileComparer;
 
 				// Files are the same and we do not copy this file.
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {

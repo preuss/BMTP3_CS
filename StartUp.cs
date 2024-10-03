@@ -1,4 +1,5 @@
-﻿using BMTP3_CS.Configs;
+﻿using BMTP3_CS.CompareFiles;
+using BMTP3_CS.Configs;
 using BMTP3_CS.Handlers;
 using BMTP3_CS.Handlers.Backup;
 using BMTP3_CS.Services;
@@ -39,6 +40,9 @@ namespace BMTP3_CS {
 			services.AddSingleton((service) => AnsiConsole.Console);
 			services.AddSingleton<BackupSettingsReader>();
 			services.AddSingleton<CancellationTokenGenerator>();
+
+			int bufferSize = _configuration.GetValue<int>("BufferSizeInKBForFileComparison", 8) * 1024;
+			services.AddSingleton<FileComparer>((sp) => new ReadFileInChunksAndCompareSequenceEqual(bufferSize));
 
 			services.AddSingleton<HashCalculator>();
 

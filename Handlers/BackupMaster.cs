@@ -1,6 +1,7 @@
 ﻿using BMTP3_CS.BackupSource;
 using BMTP3_CS.BackupSource.Drives;
 using BMTP3_CS.BackupSource.PortableDevices;
+using BMTP3_CS.CompareFiles;
 using BMTP3_CS.Configs;
 using BMTP3_CS.Handlers.Backup;
 using BMTP3_CS.Services;
@@ -43,7 +44,8 @@ namespace BMTP3_CS.Handlers {
 				StorageHandler deviceHandler = InitializeDeviceHandler();
 				DriveHandler driveHandler = InitializeDriveHandler();
 				BackupHelper backupHelper = InitializeBackupHelper();
-				BackupHandler backupHandler = InitializeBackupHandler(backupHelper);
+				FileComparer fileComparer = InitializeFileComparer();
+				BackupHandler backupHandler = InitializeBackupHandler(backupHelper, fileComparer);
 				PrintHandler printHandler = InitializePrintHandler();
 
 				IList<ISourceConfig> configs = configHandler.GetConfigs();
@@ -58,11 +60,11 @@ namespace BMTP3_CS.Handlers {
 				IList<DriveSourceConfig> disabledDriveSourceConfigs = configHandler.GetDisabledDriveConfigs();
 				IList<DriveSourceConfig> enabledDriveSourceConfigs = configHandler.GetEnabledDriveConfigs();
 
-//				printHandler.PrintDisabledDeviceSources(disabledDeviceSourceConfigs);
-//				printHandler.PrintEnabledDeviceSources(enabledDeviceSourceConfigs);
+				//				printHandler.PrintDisabledDeviceSources(disabledDeviceSourceConfigs);
+				//				printHandler.PrintEnabledDeviceSources(enabledDeviceSourceConfigs);
 
-//				printHandler.PrintDisabledDriveSources(disabledDriveSourceConfigs);
-//				printHandler.PrintEnabledDriveSources(enabledDriveSourceConfigs);
+				//				printHandler.PrintDisabledDriveSources(disabledDriveSourceConfigs);
+				//				printHandler.PrintEnabledDriveSources(enabledDriveSourceConfigs);
 
 				IEnumerable<MediaDevice> mediaDevices = deviceHandler.GetMediaDevices();
 				printHandler.PrintDeviceDetails(mediaDevices);
@@ -90,8 +92,11 @@ namespace BMTP3_CS.Handlers {
 		private BackupHelper InitializeBackupHelper() {
 			return ServiceProvider?.GetService<BackupHelper>() ?? new BackupHelper();
 		}
-		private BackupHandler InitializeBackupHandler(BackupHelper backupHelper) {
-			return ServiceProvider?.GetService<BackupHandler>() ?? new BackupHandler(Console, TokenGenerator, backupHelper);
+		private FileComparer InitializeFileComparer() {
+			return ServiceProvider?.GetService<FileComparer>() ?? new ReadFileInChunksAndCompareSequenceEqual(512 * 1024);
+		}
+		private BackupHandler InitializeBackupHandler(BackupHelper backupHelper, FileComparer fileComparer) {
+			return ServiceProvider?.GetService<BackupHandler>() ?? new BackupHandler(Console, TokenGenerator, backupHelper, fileComparer);
 		}
 		private PrintHandler InitializePrintHandler() {
 			return ServiceProvider?.GetService<PrintHandler>() ?? new PrintHandler(Console, TokenGenerator);

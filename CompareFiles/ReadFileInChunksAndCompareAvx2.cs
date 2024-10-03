@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 using System.Buffers;
 
 namespace BMTP3_CS.CompareFiles {
+	/// <summary>
+	/// Fastest 1024 KB
+	/// But 512 KB almost the same.
+	/// </summary>
 	public class ReadFileInChunksAndCompareAvx2 : ReadFileInChunks {
 		public ReadFileInChunksAndCompareAvx2(int chunkSize)
 			: base(chunkSize) {
