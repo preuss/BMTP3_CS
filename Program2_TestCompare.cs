@@ -9,12 +9,16 @@ using System.Threading.Tasks;
 
 namespace BMTP3_CS {
 	internal class Program2_TestCompare {
-		public static void Main(string[] args) {
+		public static void Main_(string[] args) {
 			string firstCompareFolder = @"c:\Backup\Backup\iPhone14\";
 			string secondCompareFolder = @"c:\temp\test.backup.iPhone.source\delme\";
 
-			firstCompareFolder = @"C:\Backup\Backup\iPhone14\";
-			secondCompareFolder = @"C:\temp\test.backup.iPhone.source\delme\";
+			//firstCompareFolder = @"C:\Backup\Backup\iPhone14\";
+			//secondCompareFolder = @"C:\temp\test.backup.iPhone.source\delme\";
+
+			string saveToCsvPath = @"C:\temp\test.results.csv";
+			firstCompareFolder = @"c:\Private.Testing\test.source\iPhone14\";
+			secondCompareFolder = @"c:\Private.Testing\test.target\delme\";
 
 			List<FileInfo> files = TraverseFolder(firstCompareFolder);
 
@@ -22,75 +26,28 @@ namespace BMTP3_CS {
 
 			int limitCompare = 0; // 0 is not limit.
 
-			//int[] bufferKBSizes = { 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
+			int[] bufferKBSizes = { 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192 };
 			//int[] bufferKBSizes = { 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 131072, 262144, 524288 };
-			int[] bufferKBSizes = { 128, 256, 512, 1024 };
+			//int[] bufferKBSizes = { 128, 256, 512, 1024, 2048 };
 
 			List<FileCompareResult> results = new List<FileCompareResult>();
 
 			Console.WriteLine("Start comparing files...");
 			Console.WriteLine($"Count files: {files.Count}");
 
-			//Console.WriteLine("Start comparing files using: ReadFileInChunksAndCompareVector");
-			//p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(8192), limitCompare);
-
-			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVector>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVectorOptimized>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-
-
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareMemoryMapped>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes)); 
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-
-
-			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVectorSharedPool>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVector>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareMemCmp>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
 			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareAvx2_2>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareVector>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareEightByteAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareOneByteAtATime>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareXBytesAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceAndCompareUsingLinq>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceAndUseSequenceEquals>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
+			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceCompareEightByteAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
 
-			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareSequenceEqual>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareEightByteAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareXBytesAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-
-			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareOneByteAtATimeThreaded>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//			results.AddRange(p.CompareAllOfFileType<ReadFileInChunksAndCompareOneByteAtATime>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-
-			//			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceAndCompareUsingLinq>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceAndUseSequenceEquals>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnceCompareEightByteAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//			results.AddRange(p.CompareAllOfFileType<ReadWholeFileAtOnce>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-			//			results.AddRange(p.CompareAllOfFileType<Md5Comparer>(firstCompareFolder, secondCompareFolder, files, bufferKBSizes));
-
-			/*
-			foreach(var bufferKBSize in bufferKBSizes) {
-				var bufferSizeLocal = bufferKBSize * 1024;
-				FileCompareResult result;
-
-				result = p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(bufferSizeLocal), limitCompare);
-				results.Add(result);
-
-				result = p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareAvx2(bufferSizeLocal), limitCompare);
-				results.Add(result);
-			}*/
-			SaveToCsv(results, @"C:\temp\test.results.csv");
-
-			return;
-			var bufferSizeKB = 8 * 1024;
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareVector(bufferSizeKB * 1024), limitCompare);
-
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadFileInChunksAndCompareAvx2(bufferSizeKB * 1024), limitCompare);
-
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnceCompareEightByteAtOnce(), limitCompare);
-
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnce(), limitCompare);
-
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new Md5Comparer(), limitCompare);
-
-			p.CompareTwoFiles(firstCompareFolder, secondCompareFolder, files, new ReadWholeFileAtOnceAndCompareUsingLinq(), limitCompare);
+			SaveToCsv(results, saveToCsvPath);
 		}
 
 		private List<FileCompareResult> CompareAllOfFileType<T>(string firstCompareFolder, string secondCompareFolder, List<FileInfo> files, int[] bufferSizesKB) where T : FileComparer {

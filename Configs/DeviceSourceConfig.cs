@@ -8,24 +8,7 @@ using System.Threading.Tasks;
 
 namespace BMTP3_CS.Configs {
 	[DebuggerDisplay("{Title}, {Name}")]
-	public class DeviceSourceConfig : ISourceConfig {
-		/// <summary>
-		/// Default should be false
-		/// </summary>
-		public bool Enabled { get; set; } = false;
-
-		public bool? CompareByBinary { get; set; }
-		public string? Title { get; set; }
-		public string? Name { get; set; }
-		public string? FolderSource { get; set; }
-		/// <summary>
-		/// Default should be false
-		/// </summary>
-		public bool Recursive { get; set; } = false;
-		public string? FolderOutput { get; set; }
-		public bool? UseFilePattern { get; set; }
-		public string? FilePattern { get; internal set; }
-		public string? FilePatternIfExist { get; internal set; }
-		public SourceType SourceType => SourceType.Device;
+	public class DeviceSourceConfig : BaseSourceConfig {
+		public override SourceType SourceType => SourceType.Device;
 	}
 }

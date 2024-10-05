@@ -6,6 +6,5 @@ using System.Threading.Tasks;
 
 namespace BMTP3_CS.Drives {
 	internal interface IBackupFileInfo {
-
 	}
 }

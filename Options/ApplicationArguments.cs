@@ -11,7 +11,6 @@ namespace BMTP3_CS.Options {
 		public string? Verify { get; set; }
 		public string? VerifyPath { get; set; }
 		public bool Test { get; set; }
-
 		public override string ToString() {
 			return $"[ApplicationArguments: " +
 				   $"DefaultConfigurationFile: {DefaultConfigurationFile ?? "null"}, " +

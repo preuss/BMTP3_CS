@@ -26,9 +26,7 @@ namespace BMTP3_CS.Injection {
 			_serviceCollection.AddSingleton(service, implementation);
 		}
 		public void RegisterLazy(Type service, Func<object> func) {
-			if(func is null) {
-				throw new ArgumentNullException(nameof(func));
-			}
+			ArgumentNullException.ThrowIfNull(func);
 			_serviceCollection.AddSingleton(service, (provider) => func());
 		}
 	}

@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3_CS.Configs {
-	public interface ISourceConfig {
+	public interface ISourceConfig : IEquatable<ISourceConfig> {
 		/// <summary>
 		/// Default should be false
 		/// </summary>

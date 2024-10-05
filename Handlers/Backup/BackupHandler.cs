@@ -69,9 +69,7 @@ namespace BMTP3_CS.Handlers.Backup {
 		}
 
 		public void BackupDevice(MediaDevice device, DeviceSourceConfig config, DateTime backupStartDateTime) {
-			// Implementer backup logikken her
 			Console.WriteLine($"Backing up device: {device.FriendlyName}");
-
 
 			List<BackupRecordInfo> allDeviceFiles = new List<BackupRecordInfo>();
 			IDictionary<string, MediaFileInfo> uniqueIdMediaFileInfos;

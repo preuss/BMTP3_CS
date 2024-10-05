@@ -22,6 +22,5 @@ namespace BMTP3_CS.Injection {
 			registrar.RegisterInstance(typeof(TService), implementationInstance);
 			return registrar;
 		}
-
 	}
 }

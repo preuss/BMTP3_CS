@@ -23,7 +23,6 @@ namespace BMTP3_CS.BackupSource.PortableDevices {
 		public static DirectoryInfo CreateTempDirectory(this DirectoryInfo directoryInfo, string prefix) {
 			return new DirectoryInfo(TempDirectory.CreateTempDirectory(prefix, directoryInfo.FullName));
 		}
-
 		public static FileInfo CombineToFileInfo(this DirectoryInfo directoryInfo, string fileName) {
 			return new FileInfo(Path.Combine(directoryInfo.FullName, fileName));
 		}

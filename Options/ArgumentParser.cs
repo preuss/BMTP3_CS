@@ -49,8 +49,8 @@ namespace BMTP3_CS.Options {
 			options.SetupHelp("?", "help")
 				.Callback(text => {
 					text.Split('\n').ToList().ForEach(x => Console.WriteLine(x));
-				})
-				;
+				}
+			);
 
 			ICommandLineParserResult parserResult = options.Parse(args);
 

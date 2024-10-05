@@ -12,7 +12,6 @@ namespace BMTP3_CS.BackupSource.PortableDevices {
 		[DllImport(@"kernel32.dll", EntryPoint = "CreateDirectory", SetLastError = true, CharSet = CharSet.Unicode)]
 		[return: MarshalAs(UnmanagedType.Bool)]
 		private static extern bool CreateDirectoryApi([MarshalAs(UnmanagedType.LPTStr)] string lpPathName, nint lpSecurityAttributes);
-
 		/// <summary>
 		/// Creates the directory if it does not exist.
 		/// </summary>
@@ -37,7 +36,6 @@ namespace BMTP3_CS.BackupSource.PortableDevices {
 
 			return true;
 		}
-
 		internal static DirectoryInfo? CreateParentFolder(string directoryPath) {
 			DirectoryInfo? parentInfo = Directory.GetParent(directoryPath);
 
@@ -50,7 +48,6 @@ namespace BMTP3_CS.BackupSource.PortableDevices {
 
 			return parentInfo;
 		}
-
 		private static readonly object LockObject = new();
 		/// <summary>
 		/// Opretter et midlertidigt bibliotek med et unikt navn i den angivne sti.

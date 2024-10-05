@@ -27,7 +27,6 @@ namespace BMTP3_CS.Options {
 			}
 		}
 		public bool HasTest { get => CommandLineArguments.Test || AppSettingsArguments.Test; }
-
 		public RunCommand GetRunCommand() {
 			if(HasErrors) {
 				return RunCommand.ERROR;
@@ -62,7 +61,6 @@ namespace BMTP3_CS.Options {
 			}
 			return RunCommand.UNKNOWN;
 		}
-
 		public override string ToString() {
 			return $"ApplicationConfiguration: \n" +
 				   $"HasErrors: {HasErrors}, \n" +
