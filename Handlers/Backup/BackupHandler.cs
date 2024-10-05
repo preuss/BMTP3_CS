@@ -75,6 +75,7 @@ namespace BMTP3_CS.Handlers.Backup {
 			IDictionary<string, MediaFileInfo> uniqueIdMediaFileInfos;
 			using(device) {
 				device.Connect();
+
 				MediaDirectoryInfo folderSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
 
 				Stopwatch stopwatch = Stopwatch.StartNew();
@@ -748,10 +749,10 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				writer.WriteLine("[Settings]");
 				writer.WriteLine("OriginalFileName=" + targetTempFileInfo.Name);
 				/*
-								writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToUniversalTime().ToString("o"));
-								writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToUniversalTime().ToString("o"));
-								writer.WriteLine("LastWriteDateTime=" + targetTempFileInfo.LastWriteTime.ToUniversalTime().ToString("o"));
-								writer.WriteLine("MediaTakenDateTime=" + metadataFileInfo.GetCreatedMediaFileDateTime()?.ToUniversalTime().ToString("o"));
+				writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToUniversalTime().ToString("o"));
+				writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToUniversalTime().ToString("o"));
+				writer.WriteLine("LastWriteDateTime=" + targetTempFileInfo.LastWriteTime.ToUniversalTime().ToString("o"));
+				writer.WriteLine("MediaTakenDateTime=" + metadataFileInfo.GetCreatedMediaFileDateTime()?.ToUniversalTime().ToString("o"));
 				*/
 				writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToString("o"));
 				writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToString("o"));
@@ -932,38 +933,71 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			return targetTempFileInfo;
 		}
 		private MediaDirectoryInfo ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(MediaDevice mediaDevice, string? folderSource) {
+			ValidateFolderSource(folderSource);
+			string correctedFolderSource = CorrectFolderSource(mediaDevice, folderSource!);
+			return GetMediaDirectoryInfoIfExists(mediaDevice, correctedFolderSource, folderSource!);
+		}
+		private void ValidateFolderSource(string? folderSource) {
 			if(string.IsNullOrEmpty(folderSource)) {
 				throw new ArgumentNullException($"FolderSource is empty.");
 			}
+		}
+		private string CorrectFolderSource(MediaDevice mediaDevice, string folderSource) {
 			string correctedFolderSource = folderSource;
-
 			try {
-				string rootSource = folderSource.Split(['/', '\\'])[0];
-				// We are using this as a way to remove FriendlyName if set in the FolderSource
-				// But sometimes the FriendlyName i null og empty.
-				string rootSourceFoundName = !string.IsNullOrWhiteSpace(mediaDevice.FriendlyName) ? mediaDevice.FriendlyName :
-					!string.IsNullOrWhiteSpace(mediaDevice.Description) ? mediaDevice.Description : mediaDevice.Model;
-				if(rootSource.Equals(rootSourceFoundName, StringComparison.Ordinal)
-					&& !mediaDevice.DirectoryExists(folderSource)) {
+				string rootSource = GetRootSource(folderSource);
+				// We are using this as a way to remove FriendlyName, if set in the FolderSource
+				// But sometimes the FriendlyName is null og empty.
+				string rootSourceFoundName = GetRootSourceFoundName(mediaDevice);
+				if(IsRootSourceMatchingDeviceName(rootSource, rootSourceFoundName) && !mediaDevice.DirectoryExists(folderSource)) {
 					// Removes rootSource if same as Device Name.
-					correctedFolderSource = folderSource.Substring(folderSource.Split(['/', '\\'])[0].Length + 1);
+					// And to be sure that we do not remove it if it is a correctfolder then test if it does not exists
+					correctedFolderSource = RemoveRootSource(folderSource, rootSource);
 				}
-			} catch(COMException e) {
-				if(e.Message.Contains("(0x800710D2)")) {
-					logger.ZLogError($"The library, drive, or media pool is empty. (0x800710D2)");
-					throw new Exception($"The Device '{mediaDevice.FriendlyName}' exist but is empty. Please open and activate physical device.");
-				}
+				} catch(COMException e) {
+				HandleCOMException(e, mediaDevice);
 				Console.WriteException(e);
 			}
+			return correctedFolderSource;
+		}
+		private string GetRootSource(string folderSource) {
+			return folderSource.Split(new char[] { '/', '\\' })[0];
+		}
+		private string GetRootSourceFoundName(MediaDevice mediaDevice) {
+			// We are using this as a way to remove FriendlyName, if set in the FolderSource
+			// But sometimes the FriendlyName is null og empty.
+			return !string.IsNullOrWhiteSpace(mediaDevice.FriendlyName) ? mediaDevice.FriendlyName :
+				   !string.IsNullOrWhiteSpace(mediaDevice.Description) ? mediaDevice.Description : mediaDevice.Model;
+		}
+		private bool IsRootSourceMatchingDeviceName(string rootSource, string rootSourceFoundName) {
+			return rootSource.Equals(rootSourceFoundName, StringComparison.Ordinal);
+		}
+		private string RemoveRootSource(string folderSource, string rootSource) {
+			return folderSource.Substring(rootSource.Length + 1);
+		}
+		private void HandleCOMException(COMException e, MediaDevice mediaDevice) {
+			if(e.Message.Contains("(0x800710D2)")) {
+				logger.ZLogError($"The library, drive, or media pool is empty. (0x800710D2)");
+				throw new Exception($"The Device '{mediaDevice.FriendlyName}' exists but is empty. Please open and activate the physical device.");
+			} else {
+				logger.ZLogError($"COMException occurred: {e.Message}");
+				throw new Exception($"COMException occurred: {e.Message}", e);
+			}
+		}
+		private MediaDirectoryInfo GetMediaDirectoryInfoIfExists(MediaDevice mediaDevice, string correctedFolderSource, string folderSource) {
 			if(!mediaDevice.DirectoryExists(correctedFolderSource)) {
 				throw new Exception($"FolderSource '{folderSource}' does not exist on the device.");
 			}
 			return mediaDevice.GetDirectoryInfo(correctedFolderSource);
 		}
 		private DirectoryInfo? ToCorrectFolderSource(DriveInfo drive, string? folderSource) {
-			if(string.IsNullOrEmpty(folderSource)) {
-				throw new ArgumentNullException($"FolderSource is empty.");
-			}
+			ValidateFolderSource(folderSource);
+
+			string correctedFolderSource = CorrectFolderSource(drive, folderSource!);
+
+			return GetDirectoryInfoIfExists(correctedFolderSource);
+		}
+		private string CorrectFolderSource(DriveInfo drive, string folderSource) {
 			string correctedFolderSource = folderSource;
 
 			string rootSource = folderSource.Split(new char[] { '/', '\\' })[0];
@@ -973,6 +1007,9 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				// Removes rootSource if same as Drive Name.
 				correctedFolderSource = folderSource.Substring(folderSource.Split(new char[] { '/', '\\' })[0].Length + 1);
 			}
+			return correctedFolderSource;
+		}
+		private DirectoryInfo? GetDirectoryInfoIfExists(string correctedFolderSource) {
 			if(!Directory.Exists(correctedFolderSource)) {
 				//throw new Exception($"FolderSource '{folderSource}' does not exist on the drive.");
 				return null;
@@ -988,12 +1025,10 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			}
 			return true;
 		}
-
 		private BackupRecordDataStore UpdateProgressList(BackupRecordDataStore backupProgressTracker, IList<MediaFileInfo> allFiles, bool exceptionIfChanges) {
 			// TODO - Should be used when backupProgressTracker should be changed because newer files needs to be added
 			throw new NotImplementedException();
 		}
-
 		private BackupRecordDataStore LoadProgress(DeviceSourceConfig config, IList<BackupRecordInfo> allFiles, bool exceptionIfChanged) {
 			BackupRecordDataStore progressTracker;
 			if(BackupRecordDataStore.HasDataStore(config)) {
@@ -1074,7 +1109,6 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 
 			return progressTracker;
 		}
-
 		private IList<MediaFileInfo> ReadAllFiles(MediaDirectoryInfo fromDirectoryInfo, Action<int> fileIncrementCallback, Action<int> dirIncrementCallback, CancellationToken cancellationToken) {
 			if(cancellationToken.IsCancellationRequested) {
 				throw new OperationCanceledException($"ReadAllFiles current directory: {fromDirectoryInfo.FullName}", cancellationToken);
@@ -1128,7 +1162,6 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			}
 			return filesFound;
 		}
-
 		private async Task<IList<MediaFileInfo>> ReadAllFilesAsync(MediaDirectoryInfo fromDirectoryInfo) {
 			if(_cancellationToken.IsCancellationRequested) {
 				throw new OperationCanceledException($"ReadAllFiles current directory: {fromDirectoryInfo.FullName}", _cancellationToken);
