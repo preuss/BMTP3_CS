@@ -471,9 +471,6 @@ namespace BMTP3_CS.Handlers.Backup {
 			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
 
 			if(newTargetFileInfo.Exists) {
-				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(8 * 1024);
-				//FileComparer fileComparer = new Md5Comparer(8 * 1024);
-				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
 				FileComparer fileComparer = _fileComparer;
 
 				// Files are the same and we do not copy this file.
@@ -523,9 +520,6 @@ namespace BMTP3_CS.Handlers.Backup {
 			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
 
 			if(newTargetFileInfo.Exists) {
-				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(8 * 1024);
-				//FileComparer fileComparer = new Md5Comparer(8 * 1024);
-				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
 				FileComparer fileComparer = _fileComparer;
 
 				// Files are the same and we do not copy this file.
@@ -579,9 +573,6 @@ namespace BMTP3_CS.Handlers.Backup {
 			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
 
 			if(newTargetFileInfo.Exists) {
-				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(8 * 1024);
-				//FileComparer fileComparer = new Md5Comparer(8 * 1024);
-				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
 				FileComparer fileComparer = _fileComparer;
 
 				// Files are the same and we do not copy this file.
@@ -651,9 +642,6 @@ namespace BMTP3_CS.Handlers.Backup {
 			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
 
 			if(newTargetFileInfo.Exists) {
-				//FileComparer fileComparer = new ReadFileInChunksAndCompareAvx2(8 * 1024);
-				//FileComparer fileComparer = new Md5Comparer(8 * 1024);
-				//FileComparer fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
 				FileComparer fileComparer = _fileComparer;
 
 				// Files are the same and we do not copy this file.
