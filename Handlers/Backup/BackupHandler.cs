@@ -167,7 +167,7 @@ namespace BMTP3_CS.Handlers.Backup {
 						// Update DateTimes for directory as the same as source folder.
 						BackupHelper.UpdateDirectoryTimestamp(sourceDirectoryInfo, targetDirectoryInfo);
 					}
-					DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectoryTimeStampPrefix(startedDateTime));
+					DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(startedDateTime));
 
 					Console.WriteLine();
 					AnsiConsole.Progress()
@@ -383,7 +383,7 @@ namespace BMTP3_CS.Handlers.Backup {
 					// Update DateTimes for directory as the same as source folder.
 					BackupHelper.UpdateDateTimeForDirectoryInfo(folderSourceDirectoryInfo, targetDirectoryInfo);
 				}
-				DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectoryTimeStampPrefix(backupStartDateTime));
+				DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(backupStartDateTime));
 
 				Console.WriteLine();
 				AnsiConsole.Progress()

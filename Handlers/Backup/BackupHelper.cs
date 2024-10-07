@@ -60,7 +60,7 @@ namespace BMTP3_CS.Handlers.Backup {
 			}
 			return false;
 		}
-		public string CreateTempDirectoryTimeStampPrefix(DateTime fromDateTime) {
+		public string CreateTempDirectory(DateTime fromDateTime) {
 			string timestamp = fromDateTime.ToString("yyyyMMdd_HHmmss");
 			string tempDirectoryName = $"Temp_{timestamp}_";
 			return tempDirectoryName;
