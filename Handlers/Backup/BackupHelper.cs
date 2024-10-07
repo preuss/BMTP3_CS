@@ -21,7 +21,7 @@ namespace BMTP3_CS.Handlers.Backup {
 		private bool IsValidDateTime(DateTime? sourceDateTime) {
 			return DateTime.MinValue.CompareTo(sourceDateTime) < 0;
 		}
-		public DateTime EarliestValidDateTime(params DateTime?[] dateTimes) {
+		public DateTime FindEarliestValidDateTime(params DateTime?[] dateTimes) {
 			List<DateTime> validDateTimes = dateTimes
 				.Where(dateTime => IsValidDateTime(dateTime))
 				.Select(dateTime => dateTime!.Value)
@@ -34,22 +34,17 @@ namespace BMTP3_CS.Handlers.Backup {
 
 			return validDateTimes.First();
 		}
-		private DateTime ValidDateTimeOrDefault(DateTime? sourceDateTime, params DateTime?[] defaultDateTimes) {
+		private DateTime FindValidDateTimeOrEarliestValidDateTime(DateTime? sourceDateTime, params DateTime?[] defaultDateTimes) {
 			if(IsInvalidDateTime(sourceDateTime)) {
-				foreach(DateTime? defaultDateTime in defaultDateTimes) {
-					if(!IsInvalidDateTime(defaultDateTime)) {
-						return defaultDateTime!.Value;
-					}
-				}
-				throw new ArgumentException("No valid default dates provided.");
+				return FindEarliestValidDateTime(defaultDateTimes);
 			}
 			return sourceDateTime!.Value;
 		}
-		public bool DeleteEmptyDirectories(string path) {
+		public bool DeleteEmptyDirectoriesRecursive(string path) {
 			bool isEmpty = true;
 
 			foreach(string dir in Directory.GetDirectories(path)) {
-				if(!DeleteEmptyDirectories(dir)) {
+				if(!DeleteEmptyDirectoriesRecursive(dir)) {
 					isEmpty = false;
 				}
 			}
@@ -67,9 +62,9 @@ namespace BMTP3_CS.Handlers.Backup {
 		}
 		public void UpdateDirectoryTimestamp(MediaDirectoryInfo sourceInfo, DirectoryInfo targetInfo) {
 			DateTime?[] defaultDateTimes = [sourceInfo.DateAuthored, sourceInfo.CreationTime, sourceInfo.LastWriteTime, DateTime.Now];
-			targetInfo.CreationTime = EarliestValidDateTime(defaultDateTimes);
-			targetInfo.LastAccessTime = EarliestValidDateTime(defaultDateTimes);
-			targetInfo.LastWriteTime = EarliestValidDateTime(defaultDateTimes);
+			targetInfo.CreationTime = FindEarliestValidDateTime(defaultDateTimes);
+			targetInfo.LastAccessTime = FindEarliestValidDateTime(defaultDateTimes);
+			targetInfo.LastWriteTime = FindEarliestValidDateTime(defaultDateTimes);
 
 			// Because DirectoryInfo is only a cached representation
 			Directory.SetCreationTime(targetInfo.FullName, targetInfo.CreationTime);
@@ -78,9 +73,9 @@ namespace BMTP3_CS.Handlers.Backup {
 		}
 		public void UpdateFileTimestamp(MediaFileInfo sourceInfo, FileInfo targetInfo) {
 			DateTime?[] defaultDateTimes = [sourceInfo.DateAuthored, sourceInfo.CreationTime, sourceInfo.LastWriteTime, DateTime.Now];
-			targetInfo.CreationTime = EarliestValidDateTime(defaultDateTimes);
-			targetInfo.LastAccessTime = EarliestValidDateTime(defaultDateTimes);
-			targetInfo.LastWriteTime = EarliestValidDateTime(defaultDateTimes);
+			targetInfo.CreationTime = FindEarliestValidDateTime(defaultDateTimes);
+			targetInfo.LastAccessTime = FindEarliestValidDateTime(defaultDateTimes);
+			targetInfo.LastWriteTime = FindEarliestValidDateTime(defaultDateTimes);
 
 			// Because FileInfo is only a cached representation
 			File.SetCreationTime(targetInfo.FullName, targetInfo.CreationTime);
@@ -89,9 +84,9 @@ namespace BMTP3_CS.Handlers.Backup {
 		}
 		public void UpdateDateTimeForDirectoryInfo(DirectoryInfo sourceInfo, DirectoryInfo targetInfo) {
 			DateTime?[] defaultDateTimes = [sourceInfo.CreationTime, sourceInfo.LastWriteTime, DateTime.Now];
-			targetInfo.CreationTime = EarliestValidDateTime(defaultDateTimes);
-			targetInfo.LastAccessTime = EarliestValidDateTime(defaultDateTimes);
-			targetInfo.LastWriteTime = EarliestValidDateTime(defaultDateTimes);
+			targetInfo.CreationTime = FindEarliestValidDateTime(defaultDateTimes);
+			targetInfo.LastAccessTime = FindEarliestValidDateTime(defaultDateTimes);
+			targetInfo.LastWriteTime = FindEarliestValidDateTime(defaultDateTimes);
 
 			// Because DirectoryInfo is only a cached representation
 			Directory.SetCreationTime(targetInfo.FullName, targetInfo.CreationTime);
@@ -100,9 +95,9 @@ namespace BMTP3_CS.Handlers.Backup {
 		}
 		public void UpdateDateTimeForFileInfo(FileInfo sourceInfo, FileInfo targetInfo) {
 			DateTime?[] defaultDateTimes = [sourceInfo.CreationTime, sourceInfo.LastWriteTime, DateTime.Now];
-			targetInfo.CreationTime = EarliestValidDateTime(defaultDateTimes);
-			targetInfo.LastAccessTime = EarliestValidDateTime(defaultDateTimes);
-			targetInfo.LastWriteTime = EarliestValidDateTime(defaultDateTimes);
+			targetInfo.CreationTime = FindEarliestValidDateTime(defaultDateTimes);
+			targetInfo.LastAccessTime = FindEarliestValidDateTime(defaultDateTimes);
+			targetInfo.LastWriteTime = FindEarliestValidDateTime(defaultDateTimes);
 
 			// Because FileInfo is only a cached representation
 			File.SetCreationTime(targetInfo.FullName, targetInfo.CreationTime);

@@ -284,7 +284,7 @@ namespace BMTP3_CS.Handlers.Backup {
 
 					// TODO: Do this even when exception og cancel.
 					// Delete the temp directory if it's empty
-					BackupHelper.DeleteEmptyDirectories(tempDirectoryInfo.FullName);
+					BackupHelper.DeleteEmptyDirectoriesRecursive(tempDirectoryInfo.FullName);
 
 					device.Disconnect();
 				}
@@ -445,7 +445,7 @@ namespace BMTP3_CS.Handlers.Backup {
 					});
 
 				// Delete the temp directory if it's empty
-				BackupHelper.DeleteEmptyDirectories(tempDirectoryInfo.FullName);
+				BackupHelper.DeleteEmptyDirectoriesRecursive(tempDirectoryInfo.FullName);
 			} finally {
 				backupProgressTracker.SaveDataStore();
 			}
@@ -463,7 +463,7 @@ namespace BMTP3_CS.Handlers.Backup {
 			DateTime? mediaCreatedDateTime = metadataFileInfo.GetCreatedMediaFileDateTime();
 			DateTime fileCreatedDateTime = File.GetCreationTime(targetTempFileInfo.FullName);
 
-			DateTime oldestDateTime = BackupHelper.EarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
+			DateTime oldestDateTime = BackupHelper.FindEarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
 			string fileName = targetTempFileInfo.Name;
 
 			string newTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, sourceMediaFileInfo.Name);
@@ -512,7 +512,7 @@ namespace BMTP3_CS.Handlers.Backup {
 			DateTime? mediaCreatedDateTime = metadataFileInfo.GetCreatedMediaFileDateTime();
 			DateTime fileCreatedDateTime = File.GetCreationTime(targetTempFileInfo.FullName);
 
-			DateTime oldestDateTime = BackupHelper.EarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
+			DateTime oldestDateTime = BackupHelper.FindEarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
 			string fileName = targetTempFileInfo.Name;
 
 			string newTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, sourceFileInfo.Name);
@@ -561,7 +561,7 @@ namespace BMTP3_CS.Handlers.Backup {
 			DateTime? mediaCreatedDateTime = metadataFileInfo.GetCreatedMediaFileDateTime();
 			DateTime fileCreatedDateTime = File.GetCreationTime(targetTempFileInfo.FullName);
 
-			DateTime oldestDateTime = BackupHelper.EarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
+			DateTime oldestDateTime = BackupHelper.FindEarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
 			string fileName = targetTempFileInfo.Name;
 			int counter = 0;
 			Template template = CreateTemplateFrom(counter, fileName, oldestDateTime);
@@ -630,7 +630,7 @@ namespace BMTP3_CS.Handlers.Backup {
 			DateTime? mediaCreatedDateTime = metadataFileInfo.GetCreatedMediaFileDateTime();
 			DateTime fileCreatedDateTime = File.GetCreationTime(targetTempFileInfo.FullName);
 
-			DateTime oldestDateTime = BackupHelper.EarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
+			DateTime oldestDateTime = BackupHelper.FindEarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
 			string fileName = targetTempFileInfo.Name;
 			int counter = 0;
 			Template template = CreateTemplateFrom(counter, fileName, oldestDateTime);
