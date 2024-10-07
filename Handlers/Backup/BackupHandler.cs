@@ -1061,7 +1061,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			BackupRecordDataStore progressTracker;
 			if(BackupRecordDataStore.HasDataStore(config)) {
 				progressTracker = BackupRecordDataStore.LoadDataStore(config);
-				// TODO - Should be used when backupProgressTracker should be changed because newer files needs to be added
+				// TODO - Should be used when backupProgressTracker is loaded, but is unable to add to it. Should it (BackupRecordDataStore) be changed, so files can be added.
 				bool equalsPending = progressTracker.Records.SequenceEqual(allFiles);
 				if(!equalsPending) {
 					var added = allFiles.Except(progressTracker.Records).ToList();
