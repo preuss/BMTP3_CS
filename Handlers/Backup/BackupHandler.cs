@@ -37,8 +37,6 @@ namespace BMTP3_CS.Handlers.Backup {
 	internal class BackupHandler {
 		public static readonly DateTime MinWin32FileTime = DateTime.MinValue;
 
-		public static readonly DateTime startedDateTime = DateTime.Now;
-
 		private static readonly ILogger<BackupHandler> logger = LogManager.GetLogger<BackupHandler>();
 
 		private readonly IAnsiConsole Console;
@@ -167,7 +165,7 @@ namespace BMTP3_CS.Handlers.Backup {
 						// Update DateTimes for directory as the same as source folder.
 						BackupHelper.UpdateDirectoryTimestamp(sourceDirectoryInfo, targetDirectoryInfo);
 					}
-					DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(startedDateTime));
+					DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(backupStartDateTime));
 
 					Console.WriteLine();
 					AnsiConsole.Progress()
