@@ -53,6 +53,9 @@ namespace BMTP3_CS.Handlers {
 			JsonConverter[] converters = new JsonConverter[] { new SourceTypeConverter(), new SourceConfigConverter() };
 			return JsonConvert.DeserializeObject<BackupRecordDataStore>(jsonData, converters) ?? throw new NullReferenceException("Problem with readin json file: " + fileName);
 		}
+		public static BackupRecordDataStore LoadDataOrCreateDataStore(string fileName) {
+			throw new NotImplementedException();
+		}
 		internal static bool HasDataStore(ISourceConfig sourceConfig) {
 			return Path.Exists(GetFileNameFrom(sourceConfig));
 		}
