@@ -28,36 +28,40 @@ namespace BMTP3_CS.Handlers {
 			}
 			return fileName;
 		}
-		public FileInfo GetDataStoreFileInfo() {
-			return new FileInfo(GetFileNameFrom(sourceConfig));
-		}
-		public FileInfo SaveDataStore() {
+		private static FileInfo GetDataStoreFileInfoUsing(ISourceConfig sourceConfig) {
+			string targetPath = sourceConfig.FolderOutput!;
 			string fileName = GetFileNameFrom(sourceConfig);
-			string json = JsonConvert.SerializeObject(this, Newtonsoft.Json.Formatting.Indented, new SourceTypeConverter());
-
-			File.WriteAllText(fileName, json, Encoding.UTF8);
-
-			string fullPath = Path.GetFullPath(fileName);
-			Console.WriteLine($"Fuld sti til filen: {fullPath}");
+			string fullPath = Path.Combine(targetPath, fileName);
 			return new FileInfo(fullPath);
 		}
+		public FileInfo GetDataStoreFileInfo() {
+			return GetDataStoreFileInfoUsing(sourceConfig);
+		}
+		public FileInfo SaveDataStore() {
+			FileInfo dataStoreFileInfo = GetDataStoreFileInfo();
+			JsonConverter[] converters = new JsonConverter[] { new SourceTypeConverter(), new SourceConfigConverter() };
+			string json = JsonConvert.SerializeObject(this, Newtonsoft.Json.Formatting.Indented, converters);
+			File.WriteAllText(dataStoreFileInfo.FullName, json, Encoding.UTF8);
+			Console.WriteLine($"Fuld sti til filen: {dataStoreFileInfo.FullName}");
+			return dataStoreFileInfo;
+		}
 		public static BackupRecordDataStore LoadDataStore(ISourceConfig sourceConfig) {
-			string fileName = GetFileNameFrom(sourceConfig);
+			FileInfo dataStoreFileInfo = GetDataStoreFileInfoUsing(sourceConfig);
 
 			if(!HasDataStore(sourceConfig)) {
-				throw new FileNotFoundException("The specified file does not exist.", fileName);
+				throw new FileNotFoundException("The specified file does not exist.", dataStoreFileInfo.FullName);
 			}
 
-			string jsonData = File.ReadAllText(fileName);
+			string jsonData = File.ReadAllText(dataStoreFileInfo.FullName);
 
 			JsonConverter[] converters = new JsonConverter[] { new SourceTypeConverter(), new SourceConfigConverter() };
-			return JsonConvert.DeserializeObject<BackupRecordDataStore>(jsonData, converters) ?? throw new NullReferenceException("Problem with readin json file: " + fileName);
+			return JsonConvert.DeserializeObject<BackupRecordDataStore>(jsonData, converters) ?? throw new NullReferenceException("Problem with readin json file: " + dataStoreFileInfo.FullName);
 		}
 		public static BackupRecordDataStore LoadDataOrCreateDataStore(string fileName) {
 			throw new NotImplementedException();
 		}
 		internal static bool HasDataStore(ISourceConfig sourceConfig) {
-			return Path.Exists(GetFileNameFrom(sourceConfig));
+			return GetDataStoreFileInfoUsing(sourceConfig).Exists;
 		}
 	}
 	public class SourceTypeConverter : JsonConverter<SourceType> {
@@ -70,13 +74,15 @@ namespace BMTP3_CS.Handlers {
 			}
 		}
 		public override void WriteJson(JsonWriter writer, SourceType value, JsonSerializer serializer) {
+			// Not really used
+			// TODO: Find out how to use this in SourceConfigConverter
 			writer.WriteValue(value.ToString());
 		}
 	}
 	public class SourceConfigConverter : JsonConverter<ISourceConfig> {
 		public override ISourceConfig? ReadJson(JsonReader reader, Type objectType, ISourceConfig? existingValue, bool hasExistingValue, JsonSerializer serializer) {
 			JObject jo = JObject.Load(reader);
-			SourceType? sourceType = jo["SourceType"]?.ToObject<SourceType>();
+			SourceType? sourceType = jo["SourceType"]?.ToObject<SourceType>(serializer); // Uses SourceTypeConverter for ReadJson
 
 			if(sourceType == null) {
 				throw new ArgumentException("Invalid source type", nameof(sourceType));
@@ -99,7 +105,13 @@ namespace BMTP3_CS.Handlers {
 			}
 
 			JObject jo = JObject.FromObject(value);
-			jo.Add("SourceType", JToken.FromObject(value.GetType()));
+
+			// Check if the property already exists
+			jo.Remove("SourceType");
+			if(!jo.ContainsKey("SourceType")) {
+				jo.Add("SourceType", JToken.FromObject(value.SourceType.ToString()));
+			}
+
 			jo.WriteTo(writer);
 		}
 	}

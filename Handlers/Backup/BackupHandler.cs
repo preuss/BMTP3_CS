@@ -80,7 +80,7 @@ namespace BMTP3_CS.Handlers.Backup {
 					backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
 				} catch(COMException e) {
 					Console.WriteException(e);
-					HandleCOMException(e, device); // TODO: Wrap instead, and return new exception to throw instead of throwing.
+					HandleCOMException(e, DetermineDeviceRootName(device)); // TODO: Wrap instead, and return new exception to throw instead of throwing.
 					throw new Exception("An error occurred while validating and correcting the folder source path.");
 				}
 
@@ -916,7 +916,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 		private string ExtractInitialPathSegment(string folderSource) {
 			return folderSource.Split(new char[] { '/', '\\' })[0];
 		}
-		private string DetermineDeviceRootName(MediaDevice mediaDevice) {
+		public string DetermineDeviceRootName(MediaDevice mediaDevice) {
 			// We are using this as a way to remove FriendlyName, if set in the FolderSource
 			// But sometimes the FriendlyName is null og empty.
 			return !string.IsNullOrWhiteSpace(mediaDevice.FriendlyName) ? mediaDevice.FriendlyName :
@@ -928,10 +928,13 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 		private string TrimRootSourceFromPath(string folderSource, string requestedRootSourceName) {
 			return folderSource.Substring(requestedRootSourceName.Length + 1);
 		}
-		private void HandleCOMException(COMException e, MediaDevice mediaDevice) {
+		public void HandleCOMException(COMException e, string deviceFriendlyName) {
 			if(e.Message.Contains("(0x800710D2)")) {
 				logger.ZLogError($"The library, drive, or media pool is empty. (0x800710D2)");
-				throw new Exception($"The Device '{mediaDevice.FriendlyName}' exists but is empty. Please open and activate the physical device.");
+				throw new Exception($"The Device '{deviceFriendlyName}' exists but is empty. Please open and activate the physical device.");
+			} else if(e.Message.Contains("(0x8007001E)")) { 
+				logger.ZLogError($"The device is not ready. (0x8007001E)");
+				throw new Exception($"The Device '{deviceFriendlyName}' is not ready. Please wait and try again.");
 			} else {
 				logger.ZLogError($"COMException occurred: {e.Message}");
 				throw new Exception($"COMException occurred: {e.Message}", e);

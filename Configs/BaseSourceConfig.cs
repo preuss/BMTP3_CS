@@ -21,8 +21,8 @@ namespace BMTP3_CS.Configs {
 		public bool Recursive { get; set; } = false;
 		public string? FolderOutput { get; set; }
 		public bool? UseFilePattern { get; set; }
-		public string? FilePattern { get; internal set; }
-		public string? FilePatternIfExist { get; internal set; }
+		public string? FilePattern { get; set; }
+		public string? FilePatternIfExist { get; set; }
 		public abstract SourceType SourceType { get; }
 		public override bool Equals(object? obj) {
 			return Equals(obj as ISourceConfig);

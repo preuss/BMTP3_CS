@@ -1,4 +1,6 @@
 ﻿using BMTP3_CS.CompareFiles;
+using IniParser.Model;
+using IniParser;
 using OnixLabs.Core;
 using System;
 using System.Collections.Generic;

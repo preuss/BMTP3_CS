@@ -46,6 +46,10 @@ namespace BMTP3_CS {
 		public static readonly DateTime startedDateTime = DateTime.Now;
 
 		private static readonly IAnsiConsole Console;
+
+		private static readonly IServiceProvider serviceProvider;
+		private static readonly IConfiguration configuration;
+
 		private static readonly CancellationTokenSource cts;
 
 		private static readonly ILogger globalLogger;// = LogManager.Logger;
@@ -58,7 +62,12 @@ namespace BMTP3_CS {
 			System.Console.OutputEncoding = Encoding.UTF8;
 
 			Console = AnsiConsole.Create(new AnsiConsoleSettings());
-			cts = new CancellationTokenSource();
+
+			StartUp startUp = StartUp.CreateAndInitialize();
+			serviceProvider = startUp.ServiceProvider;
+			configuration = serviceProvider.GetService<IConfiguration>()!;
+
+			cts = serviceProvider.GetService<CancellationTokenSource>()!;
 
 			LogManager.Initialize(); // Force static initialize.
 			globalLogger = LogManager.Logger;
@@ -81,9 +90,6 @@ namespace BMTP3_CS {
 			await Task.Delay(1);
 
 			//LogManager.Initialize(); // Force static initialize.
-			StartUp startUp = StartUp.CreateAndInitialize();
-			IServiceProvider serviceProvider = startUp.ServiceProvider;
-			IConfiguration configuration = serviceProvider.GetService<IConfiguration>()!;
 
 			globalLogger.ZLogCritical($"Application is starting.");
 

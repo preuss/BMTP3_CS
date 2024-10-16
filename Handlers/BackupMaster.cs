@@ -14,6 +14,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
@@ -121,6 +122,8 @@ namespace BMTP3_CS.Handlers {
 					Console.WriteLine($"Backup blev annulleret under operationen: {e.Operation}");
 				} catch(OperationCanceledException e) {
 					Console.WriteLine($"Backup blev annulleret under operationen: {e.Message}");
+				} catch(COMException e) {
+					backupHandler.HandleCOMException(e, backupHandler.DetermineDeviceRootName(devicePair.MediaDevice));
 				}
 			}
 		}
