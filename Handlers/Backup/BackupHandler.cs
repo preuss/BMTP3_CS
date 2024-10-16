@@ -179,10 +179,10 @@ namespace BMTP3_CS.Handlers.Backup {
 						.HideCompleted(true)
 						.Columns(new ProgressColumn[] {
 							new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence7)),         // Spinner
-							new TaskDescriptionColumn(), // Beskrivelse af opgaven
-							new ProgressBarColumn() {Width=10},     // Fremdriftsbjælke
-							new PercentageColumn(),      // Procentdel
-							new RemainingTimeColumn(),   // Resterende tid
+							new TaskDescriptionColumn(),        // Beskrivelse af opgaven
+							new ProgressBarColumn() {Width=10}, // Fremdriftsbjælke
+							new PercentageColumn(),             // Procentdel
+							new RemainingTimeColumn(),          // Resterende tid
 							new ValueOfMaxColumn(),
 						})
 						.Start(ctx => {
@@ -895,7 +895,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 					// And to be sure that we do not remove it if it is a correctfolder then test if it does not exists
 					correctedFolderSource = TrimRootSourceFromPath(requestedBackupSourcePath, requestedRootSourceName);
 				}
-				} catch(COMException e) {
+			} catch(COMException e) {
 				HandleCOMException(e, mediaDevice);
 				Console.WriteException(e);
 			}
