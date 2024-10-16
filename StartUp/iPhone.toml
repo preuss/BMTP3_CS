@@ -8,7 +8,7 @@ file_pattern_if_exist = '${yyyy}\${MM}\${dd}\${originalName}_${count}.${ext}'
 #file_pattern = '${yyyy}\${MM}\${dd}\${yyyy}${MM}${dd}_${HH}${mm}${ss}${fff}_${originalName}.${ext}'
 #file_pattern_if_exist = '${yyyy}\${MM}\${dd}\${yyyy}${MM}${dd}_${HH}${mm}${ss}${fff}_${originalName}_${count}.${ext}'
 
-folder_output = 'D:\Projects\BMTP3_CS_Backup'
+#folder_output = 'D:\Projects\BMTP3_CS_Backup'
 
 
 [[drive_source]]
@@ -102,6 +102,19 @@ name = 'Apple iPhone'
 folder_source  = 'Apple iPhone\Internal Storage\202207__'
 recursive = true
 folder_output = 'D:\Bck.iPhone14Pro\202407223\202207__'
+
+
+[[device_source]]
+enabled = true
+title = "iPhone14Pro_Personal_Current"
+name = 'Apple iPhone'
+folder_source  = 'Apple iPhone\Internal Storage\202207__'
+recursive = true
+compare_by_binary = true
+folder_output = 'C:\Bck.iPhone14Pro\Current\'
+use_file_pattern = true
+file_pattern = '${yyyy}\${MM}\${originalName}.${ext}'
+file_pattern_if_exist = '${yyyy}\${MM}\${originalName}_${count}.${ext}'
 
 
 [[device_source]]
