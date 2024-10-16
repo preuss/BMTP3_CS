@@ -918,17 +918,17 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 
 			return targetTempFileInfo;
 		}
-		private MediaDirectoryInfo ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(MediaDevice mediaDevice, string? folderSource) {
-			ValidateFolderSource(folderSource);
-			string correctedFolderSource = CorrectFolderSource(mediaDevice, folderSource!);
-			return GetMediaDirectoryInfoIfExists(mediaDevice, correctedFolderSource, folderSource!);
+		private MediaDirectoryInfo ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(MediaDevice mediaDevice, string? requestedBackupSourcePath) {
+			ValidateFolderSource(requestedBackupSourcePath);
+			string correctedFolderSource = AdjustBackupSourcePath(mediaDevice, requestedBackupSourcePath!);
+			return ToDirectoryInfo(mediaDevice, correctedFolderSource, requestedBackupSourcePath!);
 		}
 		private void ValidateFolderSource(string? folderSource) {
 			if(string.IsNullOrEmpty(folderSource)) {
-				throw new ArgumentNullException($"FolderSource is empty.");
+				throw new ArgumentNullException(nameof(folderSource), $"FolderSource is empty.");
 			}
 		}
-		private string CorrectFolderSource(MediaDevice mediaDevice, string requestedBackupSourcePath) {
+		private string AdjustBackupSourcePath(MediaDevice mediaDevice, string requestedBackupSourcePath) {
 			string correctedFolderSource = requestedBackupSourcePath;
 			try {
 				string requestedRootSourceName = ExtractInitialPathSegment(requestedBackupSourcePath);
@@ -938,7 +938,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				if(IsRootSourceMatchingDeviceName(requestedRootSourceName, deviceRootName) && !mediaDevice.DirectoryExists(requestedBackupSourcePath)) {
 					// Removes rootSource if same as Device Name.
 					// And to be sure that we do not remove it if it is a correctfolder then test if it does not exists
-					correctedFolderSource = RemoveRootSource(requestedBackupSourcePath, requestedRootSourceName);
+					correctedFolderSource = TrimRootSourceFromPath(requestedBackupSourcePath, requestedRootSourceName);
 				}
 				} catch(COMException e) {
 				HandleCOMException(e, mediaDevice);
@@ -958,7 +958,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 		private bool IsRootSourceMatchingDeviceName(string requestedRootSourceName, string deviceRootName) {
 			return requestedRootSourceName.Equals(deviceRootName, StringComparison.Ordinal);
 		}
-		private string RemoveRootSource(string folderSource, string requestedRootSourceName) {
+		private string TrimRootSourceFromPath(string folderSource, string requestedRootSourceName) {
 			return folderSource.Substring(requestedRootSourceName.Length + 1);
 		}
 		private void HandleCOMException(COMException e, MediaDevice mediaDevice) {
@@ -970,9 +970,9 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				throw new Exception($"COMException occurred: {e.Message}", e);
 			}
 		}
-		private MediaDirectoryInfo GetMediaDirectoryInfoIfExists(MediaDevice mediaDevice, string correctedFolderSource, string folderSource) {
+		private MediaDirectoryInfo ToDirectoryInfo(MediaDevice mediaDevice, string correctedFolderSource, string requestedBackupSourcePath) {
 			if(!mediaDevice.DirectoryExists(correctedFolderSource)) {
-				throw new Exception($"FolderSource '{folderSource}' does not exist on the device.");
+				throw new Exception($"FolderSource '{requestedBackupSourcePath}' does not exist on the device.");
 			}
 			return mediaDevice.GetDirectoryInfo(correctedFolderSource);
 		}
