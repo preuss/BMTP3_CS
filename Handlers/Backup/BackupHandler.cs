@@ -928,17 +928,17 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				throw new ArgumentNullException($"FolderSource is empty.");
 			}
 		}
-		private string CorrectFolderSource(MediaDevice mediaDevice, string folderSource) {
-			string correctedFolderSource = folderSource;
+		private string CorrectFolderSource(MediaDevice mediaDevice, string requestedBackupSourcePath) {
+			string correctedFolderSource = requestedBackupSourcePath;
 			try {
-				string rootSource = GetRootSource(folderSource);
+				string requestedRootSourceName = ExtractInitialPathSegment(requestedBackupSourcePath);
 				// We are using this as a way to remove FriendlyName, if set in the FolderSource
 				// But sometimes the FriendlyName is null og empty.
-				string rootSourceFoundName = GetRootSourceFoundName(mediaDevice);
-				if(IsRootSourceMatchingDeviceName(rootSource, rootSourceFoundName) && !mediaDevice.DirectoryExists(folderSource)) {
+				string deviceRootName = DetermineDeviceRootName(mediaDevice);
+				if(IsRootSourceMatchingDeviceName(requestedRootSourceName, deviceRootName) && !mediaDevice.DirectoryExists(requestedBackupSourcePath)) {
 					// Removes rootSource if same as Device Name.
 					// And to be sure that we do not remove it if it is a correctfolder then test if it does not exists
-					correctedFolderSource = RemoveRootSource(folderSource, rootSource);
+					correctedFolderSource = RemoveRootSource(requestedBackupSourcePath, requestedRootSourceName);
 				}
 				} catch(COMException e) {
 				HandleCOMException(e, mediaDevice);
@@ -946,20 +946,20 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			}
 			return correctedFolderSource;
 		}
-		private string GetRootSource(string folderSource) {
+		private string ExtractInitialPathSegment(string folderSource) {
 			return folderSource.Split(new char[] { '/', '\\' })[0];
 		}
-		private string GetRootSourceFoundName(MediaDevice mediaDevice) {
+		private string DetermineDeviceRootName(MediaDevice mediaDevice) {
 			// We are using this as a way to remove FriendlyName, if set in the FolderSource
 			// But sometimes the FriendlyName is null og empty.
 			return !string.IsNullOrWhiteSpace(mediaDevice.FriendlyName) ? mediaDevice.FriendlyName :
 				   !string.IsNullOrWhiteSpace(mediaDevice.Description) ? mediaDevice.Description : mediaDevice.Model;
 		}
-		private bool IsRootSourceMatchingDeviceName(string rootSource, string rootSourceFoundName) {
-			return rootSource.Equals(rootSourceFoundName, StringComparison.Ordinal);
+		private bool IsRootSourceMatchingDeviceName(string requestedRootSourceName, string deviceRootName) {
+			return requestedRootSourceName.Equals(deviceRootName, StringComparison.Ordinal);
 		}
-		private string RemoveRootSource(string folderSource, string rootSource) {
-			return folderSource.Substring(rootSource.Length + 1);
+		private string RemoveRootSource(string folderSource, string requestedRootSourceName) {
+			return folderSource.Substring(requestedRootSourceName.Length + 1);
 		}
 		private void HandleCOMException(COMException e, MediaDevice mediaDevice) {
 			if(e.Message.Contains("(0x800710D2)")) {
