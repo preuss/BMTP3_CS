@@ -71,10 +71,17 @@ namespace BMTP3_CS.Handlers.Backup {
 
 			List<BackupRecordInfo> allDeviceFiles = new List<BackupRecordInfo>();
 			IDictionary<string, MediaFileInfo> uniqueIdMediaFileInfos;
+
+			// MediaDirectoryInfo is not required to be connected, only required when accessed when accessed.
+			MediaDirectoryInfo backupSourceDirectoryInfo;
 			using(device) {
 				device.Connect();
+				backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
+				device.Disconnect();
+			}
 
-				MediaDirectoryInfo folderSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
+			using(device) {
+				device.Connect();
 
 				Stopwatch stopwatch = Stopwatch.StartNew();
 				//IList<MediaFileInfo> allMediaInfoFiles = await ReadAllFilesAsync(folderSourceDirectoryInfo);
@@ -115,7 +122,7 @@ namespace BMTP3_CS.Handlers.Backup {
 						FileAndDirectoryCounter progressReporter = new FileAndDirectoryCounter(fileIncrementCallback: fileIncrementCallback, dirIncrementCallback: dirIncrementCallback);
 						//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, new FileAndDirectoryCounter(countingFilesAndDirTask), cancellationToken);
 						//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, progressReporter, cancellationToken);
-						allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, fileIncrementCallback, dirIncrementCallback, cancellationToken);
+						allMediaInfoFiles = ReadAllFiles(backupSourceDirectoryInfo, fileIncrementCallback, dirIncrementCallback, cancellationToken);
 					});
 				//IList<MediaFileInfo> allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo);
 				stopwatch.Stop();
@@ -147,8 +154,6 @@ namespace BMTP3_CS.Handlers.Backup {
 				using(device) {
 					device.Connect();
 
-					MediaDirectoryInfo sourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
-
 					// Validate FolderOutput, where the output of files should be.
 					if(string.IsNullOrEmpty(config.FolderOutput)) {
 						throw new ArgumentNullException(nameof(config.FolderOutput), "FolderOutput er null eller tom.");
@@ -163,7 +168,7 @@ namespace BMTP3_CS.Handlers.Backup {
 					if(!targetDirectoryInfo.Exists) {
 						targetDirectoryInfo.Create();
 						// Update DateTimes for directory as the same as source folder.
-						BackupHelper.UpdateDirectoryTimestamp(sourceDirectoryInfo, targetDirectoryInfo);
+						BackupHelper.UpdateDirectoryTimestamp(backupSourceDirectoryInfo, targetDirectoryInfo);
 					}
 					DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(backupStartDateTime));
 
@@ -228,56 +233,6 @@ namespace BMTP3_CS.Handlers.Backup {
 								overallTask.Increment(1);
 							}
 						});
-					/*
-					AnsiConsole.Progress()
-						.AutoClear(true)
-						.AutoRefresh(true)
-						.Start(ctx => {
-							foreach(BackupPendingFileInfo pendingFileInfo in backupProgressTracker.PendingFiles.Values) {
-								if(_cancellationToken.IsCancellationRequested) {
-									Console.WriteLine("Backup afbrudt.");
-									_cancellationToken.ThrowIfCancellationRequested();
-								}
-
-								if(pendingFileInfo.IsSaved) {
-									continue;
-								}
-
-								//MediaFileInfo sourceMediaFileInfo = uniqueIdMediaFileInfos[pendingFileInfo.PersistentUniqueId];
-								if(!uniqueIdMediaFileInfos.TryGetValue(pendingFileInfo.PersistentUniqueId, out var sourceMediaFileInfo)) {
-									Console.WriteLine($"Fil ikke fundet: {pendingFileInfo.PersistentUniqueId}");
-									continue;
-								}
-
-								var downloadFileTask = ctx.AddTask($"[green]Size: {sourceMediaFileInfo.Length}bytes, Downloading file : [/][white]{sourceMediaFileInfo.FullName}[/]", new ProgressTaskSettings { AutoStart = false, MaxValue = sourceMediaFileInfo.Length });
-								Progress<FileProgressReport> fileProgress = new Progress<FileProgressReport>();
-								fileProgress.ProgressChanged += (sender, report) => {
-									downloadFileTask.Value(report.BytesRead);
-								};
-
-								if(!config.HasFilePattern()) {
-									// BackupFromPath(device, fromPath, targetDirectoryPath, tempDirectoryInfo);
-									throw new InvalidOperationException("Har ikke File Pattern, og mangler at implementere BackupFromPath(device, fromPath, targetDirectoryPath, tempDirectoryInfo);");
-								} else {
-									//if (String.IsNullOrEmpty(config.FilePattern))
-									//{
-									//    throw new ArgumentNullException("FilePattern er tom.");
-									//}
-									string filePattern = config.FilePattern!;
-
-									//if (String.IsNullOrEmpty(config.FilePatternIfExist))
-									//{
-									//    throw new ArgumentNullException("FilePatternIfExist er tom.");
-									//}
-									string filePatternIfExist = config.FilePatternIfExist!;
-
-									BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
-									pendingFileInfo.IsSaved = true;
-								}
-
-							}
-						});
-						*/
 
 
 					// TODO: Do this even when exception og cancel.
