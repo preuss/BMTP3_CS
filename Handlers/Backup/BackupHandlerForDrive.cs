@@ -11,7 +11,7 @@ namespace BMTP3_CS.Handlers.Backup {
 		public BackupHandlerForDrive(DriveInfo source) {
 			Source = source;
 		}
-		public override void PerformBackup() {
+		public override void PerformBackup(DateTime backupStartDateTime) {
 			throw new NotImplementedException();
 		}
 	}
