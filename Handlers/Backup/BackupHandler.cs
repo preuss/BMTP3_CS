@@ -66,7 +66,18 @@ namespace BMTP3_CS.Handlers.Backup {
 			};
 		}
 
-		public void BackupDevice(MediaDevice device, DeviceSourceConfig config, DateTime backupStartDateTime) {
+		public void PerformBackup(MediaDevice device, DeviceSourceConfig config, DateTime backupStartDateTime) {
+			try {
+				using(device.Connect()) {
+					BackupDevice(device, config, backupStartDateTime);
+				} 
+			} catch(COMException e) {
+				Console.WriteException(e);
+				HandleCOMException(e, DetermineDeviceRootName(device)); // TODO: Wrap instead, and return new exception to throw instead of throwing.
+				throw new Exception("An error occurred while validating and correcting the folder source path.");
+			}
+		}
+		private void BackupDevice(MediaDevice device, DeviceSourceConfig config, DateTime backupStartDateTime) {
 			Console.WriteLine($"Backing up device: {device.FriendlyName}");
 
 			List<BackupRecordInfo> allDeviceFiles = new List<BackupRecordInfo>();
@@ -76,13 +87,8 @@ namespace BMTP3_CS.Handlers.Backup {
 			MediaDirectoryInfo backupSourceDirectoryInfo;
 			using(device) {
 				device.Connect();
-				try {
-					backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
-				} catch(COMException e) {
-					Console.WriteException(e);
-					HandleCOMException(e, DetermineDeviceRootName(device)); // TODO: Wrap instead, and return new exception to throw instead of throwing.
-					throw new Exception("An error occurred while validating and correcting the folder source path.");
-				}
+
+				backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
 
 				device.Disconnect();
 			}
@@ -932,7 +938,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			if(e.Message.Contains("(0x800710D2)")) {
 				logger.ZLogError($"The library, drive, or media pool is empty. (0x800710D2)");
 				throw new Exception($"The Device '{deviceFriendlyName}' exists but is empty. Please open and activate the physical device.");
-			} else if(e.Message.Contains("(0x8007001E)")) { 
+			} else if(e.Message.Contains("(0x8007001E)")) {
 				logger.ZLogError($"The device is not ready. (0x8007001E)");
 				throw new Exception($"The Device '{deviceFriendlyName}' is not ready. Please wait and try again.");
 			} else {

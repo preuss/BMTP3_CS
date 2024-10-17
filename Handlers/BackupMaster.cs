@@ -107,7 +107,7 @@ namespace BMTP3_CS.Handlers {
 			foreach(var devicePair in foundDevicesAndConfig) {
 				try {
 					DateTime backupStartDateTime = DateTime.Now;
-					backupHandler.BackupDevice(devicePair.MediaDevice, devicePair.DeviceSourceConfig, backupStartDateTime);
+					backupHandler.PerformBackup(devicePair.MediaDevice, devicePair.DeviceSourceConfig, backupStartDateTime);
 					// TODO: Implement using IBackupHandler
 					//IBackupHandler backupHandler = new BackupHandlerForDevice(devicePair.MediaDevice, devicePair.DeviceSourceConfig, backupStartDateTime);
 
