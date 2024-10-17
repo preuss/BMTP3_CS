@@ -65,19 +65,38 @@ namespace BMTP3_CS.Handlers.Backup {
 				updateAction(totalCount);
 			};
 		}
-
 		public void PerformBackup(MediaDevice device, DeviceSourceConfig config, DateTime backupStartDateTime) {
 			try {
 				using(device.Connect()) {
 					BackupDevice(device, config, backupStartDateTime);
-				} 
+				}
 			} catch(COMException e) {
 				Console.WriteException(e);
 				HandleCOMException(e, DetermineDeviceRootName(device)); // TODO: Wrap instead, and return new exception to throw instead of throwing.
 				throw new Exception("An error occurred while validating and correcting the folder source path.");
 			}
 		}
+		/// <summary>
+		/// Helper for requires that the device is connected.
+		/// </summary>
+		/// <param name="device"></param>
+		/// <exception cref="Exception"></exception>
+		private void RequireConnected(MediaDevice device) {
+			if(false == device.IsConnected) {
+				throw new Exception($"The device '{device.FriendlyName}' is not connected.");
+			}
+		}
+		/// <summary>
+		/// Requires that the device is connected.
+		/// </summary>
+		/// <param name="device"></param>
+		/// <param name="config"></param>
+		/// <param name="backupStartDateTime"></param>
+		/// <exception cref="ArgumentNullException"></exception>
+		/// <exception cref="ArgumentException"></exception>
 		private void BackupDevice(MediaDevice device, DeviceSourceConfig config, DateTime backupStartDateTime) {
+			RequireConnected(device);
+
 			Console.WriteLine($"Backing up device: {device.FriendlyName}");
 
 			List<BackupRecordInfo> allDeviceFiles = new List<BackupRecordInfo>();
@@ -85,178 +104,162 @@ namespace BMTP3_CS.Handlers.Backup {
 
 			// MediaDirectoryInfo is not required to be connected, only required when accessed when accessed.
 			MediaDirectoryInfo backupSourceDirectoryInfo;
-			using(device) {
-				device.Connect();
 
-				backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
+			backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
 
-				device.Disconnect();
-			}
-
-			using(device) {
-				device.Connect();
-
-				Stopwatch stopwatch = Stopwatch.StartNew();
-				//IList<MediaFileInfo> allMediaInfoFiles = await ReadAllFilesAsync(folderSourceDirectoryInfo);
-				/*
-				IList<MediaFileInfo> allMediaInfoFiles = AnsiConsole.Status().Spinner(new SequenceSpinner(SequenceSpinner.Sequence6))
-					.Start("Indlæser filer og biblioteker fra enhed...", ctx => {
-						return ReadAllFiles(folderSourceDirectoryInfo, new FileAndDirectoryCounter(ctx));
-					});
-				*/
-				IList<MediaFileInfo> allMediaInfoFiles = new List<MediaFileInfo>();
-				AnsiConsole.Progress()
-					.AutoRefresh(true)
-					.Columns(new ProgressColumn[] {
+			Stopwatch stopwatch = Stopwatch.StartNew();
+			//IList<MediaFileInfo> allMediaInfoFiles = await ReadAllFilesAsync(folderSourceDirectoryInfo);
+			/*
+			IList<MediaFileInfo> allMediaInfoFiles = AnsiConsole.Status().Spinner(new SequenceSpinner(SequenceSpinner.Sequence6))
+				.Start("Indlæser filer og biblioteker fra enhed...", ctx => {
+					return ReadAllFiles(folderSourceDirectoryInfo, new FileAndDirectoryCounter(ctx));
+				});
+			*/
+			IList<MediaFileInfo> allMediaInfoFiles = new List<MediaFileInfo>();
+			AnsiConsole.Progress()
+				.AutoRefresh(true)
+				.Columns(new ProgressColumn[] {
 						new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence6)),
 						new TaskDescriptionColumn(),
 						new CounterColumn<int>("Count") { CounterStyle = new Style(decoration: Decoration.Bold) },
 						new ElapsedTimeAdvancedColumn(),
-					})
-					.Start(ctx => {
-						//var countingFilesAndDirTask = ctx.AddTask("Counting Files and Dirs");
-						//countingFilesAndDirTask.IsIndeterminate = true;
+				})
+				.Start(ctx => {
+					//var countingFilesAndDirTask = ctx.AddTask("Counting Files and Dirs");
+					//countingFilesAndDirTask.IsIndeterminate = true;
 
-						ProgressTask countingFilesTask = ctx.AddTask("Counting Files");
-						countingFilesTask.IsIndeterminate = true;
+					ProgressTask countingFilesTask = ctx.AddTask("Counting Files");
+					countingFilesTask.IsIndeterminate = true;
 
-						ProgressTask countingDirsTask = ctx.AddTask("Counting Dirs");
-						countingDirsTask.IsIndeterminate = true;
+					ProgressTask countingDirsTask = ctx.AddTask("Counting Dirs");
+					countingDirsTask.IsIndeterminate = true;
 
-						CancellationToken cancellationToken = _cancellationTokenGenerator.Token;
+					CancellationToken cancellationToken = _cancellationTokenGenerator.Token;
 
-						if(cancellationToken.IsCancellationRequested) {
-							cancellationToken.ThrowIfCancellationRequested();
-						}
+					if(cancellationToken.IsCancellationRequested) {
+						cancellationToken.ThrowIfCancellationRequested();
+					}
 
 
-						Action<int> fileIncrementCallback = CreateIncrementCallback(count => { countingFilesTask.State.Update<int>("Count", _ => count); });
-						Action<int> dirIncrementCallback = CreateIncrementCallback(count => { countingDirsTask.State.Update<int>("Count", _ => count); });
-						FileAndDirectoryCounter progressReporter = new FileAndDirectoryCounter(fileIncrementCallback: fileIncrementCallback, dirIncrementCallback: dirIncrementCallback);
-						//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, new FileAndDirectoryCounter(countingFilesAndDirTask), cancellationToken);
-						//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, progressReporter, cancellationToken);
-						allMediaInfoFiles = ReadAllFiles(backupSourceDirectoryInfo, fileIncrementCallback, dirIncrementCallback, cancellationToken);
-					});
-				//IList<MediaFileInfo> allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo);
-				stopwatch.Stop();
-				Console.WriteLine($"CreateBackupList took {stopwatch.ElapsedMilliseconds} ms");
+					Action<int> fileIncrementCallback = CreateIncrementCallback(count => { countingFilesTask.State.Update<int>("Count", _ => count); });
+					Action<int> dirIncrementCallback = CreateIncrementCallback(count => { countingDirsTask.State.Update<int>("Count", _ => count); });
+					FileAndDirectoryCounter progressReporter = new FileAndDirectoryCounter(fileIncrementCallback: fileIncrementCallback, dirIncrementCallback: dirIncrementCallback);
+					//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, new FileAndDirectoryCounter(countingFilesAndDirTask), cancellationToken);
+					//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, progressReporter, cancellationToken);
+					allMediaInfoFiles = ReadAllFiles(backupSourceDirectoryInfo, fileIncrementCallback, dirIncrementCallback, cancellationToken);
+				});
+			//IList<MediaFileInfo> allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo);
+			stopwatch.Stop();
+			Console.WriteLine($"CreateBackupList took {stopwatch.ElapsedMilliseconds} ms");
 
-				uniqueIdMediaFileInfos = allMediaInfoFiles.ToFrozenDictionary(mediaFileInfo => mediaFileInfo.PersistentUniqueId, mediaFileInfo => mediaFileInfo);
+			uniqueIdMediaFileInfos = allMediaInfoFiles.ToFrozenDictionary(mediaFileInfo => mediaFileInfo.PersistentUniqueId, mediaFileInfo => mediaFileInfo);
 
-				foreach(var mediaFileInfo in allMediaInfoFiles) {
-					BackupRecordInfo pendingFileInfo = new BackupRecordInfo(
-						persistentUniqueId: mediaFileInfo.PersistentUniqueId,
-						path: mediaFileInfo.FullName,
-						size: mediaFileInfo.Length
-					) {
-						Name = mediaFileInfo.Name,
-						DateCreated = mediaFileInfo.CreationTime,
-						DateModified = mediaFileInfo.LastWriteTime,
-						DateAuthored = mediaFileInfo.DateAuthored
-					};
-					pendingFileInfo.UpdateGeneratedId(); // TODO: Calculated another place.
-					allDeviceFiles.Add(pendingFileInfo);
-				}
-				device.Disconnect();
+			foreach(var mediaFileInfo in allMediaInfoFiles) {
+				BackupRecordInfo pendingFileInfo = new BackupRecordInfo(
+					persistentUniqueId: mediaFileInfo.PersistentUniqueId,
+					path: mediaFileInfo.FullName,
+					size: mediaFileInfo.Length
+				) {
+					Name = mediaFileInfo.Name,
+					DateCreated = mediaFileInfo.CreationTime,
+					DateModified = mediaFileInfo.LastWriteTime,
+					DateAuthored = mediaFileInfo.DateAuthored
+				};
+				pendingFileInfo.UpdateGeneratedId(); // TODO: Calculated another place.
+				allDeviceFiles.Add(pendingFileInfo);
 			}
+
 			// Sort for better backup progress.
 			allDeviceFiles.Sort((a, b) => string.Compare(a.Path, b.Path));
 			BackupRecordDataStore backupProgressTracker = LoadProgress(config, allDeviceFiles, exceptionIfChanged: true);
 
 			try {
-				using(device) {
-					device.Connect();
+				// Validate FolderOutput, where the output of files should be.
+				if(string.IsNullOrEmpty(config.FolderOutput)) {
+					throw new ArgumentNullException(nameof(config.FolderOutput), "FolderOutput er null eller tom.");
+				}
+				if(config.FolderOutput.IndexOfAny(Path.GetInvalidPathChars()) >= 0) {
+					throw new ArgumentException($"FolderOutput Path has invalid chars = '{config.FolderSource}'.", nameof(config.FolderSource));
+				}
+				if(File.Exists(config.FolderSource)) {
+					throw new ArgumentException($"The Directory is a file = {config.FolderSource}", nameof(config.FolderSource));
+				}
+				DirectoryInfo targetDirectoryInfo = new DirectoryInfo(config.FolderOutput);
+				if(!targetDirectoryInfo.Exists) {
+					targetDirectoryInfo.Create();
+					// Update DateTimes for directory as the same as source folder.
+					BackupHelper.UpdateDirectoryTimestamp(backupSourceDirectoryInfo, targetDirectoryInfo);
+				}
+				DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(backupStartDateTime));
 
-					// Validate FolderOutput, where the output of files should be.
-					if(string.IsNullOrEmpty(config.FolderOutput)) {
-						throw new ArgumentNullException(nameof(config.FolderOutput), "FolderOutput er null eller tom.");
-					}
-					if(config.FolderOutput.IndexOfAny(Path.GetInvalidPathChars()) >= 0) {
-						throw new ArgumentException($"FolderOutput Path has invalid chars = '{config.FolderSource}'.", nameof(config.FolderSource));
-					}
-					if(File.Exists(config.FolderSource)) {
-						throw new ArgumentException($"The Directory is a file = {config.FolderSource}", nameof(config.FolderSource));
-					}
-					DirectoryInfo targetDirectoryInfo = new DirectoryInfo(config.FolderOutput);
-					if(!targetDirectoryInfo.Exists) {
-						targetDirectoryInfo.Create();
-						// Update DateTimes for directory as the same as source folder.
-						BackupHelper.UpdateDirectoryTimestamp(backupSourceDirectoryInfo, targetDirectoryInfo);
-					}
-					DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(backupStartDateTime));
-
-					Console.WriteLine();
-					AnsiConsole.Progress()
-						.AutoClear(true)
-						.AutoRefresh(true)
-						.HideCompleted(true)
-						.Columns(new ProgressColumn[] {
+				Console.WriteLine();
+				AnsiConsole.Progress()
+					.AutoClear(true)
+					.AutoRefresh(true)
+					.HideCompleted(true)
+					.Columns(new ProgressColumn[] {
 							new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence7)),         // Spinner
 							new TaskDescriptionColumn(),        // Beskrivelse af opgaven
 							new ProgressBarColumn() {Width=10}, // Fremdriftsbjælke
 							new PercentageColumn(),             // Procentdel
 							new RemainingTimeColumn(),          // Resterende tid
 							new ValueOfMaxColumn(),
-						})
-						.Start(ctx => {
-							var overallTask = ctx.AddTask("[green]Total Progress[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = backupProgressTracker.Records.Count });
-							int countFiles = 0;
+					})
+					.Start(ctx => {
+						var overallTask = ctx.AddTask("[green]Total Progress[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = backupProgressTracker.Records.Count });
+						int countFiles = 0;
 
-							List<BackupRecordInfo> pendingFileInfos = backupProgressTracker.Records.ToList();
-							pendingFileInfos.Sort((a, b) => string.Compare(a.Path, b.Path));
-							foreach(BackupRecordInfo pendingFileInfo in pendingFileInfos) {
-								countFiles++;
-								overallTask.Description = $"[green]Total Progress[/]";
-								if(_cancellationToken.IsCancellationRequested) {
-									Console.WriteLine("Backup afbrudt.");
-									_cancellationToken.ThrowIfCancellationRequested();
-								}
-
-								if(pendingFileInfo.IsSaved) {
-									overallTask.Increment(1);
-									continue;
-								}
-
-								if(!uniqueIdMediaFileInfos.TryGetValue(pendingFileInfo.PersistentUniqueId, out var sourceMediaFileInfo)) {
-									Console.WriteLine($"Fil ikke fundet: {pendingFileInfo.PersistentUniqueId}");
-									overallTask.Increment(1);
-									continue;
-								}
-								//var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{sourceMediaFileInfo.FullName}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
-								var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{BackupHelper.ShortenPath(sourceMediaFileInfo.FullName, 27)}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
-								//var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{sourceMediaFileInfo.Name}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
-								overallTask.Description = $"[green]Total Progress[/] - Downloading File: {sourceMediaFileInfo.Name}";
-								Progress<FileProgressReport> fileProgress = new Progress<FileProgressReport>();
-								fileProgress.ProgressChanged += (sender, report) => {
-									downloadFileTask.Value(report.BytesRead);
-								};
-
-								bool isSaved;
-								if(!config.HasFilePattern()) {
-									//throw new InvalidOperationException("Har ikke File Pattern, og mangler at implementere BackupFromPath(device, fromPath, targetDirectoryPath, tempDirectoryInfo);");
-									const bool addSideCarFile = false;
-									isSaved = BackupFromPath(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
-								} else {
-									string filePattern = config.FilePattern!;
-									string filePatternIfExist = config.FilePatternIfExist!;
-
-									isSaved = BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
-								}
-								pendingFileInfo.IsSaved = isSaved;
-								overallTask.Increment(1);
+						List<BackupRecordInfo> pendingFileInfos = backupProgressTracker.Records.ToList();
+						pendingFileInfos.Sort((a, b) => string.Compare(a.Path, b.Path));
+						foreach(BackupRecordInfo pendingFileInfo in pendingFileInfos) {
+							countFiles++;
+							overallTask.Description = $"[green]Total Progress[/]";
+							if(_cancellationToken.IsCancellationRequested) {
+								Console.WriteLine("Backup afbrudt.");
+								_cancellationToken.ThrowIfCancellationRequested();
 							}
-						});
+
+							if(pendingFileInfo.IsSaved) {
+								overallTask.Increment(1);
+								continue;
+							}
+
+							if(!uniqueIdMediaFileInfos.TryGetValue(pendingFileInfo.PersistentUniqueId, out var sourceMediaFileInfo)) {
+								Console.WriteLine($"Fil ikke fundet: {pendingFileInfo.PersistentUniqueId}");
+								overallTask.Increment(1);
+								continue;
+							}
+							//var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{sourceMediaFileInfo.FullName}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
+							var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{BackupHelper.ShortenPath(sourceMediaFileInfo.FullName, 27)}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
+							//var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{sourceMediaFileInfo.Name}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
+							overallTask.Description = $"[green]Total Progress[/] - Downloading File: {sourceMediaFileInfo.Name}";
+							Progress<FileProgressReport> fileProgress = new Progress<FileProgressReport>();
+							fileProgress.ProgressChanged += (sender, report) => {
+								downloadFileTask.Value(report.BytesRead);
+							};
+
+							bool isSaved;
+							if(!config.HasFilePattern()) {
+								//throw new InvalidOperationException("Har ikke File Pattern, og mangler at implementere BackupFromPath(device, fromPath, targetDirectoryPath, tempDirectoryInfo);");
+								const bool addSideCarFile = false;
+								isSaved = BackupFromPath(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
+							} else {
+								string filePattern = config.FilePattern!;
+								string filePatternIfExist = config.FilePatternIfExist!;
+
+								isSaved = BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
+							}
+							pendingFileInfo.IsSaved = isSaved;
+							overallTask.Increment(1);
+						}
+					});
 
 
-					// TODO: Do this even when exception og cancel.
-					// Delete the temp directory if it's empty
-					BackupHelper.DeleteEmptyDirectoriesRecursive(tempDirectoryInfo.FullName);
-
-					device.Disconnect();
-				}
+				// TODO: Do this even when exception og cancel.
+				// Delete the temp directory if it's empty
+				BackupHelper.DeleteEmptyDirectoriesRecursive(tempDirectoryInfo.FullName);
 			} finally {
 				backupProgressTracker.SaveDataStore();
-				device.Disconnect();
 			}
 		}
 
