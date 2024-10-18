@@ -108,13 +108,6 @@ namespace BMTP3_CS.Handlers.Backup {
 			backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
 
 			Stopwatch stopwatch = Stopwatch.StartNew();
-			//IList<MediaFileInfo> allMediaInfoFiles = await ReadAllFilesAsync(folderSourceDirectoryInfo);
-			/*
-			IList<MediaFileInfo> allMediaInfoFiles = AnsiConsole.Status().Spinner(new SequenceSpinner(SequenceSpinner.Sequence6))
-				.Start("Indlæser filer og biblioteker fra enhed...", ctx => {
-					return ReadAllFiles(folderSourceDirectoryInfo, new FileAndDirectoryCounter(ctx));
-				});
-			*/
 			IList<MediaFileInfo> allMediaInfoFiles = new List<MediaFileInfo>();
 			AnsiConsole.Progress()
 				.AutoRefresh(true)
@@ -139,7 +132,6 @@ namespace BMTP3_CS.Handlers.Backup {
 					if(cancellationToken.IsCancellationRequested) {
 						cancellationToken.ThrowIfCancellationRequested();
 					}
-
 
 					Action<int> fileIncrementCallback = CreateIncrementCallback(count => { countingFilesTask.State.Update<int>("Count", _ => count); });
 					Action<int> dirIncrementCallback = CreateIncrementCallback(count => { countingDirsTask.State.Update<int>("Count", _ => count); });
