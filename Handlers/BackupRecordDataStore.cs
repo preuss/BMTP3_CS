@@ -75,11 +75,12 @@ namespace BMTP3_CS.Handlers {
 		}
 		public override void WriteJson(JsonWriter writer, SourceType value, JsonSerializer serializer) {
 			// Not really used
+			// TODO: Find out why not used, and why this code has to be added to SourceConfigConverter.WriteJson
 			// TODO: Find out how to use this in SourceConfigConverter
 			writer.WriteValue(value.ToString());
 		}
 	}
-	public class SourceConfigConverter : JsonConverter<ISourceConfig> {
+	public class SourceConfigConverter : JsonConverter<ISourceConfig?> {
 		public override ISourceConfig? ReadJson(JsonReader reader, Type objectType, ISourceConfig? existingValue, bool hasExistingValue, JsonSerializer serializer) {
 			JObject jo = JObject.Load(reader);
 			SourceType? sourceType = jo["SourceType"]?.ToObject<SourceType>(serializer); // Uses SourceTypeConverter for ReadJson
