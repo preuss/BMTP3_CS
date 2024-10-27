@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35027.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BMTP3_CS", "BMTP3_CS.csproj", "{76B295D4-A39D-41F9-AE1A-80BF13B250CE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BMTP3.Core", "BMTP3.Core\BMTP3.Core.csproj", "{E7F79CA5-A205-48D8-A7DE-0610A05D54B8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BMTP3.Tests", "BMTP3.Tests\BMTP3.Tests.csproj", "{30F09483-1944-4CC8-9A9F-277DAD8FD964}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,10 +13,14 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{76B295D4-A39D-41F9-AE1A-80BF13B250CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{76B295D4-A39D-41F9-AE1A-80BF13B250CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{76B295D4-A39D-41F9-AE1A-80BF13B250CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{76B295D4-A39D-41F9-AE1A-80BF13B250CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E7F79CA5-A205-48D8-A7DE-0610A05D54B8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E7F79CA5-A205-48D8-A7DE-0610A05D54B8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E7F79CA5-A205-48D8-A7DE-0610A05D54B8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E7F79CA5-A205-48D8-A7DE-0610A05D54B8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{30F09483-1944-4CC8-9A9F-277DAD8FD964}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{30F09483-1944-4CC8-9A9F-277DAD8FD964}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{30F09483-1944-4CC8-9A9F-277DAD8FD964}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{30F09483-1944-4CC8-9A9F-277DAD8FD964}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
