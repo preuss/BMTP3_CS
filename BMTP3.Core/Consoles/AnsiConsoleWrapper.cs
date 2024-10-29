@@ -6,8 +6,9 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Consoles {
-	internal class CliConsole : IConsole {
+	internal class AnsiConsoleWrapper : IConsole {
 		public void WriteLine() {
+		Console.WriteLine();
 			AnsiConsole.WriteLine();
 		}
 		public void WriteLine(string value) {
