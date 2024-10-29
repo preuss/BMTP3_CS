@@ -1,6 +1,6 @@
 using System.Text;
 
-namespace BMTP3.Core.Consoles {
+namespace BMTP3.Core.IO.Consoles {
 	public interface IConsole {
 		TextReader In { get; }
 		TextWriter Out { get; }
@@ -9,27 +9,27 @@ namespace BMTP3.Core.Consoles {
 		Encoding OutputEncoding { get; set; }
 		bool KeyAvailable { get; }
 		bool IsInputRedirected { get; }
-		bool IsOutputRedirected{ get; }
-		bool IsErrorRedirected{ get; }
+		bool IsOutputRedirected { get; }
+		bool IsErrorRedirected { get; }
 		int CursorSize { get; set; }
 		int BufferWidth { get; set; }
 		int BufferHeight { get; set; }
-		int WindowLeft{ get; set; }
-		int WindowTop{ get; set; }
-		int WindowWidth{ get; set; }
+		int WindowLeft { get; set; }
+		int WindowTop { get; set; }
+		int WindowWidth { get; set; }
 		int WindowHeight { get; set; }
 		int LargestWindowWidth { get; }
 		int LargestWindowHeight { get; }
 		bool CursorVisible { get; set; }
-		int CursorLeft{ get; set; }
-		int CursorTop{ get; set; }
+		int CursorLeft { get; set; }
+		int CursorTop { get; set; }
 		bool NumberLock { get; }
 		bool CapsLock { get; }
-		ConsoleColor BackgroundColor{ get; set; }
+		ConsoleColor BackgroundColor { get; set; }
 		ConsoleColor ForegroundColor { get; set; }
-		string Title{ get; set; }
+		string Title { get; set; }
 		event ConsoleCancelEventHandler? CancelKeyPress { add { Console.CancelKeyPress += value; } remove { Console.CancelKeyPress -= value; } }
-		bool TreatControlCAsInput{ get; set; }
+		bool TreatControlCAsInput { get; set; }
 
 		Stream OpenStandardInput();
 		Stream OpenStandardInput(int bufferSize);

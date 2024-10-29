@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles.Progress.Columns {
+namespace BMTP3.Core.IO.Consoles.Progress.Columns {
 	public class ElapsedTimeAdvancedColumn : ProgressColumn {
 		/// <inheritdoc/>
 		protected override bool NoWrap => true;

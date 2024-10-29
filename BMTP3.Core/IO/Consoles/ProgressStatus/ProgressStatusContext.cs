@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Spectre.Console;
 
-namespace BMTP3.Core.Consoles.ProgressStatus {
+namespace BMTP3.Core.IO.Consoles.ProgressStatus {
 	internal class ProgressStatusContext {
 		public ProgressStatusContext(ProgressContext progressContext) {
 			ProgressContext = progressContext;

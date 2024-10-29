@@ -6,7 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles {
+namespace BMTP3.Core.IO.Consoles {
 	internal class ConsoleDecorator : TextWriter {
 		private TextWriter originalConsoleStream;
 		private TextWriter? messageFileWriter;

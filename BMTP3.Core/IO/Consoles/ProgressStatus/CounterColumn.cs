@@ -10,7 +10,7 @@ using Spectre.Console;
 using Spectre.Console.Extensions;
 using Spectre.Console.Rendering;
 
-namespace BMTP3.Core.Consoles.ProgressStatus {
+namespace BMTP3.Core.IO.Consoles.ProgressStatus {
 	public class CounterColumn<T> : ProgressColumn where T : struct, INumber<T> {
 		public CounterColumn(string key) {
 			Key = key;

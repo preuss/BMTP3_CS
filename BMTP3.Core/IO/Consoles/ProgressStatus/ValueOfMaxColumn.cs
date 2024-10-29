@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles.ProgressStatus {
+namespace BMTP3.Core.IO.Consoles.ProgressStatus {
 	public class ValueOfMaxColumn : ProgressColumn {
 		public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime) {
 			return new Markup($"[blue]{task.Value}/{task.MaxValue}[/]");

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Injection {
+namespace BMTP3.Core.Injection.Extensions {
 	internal class MasterTypeResolverExtensions {
 	}
 }

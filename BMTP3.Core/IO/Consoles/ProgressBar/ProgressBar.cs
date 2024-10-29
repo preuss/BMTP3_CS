@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles.ProgressBar {
+namespace BMTP3.Core.IO.Consoles.ProgressBar {
 	/// <summary>
 	/// Based on Daniel S Wolf https://gist.github.com/DanielSWolf/0ab6a96899cc5377bf54
 	/// With additions from https://github.com/vkhub/csharp-cli-progressbar

@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles.Spinner {
+namespace BMTP3.Core.IO.Consoles.Spinner {
 	public sealed class SimpleSpinner : Spectre.Console.Spinner {
 		// The interval for each frame
 		public override TimeSpan Interval => TimeSpan.FromMilliseconds(100);

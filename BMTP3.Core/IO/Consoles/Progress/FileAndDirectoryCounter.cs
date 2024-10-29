@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles.Progress {
+namespace BMTP3.Core.IO.Consoles.Progress {
 	internal class FileAndDirectoryCounter {
 		private readonly Action<string>? statusCallback;
 		private readonly Action<int>? fileIncrementCallback;

@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles.Spinner {
+namespace BMTP3.Core.IO.Consoles.Spinner {
 	public sealed class SequenceSpinner : Spectre.Console.Spinner {
 		public const string Sequence1 = @"/-\|";
 		public const string Sequence3 = @".o0o";

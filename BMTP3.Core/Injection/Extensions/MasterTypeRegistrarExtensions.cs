@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace BMTP3.Core.Injection {
+namespace BMTP3.Core.Injection.Extensions {
 	static class MasterTypeRegistrarExtensions {
 		public static IMasterTypeRegistrar Register<TService, [DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicConstructors)] TImplementation>(this IMasterTypeRegistrar registrar)
 			where TService : class

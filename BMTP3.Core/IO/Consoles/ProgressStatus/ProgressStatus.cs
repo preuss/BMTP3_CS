@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Spectre.Console;
 
-namespace BMTP3.Core.Consoles.ProgressStatus {
+namespace BMTP3.Core.IO.Consoles.ProgressStatus {
 	public class ProgressStatus {
 		private IAnsiConsole _console;
 		public string Description { get; set; }

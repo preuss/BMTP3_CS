@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles.ProgressStatus {
+namespace BMTP3.Core.IO.Consoles.ProgressStatus {
 	/// <summary>
 	/// Contains extension methods for <see cref="IAnsiConsole"/>.
 	/// </summary>

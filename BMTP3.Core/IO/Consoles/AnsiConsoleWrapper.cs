@@ -6,10 +6,9 @@ using System.Runtime.Versioning;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles {
+namespace BMTP3.Core.IO.Consoles {
 	[SupportedOSPlatform("windows")]
-	internal class AnsiConsoleWrapper : IConsole
-	{
+	internal class AnsiConsoleWrapper : IConsole {
 		TextReader IConsole.In => Console.In;
 		TextWriter IConsole.Out => Console.Out;
 		TextWriter IConsole.Error => Console.Error;
@@ -62,101 +61,77 @@ namespace BMTP3.Core.Consoles {
 		void IConsole.Clear() => AnsiConsole.Clear();
 		void IConsole.SetCursorPosition(int left, int top) => Console.SetCursorPosition(left, top);
 
-		public void WriteLine()
-		{
+		public void WriteLine() {
 			Console.WriteLine();
 			AnsiConsole.WriteLine();
 		}
-		public void WriteLine(string value)
-		{
+		public void WriteLine(string value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(int value)
-		{
+		public void WriteLine(int value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, int value)
-		{
+		public void WriteLine(IFormatProvider provider, int value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(uint value)
-		{
+		public void WriteLine(uint value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, uint value)
-		{
+		public void WriteLine(IFormatProvider provider, uint value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(long value)
-		{
+		public void WriteLine(long value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, long value)
-		{
+		public void WriteLine(IFormatProvider provider, long value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(ulong value)
-		{
+		public void WriteLine(ulong value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, ulong value)
-		{
+		public void WriteLine(IFormatProvider provider, ulong value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(float value)
-		{
+		public void WriteLine(float value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, float value)
-		{
+		public void WriteLine(IFormatProvider provider, float value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(double value)
-		{
+		public void WriteLine(double value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, double value)
-		{
+		public void WriteLine(IFormatProvider provider, double value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(decimal value)
-		{
+		public void WriteLine(decimal value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, decimal value)
-		{
+		public void WriteLine(IFormatProvider provider, decimal value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(bool value)
-		{
+		public void WriteLine(bool value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, bool value)
-		{
+		public void WriteLine(IFormatProvider provider, bool value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(char value)
-		{
+		public void WriteLine(char value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, char value)
-		{
+		public void WriteLine(IFormatProvider provider, char value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(char[] value)
-		{
+		public void WriteLine(char[] value) {
 			AnsiConsole.WriteLine(value);
 		}
-		public void WriteLine(IFormatProvider provider, char[] value)
-		{
+		public void WriteLine(IFormatProvider provider, char[] value) {
 			AnsiConsole.WriteLine(provider, value);
 		}
-		public void WriteLine(string format, params object[] args)
-		{
+		public void WriteLine(string format, params object[] args) {
 			AnsiConsole.WriteLine(format, args);
 		}
-		public void WriteLine(IFormatProvider provider, string format, params object[] args)
-		{
+		public void WriteLine(IFormatProvider provider, string format, params object[] args) {
 			AnsiConsole.WriteLine(provider, format, args);
 		}
 	}

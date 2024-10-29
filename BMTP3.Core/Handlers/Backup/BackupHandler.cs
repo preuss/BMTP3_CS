@@ -1,10 +1,10 @@
 ﻿using BMTP3.Core.BackupSource.PortableDevices;
 using BMTP3.Core.CompareFiles;
 using BMTP3.Core.Configs;
-using BMTP3.Core.Consoles.Progress;
 using BMTP3.Core.Consoles.Progress.Columns;
 using BMTP3.Core.Consoles.ProgressStatus;
-using BMTP3.Core.Consoles.Spinner;
+using BMTP3.Core.IO.Consoles.Progress;
+using BMTP3.Core.IO.Consoles.Spinner;
 using BMTP3.Core.Metadata;
 using BMTP3.Core.StringVariableSubstitution;
 using MediaDevices;

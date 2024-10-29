@@ -5,7 +5,7 @@ using System.Runtime.Versioning;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Consoles {
+namespace BMTP3.Core.IO.Consoles {
 	[SupportedOSPlatform("windows")]
 	internal class SystemConsoleWrapper : IConsole {
 		TextReader IConsole.In => Console.In;

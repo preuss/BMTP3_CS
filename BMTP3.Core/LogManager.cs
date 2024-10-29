@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using BMTP3.Core.Consoles;
+using BMTP3.Core.IO.Consoles;
 
 namespace BMTP3.Core {
 	internal static class LogManager {

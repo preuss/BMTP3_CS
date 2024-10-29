@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using Spectre.Console.Rendering;
 using Spectre.Console;
 
-namespace BMTP3.Core.Consoles.ProgressStatus {
+namespace BMTP3.Core.IO.Consoles.ProgressStatus {
 	public class CustomColumn : ProgressColumn {
 		private readonly string _header;
 		private readonly Func<string> _valueFunc;

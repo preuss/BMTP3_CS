@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using BMTP3.Core.Extensions;
 
-namespace BMTP3.Core.Consoles.Progress.Columns {
+namespace BMTP3.Core.IO.Consoles.Progress.Columns {
 	public class CounterColumn : ProgressColumn {
 		/// <inheritdoc/>
 		protected override bool NoWrap => true;
