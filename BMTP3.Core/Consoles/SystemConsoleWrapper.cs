@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Consoles {
-	internal class SystemCConsole : IConsole {
+	internal class SystemConsoleWrapper : IConsole {
 		public void WriteLine() {
 			throw new NotImplementedException();
 		}
