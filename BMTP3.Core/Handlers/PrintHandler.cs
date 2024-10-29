@@ -21,7 +21,7 @@ namespace BMTP3.Core.Handlers {
 
 		public PrintHandler(IAnsiConsole console, CancellationTokenGenerator tokenGenerator) {
 			Console = console;
-			_cancellationToken = tokenGenerator.Token;
+			_cancellationToken = tokenGenerator.NewToken();
 		}
 		public void PrintDisabledSources(IList<ISourceConfig> sourceConfigs, SourceType sourceType) {
 			PrintSources(sourceConfigs, sourceType, false);

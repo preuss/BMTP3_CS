@@ -39,7 +39,7 @@ namespace BMTP3.Core.Handlers.Backup {
 		public BackupHandler(IAnsiConsole console, CancellationTokenGenerator cancellationTokenGenerator, BackupHelper backupHelper, FileComparer fileComparer) {
 			Console = console;
 			_cancellationTokenGenerator = cancellationTokenGenerator;
-			_cancellationToken = cancellationTokenGenerator.Token;
+			_cancellationToken = cancellationTokenGenerator.NewToken();
 			_backupHelper = backupHelper;
 
 			_fileComparer = fileComparer;
@@ -68,7 +68,7 @@ namespace BMTP3.Core.Handlers.Backup {
 		/// </summary>
 		/// <param name="device"></param>
 		/// <exception cref="Exception"></exception>
-		private void RequireConnected(MediaDevice device) {
+		private void EnsureDeviceIsConnected(MediaDevice device) {
 			if(false == device.IsConnected) {
 				throw new Exception($"The device '{device.FriendlyName}' is not connected.");
 			}
@@ -82,76 +82,19 @@ namespace BMTP3.Core.Handlers.Backup {
 		/// <exception cref="ArgumentNullException"></exception>
 		/// <exception cref="ArgumentException"></exception>
 		private void BackupDevice(MediaDevice device, DeviceSourceConfig config, DateTime backupStartDateTime) {
-			RequireConnected(device);
+			EnsureDeviceIsConnected(device);
 
 			Console.WriteLine($"Backing up device: {device.FriendlyName}");
 
-			List<BackupRecordInfo> allDeviceFiles = new List<BackupRecordInfo>();
-			IDictionary<string, MediaFileInfo> uniqueIdMediaFileInfos;
-
 			// MediaDirectoryInfo is not required to be connected, only required when accessed when accessed.
-			MediaDirectoryInfo backupSourceDirectoryInfo;
+			MediaDirectoryInfo backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
+			IList<MediaFileInfo> allMediaInfoFiles = GetAllMediaFiles(backupSourceDirectoryInfo);
 
-			backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
+			FrozenDictionary<string, MediaFileInfo> uniqueIdMediaFileInfos = allMediaInfoFiles.ToFrozenDictionary(mediaFileInfo => mediaFileInfo.PersistentUniqueId, mediaFileInfo => mediaFileInfo);
 
-			Stopwatch stopwatch = Stopwatch.StartNew();
-			IList<MediaFileInfo> allMediaInfoFiles = new List<MediaFileInfo>();
-			AnsiConsole.Progress()
-				.AutoRefresh(true)
-				.Columns(new ProgressColumn[] {
-						new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence6)),
-						new TaskDescriptionColumn(),
-						new CounterColumn<int>("Count") { CounterStyle = new Style(decoration: Decoration.Bold) },
-						new ElapsedTimeAdvancedColumn(),
-				})
-				.Start(ctx => {
-					//var countingFilesAndDirTask = ctx.AddTask("Counting Files and Dirs");
-					//countingFilesAndDirTask.IsIndeterminate = true;
+			BackupRecordDataStore backupDataStore = LoadBackupDataStore(config, allMediaInfoFiles, backupSourceDirectoryInfo, exceptionIfChanged: true);
 
-					ProgressTask countingFilesTask = ctx.AddTask("Counting Files");
-					countingFilesTask.IsIndeterminate = true;
-
-					ProgressTask countingDirsTask = ctx.AddTask("Counting Dirs");
-					countingDirsTask.IsIndeterminate = true;
-
-					CancellationToken cancellationToken = _cancellationTokenGenerator.Token;
-
-					if(cancellationToken.IsCancellationRequested) {
-						cancellationToken.ThrowIfCancellationRequested();
-					}
-
-					Action<int> fileIncrementCallback = CreateIncrementCallback(count => { countingFilesTask.State.Update<int>("Count", _ => count); });
-					Action<int> dirIncrementCallback = CreateIncrementCallback(count => { countingDirsTask.State.Update<int>("Count", _ => count); });
-					FileAndDirectoryCounter progressReporter = new FileAndDirectoryCounter(fileIncrementCallback: fileIncrementCallback, dirIncrementCallback: dirIncrementCallback);
-					//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, new FileAndDirectoryCounter(countingFilesAndDirTask), cancellationToken);
-					//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, progressReporter, cancellationToken);
-					allMediaInfoFiles = ReadAllFiles(backupSourceDirectoryInfo, fileIncrementCallback, dirIncrementCallback, cancellationToken);
-				});
-			//IList<MediaFileInfo> allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo);
-			stopwatch.Stop();
-			Console.WriteLine($"CreateBackupList took {stopwatch.ElapsedMilliseconds} ms");
-
-			uniqueIdMediaFileInfos = allMediaInfoFiles.ToFrozenDictionary(mediaFileInfo => mediaFileInfo.PersistentUniqueId, mediaFileInfo => mediaFileInfo);
-
-			foreach(var mediaFileInfo in allMediaInfoFiles) {
-				BackupRecordInfo pendingFileInfo = new BackupRecordInfo(
-					persistentUniqueId: mediaFileInfo.PersistentUniqueId,
-					path: mediaFileInfo.FullName,
-					size: mediaFileInfo.Length
-				) {
-					Name = mediaFileInfo.Name,
-					DateCreated = mediaFileInfo.CreationTime,
-					DateModified = mediaFileInfo.LastWriteTime,
-					DateAuthored = mediaFileInfo.DateAuthored
-				};
-				pendingFileInfo.UpdateGeneratedId(); // TODO: Calculated another place.
-				allDeviceFiles.Add(pendingFileInfo);
-			}
-
-			// Sort for better backup progress.
-			allDeviceFiles.Sort((a, b) => string.Compare(a.Path, b.Path));
-			BackupRecordDataStore backupProgressTracker = LoadProgress(config, allDeviceFiles, exceptionIfChanged: true);
-
+			DirectoryInfo? deleteableTempdirectoryInfo = null;
 			try {
 				// Validate FolderOutput, where the output of files should be.
 				if(string.IsNullOrEmpty(config.FolderOutput)) {
@@ -170,6 +113,7 @@ namespace BMTP3.Core.Handlers.Backup {
 					BackupHelper.UpdateDirectoryTimestamp(backupSourceDirectoryInfo, targetDirectoryInfo);
 				}
 				DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(backupStartDateTime));
+				deleteableTempdirectoryInfo = tempDirectoryInfo; // Make sure to delete when done.
 
 				Console.WriteLine();
 				AnsiConsole.Progress()
@@ -185,10 +129,10 @@ namespace BMTP3.Core.Handlers.Backup {
 							new ValueOfMaxColumn(),
 					})
 					.Start(ctx => {
-						var overallTask = ctx.AddTask("[green]Total Progress[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = backupProgressTracker.Records.Count });
+						var overallTask = ctx.AddTask("[green]Total Progress[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = backupDataStore.Records.Count });
 						int countFiles = 0;
 
-						List<BackupRecordInfo> pendingFileInfos = backupProgressTracker.Records.ToList();
+						List<BackupRecordInfo> pendingFileInfos = backupDataStore.Records.ToList();
 						pendingFileInfos.Sort((a, b) => string.Compare(a.Path, b.Path));
 						foreach(BackupRecordInfo pendingFileInfo in pendingFileInfos) {
 							countFiles++;
@@ -234,11 +178,18 @@ namespace BMTP3.Core.Handlers.Backup {
 					});
 
 
-				// TODO: Do this even when exception og cancel.
 				// Delete the temp directory if it's empty
 				BackupHelper.DeleteEmptyDirectoriesRecursive(tempDirectoryInfo.FullName);
 			} finally {
-				backupProgressTracker.SaveDataStore();
+				backupDataStore.SaveDataStore();
+
+				// Do this even when exception og cancel.
+				if(deleteableTempdirectoryInfo != null) {
+					if(deleteableTempdirectoryInfo.Exists) {
+						// Delete the temp directory if it's empty
+						BackupHelper.DeleteEmptyDirectoriesRecursive(deleteableTempdirectoryInfo.FullName);
+					}
+				}
 			}
 		}
 
@@ -279,7 +230,7 @@ namespace BMTP3.Core.Handlers.Backup {
 					ProgressTask countingDirsTask = ctx.AddTask("Counting Dirs");
 					countingDirsTask.IsIndeterminate = true;
 
-					CancellationToken cancellationToken = _cancellationTokenGenerator.Token;
+					CancellationToken cancellationToken = _cancellationTokenGenerator.NewToken();
 
 					if(cancellationToken.IsCancellationRequested) {
 						cancellationToken.ThrowIfCancellationRequested();
@@ -972,6 +923,66 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 		private BackupRecordDataStore UpdateProgressList(BackupRecordDataStore backupProgressTracker, IList<MediaFileInfo> allFiles, bool exceptionIfChanges) {
 			// TODO - Should be used when backupProgressTracker should be changed because newer files needs to be added
 			throw new NotImplementedException();
+		}
+		private IList<MediaFileInfo> GetAllMediaFiles(MediaDirectoryInfo backupSourceDirectoryInfo) {
+			IList<MediaFileInfo> allMediaInfoFiles = new List<MediaFileInfo>();
+			AnsiConsole.Progress()
+					.AutoRefresh(true)
+					.Columns(new ProgressColumn[] {
+						new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence6)),
+						new TaskDescriptionColumn(),
+						new CounterColumn<int>("Count") { CounterStyle = new Style(decoration: Decoration.Bold) },
+						new ElapsedTimeAdvancedColumn(),
+					})
+					.Start(ctx => {
+						//var countingFilesAndDirTask = ctx.AddTask("Counting Files and Dirs");
+						//countingFilesAndDirTask.IsIndeterminate = true;
+
+						ProgressTask countingFilesTask = ctx.AddTask("Counting Files");
+						countingFilesTask.IsIndeterminate = true;
+
+						ProgressTask countingDirsTask = ctx.AddTask("Counting Dirs");
+						countingDirsTask.IsIndeterminate = true;
+
+						CancellationToken cancellationToken = _cancellationTokenGenerator.NewToken();
+
+						if(cancellationToken.IsCancellationRequested) {
+							cancellationToken.ThrowIfCancellationRequested();
+						}
+
+						Action<int> fileIncrementCallback = CreateIncrementCallback(count => { countingFilesTask.State.Update<int>("Count", _ => count); });
+						Action<int> dirIncrementCallback = CreateIncrementCallback(count => { countingDirsTask.State.Update<int>("Count", _ => count); });
+						FileAndDirectoryCounter progressReporter = new FileAndDirectoryCounter(fileIncrementCallback: fileIncrementCallback, dirIncrementCallback: dirIncrementCallback);
+						//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, new FileAndDirectoryCounter(countingFilesAndDirTask), cancellationToken);
+						//allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo, progressReporter, cancellationToken);
+						allMediaInfoFiles = ReadAllFiles(backupSourceDirectoryInfo, fileIncrementCallback, dirIncrementCallback, cancellationToken);
+					});
+			//IList<MediaFileInfo> allMediaInfoFiles = ReadAllFiles(folderSourceDirectoryInfo);
+			return allMediaInfoFiles;
+		}
+		private BackupRecordDataStore LoadBackupDataStore(DeviceSourceConfig config, IList<MediaFileInfo> allMediaInfoFiles, MediaDirectoryInfo backupSourceDirectoryInfo, bool exceptionIfChanged) {
+			List<BackupRecordInfo> allDeviceFiles = new List<BackupRecordInfo>();
+			FrozenDictionary<string, MediaFileInfo> uniqueIdMediaFileInfos;
+
+			foreach(var mediaFileInfo in allMediaInfoFiles) {
+				BackupRecordInfo pendingFileInfo = new BackupRecordInfo(
+					persistentUniqueId: mediaFileInfo.PersistentUniqueId,
+					path: mediaFileInfo.FullName,
+					size: mediaFileInfo.Length
+				) {
+					Name = mediaFileInfo.Name,
+					DateCreated = mediaFileInfo.CreationTime,
+					DateModified = mediaFileInfo.LastWriteTime,
+					DateAuthored = mediaFileInfo.DateAuthored
+				};
+				pendingFileInfo.UpdateGeneratedId(); // TODO: Calculated another place.
+				allDeviceFiles.Add(pendingFileInfo);
+			}
+
+			// Sort for better backup progress.
+			allDeviceFiles.Sort((a, b) => string.Compare(a.Path, b.Path));
+
+			return LoadProgress(config, allDeviceFiles, exceptionIfChanged);
 		}
 		private BackupRecordDataStore LoadProgress(DeviceSourceConfig config, IList<BackupRecordInfo> allFiles, bool exceptionIfChanged) {
 			BackupRecordDataStore progressTracker;

@@ -20,19 +20,17 @@ namespace BMTP3.Core.Handlers {
 
 		private IServiceProvider? ServiceProvider { get; }
 		private IAnsiConsole Console { get; }
-		private CancellationTokenSource cts { get; }
 		private CancellationTokenGenerator TokenGenerator { get; }
 
 		public BackupMaster(IAnsiConsole console, CancellationTokenSource cts) : this(null, console, cts) { }
 		public BackupMaster(IServiceProvider? serviceProvider, IAnsiConsole console, CancellationTokenSource cts) {
 			ServiceProvider = serviceProvider;
 			Console = console;
-			this.cts = cts;
 			TokenGenerator = new CancellationTokenGenerator(cts);
 		}
 		public void StartBackup(ConfigurationHandler configHandler) {
-			using(cts) {
-				CancellationToken cancellationToken = cts.Token;
+			using(TokenGenerator) {
+				CancellationToken cancellationToken = TokenGenerator.NewToken();
 
 				StorageHandler deviceHandler = InitializeDeviceHandler();
 				DriveHandler driveHandler = InitializeDriveHandler();

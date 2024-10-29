@@ -80,11 +80,15 @@ namespace BMTP3.Core {
 
 		}
 	}
-	public class CancellationTokenGenerator {
+	public class CancellationTokenGenerator : IDisposable {
 		private readonly CancellationTokenSource _cancellationTokenSource;
 		public CancellationTokenGenerator(CancellationTokenSource cancellationTokenSource) {
 			_cancellationTokenSource = cancellationTokenSource;
 		}
-		public CancellationToken Token => _cancellationTokenSource.Token;
+		public CancellationToken NewToken() => _cancellationTokenSource.Token;
+		public CancellationTokenSource GetCancellationTokenSource() => _cancellationTokenSource;
+		public void Dispose() {
+			_cancellationTokenSource.Dispose();
+		}
 	}
 }

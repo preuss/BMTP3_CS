@@ -1,8 +1,10 @@
 ﻿using BMTP3.Core.BackupSource;
 using BMTP3.Core.Configs;
+using MediaDevices;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Frozen;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -57,8 +59,12 @@ namespace BMTP3.Core.Handlers {
 			JsonConverter[] converters = new JsonConverter[] { new SourceTypeConverter(), new SourceConfigConverter() };
 			return JsonConvert.DeserializeObject<BackupRecordDataStore>(jsonData, converters) ?? throw new NullReferenceException("Problem with readin json file: " + dataStoreFileInfo.FullName);
 		}
-		public static BackupRecordDataStore LoadDataOrCreateDataStore(string fileName) {
-			throw new NotImplementedException();
+		public static BackupRecordDataStore LoadDataOrCreateDataStore(ISourceConfig sourceConfig, IList<BackupRecordInfo> backupRecords) {
+			FileInfo dataStoreFileInfo = GetDataStoreFileInfoUsing(sourceConfig);
+			if(HasDataStore(sourceConfig)) {
+				return LoadDataStore(sourceConfig);
+			}
+			return new BackupRecordDataStore(sourceConfig, backupRecords);
 		}
 		internal static bool HasDataStore(ISourceConfig sourceConfig) {
 			return GetDataStoreFileInfoUsing(sourceConfig).Exists;

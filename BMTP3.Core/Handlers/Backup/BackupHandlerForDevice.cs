@@ -28,7 +28,7 @@ namespace BMTP3.Core.Handlers.Backup {
 		private IAnsiConsole Console { get; }
 
 		private CancellationTokenGenerator CancellationTokenGenerator { get; }
-		private CancellationToken Token { get { return CancellationTokenGenerator.Token; } }
+		private CancellationToken Token { get { return CancellationTokenGenerator.NewToken(); } }
 
 		private BackupHelper BackupHelper { get; }
 
@@ -82,7 +82,7 @@ namespace BMTP3.Core.Handlers.Backup {
 						ProgressTask countingDirsTask = ctx.AddTask("Counting Dirs");
 						countingDirsTask.IsIndeterminate = true;
 
-						CancellationToken cancellationToken = CancellationTokenGenerator.Token;
+						CancellationToken cancellationToken = CancellationTokenGenerator.NewToken();
 
 						if(cancellationToken.IsCancellationRequested) {
 							cancellationToken.ThrowIfCancellationRequested();
