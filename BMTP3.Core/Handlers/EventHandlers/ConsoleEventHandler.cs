@@ -58,7 +58,7 @@ namespace BMTP3.Core.Handlers.EventHandlers {
 #pragma warning disable CS0219 // Variable is assigned but its value is never used
 			// Keep constants to make the code more understandable.
 			const bool CANCEL_EVENT_AND_STOP_PROPAGATION = true;
-			const bool CONTINUE_EVENT_PROPAGATION = false;
+			const bool CONTINUE_EVENT_AND_PROPAGATION = false;
 #pragma warning restore CS0219 // Variable is assigned but its value is never used
 
 			Console.WriteLine("Cancel event triggered");
