@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Spectre.Console;
 using System.Runtime.Versioning;
 
-namespace BMTP3.Core {
+namespace BMTP3.Core.Configuration {
 	[SupportedOSPlatform("windows7.0")]
 	internal class StartUp {
 		private readonly CancellationTokenSource _cancellationTokenSource;
@@ -17,7 +17,6 @@ namespace BMTP3.Core {
 		public IServiceProvider ServiceProvider { get; private set; }
 
 		public StartUp() : this(default, default) { }
-		public StartUp(IConfiguration configuration) : this(configuration, default) { }
 
 		public StartUp(IConfiguration? configuration, CancellationTokenSource? cancellationTokenSource) {
 			_configuration = configuration ?? CreateConfiguration();
@@ -26,35 +25,40 @@ namespace BMTP3.Core {
 		}
 
 		public IServiceProvider ConfigureServices(IConfiguration configuration, CancellationTokenSource cancellationTokenSource, IServiceCollection services) {
-			var isTest = _configuration.GetValue<bool>("UseTestService");
-
 			services.AddSingleton(_configuration);
 			services.AddSingleton(_cancellationTokenSource);
 			services.AddSingleton((service) => AnsiConsole.Console);
+
+			ConfigureBackupServices(services);
+			ConfigureFileComparisonServices(services);
+			ConfigureMediaDeviceServices(services);
+			ConfigureMiscellaneousServices(services);
+
+			return services.BuildServiceProvider();
+		}
+		private void ConfigureBackupServices(IServiceCollection services) {
 			services.AddSingleton<BackupSettingsReader>();
-			services.AddSingleton<CancellationTokenGenerator>();
-
-			int bufferSize = _configuration.GetValue("BufferSizeInKBForFileComparison", 8) * 1024;
-			services.AddSingleton<FileComparer>((sp) => new ReadFileInChunksAndCompareSequenceEqual(bufferSize));
-
-			services.AddSingleton<HashCalculator>();
-
-			services.AddSingleton<PrintHandler>();
-
 			services.AddSingleton<VerifyBackupHandler>();
 			services.AddSingleton<BackupHelper>();
 			services.AddSingleton<BackupHandler>();
+			services.AddSingleton<StorageHandler>();
+			services.AddSingleton<BackupMaster>();
+		}
+		private void ConfigureFileComparisonServices(IServiceCollection services) {
+			int bufferSize = _configuration.GetValue("BufferSizeInKBForFileComparison", 8) * 1024;
+			services.AddSingleton<FileComparer>((sp) => new ReadFileInChunksAndCompareSequenceEqual(bufferSize));
+			services.AddSingleton<HashCalculator>();
+		}
+		private void ConfigureMediaDeviceServices(IServiceCollection services) {
+			var isTest = _configuration.GetValue<bool>("UseTestService");
 			if(isTest) {
 				services.AddSingleton<IMediaDeviceService, MediaDeviceServiceTest>();
 			} else {
 				services.AddSingleton<IMediaDeviceService, MediaDeviceServiceProd>();
 			}
-
-			services.AddSingleton<StorageHandler>();
-
-			services.AddSingleton<BackupMaster>();
-
-			return services.BuildServiceProvider();
+		}
+		private void ConfigureMiscellaneousServices(IServiceCollection services) {
+			services.AddSingleton<PrintHandler>();
 		}
 		private IConfiguration CreateConfiguration() {
 			var builder = new ConfigurationBuilder()
@@ -78,17 +82,6 @@ namespace BMTP3.Core {
 				throw;
 			}
 
-		}
-	}
-	public class CancellationTokenGenerator : IDisposable {
-		private readonly CancellationTokenSource _cancellationTokenSource;
-		public CancellationTokenGenerator(CancellationTokenSource cancellationTokenSource) {
-			_cancellationTokenSource = cancellationTokenSource;
-		}
-		public CancellationToken NewToken() => _cancellationTokenSource.Token;
-		public CancellationTokenSource GetCancellationTokenSource() => _cancellationTokenSource;
-		public void Dispose() {
-			_cancellationTokenSource.Dispose();
 		}
 	}
 }

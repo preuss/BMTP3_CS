@@ -1,8 +1,10 @@
 ﻿using BMTP3.Core.Configs;
+using BMTP3.Core.Configuration;
 using BMTP3.Core.Handlers;
 using BMTP3.Core.Handlers.EventHandlers;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Diagnostics;
@@ -47,10 +49,7 @@ namespace BMTP3.Core {
 			Logger = LogManager.GetLogger<Program>();
 			Message = LogManager.GetMessageWriter();
 		}
-
 		private static bool RequestToQuit { get; set; }
-
-
 		static async Task<int> Main(string[] args) {
 			foreach(var x in args) {
 				Console.WriteLine(x);
@@ -144,5 +143,12 @@ namespace BMTP3.Core {
 					return -1;
 			}
 		}
+
+		public static IHostBuilder CreateHostBuilder(string[] args) =>
+			Host.CreateDefaultBuilder(args)
+				.
+				.ConfigureServices((hostContext, services) => {
+					services.AddHostedService<ConsoleService>();
+				});
 	}
 }

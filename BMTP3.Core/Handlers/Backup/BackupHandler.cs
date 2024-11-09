@@ -18,6 +18,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using ZLogger;
 using static BMTP3.Core.Handlers.HashCalculator.HashType;
+using BMTP3.Core.Configuration;
 
 namespace BMTP3.Core.Handlers.Backup {
 	[SupportedOSPlatform("windows7.0")]
