@@ -22,14 +22,6 @@ namespace BMTP3.Core.Handlers.EventHandlers {
 		[DllImport("kernel32.dll", SetLastError = true)]
 		private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
 
-		public enum CtrlType {
-			CTRL_C_EVENT = 0,
-			CTRL_BREAK_EVENT = 1,
-			CTRL_CLOSE_EVENT = 2,
-			CTRL_LOGOFF_EVENT = 5,
-			CTRL_SHUTDOWN_EVENT = 6
-		}
-
 		protected ConsoleEventHandler(CancellationTokenSource cts, IAnsiConsole console) {
 			_cancellationTokenSource = cts;
 			_consoleEventDelegate = new ConsoleEventDelegate(ConsoleEventCallback);
