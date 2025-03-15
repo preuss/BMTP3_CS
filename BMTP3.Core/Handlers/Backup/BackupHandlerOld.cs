@@ -1,6 +1,7 @@
 ﻿using BMTP3.Core.BackupSource.PortableDevices;
 using BMTP3.Core.CompareFiles;
 using BMTP3.Core.Configs;
+using BMTP3.Core.Exceptions;
 using BMTP3.Core.Metadata;
 using BMTP3.Core.StringVariableSubstitution;
 using MediaDevices;

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Handlers.Backup {
+namespace BMTP3.Core.Exceptions {
 	internal class BackupCanceledException : OperationCanceledException {
 		public string Operation { get; }
 		public BackupCanceledException(string operation, CancellationToken token)

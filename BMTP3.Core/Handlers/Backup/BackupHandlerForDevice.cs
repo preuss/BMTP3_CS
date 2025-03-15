@@ -19,13 +19,14 @@ using System.Runtime.Versioning;
 using ZLogger;
 using static BMTP3.Core.Handlers.HashCalculator.HashType;
 using BMTP3.Core.Configuration;
+using BMTP3.Core.Exceptions;
 
 
 namespace BMTP3.Core.Handlers.Backup {
 	[SupportedOSPlatform("windows7.0")]
 	internal class BackupHandlerForDevice : AbstractBackupHandler {
-		private static readonly ILogger<BackupHandler> logger = LogManager.GetLogger<BackupHandler>();
-
+		private static readonly ILogger<BackupHandlerForDevice> logger = LogManager.GetLogger<BackupHandlerForDevice>();
+		private readonly BackupExceptionHandlerService _backupExceptionHandlerService;
 		private IAnsiConsole Console { get; }
 
 		private CancellationTokenGenerator CancellationTokenGenerator { get; }
@@ -37,7 +38,16 @@ namespace BMTP3.Core.Handlers.Backup {
 
 		public MediaDevice Source { get; }
 		public ISourceConfig Config { get; }
-		public BackupHandlerForDevice(MediaDevice device, ISourceConfig config, DateTime backupStartDateTime, IAnsiConsole console, CancellationTokenGenerator cancellationTokenGenerator, BackupHelper backupHelper, FileComparer fileComparer) {
+		public BackupHandlerForDevice(
+			MediaDevice device,
+			ISourceConfig config,
+			DateTime backupStartDateTime,
+			IAnsiConsole console,
+			CancellationTokenGenerator cancellationTokenGenerator,
+			BackupHelper backupHelper,
+			FileComparer fileComparer,
+			BackupExceptionHandlerService backupExceptionHandlerService
+		) {
 			Source = device;
 			if(config.SourceType != SourceType.Device) {
 				throw new ArgumentException("Invalid source type", nameof(config.SourceType));
@@ -50,6 +60,8 @@ namespace BMTP3.Core.Handlers.Backup {
 			BackupHelper = backupHelper;
 
 			FileComparer = fileComparer;
+
+			_backupExceptionHandlerService = backupExceptionHandlerService;
 		}
 		public override void PerformBackup(DateTime backupStartDateTime) {
 			BackupDevice(Source, (DeviceSourceConfig)Config, backupStartDateTime);
@@ -243,8 +255,9 @@ namespace BMTP3.Core.Handlers.Backup {
 					correctedFolderSource = RemoveRootSource(folderSource, rootSource);
 				}
 			} catch(COMException e) {
-				HandleCOMException(e, mediaDevice);
 				Console.WriteException(e);
+				_backupExceptionHandlerService.HandleCOMException(e, mediaDevice);
+				throw new ComBackupException($"COMException occurred: {e.Message}", e);
 			}
 			return correctedFolderSource;
 		}
@@ -269,15 +282,7 @@ namespace BMTP3.Core.Handlers.Backup {
 		private string RemoveRootSource(string folderSource, string rootSource) {
 			return folderSource.Substring(rootSource.Length + 1);
 		}
-		private void HandleCOMException(COMException e, MediaDevice mediaDevice) {
-			if(e.Message.Contains("(0x800710D2)")) {
-				logger.ZLogError($"The library, drive, or media pool is empty. (0x800710D2)");
-				throw new Exception($"The Device '{mediaDevice.FriendlyName}' exists but is empty. Please open and activate the physical device.");
-			} else {
-				logger.ZLogError($"COMException occurred: {e.Message}");
-				throw new Exception($"COMException occurred: {e.Message}", e);
-			}
-		}
+
 		Action<int> CreateIncrementCallback(Action<int> updateAction) {
 			int totalCount = 0;
 			return count => {

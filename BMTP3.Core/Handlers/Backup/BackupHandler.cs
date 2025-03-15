@@ -19,6 +19,7 @@ using System.Runtime.Versioning;
 using ZLogger;
 using static BMTP3.Core.Handlers.HashCalculator.HashType;
 using BMTP3.Core.Configuration;
+using BMTP3.Core.Exceptions;
 
 namespace BMTP3.Core.Handlers.Backup {
 	[SupportedOSPlatform("windows7.0")]
@@ -35,15 +36,25 @@ namespace BMTP3.Core.Handlers.Backup {
 
 		private readonly FileComparer _fileComparer;
 
+		private readonly BackupExceptionHandlerService _backupExceptionHandlerService;
+
 		private BackupHelper BackupHelper { get { return _backupHelper; } }
 
-		public BackupHandler(IAnsiConsole console, CancellationTokenGenerator cancellationTokenGenerator, BackupHelper backupHelper, FileComparer fileComparer) {
+		public BackupHandler(
+			IAnsiConsole console,
+			CancellationTokenGenerator cancellationTokenGenerator,
+			BackupHelper backupHelper,
+			FileComparer fileComparer,
+			BackupExceptionHandlerService backupExceptionHandlerService
+		) {
 			Console = console;
 			_cancellationTokenGenerator = cancellationTokenGenerator;
 			_cancellationToken = cancellationTokenGenerator.NewToken();
 			_backupHelper = backupHelper;
 
 			_fileComparer = fileComparer;
+
+			_backupExceptionHandlerService = backupExceptionHandlerService;
 		}
 
 		Action<int> CreateIncrementCallback(Action<int> updateAction) {
@@ -60,8 +71,8 @@ namespace BMTP3.Core.Handlers.Backup {
 				}
 			} catch(COMException e) {
 				Console.WriteException(e);
-				HandleCOMException(e, DetermineDeviceRootName(device)); // TODO: Wrap instead, and return new exception to throw instead of throwing.
-				throw new Exception("An error occurred while validating and correcting the folder source path.");
+				_backupExceptionHandlerService.HandleCOMException(e, DetermineDeviceRootName(device));
+				throw new ComBackupException("An error occurred while validating and correcting the folder source path.", e);
 			}
 		}
 		/// <summary>
@@ -867,18 +878,6 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 		}
 		private string TrimRootSourceFromPath(string folderSource, string requestedRootSourceName) {
 			return folderSource.Substring(requestedRootSourceName.Length + 1);
-		}
-		public void HandleCOMException(COMException e, string deviceFriendlyName) {
-			if(e.Message.Contains("(0x800710D2)")) {
-				logger.ZLogError($"The library, drive, or media pool is empty. (0x800710D2)");
-				throw new Exception($"The Device '{deviceFriendlyName}' exists but is empty. Please open and activate the physical device.");
-			} else if(e.Message.Contains("(0x8007001E)")) {
-				logger.ZLogError($"The device is not ready. (0x8007001E)");
-				throw new Exception($"The Device '{deviceFriendlyName}' is not ready. Please wait and try again.");
-			} else {
-				logger.ZLogError($"COMException occurred: {e.Message}");
-				throw new Exception($"COMException occurred: {e.Message}", e);
-			}
 		}
 		private MediaDirectoryInfo ToDirectoryInfo(MediaDevice mediaDevice, string correctedFolderSource, string requestedBackupSourcePath) {
 			if(!mediaDevice.DirectoryExists(correctedFolderSource)) {

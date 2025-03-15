@@ -4,6 +4,7 @@ using BMTP3.Core.BackupSource.PortableDevices;
 using BMTP3.Core.CompareFiles;
 using BMTP3.Core.Configs;
 using BMTP3.Core.Configuration;
+using BMTP3.Core.Exceptions;
 using BMTP3.Core.Handlers.Backup;
 using BMTP3.Core.Services;
 using MediaDevices;
@@ -19,15 +20,25 @@ namespace BMTP3.Core.Handlers {
 	internal class BackupMaster {
 		private static readonly ILogger<BackupMaster> logger = LogManager.GetLogger<BackupMaster>();
 
+		private readonly BackupExceptionHandlerService _backupExceptionHandlerService;
+
+
 		private IServiceProvider? ServiceProvider { get; }
 		private IAnsiConsole Console { get; }
 		private CancellationTokenGenerator TokenGenerator { get; }
 
-		public BackupMaster(IAnsiConsole console, CancellationTokenSource cts) : this(null, console, cts) { }
-		public BackupMaster(IServiceProvider? serviceProvider, IAnsiConsole console, CancellationTokenSource cts) {
+		public BackupMaster(IAnsiConsole console, CancellationTokenSource cts, BackupExceptionHandlerService backupExceptionHandlerService) :
+			this(null, console, cts, backupExceptionHandlerService) { }
+		public BackupMaster(
+			IServiceProvider? serviceProvider,
+			IAnsiConsole console,
+			CancellationTokenSource cts,
+			BackupExceptionHandlerService backupExceptionHandlerService
+		) {
 			ServiceProvider = serviceProvider;
 			Console = console;
 			TokenGenerator = new CancellationTokenGenerator(cts);
+			_backupExceptionHandlerService = backupExceptionHandlerService;
 		}
 		public void StartBackup(ConfigurationHandler configHandler) {
 			using(TokenGenerator) {
@@ -88,7 +99,7 @@ namespace BMTP3.Core.Handlers {
 			return ServiceProvider?.GetService<FileComparer>() ?? new ReadFileInChunksAndCompareSequenceEqual(512 * 1024);
 		}
 		private BackupHandler InitializeBackupHandler(BackupHelper backupHelper, FileComparer fileComparer) {
-			return ServiceProvider?.GetService<BackupHandler>() ?? new BackupHandler(Console, TokenGenerator, backupHelper, fileComparer);
+			return ServiceProvider?.GetService<BackupHandler>() ?? new BackupHandler(Console, TokenGenerator, backupHelper, fileComparer, new BackupExceptionHandlerService());
 		}
 		private PrintHandler InitializePrintHandler() {
 			return ServiceProvider?.GetService<PrintHandler>() ?? new PrintHandler(Console, TokenGenerator);
@@ -114,7 +125,8 @@ namespace BMTP3.Core.Handlers {
 				} catch(OperationCanceledException e) {
 					Console.WriteLine($"Backup blev annulleret under operationen: {e.Message}");
 				} catch(COMException e) {
-					backupHandler.HandleCOMException(e, backupHandler.DetermineDeviceRootName(devicePair.MediaDevice));
+					_backupExceptionHandlerService.HandleCOMException(e, backupHandler.DetermineDeviceRootName(devicePair.MediaDevice));
+					throw new ComBackupException(backupHandler.DetermineDeviceRootName(devicePair.MediaDevice), e);
 				}
 			}
 		}

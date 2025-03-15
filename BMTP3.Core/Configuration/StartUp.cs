@@ -59,6 +59,7 @@ namespace BMTP3.Core.Configuration {
 		}
 		private void ConfigureMiscellaneousServices(IServiceCollection services) {
 			services.AddSingleton<PrintHandler>();
+			services.AddSingleton<BackupExceptionHandlerService>();
 		}
 		private IConfiguration CreateConfiguration() {
 			var builder = new ConfigurationBuilder()
