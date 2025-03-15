@@ -11,23 +11,36 @@ namespace BMTP3.Core.Handlers.EventHandlers {
 	public class ConsoleEventHandler {
 		private readonly ConsoleEventDelegate _consoleEventDelegate;
 		private readonly CancellationTokenSource _cancellationTokenSource;
-
+		// <summary>
 		// Always use Spectre.Console instead of System.Console. Spectre.Console is an ANSI IConsole implementation.
 		// Keep Console name to force Spectre.Console instead of System.Console usage.
+		// </summary>
 		private readonly IAnsiConsole Console;
 
 		private delegate bool ConsoleEventDelegate(CtrlType eventType);
 
+		// <summary>
 		// https://learn.microsoft.com/en-us/windows/console/setconsolectrlhandler?WT.mc_id=DT-MVP-5003978
+		// </summary>
 		[DllImport("kernel32.dll", SetLastError = true)]
 		private static extern bool SetConsoleCtrlHandler(ConsoleEventDelegate callback, bool add);
 
+		/// <summary>
+		/// Initializes a new instance of the <see cref="ConsoleEventHandler"/> class.
+		/// </summary>
+		/// <param name="cts">The cancellation token source.</param>
+		/// <param name="console">The ANSI console instance.</param>
 		protected ConsoleEventHandler(CancellationTokenSource cts, IAnsiConsole console) {
 			_cancellationTokenSource = cts;
 			_consoleEventDelegate = new ConsoleEventDelegate(ConsoleEventCallback);
 			Console = console;
 		}
 
+		/// <summary>
+		/// Initializes the console event handler.
+		/// </summary>
+		/// <param name="cancellationTokenSource">The cancellation token source.</param>
+		/// <param name="console">The ANSI console instance.</param>
 		public static void Initialize(CancellationTokenSource cancellationTokenSource, IAnsiConsole? console = default) {
 			// Use Spectre.Console instead of System.Console.
 			IAnsiConsole Console = console ?? AnsiConsole.Console;
@@ -36,22 +49,25 @@ namespace BMTP3.Core.Handlers.EventHandlers {
 			consoleEventHandler.Register();
 			Console.WriteLine("Application has started. Ctrl-C to end");
 		}
+
+		/// <summary>
+		/// Registers the console event handler.
+		/// </summary>
 		public void Register() {
 			SetConsoleCtrlHandler(_consoleEventDelegate, true);
 			System.Console.CancelKeyPress += CancelKeyPressHandler;
 		}
 
+		/// <summary>
+		/// Unregisters the console event handler.
+		/// </summary>
 		public void Unregister() {
 			SetConsoleCtrlHandler(_consoleEventDelegate, false);
 			System.Console.CancelKeyPress -= CancelKeyPressHandler;
 		}
 
 		private void CancelKeyPressHandler(object? sender, ConsoleCancelEventArgs eventArgs) {
-#pragma warning disable CS0219 // Variable is assigned but its value is never used
-			// Keep constants to make the code more understandable.
-			const bool CANCEL_EVENT_AND_STOP_PROPAGATION = true;
-			const bool CONTINUE_EVENT_AND_PROPAGATION = false;
-#pragma warning restore CS0219 // Variable is assigned but its value is never used
+			const EventPropagationType CancelEventAndStopPropagation = EventPropagationType.StopPropagation;
 
 			Console.WriteLine("Cancel event triggered");
 			if(eventArgs.SpecialKey == ConsoleSpecialKey.ControlC) {
@@ -62,36 +78,47 @@ namespace BMTP3.Core.Handlers.EventHandlers {
 
 			Console.MarkupLine("[red]Operation cancelled![/]");
 			_cancellationTokenSource.Cancel();
-			eventArgs.Cancel = CANCEL_EVENT_AND_STOP_PROPAGATION;
+			eventArgs.Cancel = EventPropagationType.StopPropagation == CancelEventAndStopPropagation;
 		}
 
 		// https://learn.microsoft.com/en-us/windows/console/handlerroutine?WT.mc_id=DT-MVP-5003978
 		private bool ConsoleEventCallback(CtrlType eventType) {
-			// Keep constants to make the code more understandable.
-			const bool HANDLED_EVENT_AND_STOP_PROPAGATING = true;
-			const bool UNHANDLED_EVENT_AND_CONTINUE_PROPAGATING = false;
-
 			var cursorPos = System.Console.GetCursorPosition();
 			Console.WriteLine();
 			Console.WriteLine();
-			System.Console.SetCursorPosition(0, cursorPos.Top + 3);
+			Console.Cursor.SetPosition(0, cursorPos.Top + 2);
+			//System.Console.SetCursorPosition(0, cursorPos.Top + 3);
 
+			EventPropagationType propagationType;
+			Console.WriteLine($"{eventType} detected!");
 			switch(eventType) {
 				case CtrlType.CTRL_CLOSE_EVENT:
 				case CtrlType.CTRL_LOGOFF_EVENT:
 				case CtrlType.CTRL_SHUTDOWN_EVENT:
-					Console.WriteLine($"{eventType} detected!");
-					// Implement graceful shutdown logic here
+					propagationType = HandleShutdownEvent(eventType);
 					break;
 				case CtrlType.CTRL_C_EVENT:
 				case CtrlType.CTRL_BREAK_EVENT:
-					Console.WriteLine($"{eventType} detected!");
-					Console.WriteLine("We will deal with this another place!");
-
-					_cancellationTokenSource.Cancel();
-					return HANDLED_EVENT_AND_STOP_PROPAGATING;
+					propagationType = HandleCtrlEvent(eventType);
+					break;
+				default:
+					// Unhandled event
+					propagationType = EventPropagationType.ContinuePropagation;
+					break;
 			}
-			return UNHANDLED_EVENT_AND_CONTINUE_PROPAGATING;
+			return propagationType == EventPropagationType.StopPropagation;
+		}
+
+		private EventPropagationType HandleShutdownEvent(CtrlType eventType) {
+			// Implement graceful shutdown logic here
+			return EventPropagationType.ContinuePropagation;
+		}
+		private EventPropagationType HandleCtrlEvent(CtrlType eventType) {
+			Console.WriteLine("We will deal with this another place!");
+			// Implement graceful cancel & break logic here
+
+			_cancellationTokenSource.Cancel();
+			return EventPropagationType.StopPropagation;
 		}
 	}
 }
