@@ -20,36 +20,33 @@ namespace BMTP3.Core.Handlers {
 	internal class BackupMaster {
 		private static readonly ILogger<BackupMaster> logger = LogManager.GetLogger<BackupMaster>();
 
-		private readonly BackupExceptionHandlerService _backupExceptionHandlerService;
+		private readonly BackupExceptionHandlerService backupExceptionHandlerService;
+		private readonly IServiceProvider serviceProvider;
+		private readonly IAnsiConsole Console; // Use Spectre.Console instead of System.Console, but keep the same caseing.
+		private readonly CancellationTokenGenerator tokenGenerator;
 
-
-		private IServiceProvider? ServiceProvider { get; }
-		private IAnsiConsole Console { get; }
-		private CancellationTokenGenerator TokenGenerator { get; }
-
-		public BackupMaster(IAnsiConsole console, CancellationTokenSource cts, BackupExceptionHandlerService backupExceptionHandlerService) :
-			this(null, console, cts, backupExceptionHandlerService) { }
 		public BackupMaster(
-			IServiceProvider? serviceProvider,
+			IServiceProvider serviceProvider,
+			BackupExceptionHandlerService backupExceptionHandlerService,
 			IAnsiConsole console,
-			CancellationTokenSource cts,
-			BackupExceptionHandlerService backupExceptionHandlerService
+			CancellationTokenSource cts
 		) {
-			ServiceProvider = serviceProvider;
-			Console = console;
-			TokenGenerator = new CancellationTokenGenerator(cts);
-			_backupExceptionHandlerService = backupExceptionHandlerService;
+			this.serviceProvider = serviceProvider;
+			this.Console = console;
+			this.tokenGenerator = new CancellationTokenGenerator(cts);
+			this.backupExceptionHandlerService = backupExceptionHandlerService;
 		}
-		public void StartBackup(ConfigurationHandler configHandler) {
-			using(TokenGenerator) {
-				CancellationToken cancellationToken = TokenGenerator.NewToken();
 
-				StorageHandler deviceHandler = InitializeDeviceHandler();
-				DriveHandler driveHandler = InitializeDriveHandler();
-				BackupHelper backupHelper = InitializeBackupHelper();
-				FileComparer fileComparer = InitializeFileComparer();
-				BackupHandler backupHandler = InitializeBackupHandler(backupHelper, fileComparer);
-				PrintHandler printHandler = InitializePrintHandler();
+		public void StartBackup(ConfigurationHandler configHandler) {
+			using(tokenGenerator) {
+				CancellationToken cancellationToken = tokenGenerator.NewToken();
+
+				StorageHandler deviceHandler = serviceProvider.GetRequiredService<StorageHandler>();
+				DriveHandler driveHandler = serviceProvider.GetRequiredService<DriveHandler>();
+				BackupHelper backupHelper = serviceProvider.GetRequiredService<BackupHelper>();
+				FileComparer fileComparer = serviceProvider.GetRequiredService<FileComparer>();
+				BackupHandler backupHandler = serviceProvider.GetRequiredService<BackupHandler>();
+				PrintHandler printHandler = serviceProvider.GetRequiredService<PrintHandler>();
 
 				IList<ISourceConfig> configs = configHandler.GetConfigs();
 				foreach(SourceType sourceType in Enum.GetValues(typeof(SourceType))) {
@@ -85,26 +82,6 @@ namespace BMTP3.Core.Handlers {
 				BackupDrives(driveHandler, backupHandler, printHandler, cancellationToken, foundDrivesAndConfig);
 			}
 		}
-		private StorageHandler InitializeDeviceHandler() {
-			IMediaDeviceService mediaDeviceService = new MediaDeviceServiceProd();
-			return ServiceProvider?.GetService<StorageHandler>() ?? new StorageHandler(mediaDeviceService, TokenGenerator);
-		}
-		private DriveHandler InitializeDriveHandler() {
-			return ServiceProvider?.GetService<DriveHandler>() ?? new DriveHandler(TokenGenerator);
-		}
-		private BackupHelper InitializeBackupHelper() {
-			return ServiceProvider?.GetService<BackupHelper>() ?? new BackupHelper();
-		}
-		private FileComparer InitializeFileComparer() {
-			return ServiceProvider?.GetService<FileComparer>() ?? new ReadFileInChunksAndCompareSequenceEqual(512 * 1024);
-		}
-		private BackupHandler InitializeBackupHandler(BackupHelper backupHelper, FileComparer fileComparer) {
-			return ServiceProvider?.GetService<BackupHandler>() ?? new BackupHandler(Console, TokenGenerator, backupHelper, fileComparer, new BackupExceptionHandlerService());
-		}
-		private PrintHandler InitializePrintHandler() {
-			return ServiceProvider?.GetService<PrintHandler>() ?? new PrintHandler(Console, TokenGenerator);
-		}
-
 		private void BackupDevices(StorageHandler deviceHandler, BackupHandler backupHandler, PrintHandler printHandler, CancellationToken cancellationToken, IList<ConfigDevicePair> foundDevicesAndConfig) {
 			foreach(var devicePair in foundDevicesAndConfig) {
 				try {
@@ -125,7 +102,7 @@ namespace BMTP3.Core.Handlers {
 				} catch(OperationCanceledException e) {
 					Console.WriteLine($"Backup blev annulleret under operationen: {e.Message}");
 				} catch(COMException e) {
-					_backupExceptionHandlerService.HandleCOMException(e, backupHandler.DetermineDeviceRootName(devicePair.MediaDevice));
+					backupExceptionHandlerService.HandleCOMException(e, backupHandler.DetermineDeviceRootName(devicePair.MediaDevice));
 					throw new ComBackupException(backupHandler.DetermineDeviceRootName(devicePair.MediaDevice), e);
 				}
 			}

@@ -45,6 +45,7 @@ namespace BMTP3.Core.Configuration {
 			services.AddSingleton<BackupMaster>();
 		}
 		private void ConfigureFileComparisonServices(IServiceCollection services) {
+			// Best performance with 512 * 1024
 			int bufferSize = _configuration.GetValue("BufferSizeInKBForFileComparison", 8) * 1024;
 			services.AddSingleton<FileComparer>((sp) => new ReadFileInChunksAndCompareSequenceEqual(bufferSize));
 			services.AddSingleton<HashCalculator>();
