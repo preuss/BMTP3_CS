@@ -1,7 +1,7 @@
 ﻿using MediaDevices;
 using System.Runtime.Versioning;
 
-namespace BMTP3.Core.Handlers.Backup {
+namespace BMTP3.Core.Handlers {
 	[SupportedOSPlatform("windows7.0")]
 	public class BackupHelper {
 		private bool IsInvalidDateTime(DateTime? sourceDateTime) {

@@ -8,7 +8,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Handlers.Backup {
+namespace BMTP3.Core.Handlers.RefactorNewBackup {
 	public interface INewBackupHandler {
 		void PerformBackup(DateTime backupStartDateTime);
 	}

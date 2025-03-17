@@ -14,7 +14,7 @@ using System.Security.Cryptography;
 using System.Text;
 using ZLogger;
 
-namespace BMTP3.Core.Handlers.Backup {
+namespace BMTP3.Core.Handlers {
 	[SupportedOSPlatform("windows7.0")]
 	internal class BackupHandlerOld {
 		public static readonly DateTime MinWin32FileTime = DateTime.FromFileTimeUtc(0);

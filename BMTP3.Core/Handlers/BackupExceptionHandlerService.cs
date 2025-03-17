@@ -10,7 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.Versioning;
 
-namespace BMTP3.Core.Handlers.Backup {
+namespace BMTP3.Core.Handlers {
 	public class BackupExceptionHandlerService {
 		private static readonly ILogger<BackupExceptionHandlerService> logger = LogManager.GetLogger<BackupExceptionHandlerService>();
 

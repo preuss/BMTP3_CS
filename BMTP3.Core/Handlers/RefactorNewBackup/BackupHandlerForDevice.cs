@@ -22,7 +22,7 @@ using BMTP3.Core.Configuration;
 using BMTP3.Core.Exceptions;
 
 
-namespace BMTP3.Core.Handlers.Backup {
+namespace BMTP3.Core.Handlers.RefactorNewBackup {
 	[SupportedOSPlatform("windows7.0")]
 	internal class BackupHandlerForDevice : AbstractBackupHandler {
 		private static readonly ILogger<BackupHandlerForDevice> logger = LogManager.GetLogger<BackupHandlerForDevice>();

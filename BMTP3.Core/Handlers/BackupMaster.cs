@@ -5,7 +5,6 @@ using BMTP3.Core.CompareFiles;
 using BMTP3.Core.Configs;
 using BMTP3.Core.Configuration;
 using BMTP3.Core.Exceptions;
-using BMTP3.Core.Handlers.Backup;
 using BMTP3.Core.Services;
 using MediaDevices;
 using Microsoft.Extensions.DependencyInjection;
