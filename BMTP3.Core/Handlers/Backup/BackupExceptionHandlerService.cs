@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 using System.Runtime.Versioning;
 
 namespace BMTP3.Core.Handlers.Backup {
-	class BackupExceptionHandlerService {
+	public class BackupExceptionHandlerService {
 		private static readonly ILogger<BackupExceptionHandlerService> logger = LogManager.GetLogger<BackupExceptionHandlerService>();
 
 		public void HandleCOMException(COMException e, string deviceFriendlyName) {

@@ -40,8 +40,9 @@ namespace BMTP3.Core.Configuration {
 			services.AddSingleton<BackupSettingsReader>();
 			services.AddSingleton<VerifyBackupHandler>();
 			services.AddSingleton<BackupHelper>();
-			services.AddSingleton<BackupHandler>();
-			services.AddSingleton<StorageHandler>();
+			services.AddSingleton<IBackupHandler, BackupHandler>();
+			services.AddSingleton<IStorageHandler, MediaDeviceHandler>();
+			services.AddSingleton<IDriveHandler, DriveHandler>();
 			services.AddSingleton<BackupMaster>();
 		}
 		private void ConfigureFileComparisonServices(IServiceCollection services) {
@@ -59,7 +60,7 @@ namespace BMTP3.Core.Configuration {
 			}
 		}
 		private void ConfigureMiscellaneousServices(IServiceCollection services) {
-			services.AddSingleton<PrintHandler>();
+			services.AddSingleton<IPrintHandler, PrintHandler>();
 			services.AddSingleton<BackupExceptionHandlerService>();
 		}
 		private IConfiguration CreateConfiguration() {

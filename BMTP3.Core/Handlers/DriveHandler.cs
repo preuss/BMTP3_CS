@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
-	internal class DriveHandler {
+	public class DriveHandler : IDriveHandler {
 		private CancellationTokenGenerator CancellationTokenGenerator { get; }
 		public DriveHandler(CancellationTokenGenerator cancellationTokenGenerator) {
 			CancellationTokenGenerator = cancellationTokenGenerator;

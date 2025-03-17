@@ -12,11 +12,11 @@ using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
 	[SupportedOSPlatform("windows7.0")]
-	internal class StorageHandler {
+	public class MediaDeviceHandler : IStorageHandler {
 		private IMediaDeviceService _mediaDeviceService;
 		private CancellationTokenGenerator _cancellationTokenGenerator;
 
-		public StorageHandler(IMediaDeviceService mediaDeviceService, CancellationTokenGenerator cancellationTokenGenerator) {
+		public MediaDeviceHandler(IMediaDeviceService mediaDeviceService, CancellationTokenGenerator cancellationTokenGenerator) {
 			_mediaDeviceService = mediaDeviceService;
 			_cancellationTokenGenerator = cancellationTokenGenerator;
 		}

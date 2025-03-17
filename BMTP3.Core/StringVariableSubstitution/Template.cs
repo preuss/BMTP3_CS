@@ -6,7 +6,7 @@ using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.StringVariableSubstitution {
-	class Template {
+	public class Template {
 		private readonly IDictionary<string, string> variables = new Dictionary<string, string>();
 		public void AddVariable(string name, string value) {
 			if(string.IsNullOrEmpty(name)) {

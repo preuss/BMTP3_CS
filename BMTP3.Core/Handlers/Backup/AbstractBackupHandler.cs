@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers.Backup {
-	abstract class AbstractBackupHandler : IBackupHandler {
+	abstract class AbstractBackupHandler : INewBackupHandler {
 		public abstract void PerformBackup(DateTime backupStartDateTime);
 	}
 }
