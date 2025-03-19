@@ -4,8 +4,10 @@ using BMTP3.Core.Handlers;
 using BMTP3.Core.Services;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Runtime.Versioning;
+using ZLogger;
 
 namespace BMTP3.Core.Configuration {
 	[SupportedOSPlatform("windows7.0")]
@@ -28,6 +30,12 @@ namespace BMTP3.Core.Configuration {
 			services.AddSingleton(_cancellationTokenSource);
 			services.AddSingleton((service) => AnsiConsole.Console);
 
+			// Add logging
+			services.AddLogging(builder => {
+				builder.AddZLoggerConsole(); // Add ZLogger
+				builder.AddConsole(); // Add standard console-logging as fallback
+			});
+
 			ConfigureBackupServices(services);
 			ConfigureFileComparisonServices(services);
 			ConfigureMediaDeviceServices(services);
@@ -38,7 +46,7 @@ namespace BMTP3.Core.Configuration {
 		private void ConfigureBackupServices(IServiceCollection services) {
 			services.AddSingleton<BackupSettingsReader>();
 			services.AddSingleton<VerifyBackupHandler>();
-			services.AddSingleton<BackupHelper>();
+			services.AddTransient<BackupHelper>();
 			services.AddSingleton<IBackupHandler, BackupHandler>();
 			services.AddSingleton<IStorageHandler, MediaDeviceHandler>();
 			services.AddSingleton<IDriveHandler, DriveHandler>();
@@ -78,7 +86,10 @@ namespace BMTP3.Core.Configuration {
 
 		public static StartUp CreateAndInitialize() {
 			try {
-				return new StartUp();
+				var startup = new StartUp();
+				var logger = startup.ServiceProvider.GetService<ILogger<StartUp>>();
+				logger?.LogInformation("StartUp initialized successfully.");
+				return startup;
 			} catch(Exception e) {
 				Console.WriteLine($"An error occurred during initialization: {e.Message}");
 				throw;

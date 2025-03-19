@@ -93,7 +93,6 @@ namespace BMTP3.Core.Handlers {
 			File.SetLastAccessTime(targetInfo.FullName, targetInfo.LastAccessTime);
 			File.SetLastWriteTime(targetInfo.FullName, targetInfo.LastWriteTime);
 		}
-
 		public string ShortenPath(string path, int maxLength, string spacer = "…", char? defaultDirectorySeparator = default, bool throwRangeException = false) {
 			if(maxLength <= spacer.Length) {
 				if(throwRangeException) {
@@ -154,8 +153,6 @@ namespace BMTP3.Core.Handlers {
 			}
 			return shortenedPath;
 		}
-
-
 		public static IDictionary<HashCalculator.HashType, string> ComputeHashes(string filePath, IList<HashCalculator.HashType> hashTypes) {
 			HashCalculator hashCalculator = new HashCalculator();
 			return hashCalculator.ComputeHashes(filePath, hashTypes);

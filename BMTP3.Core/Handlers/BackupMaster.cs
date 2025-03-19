@@ -14,6 +14,10 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using ZLogger;
 
+/// <summary>
+/// BackupMaster is the main class of BMTP3.
+/// //TODO: I am thinking of refactor rename this to BackupController
+/// </summary>
 namespace BMTP3.Core.Handlers {
 	[SupportedOSPlatform("windows7.0")]
 	internal class BackupMaster {

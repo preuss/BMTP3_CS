@@ -10,6 +10,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+/// <summary>
+/// This class is used to store backup records.
+/// // TODO: I amd thinkging of refactor rename this to BackupRecordDataRespository, og keep Store I do not know
+/// </summary>
 namespace BMTP3.Core.Handlers {
 	internal class BackupRecordDataStore {
 		private readonly ISourceConfig sourceConfig;
