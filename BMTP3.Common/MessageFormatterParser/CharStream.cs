@@ -1,16 +1,25 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics.Metrics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Common.MessageFormatterParser {
 	public class CharStream {
+		public const string POSIX		= "\n";   // LF    = Unix-style line endings
+		public const string WINDOWS_DOS = "\r\n"; // CR LF = Windows / DOS-style line endings
+		public const string COMMODORE   = "\r";   // CR    = Commodore-style line endings
+		public const string ACORN       = "\n\r"; // LF CR = Acorn-style line endings
+
+		private readonly char defaultNewLineChar = '\n';
+		private readonly string[] newLineSequences;
+
 		private readonly Stream stream;
 		private readonly StreamReader reader;
 		private readonly Queue<char> peekBuffer = new Queue<char>(); // Dynamisk buffer
-		private int lineNumber = 1;
-		private int columnNumber = 1;
+		private int lineNumber = 0;
+		private int columnNumber = 0;
 
 		/// <summary>
 		/// Initializes a new instance of the CharStream class with a string input.
@@ -23,10 +32,92 @@ namespace BMTP3.Common.MessageFormatterParser {
 		/// </summary>
 		/// <param name="stream">The stream to be read from.</param>
 		/// <exception cref="ArgumentNullException">Thrown if the stream is null.</exception>
-		public CharStream(Stream stream) {
+		public CharStream(Stream stream) : this(stream, [POSIX]) {
+		}
+
+		public CharStream(string input, string[] newLineSequences) : this(new MemoryStream(Encoding.UTF8.GetBytes(input)), newLineSequences) { }
+
+		/// <summary>
+		/// Initializes a new instance of the CharStream class with a Stream object and an array of new line sequences.
+		/// </summary>
+		/// <param name="stream"></param>
+		/// <param name="newLineSequences"></param>
+		/// <exception cref="ArgumentNullException">Thrown if the stream is null.</exception>
+		/// <exception cref="ArgumentException">Thrown if the new line sequences array is null or empty.</exception>
+		/// <exception cref="ArgumentException">Thrown if any of the new line sequences are not a valid new line sequence.</exception>
+		public CharStream(Stream stream, string[] newLineSequences) {
 			this.stream = stream ?? throw new ArgumentNullException(nameof(stream));
 			this.reader = new StreamReader(stream);
+
+			if(newLineSequences == null || newLineSequences.Length == 0) {
+				throw new ArgumentException("New line sequences cannot be null or empty", nameof(newLineSequences));
+			} else {
+				
+				HashSet<string> validNewLineSequencesSet = new HashSet<string> { POSIX, WINDOWS_DOS, COMMODORE, ACORN };
+				foreach(string newLineSequence in newLineSequences) {
+					if(!validNewLineSequencesSet.Contains(newLineSequence)) {
+						throw new ArgumentException($"Invalid new line sequence: {newLineSequence}", nameof(newLineSequences));
+					}
+				}
+				var validOrderOfNewLineSequences = newLineSequences.OrderByDescending(s => s.Length).ToArray();
+				this.newLineSequences = validOrderOfNewLineSequences;
+			}
 		}
+
+		/// <summary>
+		/// Attempts to identify and consume a newline sequence at the current stream position.
+		/// If a sequence is found, line and column numbers are updated, and the sequence characters are removed from the stream.
+		/// </summary>
+		/// <returns>The length of the identified and consumed newline sequence, or 0 if no sequence was found.</returns>
+		private int TryAdvanceNewLine() {
+			int localMinNewLineLength = newLineSequences.Min(s => s.Length);
+			int localMaxNewLineLength = newLineSequences.Max(s => s.Length);
+
+			if(!HasChars(1)) {
+				return 0;
+			}
+
+			int peekCount = HasCharsCount(localMaxNewLineLength);
+
+			if(peekCount == 0) {
+				return 0;
+			}
+			if(peekCount < localMinNewLineLength) {
+				return 0; // Not enough characters available to match any newline sequence.
+			}
+
+			List<char> peekedChars = Peek(peekCount);
+
+			// Iterate through newline sequences, prioritized by length (longest first).
+			foreach(var newLineSequence in newLineSequences) {
+				if(peekedChars.Count >= newLineSequence.Length) {
+					bool matches = true;
+					for(int i = 0; i < newLineSequence.Length; i++) {
+						if(peekedChars[i] != newLineSequence[i]) {
+							matches = false;
+							break; // Mismatch. Check next sequence.
+						}
+					}
+
+					if(matches) {
+						lineNumber++;
+						columnNumber = 0; // Reset column for the new line.
+
+						// Consume characters of the matched newline sequence.
+						for(int i = 0; i < newLineSequence.Length; i++) {
+							if(peekBuffer.Count > 0) {
+								peekBuffer.Dequeue(); // From internal buffer.
+							} else {
+								reader.Read(); // Directly from underlying stream.
+							}
+						}
+						return newLineSequence.Length; // Return length of consumed sequence.
+					}
+				}
+			}
+			return 0; // No matching newline sequence found.
+		}
+
 
 		/// <summary>
 		/// Retrieves the next character from the stream and advances the position.
@@ -35,17 +126,30 @@ namespace BMTP3.Common.MessageFormatterParser {
 		/// <returns>The next character in the stream.</returns>
 		/// <exception cref="CharStreamException">Thrown if the end of the stream is encountered.</exception>
 		public char Next() {
-			if(peekBuffer.Count > 0) {
-				char c = peekBuffer.Dequeue();
-				UpdatePosition(c);
-				return c;
+			int consumedNewLineLength = TryAdvanceNewLine();
+
+			if(consumedNewLineLength > 0) {
+				// Line and column numbers are already updated by TryAdvanceNewLine().
+				return defaultNewLineChar;
 			}
-			if(reader.EndOfStream) {
+
+			// If no newline was consumed, check if there are any characters left.
+			if(EndOfStream) {
 				throw new CharStreamException($"End of stream at line {lineNumber}, column {columnNumber}", lineNumber, columnNumber);
 			}
-			char next = (char)reader.Read();
-			UpdatePosition(next);
-			return next;
+
+			char c;
+			if(peekBuffer.Count > 0) {
+				// Prioritize consuming from the internal peekBuffer.
+				c = peekBuffer.Dequeue();
+			} else {
+				// Fallback to reading directly from the underlying stream.
+				c = (char)reader.Read();
+			}
+
+			// Increment column for a regular character.
+			columnNumber++;
+			return c;
 		}
 
 		/// <summary>
@@ -56,17 +160,15 @@ namespace BMTP3.Common.MessageFormatterParser {
 		/// <exception cref="ArgumentException">Thrown if the character count is negative.</exception>
 		/// <exception cref="CharStreamException">Thrown if there are not enough characters in the stream to satisfy the request.</exception>
 		public List<char> Next(int count) {
-			if(count < 0) throw new ArgumentException("Character count cannot be negative");
+			if(count < 0) {
+				throw new ArgumentException("Character count cannot be negative", nameof(count));
+			}
+
 			var result = new List<char>();
 			for(int i = 0; i < count; i++) {
-				if(peekBuffer.Count > 0) {
-					result.Add(peekBuffer.Dequeue());
-				} else if(!reader.EndOfStream) {
-					result.Add((char)reader.Read());
-				} else {
-					throw new CharStreamException($"Not enough characters in stream (requested {count}, missing {count - i}) at line {lineNumber}, column {columnNumber}", lineNumber, columnNumber);
-				}
-				UpdatePosition(result[i]);
+				// By calling the single-character Next() method, we ensure that
+				// all newline handling and position updates are consistently applied.
+				result.Add(Next());
 			}
 			return result;
 		}
@@ -109,6 +211,19 @@ namespace BMTP3.Common.MessageFormatterParser {
 
 		/// <summary>
 		/// Checks if there are at least a specified number of characters remaining in the stream.
+		/// </summary>
+		/// <param name="desiredCount"></param>
+		/// <returns>readable characters, up to desiredCount</returns>
+		private int HasCharsCount(int desiredCount) {
+			if(desiredCount < 0) return 0;
+			while(peekBuffer.Count < desiredCount && !reader.EndOfStream) {
+				peekBuffer.Enqueue((char)reader.Read());
+			}
+			return peekBuffer.Count < desiredCount ? peekBuffer.Count : desiredCount;
+		}
+
+		/// <summary>
+		/// Checks if there are at least a specified number of characters remaining in the stream.
 		/// This method does not consume any characters.
 		/// </summary>
 		/// <param name="count">The minimum number of characters to check for.</param>
@@ -119,11 +234,6 @@ namespace BMTP3.Common.MessageFormatterParser {
 				peekBuffer.Enqueue((char)reader.Read());
 			}
 			return peekBuffer.Count >= count;
-		}
-
-		private void UpdatePosition(char c) {
-			columnNumber++;
-			if(c == '\n') { lineNumber++; columnNumber = 1; }
 		}
 
 		/// <summary>
