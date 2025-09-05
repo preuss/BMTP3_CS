@@ -19,7 +19,7 @@ namespace BMTP3.Core.Handlers {
 				.Where(driveInfo => driveInfo.IsReady)
 				.ToList();
 		}
-		public IList<ConfigDrivePair> GetConfiguredDrives(IEnumerable<DriveInfo> driveInfos, IList<DriveSourceConfig> enabledDriveSourceConfigs) {
+		public IList<DriveBackupJob> GetConfiguredDrives(IEnumerable<DriveInfo> driveInfos, IList<DriveSourceConfig> enabledDriveSourceConfigs) {
 			var validConfigs = enabledDriveSourceConfigs.Where(config => config.Name != null).ToList();
 
 			var volumeLabelMatches = MatchDrives(
@@ -40,7 +40,7 @@ namespace BMTP3.Core.Handlers {
 
 			return volumeLabelMatches.Concat(driveNameMatches).ToList();
 		}
-		private List<ConfigDrivePair> MatchDrives(IEnumerable<DriveInfo> driveInfos, IList<DriveSourceConfig> configs, Func<DriveInfo, string> driveKeySelector, Func<DriveSourceConfig, string> configKeySelector) {
+		private List<DriveBackupJob> MatchDrives(IEnumerable<DriveInfo> driveInfos, IList<DriveSourceConfig> configs, Func<DriveInfo, string> driveKeySelector, Func<DriveSourceConfig, string> configKeySelector) {
 			return driveInfos.GroupJoin(
 				configs,
 				driveKeySelector,
@@ -48,7 +48,7 @@ namespace BMTP3.Core.Handlers {
 				(driveInfo, matchedConfigs) => new { driveInfo, matchedConfigs }
 			).SelectMany(
 				group => group.matchedConfigs.Where(config => config != null),
-				(group, config) => new ConfigDrivePair(group.driveInfo, config)
+				(group, config) => new DriveBackupJob(group.driveInfo, config)
 			)
 			.ToList();
 		}

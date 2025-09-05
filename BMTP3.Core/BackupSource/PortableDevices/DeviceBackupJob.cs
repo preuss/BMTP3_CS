@@ -9,12 +9,11 @@ using MediaDevices;
 
 namespace BMTP3.Core.BackupSource.PortableDevices {
 	[DebuggerDisplay("MediaDevice: {MediaDevice.FriendlyName}, DeviceSourceConfig:{DeviceSourceConfig.Title}")]
-	public class ConfigDevicePair {
-		public ConfigDevicePair(MediaDevice mediaDevice, DeviceSourceConfig deviceSourceConfig) {
+	public class DeviceBackupJob : BackupJob{
+		public DeviceBackupJob(MediaDevice mediaDevice, DeviceSourceConfig deviceSourceConfig) :base(deviceSourceConfig) {
 			MediaDevice = mediaDevice;
-			DeviceSourceConfig = deviceSourceConfig;
 		}
-		public MediaDevice MediaDevice { get; set; }
-		public DeviceSourceConfig DeviceSourceConfig { get; set; }
+		public MediaDevice MediaDevice { get; }
+		public DeviceSourceConfig DeviceSourceConfig => (DeviceSourceConfig)SourceConfig;
 	}
 }

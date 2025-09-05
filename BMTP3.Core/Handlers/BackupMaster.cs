@@ -79,20 +79,20 @@ namespace BMTP3.Core.Handlers {
 				IEnumerable<MediaDevice> mediaDevices = storageHandler.GetMediaDevices();
 				printHandler.PrintDeviceDetails(mediaDevices);
 
-				IList<ConfigDevicePair> foundDevicesAndConfig = storageHandler.GetConfiguredDevices(mediaDevices, enabledDeviceSourceConfigs);
+				IList<DeviceBackupJob> foundDevicesAndConfig = storageHandler.GetConfiguredDevices(mediaDevices, enabledDeviceSourceConfigs);
 				printHandler.PrintFoundDevicesAndConfig(foundDevicesAndConfig);
 
 				IEnumerable<DriveInfo> foundDriveInfos = driveHandler.GetDriveInfos();
 				printHandler.PrintDriveDetails(foundDriveInfos);
 
-				IList<ConfigDrivePair> foundDrivesAndConfig = driveHandler.GetConfiguredDrives(foundDriveInfos, enabledDriveSourceConfigs);
+				IList<DriveBackupJob> foundDrivesAndConfig = driveHandler.GetConfiguredDrives(foundDriveInfos, enabledDriveSourceConfigs);
 				printHandler.PrintFoundDrivesAndConfig(foundDrivesAndConfig);
 
 				BackupDevices(storageHandler, backupHandler, printHandler, cancellationToken, foundDevicesAndConfig);
 				BackupDrives(driveHandler, backupHandler, printHandler, cancellationToken, foundDrivesAndConfig);
 			}
 		}
-		private void BackupDevices(IStorageHandler deviceHandler, IBackupHandler backupHandler, IPrintHandler printHandler, CancellationToken cancellationToken, IList<ConfigDevicePair> foundDevicesAndConfig) {
+		private void BackupDevices(IStorageHandler deviceHandler, IBackupHandler backupHandler, IPrintHandler printHandler, CancellationToken cancellationToken, IList<DeviceBackupJob> foundDevicesAndConfig) {
 			foreach(var devicePair in foundDevicesAndConfig) {
 				try {
 					DateTime backupStartDateTime = DateTime.Now;
@@ -117,7 +117,7 @@ namespace BMTP3.Core.Handlers {
 				}
 			}
 		}
-		private void BackupDrives(IDriveHandler driveHandler, IBackupHandler backupHandler, IPrintHandler printHandler, CancellationToken cancellationToken, IList<ConfigDrivePair> foundDrivesAndConfig) {
+		private void BackupDrives(IDriveHandler driveHandler, IBackupHandler backupHandler, IPrintHandler printHandler, CancellationToken cancellationToken, IList<DriveBackupJob> foundDrivesAndConfig) {
 			foreach(var drivePair in foundDrivesAndConfig) {
 				try {
 					DateTime backupStartDateTime = DateTime.Now;

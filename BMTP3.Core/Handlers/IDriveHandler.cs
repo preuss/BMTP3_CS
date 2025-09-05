@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace BMTP3.Core.Handlers {
 	public interface IDriveHandler {
 		IEnumerable<DriveInfo> GetDriveInfos();
-		IList<ConfigDrivePair> GetConfiguredDrives(IEnumerable<DriveInfo> driveInfos, IList<DriveSourceConfig> enabledDriveSourceConfigs);
+		IList<DriveBackupJob> GetConfiguredDrives(IEnumerable<DriveInfo> driveInfos, IList<DriveSourceConfig> enabledDriveSourceConfigs);
 
 	}
 }

@@ -28,8 +28,8 @@ namespace BMTP3.Core.Handlers {
 			this.cancellationToken = cancellationToken;
 		}
 
-		public void BackupDevices(IList<ConfigDevicePair> devicesToBackup) {
-			foreach(ConfigDevicePair pair in devicesToBackup) {
+		public void BackupDevices(IList<DeviceBackupJob> devicesToBackup) {
+			foreach(DeviceBackupJob pair in devicesToBackup) {
 				//Backup(pair.DeviceSourceConfig, pair.MediaDevice);
 				BackupDevice(pair.MediaDevice, pair.DeviceSourceConfig);
 				if(cancellationToken.IsCancellationRequested) {
@@ -39,8 +39,8 @@ namespace BMTP3.Core.Handlers {
 				}
 			}
 		}
-		public async Task BackupDevicesAsync(IList<ConfigDevicePair> devicesToBackup) {
-			foreach(ConfigDevicePair pair in devicesToBackup) {
+		public async Task BackupDevicesAsync(IList<DeviceBackupJob> devicesToBackup) {
+			foreach(DeviceBackupJob pair in devicesToBackup) {
 				await BackupDeviceAsync(pair, cancellationToken);
 				if(cancellationToken.IsCancellationRequested) {
 					Console.WriteLine("Backup afbrudt.");
@@ -546,7 +546,7 @@ namespace BMTP3.Core.Handlers {
 				device.Disconnect();
 			}
 		}
-		public async Task BackupDeviceAsync(ConfigDevicePair pair, CancellationToken cancellationToken) {
+		public async Task BackupDeviceAsync(DeviceBackupJob pair, CancellationToken cancellationToken) {
 			//IEnumerable<string> fileList = new List<string>();
 			//IEnumerable<string> fileList = new ConcurrentBag<string>();
 			ConcurrentQueue<BackupRecordInfo> fileDictionary = new ConcurrentQueue<BackupRecordInfo>();

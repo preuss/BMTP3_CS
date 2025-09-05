@@ -11,6 +11,6 @@ namespace BMTP3.Core.Handlers {
 	public interface IStorageHandler {
 		IEnumerable<MediaDevice> GetMediaDevices();
 		IEnumerable<MediaDevice> GetPrivateDevices();
-		IList<ConfigDevicePair> GetConfiguredDevices(IEnumerable<MediaDevice> mediaDevices, IList<DeviceSourceConfig> enabledDeviceSourceConfigs);
+		IList<DeviceBackupJob> GetConfiguredDevices(IEnumerable<MediaDevice> mediaDevices, IList<DeviceSourceConfig> enabledDeviceSourceConfigs);
 	}
 }

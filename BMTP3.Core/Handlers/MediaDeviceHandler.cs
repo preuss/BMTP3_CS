@@ -28,12 +28,12 @@ namespace BMTP3.Core.Handlers {
 			return _mediaDeviceService.GetPrivateDevices();
 		}
 
-		public IList<ConfigDevicePair> GetConfiguredDevices(IEnumerable<MediaDevice> mediaDevices, IList<DeviceSourceConfig> enabledDeviceSourceConfigs) {
+		public IList<DeviceBackupJob> GetConfiguredDevices(IEnumerable<MediaDevice> mediaDevices, IList<DeviceSourceConfig> enabledDeviceSourceConfigs) {
 			return mediaDevices.Join(
 				enabledDeviceSourceConfigs,
 				mediaDevice => mediaDevice.FriendlyName,
 				config => config.Name,
-				(mediaDevice, config) => new ConfigDevicePair(mediaDevice, config)
+				(mediaDevice, config) => new DeviceBackupJob(mediaDevice, config)
 			).ToList();
 		}
 	}

@@ -9,12 +9,11 @@ using System.Threading.Tasks;
 
 namespace BMTP3.Core.BackupSource.Drives {
 	[DebuggerDisplay("DriveInfo: {DriveInfo.Name}, DriveSourceConfig:{DriveSourceConfig.Title}")]
-	public class ConfigDrivePair {
-		public ConfigDrivePair(DriveInfo driveInfo, DriveSourceConfig driveSourceConfig) {
+	public class DriveBackupJob : BackupJob{
+		public DriveBackupJob(DriveInfo driveInfo, DriveSourceConfig driveSourceConfig): base(driveSourceConfig) {
 			DriveInfo = driveInfo;
-			DriveSourceConfig = driveSourceConfig;
 		}
-		public DriveInfo DriveInfo { get; set; }
-		public DriveSourceConfig DriveSourceConfig { get; set; }
+		public DriveInfo DriveInfo { get; }
+		public DriveSourceConfig DriveSourceConfig => (DriveSourceConfig)SourceConfig;
 	}
 }

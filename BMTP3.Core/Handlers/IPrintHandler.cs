@@ -20,7 +20,7 @@ namespace BMTP3.Core.Handlers {
 		void PrintSources(IList<ISourceConfig> sourceConfigs, SourceType sourceType, bool isEnabled);
 		void PrintDeviceDetails(IEnumerable<MediaDevice> mediaDevices);
 		void PrintDriveDetails(IEnumerable<DriveInfo> driveInfos);
-		void PrintFoundDevicesAndConfig(IList<ConfigDevicePair> foundDevices);
-		void PrintFoundDrivesAndConfig(IList<ConfigDrivePair> foundDevices);
+		void PrintFoundDevicesAndConfig(IList<DeviceBackupJob> foundDevices);
+		void PrintFoundDrivesAndConfig(IList<DriveBackupJob> foundDevices);
 	}
 }

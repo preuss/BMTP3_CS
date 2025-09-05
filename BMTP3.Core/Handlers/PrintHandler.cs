@@ -144,7 +144,7 @@ namespace BMTP3.Core.Handlers {
 			}
 			Console.WriteLine();
 		}
-		public void PrintFoundDevicesAndConfig(IList<ConfigDevicePair> foundDevices) {
+		public void PrintFoundDevicesAndConfig(IList<DeviceBackupJob> foundDevices) {
 			Console.WriteLine($"Alle MTP Devices som er fundet Config DeviceSource til (Count = {foundDevices.Count()}):");
 
 			// Find den maksimale længde for Title og Name
@@ -157,13 +157,13 @@ namespace BMTP3.Core.Handlers {
 				.DefaultIfEmpty(0)
 				.Max();
 
-			foreach(ConfigDevicePair pair in foundDevices) {
+			foreach(DeviceBackupJob pair in foundDevices) {
 				Console.WriteLine($"Media Device: {pair.MediaDevice.FriendlyName}");
 				Console.WriteLine($"\tConfig {pair.DeviceSourceConfig.GetSourceConfigType()} - Title: {(pair.DeviceSourceConfig.Title ?? string.Empty).PadRight(maxTitleLength)}, Name: {(pair.DeviceSourceConfig.Name ?? string.Empty).PadRight(maxNameLength)}");
 			}
 			Console.WriteLine();
 		}
-		public void PrintFoundDrivesAndConfig(IList<ConfigDrivePair> foundDevices) {
+		public void PrintFoundDrivesAndConfig(IList<DriveBackupJob> foundDevices) {
 			Console.WriteLine($"Alle Drives som er fundet Config DriveSource til (Count = {foundDevices.Count()}):");
 
 			// Find den maksimale længde for Title og Name
@@ -176,7 +176,7 @@ namespace BMTP3.Core.Handlers {
 				.DefaultIfEmpty(0)
 				.Max();
 
-			foreach(ConfigDrivePair pair in foundDevices) {
+			foreach(DriveBackupJob pair in foundDevices) {
 				Console.WriteLine($"Drive Info: {pair.DriveInfo.Name}");
 				Console.WriteLine($"\tConfig {pair.DriveSourceConfig.GetSourceConfigType()}");
 				Console.WriteLine($"\t\tTitle : {(pair.DriveSourceConfig.Title ?? string.Empty).PadRight(maxTitleLength)}");
