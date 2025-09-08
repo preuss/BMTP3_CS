@@ -51,7 +51,7 @@ namespace BMTP3.Core.Handlers {
 					var originalFileName = data["Settings"]["OriginalFileName"] ?? string.Empty;
 
 					FileInfo currentFile = new FileInfo(Path.Combine(sideCar.DirectoryName!, originalFileName));
-					IDictionary<HashType, string> hashes = HashCalculator.ComputeHashes(currentFile.FullName, [/*HashType.SHA3_512_FIPS202, HashType.SHA3_512_KECCAK, */HashType.SHA2_512, HashType.MD5_128, HashType.BLAKE3_256]);
+					IReadOnlyDictionary<HashType, string> hashes = HashCalculator.ComputeHashes(currentFile.FullName, [/*HashType.SHA3_512_FIPS202, HashType.SHA3_512_KECCAK, */HashType.SHA2_512, HashType.MD5_128, HashType.BLAKE3_256]);
 
 					if(hashes[HashType.SHA2_512] != sha3_512_hash_str) {
 						Console.WriteLine("Hash HashType.SHA3_512_FIPS202 not the same");

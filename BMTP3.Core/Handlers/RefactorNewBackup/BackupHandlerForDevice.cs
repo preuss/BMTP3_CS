@@ -515,7 +515,7 @@ namespace BMTP3.Core.Handlers.RefactorNewBackup {
 						BLAKE3_512,
 
 					];
-				IDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fullName, hashTypes);
+				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fullName, hashTypes);
 				string sha3_512_keccak_str = hashes[SHA3_512_KECCAK];
 				string sha3_512_fips202_str = hashes[SHA3_512_FIPS202];
 				string sha2_256_str = hashes[SHA2_256];

@@ -153,7 +153,7 @@ namespace BMTP3.Core.Handlers {
 			}
 			return shortenedPath;
 		}
-		public static IDictionary<HashCalculator.HashType, string> ComputeHashes(string filePath, IList<HashCalculator.HashType> hashTypes) {
+		public static IReadOnlyDictionary<HashCalculator.HashType, string> ComputeHashes(string filePath, IList<HashCalculator.HashType> hashTypes) {
 			HashCalculator hashCalculator = new HashCalculator();
 			return hashCalculator.ComputeHashes(filePath, hashTypes);
 		}
