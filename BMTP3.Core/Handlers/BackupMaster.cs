@@ -93,7 +93,7 @@ namespace BMTP3.Core.Handlers {
 			}
 		}
 		private void BackupDevices(IStorageHandler deviceHandler, IBackupHandler backupHandler, IPrintHandler printHandler, CancellationToken cancellationToken, IList<DeviceBackupJob> foundDevicesAndConfig) {
-			foreach(var deviceJob in foundDevicesAndConfig) {
+			foreach(DeviceBackupJob deviceJob in foundDevicesAndConfig) {
 				try {
 					DateTime backupStartDateTime = DateTime.Now;
 					backupHandler.PerformBackup(deviceJob.MediaDevice, deviceJob.DeviceSourceConfig, backupStartDateTime);
@@ -128,7 +128,7 @@ namespace BMTP3.Core.Handlers {
 			}
 		}
 		private void BackupDrives(IDriveHandler driveHandler, IBackupHandler backupHandler, IPrintHandler printHandler, CancellationToken cancellationToken, IList<DriveBackupJob> foundDrivesAndConfig) {
-			foreach(var driveJob in foundDrivesAndConfig) {
+			foreach(DriveBackupJob driveJob in foundDrivesAndConfig) {
 				DateTime backupStartDateTime = DateTime.Now;
 				PerformBackupJob(driveJob, backupHandler, cancellationToken);
 				try {
