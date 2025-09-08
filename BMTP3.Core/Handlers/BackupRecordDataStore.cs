@@ -10,49 +10,34 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-/// <summary>
-/// This class is used to store backup records.
-/// // TODO: I amd thinkging of refactor rename this to BackupRecordDataRespository, og keep Store I do not know
-/// </summary>
 namespace BMTP3.Core.Handlers {
+	/// <summary>
+	/// This class is used to store backup records.
+	/// // TODO: I amd thinkging of refactor rename this to BackupRecordDataRespository, or to keep Store I do not know
+	/// </summary>
 	internal class BackupRecordDataStore {
-		private readonly ISourceConfig sourceConfig;
-		private readonly IList<BackupRecordInfo> records;
+		private readonly BackupRecordDataStorePathResolver _pathResolver;
+		private readonly BackupRecordData _recordData;
 		public BackupRecordDataStore(ISourceConfig sourceConfig, IList<BackupRecordInfo> records) {
-			this.sourceConfig = sourceConfig;
-			this.records = records;
+			_pathResolver = new BackupRecordDataStorePathResolver(sourceConfig);
+			_recordData = new BackupRecordData(sourceConfig, records);
 		}
 		public void AddRecord(BackupRecordInfo record) {
-			records.Add(record);
+			_recordData.Records.Add(record);
 		}
-		public ISourceConfig SourceConfig { get { return sourceConfig; } }
-		public IList<BackupRecordInfo> Records { get { return records; } }
-		private static string GetFileNameFrom(ISourceConfig config) {
-			string fileName = $"Progress_{config.Title}_{config.Name}.json";
-			foreach(char invalidChar in Path.GetInvalidFileNameChars()) {
-				fileName = fileName.Replace(invalidChar.ToString(), string.Empty);
-			}
-			return fileName;
-		}
-		private static FileInfo GetDataStoreFileInfoUsing(ISourceConfig sourceConfig) {
-			string targetPath = sourceConfig.FolderOutput!;
-			string fileName = GetFileNameFrom(sourceConfig);
-			string fullPath = Path.Combine(targetPath, fileName);
-			return new FileInfo(fullPath);
-		}
-		public FileInfo GetDataStoreFileInfo() {
-			return GetDataStoreFileInfoUsing(sourceConfig);
-		}
+		public ISourceConfig SourceConfig => _recordData.SourceConfig;
+		public IList<BackupRecordInfo> Records => _recordData.Records;
+		public FileInfo GetDataStoreFileInfo() => _pathResolver.Resolve();
 		public FileInfo SaveDataStore() {
 			FileInfo dataStoreFileInfo = GetDataStoreFileInfo();
 			JsonConverter[] converters = new JsonConverter[] { new SourceTypeConverter(), new SourceConfigConverter() };
-			string json = JsonConvert.SerializeObject(this, Formatting.Indented, converters);
+			string json = JsonConvert.SerializeObject(_recordData, Formatting.Indented, converters);
 			File.WriteAllText(dataStoreFileInfo.FullName, json, Encoding.UTF8);
 			Console.WriteLine($"Fuld sti til filen: {dataStoreFileInfo.FullName}");
 			return dataStoreFileInfo;
 		}
 		public static BackupRecordDataStore LoadDataStore(ISourceConfig sourceConfig) {
-			FileInfo dataStoreFileInfo = GetDataStoreFileInfoUsing(sourceConfig);
+			FileInfo dataStoreFileInfo = new BackupRecordDataStorePathResolver(sourceConfig).Resolve();
 
 			if(!HasDataStore(sourceConfig)) {
 				throw new FileNotFoundException("The specified file does not exist.", dataStoreFileInfo.FullName);
@@ -61,17 +46,17 @@ namespace BMTP3.Core.Handlers {
 			string jsonData = File.ReadAllText(dataStoreFileInfo.FullName);
 
 			JsonConverter[] converters = new JsonConverter[] { new SourceTypeConverter(), new SourceConfigConverter() };
-			return JsonConvert.DeserializeObject<BackupRecordDataStore>(jsonData, converters) ?? throw new NullReferenceException("Problem with readin json file: " + dataStoreFileInfo.FullName);
+			BackupRecordData recordData = JsonConvert.DeserializeObject<BackupRecordData>(jsonData, converters) ?? throw new NullReferenceException("Problem with readin json file: " + dataStoreFileInfo.FullName);
+
+			return new BackupRecordDataStore(recordData.SourceConfig, recordData.Records);
 		}
 		public static BackupRecordDataStore LoadDataOrCreateDataStore(ISourceConfig sourceConfig, IList<BackupRecordInfo> backupRecords) {
-			FileInfo dataStoreFileInfo = GetDataStoreFileInfoUsing(sourceConfig);
-			if(HasDataStore(sourceConfig)) {
-				return LoadDataStore(sourceConfig);
-			}
-			return new BackupRecordDataStore(sourceConfig, backupRecords);
+			return HasDataStore(sourceConfig) 
+				? LoadDataStore(sourceConfig) 
+				: new BackupRecordDataStore(sourceConfig, backupRecords);
 		}
 		internal static bool HasDataStore(ISourceConfig sourceConfig) {
-			return GetDataStoreFileInfoUsing(sourceConfig).Exists;
+			return new BackupRecordDataStorePathResolver(sourceConfig).Resolve().Exists;
 		}
 	}
 }

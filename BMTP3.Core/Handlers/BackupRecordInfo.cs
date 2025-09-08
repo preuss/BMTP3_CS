@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
-	internal class BackupRecordInfo : IEquatable<BackupRecordInfo> {
+	public class BackupRecordInfo : IEquatable<BackupRecordInfo> {
 		public static readonly DateTime MinWin32FileTime = DateTime.FromFileTimeUtc(0);
 		public string PersistentUniqueId { get; set; }
 		public string Path { get; set; }
