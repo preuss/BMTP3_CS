@@ -97,7 +97,16 @@ namespace BMTP3.Core.Handlers {
 
 				// Calculate hashes by streaming the file
 				try {
-					using(FileStream stream = File.OpenRead(filePath)) {
+					// SequentialScan hint, improves performance with big sequential reads.
+					//using(FileStream stream = File.OpenRead(filePath)) {
+					using(FileStream stream = new FileStream(
+						      filePath,
+						      FileMode.Open,
+						      FileAccess.Read,
+						      FileShare.Read,
+						      bufferSize,
+						      FileOptions.SequentialScan)
+					) {
 						byte[] buffer = new byte[bufferSize];
 						int bytesRead;
 						while((bytesRead = stream.Read(buffer, 0, buffer.Length)) != 0) {

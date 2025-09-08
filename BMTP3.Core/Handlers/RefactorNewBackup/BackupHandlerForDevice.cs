@@ -509,6 +509,7 @@ namespace BMTP3.Core.Handlers.RefactorNewBackup {
 				List<HashCalculator.HashType> hashTypes = [
 						SHA3_512_KECCAK,
 						SHA3_512_FIPS202,
+						SHA2_512,
 						SHA2_256,
 						MD5_128,
 						BLAKE3_256,
@@ -518,6 +519,7 @@ namespace BMTP3.Core.Handlers.RefactorNewBackup {
 				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fullName, hashTypes);
 				string sha3_512_keccak_str = hashes[SHA3_512_KECCAK];
 				string sha3_512_fips202_str = hashes[SHA3_512_FIPS202];
+				string sha2_512_str = hashes[SHA2_512];
 				string sha2_256_str = hashes[SHA2_256];
 				string md5_128 = hashes[MD5_128];
 				string blake3_256_str = hashes[BLAKE3_256];
@@ -539,6 +541,8 @@ namespace BMTP3.Core.Handlers.RefactorNewBackup {
 				writer.WriteLine("[FileHash]");
 				writer.WriteLine("SHA3_512_KECCAK=" + sha3_512_keccak_str);
 				writer.WriteLine("SHA3_512_FIPS202=" + sha3_512_fips202_str);
+				writer.WriteLine("SHA3_512=" + sha3_512_fips202_str);
+				writer.WriteLine("SHA2_512=" + sha2_512_str);
 				writer.WriteLine("SHA2_256=" + sha2_256_str);
 				writer.WriteLine("MD5=" + md5_128);
 				writer.WriteLine("BLAKE3_256=" + blake3_256_str);
