@@ -93,17 +93,17 @@ namespace BMTP3.Core.Handlers {
 			}
 		}
 		private void BackupDevices(IStorageHandler deviceHandler, IBackupHandler backupHandler, IPrintHandler printHandler, CancellationToken cancellationToken, IList<DeviceBackupJob> foundDevicesAndConfig) {
-			foreach(var devicePair in foundDevicesAndConfig) {
+			foreach(var deviceJob in foundDevicesAndConfig) {
 				try {
 					DateTime backupStartDateTime = DateTime.Now;
-					backupHandler.PerformBackup(devicePair.MediaDevice, devicePair.DeviceSourceConfig, backupStartDateTime);
+					backupHandler.PerformBackup(deviceJob.MediaDevice, deviceJob.DeviceSourceConfig, backupStartDateTime);
 					// TODO: Implement using IBackupHandler
 					//IBackupHandler backupHandler = new BackupHandlerForDevice(devicePair.MediaDevice, devicePair.DeviceSourceConfig, backupStartDateTime);
 
 					//backupHandler.BackupDevices(foundDevicesAndConfig);
 					//backupHandler.BackupDevicesAsync(foundDevicesAndConfig).GetAwaiter().GetResult();
 					if(cancellationToken.IsCancellationRequested) {
-						logger.ZLogTrace($"Cancelled while backing up MediaDevice {devicePair.MediaDevice.FriendlyName}");
+						logger.ZLogTrace($"Cancelled while backing up MediaDevice {deviceJob.MediaDevice.FriendlyName}");
 						Console.WriteLine("Backup afbrudt.");
 						break;
 					}
@@ -112,19 +112,31 @@ namespace BMTP3.Core.Handlers {
 				} catch(OperationCanceledException e) {
 					Console.WriteLine($"Backup blev annulleret under operationen: {e.Message}");
 				} catch(COMException e) {
-					backupExceptionHandlerService.HandleCOMException(e, backupHandler.DetermineDeviceRootName(devicePair.MediaDevice));
-					throw new ComBackupException(backupHandler.DetermineDeviceRootName(devicePair.MediaDevice), e);
+					backupExceptionHandlerService.HandleCOMException(e, backupHandler.DetermineDeviceRootName(deviceJob.MediaDevice));
+					throw new ComBackupException(backupHandler.DetermineDeviceRootName(deviceJob.MediaDevice), e);
 				}
 			}
 		}
+		private void PerformBackupJob(DriveBackupJob driveJob, IBackupHandler backupHandler, CancellationToken cancellationToken) {
+			try {
+				DateTime backupStartDateTime = DateTime.Now;
+				backupHandler.BackupDrive(driveJob.DriveInfo, driveJob.DriveSourceConfig, backupStartDateTime);
+			} catch(BackupCanceledException e) {
+				Console.WriteLine($"Backup blev annulleret under operationen: {e.Operation}");
+			} catch(OperationCanceledException e) {
+				Console.WriteLine($"Backup blev annulleret under operationen: {e.Message}");
+			}
+		}
 		private void BackupDrives(IDriveHandler driveHandler, IBackupHandler backupHandler, IPrintHandler printHandler, CancellationToken cancellationToken, IList<DriveBackupJob> foundDrivesAndConfig) {
-			foreach(var drivePair in foundDrivesAndConfig) {
+			foreach(var driveJob in foundDrivesAndConfig) {
+				DateTime backupStartDateTime = DateTime.Now;
+				PerformBackupJob(driveJob, backupHandler, cancellationToken);
 				try {
-					DateTime backupStartDateTime = DateTime.Now;
-					backupHandler.BackupDrive(drivePair.DriveInfo, drivePair.DriveSourceConfig, backupStartDateTime);
+					
+					backupHandler.BackupDrive(driveJob.DriveInfo, driveJob.DriveSourceConfig, backupStartDateTime);
 
 					if(cancellationToken.IsCancellationRequested) {
-						logger.ZLogTrace($"Cancelled while backing up DriveInfo {drivePair.DriveInfo.Name}");
+						logger.ZLogTrace($"Cancelled while backing up DriveInfo {driveJob.DriveInfo.Name}");
 						Console.WriteLine("Backup afbrudt.");
 						break;
 					}
