@@ -72,7 +72,8 @@ namespace BMTP3.Core.Handlers {
 			} catch(COMException e) {
 				Console.WriteException(e);
 				_backupExceptionHandlerService.HandleCOMException(e, DetermineDeviceRootName(device));
-				throw new ComBackupException("An error occurred while validating and correcting the folder source path.", e);
+				// Provide a precise context for any COM failure (fail-fast).
+				throw new ComBackupException($"Error during device backup ({DetermineDeviceRootName(device)}).", e);
 			}
 		}
 		/// <summary>
@@ -106,7 +107,7 @@ namespace BMTP3.Core.Handlers {
 
 			BackupRecordDataStore backupDataStore = LoadBackupDataStore(config, allMediaInfoFiles, backupSourceDirectoryInfo, exceptionIfChanged: true);
 
-			DirectoryInfo? deleteableTempdirectoryInfo = null;
+			DirectoryInfo? deleteableTempDirectoryInfo = null;
 			try {
 				// Validate FolderOutput, where the output of files should be.
 				if(string.IsNullOrEmpty(config.FolderOutput)) {
@@ -125,7 +126,7 @@ namespace BMTP3.Core.Handlers {
 					BackupHelper.UpdateDirectoryTimestamp(backupSourceDirectoryInfo, targetDirectoryInfo);
 				}
 				DirectoryInfo tempDirectoryInfo = targetDirectoryInfo.CreateTempDirectory(BackupHelper.CreateTempDirectory(backupStartDateTime));
-				deleteableTempdirectoryInfo = tempDirectoryInfo; // Make sure to delete when done.
+				deleteableTempDirectoryInfo = tempDirectoryInfo; // Make sure to delete when done.
 
 				Console.WriteLine();
 				AnsiConsole.Progress()
@@ -164,10 +165,12 @@ namespace BMTP3.Core.Handlers {
 								overallTask.Increment(1);
 								continue;
 							}
+							
 							//var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{sourceMediaFileInfo.FullName}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
 							var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{BackupHelper.ShortenPath(sourceMediaFileInfo.FullName, 27)}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
 							//var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{sourceMediaFileInfo.Name}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
 							overallTask.Description = $"[green]Total Progress[/] - Downloading File: {sourceMediaFileInfo.Name}";
+							
 							Progress<FileProgressReport> fileProgress = new Progress<FileProgressReport>();
 							fileProgress.ProgressChanged += (sender, report) => {
 								downloadFileTask.Value(report.BytesRead);
@@ -191,15 +194,24 @@ namespace BMTP3.Core.Handlers {
 
 
 				// Delete the temp directory if it's empty
+				// Temp directory cleanup is deferred to finally to avoid duplicate IO.
 				BackupHelper.DeleteEmptyDirectoriesRecursive(tempDirectoryInfo.FullName);
 			} finally {
 				backupDataStore.SaveDataStore();
 
 				// Do this even when exception og cancel.
-				if(deleteableTempdirectoryInfo != null) {
-					if(deleteableTempdirectoryInfo.Exists) {
+				if(deleteableTempDirectoryInfo != null) {
+					if(deleteableTempDirectoryInfo.Exists) {
 						// Delete the temp directory if it's empty
-						BackupHelper.DeleteEmptyDirectoriesRecursive(deleteableTempdirectoryInfo.FullName);
+						// Do not let cleanup errors mask original failure (fail-fast philosophy still preserves root cause).
+						try {
+							bool removed = BackupHelper.DeleteEmptyDirectoriesRecursive(deleteableTempDirectoryInfo.FullName);
+							if(!removed) {
+								logger.ZLogDebug($"Temp directory not empty, kept: {deleteableTempDirectoryInfo.FullName}");
+							}
+						} catch(Exception ex) {
+							logger.ZLogWarning(ex, $"Could not clean temp directory: {deleteableTempDirectoryInfo.FullName}");
+						}
 					}
 				}
 			}
@@ -498,18 +510,21 @@ namespace BMTP3.Core.Handlers {
 					template.AddVariable("count", counter);
 
 					string testNextCountPath = template.Replace(filePatternIfExistTargetFilePath);
+
+					// Found a file path+name that does not exist.
 					if(!File.Exists(testNextCountPath)) {
-						newTargetFilePath = template.Replace(filePatternIfExistTargetFilePath);
+						newTargetFilePath = testNextCountPath;
 						newTargetFileInfo = new FileInfo(newTargetFilePath);
 						break;
 					}
 
 					fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
 					// Files are the same and we do not copy this file.
-					if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
-						// Delete temp file and try next file.
+					if(fileComparer.Compare(targetTempFileInfo.FullName, testNextCountPath)) {
+						// Cleanup by deleteing temp tempfile
 						targetTempFileInfo.Delete();
-						return false;
+						// Identical file already present under a counted name -> treat as handled (return true)
+						return true;
 					}
 
 				}
@@ -567,18 +582,21 @@ namespace BMTP3.Core.Handlers {
 					template.AddVariable("count", counter);
 
 					string testNextCountPath = template.Replace(filePatternIfExistTargetFilePath);
+
+					// Found a file path+name that does not exist.
 					if(!File.Exists(testNextCountPath)) {
-						newTargetFilePath = template.Replace(filePatternIfExistTargetFilePath);
+						newTargetFilePath = testNextCountPath;
 						newTargetFileInfo = new FileInfo(newTargetFilePath);
 						break;
 					}
 
 					fileComparer = new ReadFileInChunksAndCompareVector(8 * 1024);
 					// Files are the same and we do not copy this file.
-					if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
-						// Delete temp file and try next file.
+					if(fileComparer.Compare(targetTempFileInfo.FullName, testNextCountPath)) {
+						// Cleanup by deleteing temp tempfile
 						targetTempFileInfo.Delete();
-						return false;
+						// Identical file already present under a counted name -> treat as handled (return true)
+						return true;
 					}
 
 				}
@@ -666,6 +684,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				writer.WriteLine("[FileHash]");
 				writer.WriteLine("SHA3_512_KECCAK=" + sha3_512_keccak_str);
 				writer.WriteLine("SHA3_512_FIPS202=" + sha3_512_fips202_str);
+				writer.WriteLine("SHA3_512=" + sha3_512_fips202_str);
 				writer.WriteLine("SHA2_256=" + sha2_256_str);
 				writer.WriteLine("MD5=" + md5_128);
 				writer.WriteLine("BLAKE3_256=" + blake3_256_str);
@@ -737,6 +756,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				writer.WriteLine("[FileHash]");
 				writer.WriteLine("SHA3_512_KECCAK=" + sha3_512_keccak_str);
 				writer.WriteLine("SHA3_512_FIPS202=" + sha3_512_fips202_str);
+				writer.WriteLine("SHA3_512=" + sha3_512_fips202_str);
 				writer.WriteLine("SHA2_256=" + sha2_256_str);
 				writer.WriteLine("MD5=" + md5_128);
 				writer.WriteLine("BLAKE3_256=" + blake3_256_str);
@@ -1008,7 +1028,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 
 					if(exceptionIfChanged) {
 						Console.MarkupLine($"You have [bold]more[/] files on device than Resume JSON: [green bold]{added.Count}[/]");
-						Console.MarkupLine($"You have [bold]less[/] files on device than Resume JSON: [bold]{added.Count}[/]");
+						Console.MarkupLine($"You have [bold]less[/] files on device than Resume JSON: [bold]{removed.Count}[/]");
 						logger.ZLogInformation($"You have an updated device, please delete file: {progressTracker.GetDataStoreFileInfo().FullName}");
 						throw new Exception("You have an updated device, please delete file: " + progressTracker.GetDataStoreFileInfo().FullName);
 					} else {
@@ -1048,7 +1068,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 
 					if(exceptionIfChanged) {
 						Console.MarkupLine($"You have [bold]more[/] files on device than Resume JSON: [green bold]{added.Count}[/]");
-						Console.MarkupLine($"You have [bold]less[/] files on device than Resume JSON: [bold]{added.Count}[/]");
+						Console.MarkupLine($"You have [bold]less[/] files on device than Resume JSON: [bold]{removed.Count}[/]");
 						logger.ZLogInformation($"You have an updated device, please delete file: {progressTracker.GetDataStoreFileInfo().FullName}");
 						throw new Exception("You have an updated device, please delete file: " + progressTracker.GetDataStoreFileInfo().FullName);
 					} else {
