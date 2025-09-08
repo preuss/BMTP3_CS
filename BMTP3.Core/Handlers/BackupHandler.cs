@@ -1022,7 +1022,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 						.Where(br => !pendingFileIds.Contains(br.GeneratedId))
 						.ToList();
 
-					var removedUsingGeneratedId = allFiles
+					var removedUsingGeneratedId = progressTracker.Records
 						.Where(br => !currentFileIds.Contains(br.GeneratedId))
 						.ToList();
 
@@ -1062,7 +1062,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 						.Where(br => !pendingFileIds.Contains(br.GeneratedId))
 						.ToList();
 
-					var removedUsingGeneratedId = allFiles
+					var removedUsingGeneratedId = progressTracker.Records
 						.Where(br => !currentFileIds.Contains(br.GeneratedId))
 						.ToList();
 
