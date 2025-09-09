@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
-	[SupportedOSPlatform("windows7.0")]
+	[SupportedOSPlatform("windows10.0")]
 	public class MediaDeviceHandler : IStorageHandler {
 		private IMediaDeviceService _mediaDeviceService;
 		private CancellationTokenGenerator _cancellationTokenGenerator;

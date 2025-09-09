@@ -10,7 +10,7 @@ using System.Runtime.Versioning;
 using ZLogger;
 
 namespace BMTP3.Core.Configuration {
-	[SupportedOSPlatform("windows7.0")]
+	[SupportedOSPlatform("windows10.0")]
 	internal class StartUp {
 		private readonly CancellationTokenSource _cancellationTokenSource;
 		private readonly IConfiguration _configuration;

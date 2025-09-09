@@ -14,7 +14,7 @@ using ZLogger;
 using SystemConsole = System.Console;
 
 namespace BMTP3.Core {
-	[SupportedOSPlatform("windows7.0")]
+	[SupportedOSPlatform("windows10.0")]
 	internal class Program {
 		public static readonly DateTime MinWin32FileTime = DateTime.FromFileTimeUtc(0);
 
@@ -81,7 +81,7 @@ namespace BMTP3.Core {
 					ConfigurationHandler configHandler = new ConfigurationHandler(
 						args,
 						configuration,
-						serviceProvider.GetService<BackupSettingsReader>()!
+						serviceProvider.GetRequiredService<BackupSettingsReader>()!
 					);
 					Console.MarkupLine($"Config File brugt: [green]{configHandler.BackupSettings?.BackupConfigFile}[/]");
 

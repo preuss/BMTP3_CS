@@ -22,7 +22,7 @@ using BMTP3.Core.Configuration;
 using BMTP3.Core.Exceptions;
 
 namespace BMTP3.Core.Handlers {
-	[SupportedOSPlatform("windows7.0")]
+	[SupportedOSPlatform("windows10.0")]
 	public class BackupHandler : IBackupHandler {
 		public static readonly DateTime MinWin32FileTime = DateTime.MinValue;
 

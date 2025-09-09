@@ -14,7 +14,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
-	[SupportedOSPlatform("windows7.0")]
+	[SupportedOSPlatform("windows10.0")]
 	public class PrintHandler : IPrintHandler {
 		private readonly IAnsiConsole Console;
 		private CancellationToken? _cancellationToken;

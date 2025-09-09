@@ -27,7 +27,7 @@ namespace BMTP3.Core.Handlers {
 			}
 		}
 
-		[SupportedOSPlatform("windows7.0")]
+		[SupportedOSPlatform("windows10.0")]
 		public void HandleCOMException(COMException e, MediaDevice mediaDevice) {
 			HandleCOMException(e, mediaDevice.FriendlyName);
 		}

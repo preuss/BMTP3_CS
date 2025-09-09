@@ -7,7 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Services {
-	[SupportedOSPlatform("windows7.0")]
+	[SupportedOSPlatform("windows10.0")]
 	public class MediaDeviceServiceProd : IMediaDeviceService {
 		public MediaDeviceServiceProd() {
 		}

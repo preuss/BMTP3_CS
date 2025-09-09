@@ -2,7 +2,7 @@
 using System.Runtime.Versioning;
 
 namespace BMTP3.Core.Handlers {
-	[SupportedOSPlatform("windows7.0")]
+	[SupportedOSPlatform("windows10.0")]
 	public class BackupHelper {
 		private bool IsInvalidDateTime(DateTime? sourceDateTime) {
 			return !IsValidDateTime(sourceDateTime);
