@@ -11,7 +11,7 @@ using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text;
 using ZLogger;
-using SConsole = System.Console;
+using SystemConsole = System.Console;
 
 namespace BMTP3.Core {
 	[SupportedOSPlatform("windows7.0")]
@@ -34,7 +34,7 @@ namespace BMTP3.Core {
 
 		static Program() {
 			// Set console output encoding to UTF-8
-			SConsole.OutputEncoding = Encoding.UTF8;
+			SystemConsole.OutputEncoding = Encoding.UTF8;
 
 			Console = AnsiConsole.Create(new AnsiConsoleSettings());
 
@@ -54,10 +54,14 @@ namespace BMTP3.Core {
 			foreach(var x in args) {
 				Console.WriteLine(x);
 			}
-			//args = ["--verify", "iPhone.toml"];
-			args = ["--backup", "iPhone.toml"];
-			//args = ["--verifyPath", ];
-
+#if DEBUG
+			// Only inject test arguments if none provided.
+			if(args.Length == 0) {
+				//args = ["--verify", "iPhone.toml"];
+				args = ["--backup", "iPhone.toml"];
+				//args = ["--verifyPath", ];
+			}
+#endif
 
 			await Task.Delay(1);
 
@@ -65,11 +69,11 @@ namespace BMTP3.Core {
 
 			globalLogger.ZLogCritical($"Application is starting.");
 
-			Stopwatch stopwatch = new Stopwatch();
-			stopwatch.Start();
+			Stopwatch stopwatch = Stopwatch.StartNew();
 
 			Logger.ZLogTrace($"Start application");
 			Console.WriteLine("Start application");
+			int exitCode = ExitCodes.UnhandledError;
 			using(cts) {
 				ConsoleEventHandler.Initialize(cts);
 
@@ -82,50 +86,55 @@ namespace BMTP3.Core {
 					Console.MarkupLine($"Config File brugt: [green]{configHandler.BackupSettings?.BackupConfigFile}[/]");
 
 					RunCommand command = configHandler.Arguments.GetRunCommand();
-					Console.WriteLine($"Du har lavet RunCommand: {command}");
+					Console.WriteLine($"RunCommand: {command}");
 
 					Console.WriteLine("AppSettings -> Backup: " + configHandler.Arguments.AppSettingsArguments.Backup);
 					Console.WriteLine("Combined    -> Backup: " + configHandler.Arguments.CombinedArguments.Backup);
 					Console.WriteLine("CommandLine -> Backup: " + configHandler.Arguments.CommandLineArguments.Backup);
 
-					return ExecuteCommand(command, configHandler, serviceProvider);
+					exitCode = ExecuteCommand(command, configHandler, serviceProvider);
 				} catch(FileNotFoundException e) {
+					exitCode = ExitCodes.FileNotFound;
 					Console.WriteLine(e.Message);
-					Console.WriteLine("Exiting program");
 				} catch(Exception e) {
+					exitCode = ExitCodes.FatalError;
 					Console.WriteException(e);
+				} finally {
+					stopwatch.Stop();
+					Logger.ZLogTrace($"Stop application");
+					globalLogger.ZLogInformation($"Application finished in {stopwatch.Elapsed} with exit code {exitCode}");
 				}
 			}
-			return 0;
+			return exitCode;
 		}
 		private static int ExecuteCommand(RunCommand command, ConfigurationHandler configHandler, IServiceProvider serviceProvider) {
 			if(configHandler.Arguments.HasTest) {
 				Console.WriteLine("Test er ikke implementeret endnu.");
-				return 0;
+				return ExitCodes.Success;
 			}
 			switch(command) {
 				case RunCommand.UNKNOWN:
 					Console.WriteLine("Der er sket et ukendt fejl.");
-					return -10;
+					return ExitCodes.UnknownCommand;
 				case RunCommand.ERROR:
 					Console.WriteLine("Der er sket en fejl.");
-					return -1;
+					return ExitCodes.GenericError;
 				case RunCommand.HELP:
 					Console.WriteLine("Du har kaldt hjælp.");
-					return 0;
+					return ExitCodes.Success;
 				case RunCommand.BACKUP:
 					Console.MarkupLine("Du har valgt [bold invert]BACKUP[/].");
 					Console.WriteLine($"Med default settings : {configHandler.Arguments.CombinedArguments.DefaultConfigurationFile}");
 					Console.WriteLine($"Med valgt settings   : {configHandler.Arguments.CombinedArguments.Backup}");
 					BackupMaster backupMaster = serviceProvider.GetService<BackupMaster>()!;
 					backupMaster.StartBackup(configHandler);
-					return 0;
+					return ExitCodes.Success;
 				case RunCommand.VERIFY:
 					Console.MarkupLine("Du har valgt [bold invert]VERIFY[/] en BACKUP.");
 					Console.WriteLine($"Med default settings : {configHandler.Arguments.CombinedArguments.DefaultConfigurationFile}");
 					Console.WriteLine($"Med valgt settings   : {configHandler.Arguments.CombinedArguments.Verify}");
 					Console.WriteLine("Desværre lukker jeg nu da jeg ikke har implementeret kaldet endnu.");
-					return 0;
+					return ExitCodes.Success;
 				case RunCommand.VERIFY_PATH:
 					Console.MarkupLine("Du har valgt [bold invert]VERIFY_PATH[/] til en backup folder");
 					Console.WriteLine($"Med verify path   : {configHandler.Arguments.CombinedArguments.VerifyPath}");
@@ -134,13 +143,12 @@ namespace BMTP3.Core {
 						Console.WriteLine("VerifyBackups");
 						VerifyBackupHandler verifyBackupHandler = serviceProvider.GetService<VerifyBackupHandler>()!;
 						verifyBackupHandler.VerifyBackup(configHandler.Arguments.CombinedArguments.VerifyPath!);
-						return 0;
 					}
-					return 0;
+					return ExitCodes.Success;
 				default:
 					Console.WriteLine("" + configHandler.Arguments);
 					Console.WriteLine("Wrong line");
-					return -1;
+					return ExitCodes.GenericError;
 			}
 		}
 
@@ -155,5 +163,13 @@ namespace BMTP3.Core {
 //						services.Add(service);
 					//}
 				});
+	}
+	internal static class ExitCodes {
+		public const int Success = 0;           // Normal completion
+		public const int UnknownCommand = -10;  // Argument parsing produced unknown
+		public const int GenericError = -1;     // Generic recoverable error
+		public const int FileNotFound = -2;     // Required file missing
+		public const int FatalError = -99;      // Unhandled exception
+		public const int UnhandledError = -100; // Initialization or unexpected failure
 	}
 }
