@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading.Tasks;
 using BMTP3.Core.CompareFiles;
 
-namespace BMTP3.Core {
+namespace BMTP3.Core.Testing.Manual {
 	internal class Program2_TestCompare {
 		public static void Main_(string[] args) {
 			string firstCompareFolder = @"c:\Backup\Backup\iPhone14\";
