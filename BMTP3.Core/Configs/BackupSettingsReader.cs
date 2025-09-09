@@ -73,7 +73,7 @@ namespace BMTP3.Core.Configs {
 					}
 
 					//return TomlNamingHelper2.PascalCaseToCamelCase(name);
-					return TomlNamingHelper.PascalToSnakeCase(name);
+					return TomlNamingHelper2.PascalCaseToSnakeCase(name);
 				},
 				//				ConvertFieldName = TomlNamingHelper2.PascalCaseToCamelCase,
 				//				ConvertFieldName = Tomlyn.Helpers.TomlNamingHelper.PascalToSnakeCase,
