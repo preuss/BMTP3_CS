@@ -26,15 +26,23 @@ namespace BMTP3.Core.Configuration {
 		}
 
 		public IServiceProvider ConfigureServices(IConfiguration configuration, CancellationTokenSource cancellationTokenSource, IServiceCollection services) {
-			services.AddSingleton(_configuration);
-			services.AddSingleton(_cancellationTokenSource);
-			services.AddSingleton((service) => AnsiConsole.Console);
+			services.AddSingleton<IConfiguration>(_configuration);
+			services.AddSingleton<CancellationTokenSource>(_cancellationTokenSource);
+			services.AddSingleton<IAnsiConsole>((service) => AnsiConsole.Console);
+
+			services.AddSingleton<CancellationTokenGenerator>(
+				sp => new CancellationTokenGenerator(sp.GetRequiredService<CancellationTokenSource>())
+			);
 
 			// Add logging
 			services.AddLogging(builder => {
 				builder.AddZLoggerConsole(); // Add ZLogger
 				builder.AddConsole(); // Add standard console-logging as fallback
 			});
+
+			services.AddSingleton<CancellationTokenGenerator>(
+				sp => new CancellationTokenGenerator(sp.GetRequiredService<CancellationTokenSource>())
+			);
 
 			ConfigureBackupServices(services);
 			ConfigureFileComparisonServices(services);
@@ -53,7 +61,7 @@ namespace BMTP3.Core.Configuration {
 			services.AddSingleton<BackupMaster>();
 		}
 		private void ConfigureFileComparisonServices(IServiceCollection services) {
-			// Best performance with 512 * 1024
+			// Testet: Best performance with 512 * 1024
 			int bufferSize = _configuration.GetValue("BufferSizeInKBForFileComparison", 8) * 1024;
 			services.AddSingleton<FileComparer>((sp) => new ReadFileInChunksAndCompareSequenceEqual(bufferSize));
 			services.AddSingleton<HashCalculator>();
