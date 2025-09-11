@@ -3,12 +3,7 @@ using BMTP3.Core.Configs;
 using BMTP3.Core.Configuration;
 using BMTP3.Core.Services;
 using MediaDevices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Versioning;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
 	[SupportedOSPlatform("windows10.0")]
@@ -35,15 +30,20 @@ namespace BMTP3.Core.Handlers {
 		///  - N:1 (multiple devices sharing same FriendlyName—rare, but not blocked)
 		/// </summary>
 		public IList<DeviceBackupJob> GetConfiguredDevices(IEnumerable<MediaDevice> mediaDevices, IList<DeviceSourceConfig> enabledDeviceSourceConfigs) {
-			List<DeviceBackupJob> jobs = new();
-			if(mediaDevices == null) {
-				return jobs;
-			}
-			if(enabledDeviceSourceConfigs == null || enabledDeviceSourceConfigs.Count == 0) {
-				return jobs;
+			ArgumentNullException.ThrowIfNull(mediaDevices, nameof(mediaDevices));
+			ArgumentNullException.ThrowIfNull(enabledDeviceSourceConfigs, nameof(enabledDeviceSourceConfigs));
+
+			if(enabledDeviceSourceConfigs.Where(config => !config.Enabled).Any()) {
+				throw new InvalidOperationException("GetConfiguredDevices should only be called with enabled DeviceSourceConfigs.");
 			}
 
-			static string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim();
+			List<DeviceBackupJob> jobs = new();
+			if(mediaDevices.Count() == 0) {
+				return jobs;
+			}
+			if(enabledDeviceSourceConfigs.Count == 0) {
+				return jobs;
+			}
 
 			// Filter configs with a usable Name (empty names cannot match).
 			List<DeviceSourceConfig> configs = enabledDeviceSourceConfigs
@@ -58,6 +58,8 @@ namespace BMTP3.Core.Handlers {
 			// Optional diagnostics (set to false if you do not want console noise)
 			const bool logDuplicateConfigNames = true;
 			if(logDuplicateConfigNames) {
+				static string Normalize(string? s) => string.IsNullOrWhiteSpace(s) ? string.Empty : s.Trim();
+
 				var duplicates = configs
 					.GroupBy(c => Normalize(c.Name), StringComparer.OrdinalIgnoreCase)
 					.Where(g => g.Count() > 1)
