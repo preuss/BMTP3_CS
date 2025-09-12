@@ -361,15 +361,16 @@ namespace BMTP3.Core.Handlers {
 								downloadFileTask.Value(report.BytesRead);
 							};
 
+							DirectoryInfo sourceRootDirectoryInfo = new DirectoryInfo(config.FolderSource!);
 							bool isSaved;
 							if(!config.HasFilePattern()) {
 								const bool addSideCarFile = false;
-								isSaved = BackupFromPath(backupStartDateTime, drive, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
+								isSaved = BackupFromPath(backupStartDateTime, drive, sourceRootDirectoryInfo, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
 							} else {
 								string filePattern = config.FilePattern!;
 								string filePatternIfExist = config.FilePatternIfExist!;
 
-								isSaved = BackupFromPathWithFilePattern(backupStartDateTime, drive, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
+								isSaved = BackupFromPathWithFilePattern(backupStartDateTime, drive, sourceRootDirectoryInfo, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
 							}
 							pendingFileInfo.IsSaved = isSaved;
 							overallTask.Increment(1);
@@ -431,7 +432,7 @@ namespace BMTP3.Core.Handlers {
 			}
 			return true;
 		}
-		bool BackupFromPath(DateTime backupStartDateTime, DriveInfo driveInfo, FileInfo sourceFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, IProgress<FileProgressReport> fileProgress) {
+		bool BackupFromPath(DateTime backupStartDateTime, DriveInfo driveInfo, DirectoryInfo sourceRootDirectoryInfo, FileInfo sourceFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, IProgress<FileProgressReport> fileProgress) {
 			double kilobytes = sourceFileInfo.Length / 1024.0;
 			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceFileInfo, fileProgress);
 
@@ -447,7 +448,8 @@ namespace BMTP3.Core.Handlers {
 			DateTime oldestDateTime = BackupHelper.FindEarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
 			string fileName = targetTempFileInfo.Name;
 
-			string newTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, sourceFileInfo.Name);
+			string relativePath = Path.GetRelativePath(sourceRootDirectoryInfo.FullName, sourceFileInfo.FullName);
+			string newTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, relativePath);
 
 			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
 
@@ -554,7 +556,7 @@ namespace BMTP3.Core.Handlers {
 
 			return true;
 		}
-		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, DriveInfo driveInfo, FileInfo sourceFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress) {
+		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, DriveInfo driveInfo, DirectoryInfo sourceRootDirectoryInfo, FileInfo sourceFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress) {
 			double kilobytes = sourceFileInfo.Length / 1024.0;
 			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceFileInfo, fileProgress);
 
@@ -570,8 +572,9 @@ namespace BMTP3.Core.Handlers {
 			int counter = 0;
 			Template template = CreateTemplateFrom(counter, fileName, oldestDateTime);
 
-			string filePatternTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, filePattern);
-			string filePatternIfExistTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, filePatternIfExist);
+			string relativePath = Path.GetRelativePath(sourceRootDirectoryInfo.FullName, sourceFileInfo.FullName);
+			string filePatternTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, Path.Combine(relativePath, filePattern));
+			string filePatternIfExistTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, Path.Combine(relativePath, filePatternIfExist)); 
 
 			string newTargetFilePath = template.Replace(filePatternTargetFilePath);
 			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
