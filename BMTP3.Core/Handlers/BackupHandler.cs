@@ -216,9 +216,18 @@ namespace BMTP3.Core.Handlers {
 				}
 			}
 		}
-
+		private static void EnsureOutputDirectoryExists(ISourceConfig config) {
+			if(string.IsNullOrWhiteSpace(config.FolderOutput)) {
+				throw new ArgumentNullException(nameof(config.FolderOutput), "FolderOutput er null eller tom.");
+			}
+			if(config.FolderOutput.IndexOfAny(Path.GetInvalidPathChars()) >= 0) {
+				throw new ArgumentException($"FolderOutput Path has invalid chars = '{config.FolderOutput}'.", nameof(config.FolderOutput));
+			}
+			Directory.CreateDirectory(config.FolderOutput); // Idempotent
+		}
 		public void BackupDrive(DriveInfo drive, DriveSourceConfig config, DateTime backupStartDateTime) {
 			Console.WriteLine($"Backing up drive: {drive.Name}");
+			EnsureOutputDirectoryExists(config);
 
 			List<BackupRecordInfo> allDriveFiles = new List<BackupRecordInfo>();
 			IDictionary<string, FileInfo> uniqueIdFileInfos;
@@ -286,7 +295,7 @@ namespace BMTP3.Core.Handlers {
 			}
 
 			// Sort for better backup progress.
-			allDriveFiles.Sort((a, b) => string.Compare(a.Path, b.Path));
+			allDriveFiles.Sort((a, b) => string.Compare(a.Path, b.Path, StringComparison.Ordinal));
 			BackupRecordDataStore backupProgressTracker = LoadProgress(config, allDriveFiles, exceptionIfChanged: true);
 
 			try {
