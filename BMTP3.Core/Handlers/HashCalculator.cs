@@ -1,4 +1,5 @@
 using Blake3;
+using BMTP3.Core.Handlers.Crypto;
 using Newtonsoft.Json.Linq;
 using Org.BouncyCastle.Crypto.Digests;
 using System;
@@ -62,20 +63,18 @@ namespace BMTP3.Core.Handlers {
 				foreach(HashType hashType in requestedHashTypes) {
 					switch(hashType) {
 						case HashType.SHA3_512_FIPS202:
-							hashAlgorithms[hashType] = new OnixLabs.Security.Cryptography.Sha3Hash512();
-							//hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3512();
+							hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3512();
 							break;
 						case HashType.SHA3_256_FIPS202:
-							hashAlgorithms[hashType] = new OnixLabs.Security.Cryptography.Sha3Hash256();
-							//hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3256();
+							hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3256();
 							break;
 						case HashType.SHA3_512_KECCAK:
 							// Legacy Keccak-512 (different padding)
-							hashAlgorithms[hashType] = new Sha3_512_Keccak_HashAlgorithm();
+							hashAlgorithms[hashType] = new BouncyCastleSha3_512_Keccak();
 							break;
 						case HashType.SHA3_256_KECCAK:
 							// Legacy Keccak-256 (different padding)
-							hashAlgorithms[hashType] = new Sha3_256_Keccak_HashAlgorithm();
+							hashAlgorithms[hashType] = new BouncyCastleSha3_256_Keccak();
 							break;
 						case HashType.SHA2_256:
 							hashAlgorithms[hashType] = SHA256.Create();
@@ -166,57 +165,7 @@ namespace BMTP3.Core.Handlers {
 		private static string ToHex(ReadOnlySpan<byte> bytes) {
 			return bytes.Length == 0 ? string.Empty : Convert.ToHexString(bytes).ToLowerInvariant();
 		}
-		private sealed class Sha3_512_Keccak_HashAlgorithm : HashAlgorithm {
-			private readonly KeccakDigest _digest = new(512);
-			private bool _finalized;
-			private byte[]? _hash;
-			public Sha3_512_Keccak_HashAlgorithm() { HashSizeValue = 512; }
-			public override void Initialize() {
-				_digest.Reset();
-				_finalized = false;
-				_hash = null;
-			}
-			protected override void HashCore(byte[] array, int ibStart, int cbSize) {
-				if(cbSize > 0) {
-					_digest.BlockUpdate(array, ibStart, cbSize);
-				}
-			}
-			protected override byte[] HashFinal() {
-				if(_finalized && _hash != null) {
-					return _hash;
-				}
-				_hash = new byte[_digest.GetDigestSize()];
-				_digest.DoFinal(_hash, 0);
-				_finalized = true;
-				return _hash;
-			}
-		}
 
-		private sealed class Sha3_256_Keccak_HashAlgorithm : HashAlgorithm {
-			private readonly KeccakDigest _digest = new(256);
-			private bool _finalized;
-			private byte[]? _hash;
-			public Sha3_256_Keccak_HashAlgorithm() { HashSizeValue = 256; }
-			public override void Initialize() {
-				_digest.Reset();
-				_finalized = false;
-				_hash = null;
-			}
-			protected override void HashCore(byte[] array, int ibStart, int cbSize) {
-				if(cbSize > 0) {
-					_digest.BlockUpdate(array, ibStart, cbSize);
-				}
-			}
-			protected override byte[] HashFinal() {
-				if(_finalized && _hash != null) {
-					return _hash;
-				}
-				_hash = new byte[_digest.GetDigestSize()];
-				_digest.DoFinal(_hash, 0);
-				_finalized = true;
-				return _hash;
-			}
-		}
 		public enum HashType {
 			SHA3_512_FIPS202,
 			SHA3_256_FIPS202,
