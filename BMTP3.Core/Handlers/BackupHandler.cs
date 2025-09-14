@@ -165,27 +165,28 @@ namespace BMTP3.Core.Handlers {
 								overallTask.Increment(1);
 								continue;
 							}
-							
+
 							//var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{sourceMediaFileInfo.FullName}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
 							var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{BackupHelper.ShortenPath(sourceMediaFileInfo.FullName, 27)}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
 							//var downloadFileTask = ctx.AddTask($"[green]Downloading file: [/][white]{sourceMediaFileInfo.Name}[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = sourceMediaFileInfo.Length });
 							overallTask.Description = $"[green]Total Progress[/] - Downloading File: {sourceMediaFileInfo.Name}";
-							
+
 							Progress<FileProgressReport> fileProgress = new Progress<FileProgressReport>();
 							fileProgress.ProgressChanged += (sender, report) => {
 								downloadFileTask.Value(report.BytesRead);
 							};
 
 							bool isSaved;
+							bool addSideCarFile = true;
 							if(!config.HasFilePattern()) {
 								//throw new InvalidOperationException("Har ikke File Pattern, og mangler at implementere BackupFromPath(device, fromPath, targetDirectoryPath, tempDirectoryInfo);");
-								const bool addSideCarFile = false;
+								addSideCarFile = false;
 								isSaved = BackupFromPath(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
 							} else {
 								string filePattern = config.FilePattern!;
 								string filePatternIfExist = config.FilePatternIfExist!;
 
-								isSaved = BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
+								isSaved = BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, filePattern, filePatternIfExist, fileProgress);
 							}
 							pendingFileInfo.IsSaved = isSaved;
 							overallTask.Increment(1);
@@ -363,14 +364,14 @@ namespace BMTP3.Core.Handlers {
 
 							DirectoryInfo sourceRootDirectoryInfo = new DirectoryInfo(config.FolderSource!);
 							bool isSaved;
+							bool addSideCarFile = true;
 							if(!config.HasFilePattern()) {
-								const bool addSideCarFile = false;
+								addSideCarFile = false;
 								isSaved = BackupFromPath(backupStartDateTime, drive, sourceRootDirectoryInfo, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
 							} else {
 								string filePattern = config.FilePattern!;
 								string filePatternIfExist = config.FilePatternIfExist!;
-
-								isSaved = BackupFromPathWithFilePattern(backupStartDateTime, drive, sourceRootDirectoryInfo, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
+								isSaved = BackupFromPathWithFilePattern(backupStartDateTime, drive, sourceRootDirectoryInfo, sourceFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, filePattern, filePatternIfExist, fileProgress);
 							}
 							pendingFileInfo.IsSaved = isSaved;
 							overallTask.Increment(1);
@@ -410,6 +411,9 @@ namespace BMTP3.Core.Handlers {
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
+					if(addSideCarFile) {
+						targetTempSideCarFileInfo?.Delete();
+					}
 					return true;
 				}
 				Console.WriteLine($"Your file {newTargetFilePath} exists and it is different, and I have NOT overwritten it.");
@@ -460,6 +464,9 @@ namespace BMTP3.Core.Handlers {
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
+					if(addSideCarFile) {
+						targetTempSideCarFileInfo?.Delete();
+					}
 					return true;
 				}
 				Console.WriteLine($"Your file {newTargetFilePath} exists and it is different, and I have NOT overwritten it.");
@@ -484,11 +491,14 @@ namespace BMTP3.Core.Handlers {
 		}
 
 
-		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, MediaDevice mediaDevice, MediaFileInfo sourceMediaFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress) {
+		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, MediaDevice mediaDevice, MediaFileInfo sourceMediaFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress) {
 			double kilobytes = sourceMediaFileInfo.Length / 1024.0;
 			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceMediaFileInfo, fileProgress);
 
-			FileInfo targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, mediaDevice, targetTempFileInfo, sourceMediaFileInfo);
+			FileInfo? targetTempSideCarFileInfo = null;
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, mediaDevice, targetTempFileInfo, sourceMediaFileInfo);
+			}
 
 			//MetadataFileInfo metadataFileInfo = new MetadataFileInfo(targetTempFileInfo);
 			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
@@ -500,6 +510,15 @@ namespace BMTP3.Core.Handlers {
 			int counter = 0;
 			Template template = CreateTemplateFrom(counter, fileName, oldestDateTime);
 
+			// Extract a "relativePath" from MediaFileInfo
+			// Adjust this depending on your MediaFileInfo implementation
+			string relativePath = sourceMediaFileInfo.FullName;
+			string relativeDirectoryPath = Path.GetDirectoryName(relativePath) ?? string.Empty;
+
+			// Add relativePath variable to template (use forward slashes for consistency)
+			template.AddVariable("relativePath", relativeDirectoryPath.Replace("\\", "/"));
+
+			// Build target paths based on pattern
 			string filePatternTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, filePattern);
 			string filePatternIfExistTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, filePatternIfExist);
 
@@ -513,6 +532,9 @@ namespace BMTP3.Core.Handlers {
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
+					if(addSideCarFile) {
+						targetTempSideCarFileInfo?.Delete();
+					}
 					return true;
 				}
 				while(true) {
@@ -534,6 +556,9 @@ namespace BMTP3.Core.Handlers {
 					if(fileComparer.Compare(targetTempFileInfo.FullName, testNextCountPath)) {
 						// Cleanup by deleteing temp tempfile
 						targetTempFileInfo.Delete();
+						if(addSideCarFile) {
+							targetTempSideCarFileInfo?.Delete();
+						}
 						// Identical file already present under a counted name -> treat as handled (return true)
 						return true;
 					}
@@ -543,24 +568,32 @@ namespace BMTP3.Core.Handlers {
 			if(!Directory.Exists(newTargetFileInfo.DirectoryName)) {
 				Directory.CreateDirectory(newTargetFileInfo.DirectoryName!);
 			}
-			string newTargetSideCarFilePath = newTargetFilePath + ".ini";
-			if(Path.Exists(newTargetSideCarFilePath)) {
-				throw new Exception($"File exists : {newTargetSideCarFilePath}");
+			string? newTargetSideCarFilePath = null;
+			if(addSideCarFile) {
+				newTargetSideCarFilePath = newTargetFilePath + ".ini";
+				if(Path.Exists(newTargetSideCarFilePath)) {
+					throw new Exception($"File exists : {newTargetSideCarFilePath}");
+				}
 			}
 
 			//Console.WriteLine("FileUsed: " + newTargetFileInfo.FullName);
 			targetTempFileInfo.MoveTo(newTargetFilePath);
-			targetTempSideCarFileInfo.MoveTo(newTargetSideCarFilePath);
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo?.MoveTo(newTargetSideCarFilePath!);
+			}
 
 			//Console.WriteLine($"Fil {fileName} kopieret til {newTargetFilePath}, Size: {kilobytes:F2} KB");
 
 			return true;
 		}
-		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, DriveInfo driveInfo, DirectoryInfo sourceRootDirectoryInfo, FileInfo sourceFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress) {
+		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, DriveInfo driveInfo, DirectoryInfo sourceRootDirectoryInfo, FileInfo sourceFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress) {
 			double kilobytes = sourceFileInfo.Length / 1024.0;
 			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceFileInfo, fileProgress);
 
-			FileInfo targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, driveInfo, targetTempFileInfo, sourceFileInfo);
+			FileInfo? targetTempSideCarFileInfo = null;
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, driveInfo, targetTempFileInfo, sourceFileInfo);
+			}
 
 			//MetadataFileInfo metadataFileInfo = new MetadataFileInfo(targetTempFileInfo);
 			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
@@ -570,13 +603,21 @@ namespace BMTP3.Core.Handlers {
 			DateTime oldestDateTime = BackupHelper.FindEarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
 			string fileName = targetTempFileInfo.Name;
 			int counter = 0;
-			Template template = CreateTemplateFrom(counter, fileName, oldestDateTime);
 
 			string relativePath = Path.GetRelativePath(sourceRootDirectoryInfo.FullName, sourceFileInfo.FullName);
-			string filePatternTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, Path.Combine(relativePath, filePattern));
-			string filePatternIfExistTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, Path.Combine(relativePath, filePatternIfExist)); 
+			string relativeDirectoryPath = Path.GetDirectoryName(relativePath) ?? string.Empty;
+
+			Template template = CreateTemplateFrom(counter, fileName, oldestDateTime);
+
+			// Add relativePath explicitly (forward slashes for config consistency)
+			template.AddVariable("relativePath", relativeDirectoryPath.Replace("\\", "/"));
+
+			// Build target paths (pattern decides if relativePath is included or not)
+			string filePatternTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, filePattern);
+			string filePatternIfExistTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, filePatternIfExist);
 
 			string newTargetFilePath = template.Replace(filePatternTargetFilePath);
+
 			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
 
 			if(newTargetFileInfo.Exists) {
@@ -586,6 +627,9 @@ namespace BMTP3.Core.Handlers {
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
+					if(addSideCarFile) {
+						targetTempSideCarFileInfo?.Delete();
+					}
 					return true;
 				}
 				while(true) {
@@ -594,6 +638,10 @@ namespace BMTP3.Core.Handlers {
 					template.AddVariable("count", counter);
 
 					string testNextCountPath = template.Replace(filePatternIfExistTargetFilePath);
+					/*
+ 					string testNextCountFileName = template.Replace(filePatternIfExist);
+					string testNextCountPath = Path.Combine(filePatternTargetDirectoryPath, testNextCountFileName);
+					*/
 
 					// Found a file path+name that does not exist.
 					if(!File.Exists(testNextCountPath)) {
@@ -607,6 +655,9 @@ namespace BMTP3.Core.Handlers {
 					if(fileComparer.Compare(targetTempFileInfo.FullName, testNextCountPath)) {
 						// Cleanup by deleteing temp tempfile
 						targetTempFileInfo.Delete();
+						if(addSideCarFile) {
+							targetTempSideCarFileInfo?.Delete();
+						}
 						// Identical file already present under a counted name -> treat as handled (return true)
 						return true;
 					}
@@ -616,14 +667,19 @@ namespace BMTP3.Core.Handlers {
 			if(!Directory.Exists(newTargetFileInfo.DirectoryName)) {
 				Directory.CreateDirectory(newTargetFileInfo.DirectoryName!);
 			}
-			string newTargetSideCarFilePath = newTargetFilePath + ".ini";
-			if(Path.Exists(newTargetSideCarFilePath)) {
-				throw new Exception($"File exists : {newTargetSideCarFilePath}");
+			string? newTargetSideCarFilePath = null;
+			if(addSideCarFile) {
+				newTargetSideCarFilePath = newTargetFilePath + ".ini";
+				if(Path.Exists(newTargetSideCarFilePath)) {
+					throw new Exception($"File exists : {newTargetSideCarFilePath}");
+				}
 			}
 
 			//Console.WriteLine("FileUsed: " + newTargetFileInfo.FullName);
 			targetTempFileInfo.MoveTo(newTargetFilePath);
-			targetTempSideCarFileInfo.MoveTo(newTargetSideCarFilePath);
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo?.MoveTo(newTargetSideCarFilePath!);
+			}
 
 			//Console.WriteLine($"Fil {fileName} kopieret til {newTargetFilePath}, Size: {kilobytes:F2} KB");
 
@@ -750,6 +806,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				];
 
 				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fileInfo.FullName, hashTypes);
+
 				string sha3_512_keccak_str = hashes[SHA3_512_KECCAK];
 				string sha3_512_fips202_str = hashes[SHA3_512_FIPS202];
 				string sha2_512_str = hashes[SHA2_512];
@@ -793,6 +850,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			}
 			return new FileInfo(sideCarFullPath);
 		}
+
 
 		Template CreateTemplateFrom(int counter, string fileName, DateTime sourceDateTime) {
 			Template template = new Template();

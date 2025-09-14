@@ -1,6 +1,5 @@
 ﻿using IniParser;
 using IniParser.Model;
-using OnixLabs.Core.Linq;
 using Spectre.Console;
 using System;
 using System.Collections.Generic;
@@ -75,7 +74,7 @@ namespace BMTP3.Core.Handlers {
 
 			List<DirectoryInfo> dirsToRead = new List<DirectoryInfo>();
 			dirsToRead.Add(readDirectory);
-			while(dirsToRead.IsNotEmpty()) {
+			while(dirsToRead.Count > 0) {
 				List<DirectoryInfo> newDirsToRead = new List<DirectoryInfo>();
 				foreach(DirectoryInfo dir in dirsToRead) {
 					newDirsToRead.AddRange(dir.GetDirectories());

@@ -1,0 +1,80 @@
+# Test local backup configuration (without MTP)
+# Purpose: Maximize coverage of code paths for DriveSources + default value transfer.
+
+[default]
+# If Disabled = false, it means (according to your reader) that existing sources are NOT automatically forced Enabled = true.
+# (Your UpdateWithDefaultValuesFrom only sets Enabled=false if Default.Disabled == false)
+disabled = false
+compare_by_binary = true
+recursive = true
+use_file_pattern = true
+file_pattern = "${yyyy}\\${MM}\\${dd}\\${relativePath}\\${originalName}.${ext}"
+file_pattern_if_exist = "${yyyy}\\${MM}\\${dd}\\${relativePath}\\${originalName}_${count}.${ext}"
+
+###############################################################################
+# DRIVE SOURCES
+###############################################################################
+
+# 1) Simple recursive copy without pattern (UseFilePattern overrides Default)
+[[drive_source]]
+enabled = false
+#enabled = true
+title = "Full Raw Copy"
+name = "C:\\"
+folder_source = "C:\\Priv2"
+folder_output = "C:\\Priv.Test.Output\\FullCopyRaw"
+recursive = true
+use_file_pattern = false         # Overrides Default.UseFilePattern
+compare_by_binary = true
+
+# 2) Copy with pattern (inherits Default pattern)
+[[drive_source]]
+enabled = false
+title = "Full Pattern Copy"
+name = "C:\\"
+folder_source = "C:\\Priv2"
+folder_output = "C:\\Priv.Test.Output\\FullCopyPattern"
+recursive = true
+# Inherits default.use_file_pattern = true
+# Inherits default.file_pattern / file_pattern_if_exist
+compare_by_binary = true
+
+# 3) Example that tests file collision handling (place duplicate files in same folder)
+[[drive_source]]
+enabled = true
+title = "Full Collision Copy"
+name = "C:\\"
+folder_source = "C:\\Priv3"
+folder_output = "C:\\Priv.Test.Output\\FullCopyCollision"
+recursive = false
+use_file_pattern = true
+file_pattern = '${yyyy}-${MM}\${originalName}.${ext}'
+file_pattern_if_exist = "${yyyy}-${MM}\\${originalName}_${count}.${ext}"
+compare_by_binary = true
+
+# 4) Disabled drive source (should not run – used to test filtering)
+[[drive_source]]
+enabled = false
+title = "Disabled Drive"
+name = "C:\\"
+folder_source = "C:\\Priv2"
+folder_output = "C:\\Priv.Test.Output\\DisabledOutput"
+recursive = false
+use_file_pattern = false
+compare_by_binary = false
+
+###############################################################################
+# DEVICE SOURCES (alle disabled – du tester uden MTP)
+###############################################################################
+
+[[device_source]]
+enabled = false
+title = "Example iPhone (ignored)"
+name = "MyPhone"
+folder_source = "Apple iPhone/DCIM"
+folder_output = "C:\\Priv.Test.Output\\iPhone"
+recursive = true
+use_file_pattern = true
+file_pattern = "${yyyy}\\${MM}\\${dd}\\${originalName}.${ext}"
+file_pattern_if_exist = "${yyyy}\\${MM}\\${dd}\\${originalName}_${count}.${ext}"
+compare_by_binary = true
