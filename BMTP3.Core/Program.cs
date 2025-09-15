@@ -54,7 +54,9 @@ namespace BMTP3.Core {
 		private static bool RequestToQuit { get; set; }
 		static async Task<int> Main(string[] args) {
 #if DEBUG
-			if(false) {
+			// Test only code here.
+			const bool enableHashTesting = false;
+			if(enableHashTesting) {
 				FileInfo fileInfo = new FileInfo(@"c:\Priv2\xxx3.png");
 				List<HashCalculator.HashType> hashTypes = [
 					/*
@@ -88,7 +90,8 @@ namespace BMTP3.Core {
 			if(args.Length == 0) {
 				//args = ["--verify", "iPhone.toml"];
 				//args = ["--backup", "iPhone.toml"];
-				args = ["--backup", "TestLocalFolderBackup.toml"];
+				args = ["--backup", "TestAndroidBackup.toml"];
+				//args = ["--backup", "TestLocalFolderBackup.toml"];
 				//args = ["--verifyPath", ];
 			}
 #endif
