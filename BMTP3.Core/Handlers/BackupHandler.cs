@@ -98,6 +98,7 @@ namespace BMTP3.Core.Handlers {
 			EnsureDeviceIsConnected(device);
 
 			Console.WriteLine($"Backing up device: {device.FriendlyName}");
+			EnsureOutputDirectoryExists(config);
 
 			// MediaDirectoryInfo is not required to be connected, only required when accessed when accessed.
 			MediaDirectoryInfo backupSourceDirectoryInfo = ValidateAndCorrectFolderSourcePathToMediaDirectoryInfo(device, config.FolderSource);
