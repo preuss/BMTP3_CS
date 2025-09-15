@@ -20,7 +20,7 @@ file_pattern_if_exist = "${yyyy}\\${MM}\\${dd}\\${relativePath}\\${originalName}
 
 # 1) Full recursive copy of the internal storage as exposed under the device name
 [[device_source]]
-enabled = true
+enabled = false
 title = "Galaxy A20e - Full Backup"
 # The device name as reported by your enumeration
 name = "JPR-Galaxy A20e"
@@ -37,7 +37,7 @@ compare_by_binary = true
 # 2) (Optional) Some setups expose "Phone" directly as a separate logical device.
 # Keep this only if your device enumeration lists a standalone device/storage named "Phone".
 [[device_source]]
-enabled = true
+enabled = false
 title = "Galaxy A20e - Pattern Backup"
 name = "JPR-Galaxy A20e"
 # Adjust to "Phone/DCIM" if you only want photos/videos.
@@ -52,7 +52,7 @@ compare_by_binary = true
 # 3) (Optional) Some setups expose "Phone" directly as a separate logical device.
 # Keep this only if your device enumeration lists a standalone device/storage named "Phone".
 [[device_source]]
-enabled = true
+enabled = false
 title = "Galaxy A20e - Pattern Count"
 name = "JPR-Galaxy A20e"
 # Adjust to "Phone/DCIM" if you only want photos/videos.
@@ -62,4 +62,19 @@ recursive = true
 use_file_pattern = true
 file_pattern = "${relativePath}\\${originalName}.${ext}"
 file_pattern_if_exist = "${relativePath}\\${originalName}_${count}.${ext}"
+compare_by_binary = true
+
+# 4) (Optional) Some setups expose "Phone" directly as a separate logical device.
+# Keep this only if your device enumeration lists a standalone device/storage named "Phone".
+[[device_source]]
+enabled = true
+title = "Galaxy A20e - Flat Pattern Count"
+name = "JPR-Galaxy A20e"
+# Adjust to "Phone/DCIM" if you only want photos/videos.
+folder_source = "Phone"
+folder_output = "C:\\Priv.Test.Output\\FullCopyAndroidGalaxyFlatCount"
+recursive = true
+use_file_pattern = true
+file_pattern = "${originalName}.${ext}"
+file_pattern_if_exist = "${originalName}_${count}.${ext}"
 compare_by_binary = true

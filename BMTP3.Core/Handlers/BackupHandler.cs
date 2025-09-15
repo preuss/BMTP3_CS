@@ -389,6 +389,13 @@ namespace BMTP3.Core.Handlers {
 			double kilobytes = sourceMediaFileInfo.Length / 1024.0;
 			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceMediaFileInfo, fileProgress);
 
+			// Extract a "relativePath" from MediaFileInfo
+			// Adjust this depending on your MediaFileInfo implementation
+			string relativePathRaw = sourceMediaFileInfo.FullName;
+			string relativeDirectoryPathRaw = Path.GetDirectoryName(relativePathRaw) ?? string.Empty;
+
+			string relativeDirectoryPath = SanitizeRelativePath(relativeDirectoryPathRaw);
+
 			FileInfo? targetTempSideCarFileInfo = null;
 			if(addSideCarFile) {
 				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, mediaDevice, targetTempFileInfo, sourceMediaFileInfo);
@@ -401,7 +408,16 @@ namespace BMTP3.Core.Handlers {
 			DateTime oldestDateTime = BackupHelper.FindEarliestValidDateTime(mediaCreatedDateTime, fileCreatedDateTime, DateTime.Now);
 			string fileName = targetTempFileInfo.Name;
 
-			string newTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, sourceMediaFileInfo.Name);
+			// Build target path using relative path structure
+			string newTargetFilePath;
+			if(!string.IsNullOrWhiteSpace(relativeDirectoryPath)) {
+				// Use the relative directory path to maintain folder structure
+				string targetSubDirectory = Path.Combine(targetDirectoryInfo.FullName, relativeDirectoryPath);
+				newTargetFilePath = Path.Combine(targetSubDirectory, sourceMediaFileInfo.Name);
+			} else {
+				// Fallback to original behavior if no relative path
+				newTargetFilePath = Path.Combine(targetDirectoryInfo.FullName, sourceMediaFileInfo.Name);
+			}
 
 			FileInfo newTargetFileInfo = new FileInfo(newTargetFilePath);
 
