@@ -65,6 +65,10 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  <TargetPath>%(Filename)%(Extension)</TargetPath>
     </None>
+    <None Update="StartUp\TestAndroidBackup.toml">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  <TargetPath>%(Filename)%(Extension)</TargetPath>
+    </None>
     <None Update="StartUp\TestLocalFolderBackup.toml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 	  <TargetPath>%(Filename)%(Extension)</TargetPath>
