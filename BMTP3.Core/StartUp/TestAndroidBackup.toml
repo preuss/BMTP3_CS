@@ -42,7 +42,7 @@ title = "Galaxy A20e - Pattern Backup"
 name = "JPR-Galaxy A20e"
 # Adjust to "Phone/DCIM" if you only want photos/videos.
 folder_source = "Phone"
-folder_output = "C:\\Priv.Test.Output\\FullCopyPattern"
+folder_output = "C:\\Priv.Test.Output\\FullCopyAndroidGalaxyPattern"
 recursive = true
 use_file_pattern = true
 file_pattern = "${yyyy}\\${MM}\\${dd}\\${relativePath}\\${originalName}.${ext}"
@@ -57,7 +57,7 @@ title = "Galaxy A20e - Pattern Count"
 name = "JPR-Galaxy A20e"
 # Adjust to "Phone/DCIM" if you only want photos/videos.
 folder_source = "Phone"
-folder_output = "C:\\Priv.Test.Output\\FullCopyCount"
+folder_output = "C:\\Priv.Test.Output\\FullCopyAndroidGalaxyCount"
 recursive = true
 use_file_pattern = true
 file_pattern = "${relativePath}\\${originalName}.${ext}"
