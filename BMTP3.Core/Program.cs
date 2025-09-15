@@ -8,7 +8,9 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.Versioning;
+using System.Security.Cryptography;
 using System.Text;
 using ZLogger;
 using SystemConsole = System.Console;
@@ -51,17 +53,48 @@ namespace BMTP3.Core {
 		}
 		private static bool RequestToQuit { get; set; }
 		static async Task<int> Main(string[] args) {
-			foreach(var x in args) {
-				Console.WriteLine(x);
-			}
 #if DEBUG
+			if(false) {
+				FileInfo fileInfo = new FileInfo(@"c:\Priv2\xxx3.png");
+				List<HashCalculator.HashType> hashTypes = [
+					/*
+						HashCalculator.HashType.SHA3_512_KECCAK,
+						HashCalculator.HashType.SHA3_512_FIPS202,
+						HashCalculator.HashType.SHA2_512,
+						HashCalculator.HashType.SHA2_256,
+						HashCalculator.HashType.MD5_128,
+						HashCalculator.HashType.BLAKE3_256,
+						HashCalculator.HashType.BLAKE3_512,*/
+					HashCalculator.HashType.MD5_128,
+
+			];
+
+				var sw = Stopwatch.StartNew();
+
+				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fileInfo.FullName, hashTypes);
+
+				if(fileInfo.Name.Equals("Big.png", StringComparison.OrdinalIgnoreCase)) {
+					Console.WriteLine($"SideCar took {sw.ElapsedMilliseconds} ms for {fileInfo.Name}");
+				}
+				Console.WriteLine($"SideCar took {sw.ElapsedMilliseconds} ms for {fileInfo.Name}");
+				foreach(var item in hashTypes) {
+					Console.WriteLine("Hash for Big.png: " + item + ", hash: " + hashes[item]);
+				}
+				return 0;
+			}
+
+
 			// Only inject test arguments if none provided.
 			if(args.Length == 0) {
 				//args = ["--verify", "iPhone.toml"];
-				args = ["--backup", "iPhone.toml"];
+				//args = ["--backup", "iPhone.toml"];
+				args = ["--backup", "TestLocalFolderBackup.toml"];
 				//args = ["--verifyPath", ];
 			}
 #endif
+			foreach(var x in args) {
+				Console.WriteLine(x);
+			}
 
 			await Task.Delay(1);
 
@@ -160,7 +193,7 @@ namespace BMTP3.Core {
 
 					// Registrer services fra StartUp-klassen
 					//foreach(var service in startup.ServiceProvider.GetServices<IServiceDescriptor>()) {
-//						services.Add(service);
+					//						services.Add(service);
 					//}
 				});
 	}

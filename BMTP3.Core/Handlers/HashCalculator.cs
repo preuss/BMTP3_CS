@@ -47,6 +47,21 @@ namespace BMTP3.Core.Handlers {
 				throw new ArgumentOutOfRangeException(nameof(bufferSize), "Buffer size must be greater than zero.");
 			}
 
+			long fileLength = new FileInfo(filePath).Length;
+			//Console.WriteLine($"BufferSize input {bufferSize / 1024} * 1024 = {bufferSize}");
+			// Allow caller override (only adapt when they passed the default 8 KB)
+			if(bufferSize == 8 * 1024) {
+				bufferSize = fileLength switch {
+					< 256 * 1024 => 32 * 1024,
+					< 4L * 1024 * 1024 => 64 * 1024,
+					< 32L * 1024 * 1024 => 256 * 1024,
+					< 256L * 1024 * 1024 => 512 * 1024,
+					//_ => 512 * 1024 // or 1024 * 1024 if you prefer
+					_ => 512 * 1024 // or 1024 * 1024 if you prefer
+				};
+			}
+			//Console.WriteLine($"BufferSize choosen {bufferSize / 1024} * 1024 = {bufferSize}");
+
 			// Deduplicate hash types for efficiency
 			List<HashType> requestedHashTypes = hashTypes.Distinct().ToList();
 
@@ -63,18 +78,22 @@ namespace BMTP3.Core.Handlers {
 				foreach(HashType hashType in requestedHashTypes) {
 					switch(hashType) {
 						case HashType.SHA3_512_FIPS202:
-							hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3512();
+							//hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3512();
+							hashAlgorithms[hashType] = new SharpHashSHA3_512();
 							break;
 						case HashType.SHA3_256_FIPS202:
-							hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3256();
+							//hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3256();
+							hashAlgorithms[hashType] = new SharpHashSHA3_256();
 							break;
 						case HashType.SHA3_512_KECCAK:
 							// Legacy Keccak-512 (different padding)
-							hashAlgorithms[hashType] = new BouncyCastleSha3_512_Keccak();
+							//hashAlgorithms[hashType] = new BouncyCastleSha3_512_Keccak();
+							hashAlgorithms[hashType] = new SharpHashSHA3_512_Keccak();
 							break;
 						case HashType.SHA3_256_KECCAK:
 							// Legacy Keccak-256 (different padding)
-							hashAlgorithms[hashType] = new BouncyCastleSha3_256_Keccak();
+							//hashAlgorithms[hashType] = new BouncyCastleSha3_256_Keccak();
+							hashAlgorithms[hashType] = new SharpHashSHA3_256_Keccak();
 							break;
 						case HashType.SHA2_256:
 							hashAlgorithms[hashType] = SHA256.Create();
@@ -84,6 +103,7 @@ namespace BMTP3.Core.Handlers {
 							break;
 						case HashType.MD5_128:
 							hashAlgorithms[hashType] = MD5.Create();
+							//hashAlgorithms[hashType] = new SharpHashMD5();
 							break;
 						case HashType.BLAKE3_256:
 						case HashType.BLAKE3_512:
