@@ -491,15 +491,46 @@ namespace BMTP3.Core.Handlers {
 			return true;
 		}
 
+		// Simple path sanitizer: replace every invalid character in each segment with underscore.
+		// It does NOT try to be clever – only ensures Windows compatibility for directory creation.
+		private static string SanitizeRelativePath(string raw) {
+			if(string.IsNullOrWhiteSpace(raw)) return string.Empty;
 
+			// Normalize separators to backslash for processing
+			string normalized = raw.Replace('/', '\\');
+
+			HashSet<char> invalid = new HashSet<char>(Path.GetInvalidFileNameChars());
+			invalid.Add(':');
+			invalid.Add('|');
+
+			string[] segments = normalized.Split('\\', StringSplitOptions.RemoveEmptyEntries);
+
+			for(int i = 0; i < segments.Length; i++) {
+				string seg = segments[i];
+
+				// Replace every invalid char with '_'
+				char[] cleanedChars = new char[seg.Length];
+				for(int c = 0; c < seg.Length; c++) {
+					char ch = seg[c];
+					cleanedChars[c] = invalid.Contains(ch) ? '_' : ch;
+				}
+				string cleaned = new string(cleanedChars);
+
+				// Trim trailing dots/spaces (Windows forbids them in directory/file names)
+				cleaned = cleaned.TrimEnd(' ', '.');
+
+				if(string.IsNullOrEmpty(cleaned)) {
+					cleaned = "_";
+				}
+
+				segments[i] = cleaned;
+			}
+
+			return string.Join(Path.DirectorySeparatorChar, segments);
+		}
 		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, MediaDevice mediaDevice, MediaFileInfo sourceMediaFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress) {
 			double kilobytes = sourceMediaFileInfo.Length / 1024.0;
 			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceMediaFileInfo, fileProgress);
-
-			FileInfo? targetTempSideCarFileInfo = null;
-			if(addSideCarFile) {
-				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, mediaDevice, targetTempFileInfo, sourceMediaFileInfo);
-			}
 
 			//MetadataFileInfo metadataFileInfo = new MetadataFileInfo(targetTempFileInfo);
 			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
@@ -513,8 +544,10 @@ namespace BMTP3.Core.Handlers {
 
 			// Extract a "relativePath" from MediaFileInfo
 			// Adjust this depending on your MediaFileInfo implementation
-			string relativePath = sourceMediaFileInfo.FullName;
-			string relativeDirectoryPath = Path.GetDirectoryName(relativePath) ?? string.Empty;
+			string relativePathRaw = sourceMediaFileInfo.FullName;
+			string relativeDirectoryPathRaw = Path.GetDirectoryName(relativePathRaw) ?? string.Empty;
+
+			string relativeDirectoryPath = SanitizeRelativePath(relativeDirectoryPathRaw);
 
 			// Add relativePath variable to template (use forward slashes for consistency)
 			template.AddVariable("relativePath", relativeDirectoryPath.Replace("\\", "/"));
@@ -533,9 +566,6 @@ namespace BMTP3.Core.Handlers {
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
-					if(addSideCarFile) {
-						targetTempSideCarFileInfo?.Delete();
-					}
 					return true;
 				}
 				while(true) {
@@ -557,9 +587,6 @@ namespace BMTP3.Core.Handlers {
 					if(fileComparer.Compare(targetTempFileInfo.FullName, testNextCountPath)) {
 						// Cleanup by deleteing temp tempfile
 						targetTempFileInfo.Delete();
-						if(addSideCarFile) {
-							targetTempSideCarFileInfo?.Delete();
-						}
 						// Identical file already present under a counted name -> treat as handled (return true)
 						return true;
 					}
@@ -569,6 +596,12 @@ namespace BMTP3.Core.Handlers {
 			if(!Directory.Exists(newTargetFileInfo.DirectoryName)) {
 				Directory.CreateDirectory(newTargetFileInfo.DirectoryName!);
 			}
+
+			FileInfo? targetTempSideCarFileInfo = null;
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, mediaDevice, targetTempFileInfo, sourceMediaFileInfo, relativeDirectoryPathRaw, relativeDirectoryPath);
+			}
+
 			string? newTargetSideCarFilePath = null;
 			if(addSideCarFile) {
 				newTargetSideCarFilePath = newTargetFilePath + ".ini";
@@ -686,7 +719,7 @@ namespace BMTP3.Core.Handlers {
 
 			return true;
 		}
-		FileInfo CreateSideCarFileInfo(DateTime backupStartDateTime, MediaDevice mediaDevice, FileInfo targetTempFileInfo, MediaFileInfo mediaFileInfo) {
+		FileInfo CreateSideCarFileInfo(DateTime backupStartDateTime, MediaDevice mediaDevice, FileInfo targetTempFileInfo, MediaFileInfo mediaFileInfo, string? relativeDirectoryPathRaw = null, string? relativeDirectoryPath = null) {
 			string fullName = targetTempFileInfo.FullName;
 			string name = targetTempFileInfo.Name;
 			//string nameWithoutExtension = Path.GetFileNameWithoutExtension(fullName);
@@ -767,6 +800,17 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				writer.WriteLine("PersistentUniqueId=" + mediaFilePersistentUniqueId);
 				writer.WriteLine("FullName=" + mediaFileFullName);
 				writer.WriteLine();
+
+				if(relativeDirectoryPathRaw != null || relativeDirectoryPath != null) {
+					writer.WriteLine("[PathMapping]");
+					if(relativeDirectoryPathRaw != null) {
+						writer.WriteLine("OriginalRelativeDirectoryPath=" + relativeDirectoryPathRaw);
+					}
+					if(relativeDirectoryPath != null) {
+						writer.WriteLine("SanitizedRelativeDirectoryPath=" + relativeDirectoryPath);
+					}
+					writer.WriteLine();
+				}
 
 				writer.WriteLine("[DeviceDetails]");
 				writer.WriteLine("DeviceId=" + deviceId);
