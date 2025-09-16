@@ -457,11 +457,6 @@ namespace BMTP3.Core.Handlers {
 			double kilobytes = sourceFileInfo.Length / 1024.0;
 			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceFileInfo, fileProgress);
 
-			FileInfo? targetTempSideCarFileInfo = null;
-			if(addSideCarFile) {
-				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, driveInfo, targetTempFileInfo, sourceFileInfo);
-			}
-
 			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
 			DateTime? mediaCreatedDateTime = metadataFileInfo.GetCreatedMediaFileDateTime();
 			DateTime fileCreatedDateTime = File.GetCreationTime(targetTempFileInfo.FullName);
@@ -481,9 +476,6 @@ namespace BMTP3.Core.Handlers {
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
-					if(addSideCarFile) {
-						targetTempSideCarFileInfo?.Delete();
-					}
 					return true;
 				}
 				Console.WriteLine($"Your file {newTargetFilePath} exists and it is different, and I have NOT overwritten it.");
@@ -491,6 +483,11 @@ namespace BMTP3.Core.Handlers {
 			}
 			if(!Directory.Exists(newTargetFileInfo.DirectoryName)) {
 				Directory.CreateDirectory(newTargetFileInfo.DirectoryName!);
+			}
+
+			FileInfo? targetTempSideCarFileInfo = null;
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, driveInfo, targetTempFileInfo, sourceFileInfo);
 			}
 
 			string? newTargetSideCarFilePath = null;
@@ -640,11 +637,6 @@ namespace BMTP3.Core.Handlers {
 			double kilobytes = sourceFileInfo.Length / 1024.0;
 			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceFileInfo, fileProgress);
 
-			FileInfo? targetTempSideCarFileInfo = null;
-			if(addSideCarFile) {
-				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, driveInfo, targetTempFileInfo, sourceFileInfo);
-			}
-
 			//MetadataFileInfo metadataFileInfo = new MetadataFileInfo(targetTempFileInfo);
 			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
 			DateTime? mediaCreatedDateTime = metadataFileInfo.GetCreatedMediaFileDateTime();
@@ -677,9 +669,6 @@ namespace BMTP3.Core.Handlers {
 				if(fileComparer.Compare(targetTempFileInfo.FullName, newTargetFilePath)) {
 					// Delete temp file and try next file.
 					targetTempFileInfo.Delete();
-					if(addSideCarFile) {
-						targetTempSideCarFileInfo?.Delete();
-					}
 					return true;
 				}
 				while(true) {
@@ -705,9 +694,6 @@ namespace BMTP3.Core.Handlers {
 					if(fileComparer.Compare(targetTempFileInfo.FullName, testNextCountPath)) {
 						// Cleanup by deleteing temp tempfile
 						targetTempFileInfo.Delete();
-						if(addSideCarFile) {
-							targetTempSideCarFileInfo?.Delete();
-						}
 						// Identical file already present under a counted name -> treat as handled (return true)
 						return true;
 					}
@@ -717,6 +703,12 @@ namespace BMTP3.Core.Handlers {
 			if(!Directory.Exists(newTargetFileInfo.DirectoryName)) {
 				Directory.CreateDirectory(newTargetFileInfo.DirectoryName!);
 			}
+
+			FileInfo? targetTempSideCarFileInfo = null;
+			if(addSideCarFile) {
+				targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, driveInfo, targetTempFileInfo, sourceFileInfo);
+			}
+
 			string? newTargetSideCarFilePath = null;
 			if(addSideCarFile) {
 				newTargetSideCarFilePath = newTargetFilePath + ".ini";
