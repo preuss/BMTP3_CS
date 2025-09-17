@@ -193,12 +193,12 @@ namespace BMTP3.Core {
 		public static IHostBuilder CreateHostBuilder(string[] args) =>
 			Host.CreateDefaultBuilder(args)
 				.ConfigureServices((hostContext, services) => {
-					// Opret en instans af StartUp-klassen
+					// Create an instance of the StartUp class
 					var startup = new StartUp(hostContext.Configuration, new CancellationTokenSource());
 
-					// Registrer services fra StartUp-klassen
+					// Register services from the StartUp class
 					//foreach(var service in startup.ServiceProvider.GetServices<IServiceDescriptor>()) {
-					//						services.Add(service);
+					//	services.Add(service);
 					//}
 				});
 	}
