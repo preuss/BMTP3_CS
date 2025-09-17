@@ -20,6 +20,8 @@ using ZLogger;
 using static BMTP3.Core.Handlers.HashCalculator.HashType;
 using BMTP3.Core.Configuration;
 using BMTP3.Core.Exceptions;
+using BMTP3.Core.Metadata.SideCar;
+using BMTP3.Core.Metadata.SideCar.Writers;
 
 namespace BMTP3.Core.Handlers {
 	[SupportedOSPlatform("windows10.0")]
@@ -753,130 +755,129 @@ namespace BMTP3.Core.Handlers {
 				throw new Exception($"DirectoryName er null for midlertidig fil: {targetTempFileInfo.FullName}");
 			}
 
-			using(StreamWriter writer = new StreamWriter(sideCarFullPath)) {
-				IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
+			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
 
-				List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
+			List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
 
-				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(targetTempFileInfo.FullName, hashTypesToCompute);
+			IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(targetTempFileInfo.FullName, hashTypesToCompute);
 
-				// [Settings] section
-				writer.WriteLine("[Settings]");
-				writer.WriteLine($"OriginalFileName={targetTempFileInfo.Name}");
-				writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToString("o"));
-				writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToString("o"));
-				writer.WriteLine("LastWriteDateTime=" + targetTempFileInfo.LastWriteTime.ToString("o"));
-				writer.WriteLine("MediaTakenDateTime=" + metadataFileInfo.GetCreatedMediaFileDateTime()?.ToString("o"));
-				writer.WriteLine();
+			// Create SideCarDocument
+			SideCarDocument sidecar = new();
 
-				// [BackupInfo] section
-				writer.WriteLine("[BackupInfo]");
-				writer.WriteLine($"BackupDateTime={backupStartDateTime:o}");
-				writer.WriteLine();
+			// [Settings] section
+			sidecar.WithSection("Settings")
+				.WithProperty("OriginalFileName", targetTempFileInfo.Name)
+				.WithProperty("CreateDateTime", targetTempFileInfo.CreationTime)
+				.WithProperty("LastAccessDateTime", targetTempFileInfo.LastAccessTime)
+				.WithProperty("LastWriteDateTime", targetTempFileInfo.LastWriteTime)
+				.WithProperty("MediaTakenDateTime", metadataFileInfo.GetCreatedMediaFileDateTime());
 
-				// [FileHash] section
-				writer.WriteLine("[FileHash]");
-				foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
-					writer.WriteLine($"{hashName}={hashes[hashType]}");
-				}
-				writer.WriteLine();
+			// [BackupInfo] section
+			sidecar.WithSection("BackupInfo")
+				.WithProperty("BackupDateTime", backupStartDateTime);
 
-				// [Device/Drive File Details] section
-				writer.WriteLine($"[{fileDetailsSectionName}]");
-				writer.WriteLine($"PersistentUniqueId={persistentUniqueId}");
-				writer.WriteLine($"FullName={sourceFullName}");
-				writer.WriteLine();
-
-				// [Device/Drive Details] section
-				writer.WriteLine($"[{sourceDetailsSectionName}]");
-				foreach(var detail in sourceDetails) {
-					writer.WriteLine($"{detail.Key}={detail.Value}");
-				}
+			// [FileHash] section
+			var fileHashSection = sidecar.WithSection("FileHash");
+			foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
+				fileHashSection.WithProperty(hashName, hashes[hashType]);
 			}
+
+			// [Device/Drive File Details] section
+			sidecar.WithSection(fileDetailsSectionName)
+				.WithProperty("PersistentUniqueId", persistentUniqueId)
+				.WithProperty("FullName", sourceFullName);
+
+			// [Device/Drive Details] section
+			var sourceDetailsSection = sidecar.WithSection(sourceDetailsSectionName);
+			foreach(KeyValuePair<string, string> detail in sourceDetails) {
+				sourceDetailsSection.WithProperty(detail.Key, detail.Value);
+			}
+
+			// Write to file using IniSideCarWriter
+			var writer = new IniSideCarWriter();
+			writer.WriteToFile(sidecar, sideCarFullPath);
+
 			return new FileInfo(sideCarFullPath);
 		}
 		FileInfo CreateSideCarFileInfo(DateTime backupStartDateTime, MediaDevice mediaDevice, FileInfo targetTempFileInfo, MediaFileInfo mediaFileInfo, string? relativeDirectoryPathRaw = null, string? relativeDirectoryPath = null) {
 			string fullName = targetTempFileInfo.FullName;
 			string name = targetTempFileInfo.Name;
-			//string nameWithoutExtension = Path.GetFileNameWithoutExtension(fullName);
-			string extension = ".ini";
+			
+			const string extension = ".ini";
+			
 			if(targetTempFileInfo.DirectoryName == null) throw new Exception("Something is wrong, I do not know why this directoryName is null: " + targetTempFileInfo.FullName);
 			string sideCarFullPath = Path.Combine(targetTempFileInfo.DirectoryName, name + extension);
 
-			using(StreamWriter writer = new StreamWriter(sideCarFullPath)) {
-				IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
+			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
 
-				string mediaFilePersistentUniqueId = mediaFileInfo.PersistentUniqueId;
-				string mediaFileFullName = mediaFileInfo.FullName;
+			List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
+			IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fullName, hashTypesToCompute);
 
-				string deviceId = mediaDevice.DeviceId;
-				string deviceDescription = mediaDevice.Description;
-				string deviceFriendlyName = mediaDevice.FriendlyName;
-				string deviceManufacturer = mediaDevice.Manufacturer;
-				string deviceModel = mediaDevice.Model;
-				string deviceSerialNumber = mediaDevice.SerialNumber;
-
-				List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
-				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fullName, hashTypesToCompute);
-
-				/*
+			/*
 OriginalFileName=IMG_20230222_140525_807.jpg
 CurrentFileName=IMG_20230222_140525_807_backup.jpg
 CreatedDateTime=2024-08-03T12:16:10.5825807Z
 LastAccessedDateTime=2024-08-03T12:16:21.5781213Z
 LastModifiedDateTime=2024-08-03T12:16:10.5825807Z
 MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
-				 * */
-				writer.WriteLine("[Settings]");
-				writer.WriteLine("OriginalFileName=" + targetTempFileInfo.Name);
-				/*
-				writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToUniversalTime().ToString("o"));
-				writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToUniversalTime().ToString("o"));
-				writer.WriteLine("LastWriteDateTime=" + targetTempFileInfo.LastWriteTime.ToUniversalTime().ToString("o"));
-				writer.WriteLine("MediaTakenDateTime=" + metadataFileInfo.GetCreatedMediaFileDateTime()?.ToUniversalTime().ToString("o"));
-				*/
-				writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToString("o"));
-				writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToString("o"));
-				writer.WriteLine("LastWriteDateTime=" + targetTempFileInfo.LastWriteTime.ToString("o"));
-				writer.WriteLine("MediaTakenDateTime=" + metadataFileInfo.GetCreatedMediaFileDateTime()?.ToString("o"));
-				writer.WriteLine();
+			 * */
 
-				writer.WriteLine("[BackupInfo]");
-				writer.WriteLine("BackupDateTime=" + backupStartDateTime.ToString("o"));
-				writer.WriteLine();
+			// Create SideCarDocument using new API
+			SideCarDocument sidecar = new();
 
-				// [FileHash] section
-				writer.WriteLine("[FileHash]");
-				foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
-					writer.WriteLine($"{hashName}={hashes[hashType]}");
-				}
-				writer.WriteLine();
+			// [Settings] section
+			sidecar.WithSection("Settings")
+				.WithProperty("OriginalFileName", targetTempFileInfo.Name)
+				.WithProperty("CreateDateTime", targetTempFileInfo.CreationTime)
+				.WithProperty("LastAccessDateTime", targetTempFileInfo.LastAccessTime)
+				.WithProperty("LastWriteDateTime", targetTempFileInfo.LastWriteTime)
+				.WithProperty("MediaTakenDateTime", metadataFileInfo.GetCreatedMediaFileDateTime());
+			/*
+			writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToUniversalTime().ToString("o"));
+			writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToUniversalTime().ToString("o"));
+			writer.WriteLine("LastWriteDateTime=" + targetTempFileInfo.LastWriteTime.ToUniversalTime().ToString("o"));
+			writer.WriteLine("MediaTakenDateTime=" + metadataFileInfo.GetCreatedMediaFileDateTime()?.ToUniversalTime().ToString("o"));
+			*/
 
-				writer.WriteLine("[DeviceFileDetails]");
-				writer.WriteLine("PersistentUniqueId=" + mediaFilePersistentUniqueId);
-				writer.WriteLine("FullName=" + mediaFileFullName);
-				writer.WriteLine();
+			// [BackupInfo] section
+			sidecar.WithSection("BackupInfo")
+				.WithProperty("BackupDateTime", backupStartDateTime);
 
-				if(relativeDirectoryPathRaw != null || relativeDirectoryPath != null) {
-					writer.WriteLine("[PathMapping]");
-					if(relativeDirectoryPathRaw != null) {
-						writer.WriteLine("OriginalRelativeDirectoryPath=" + relativeDirectoryPathRaw);
-					}
-					if(relativeDirectoryPath != null) {
-						writer.WriteLine("SanitizedRelativeDirectoryPath=" + relativeDirectoryPath);
-					}
-					writer.WriteLine();
-				}
-
-				writer.WriteLine("[DeviceDetails]");
-				writer.WriteLine("DeviceId=" + deviceId);
-				writer.WriteLine("Description=" + deviceDescription);
-				writer.WriteLine("FriendlyName=" + deviceFriendlyName);
-				writer.WriteLine("Manufacturer=" + deviceManufacturer);
-				writer.WriteLine("Model=" + deviceModel);
-				writer.WriteLine("SerialNumber=" + deviceSerialNumber);
-
+			// [FileHash] section
+			var fileHashSection = sidecar.WithSection("FileHash");
+			foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
+				fileHashSection.WithProperty(hashName, hashes[hashType]);
 			}
+
+			// [DeviceFileDetails] section
+			sidecar.WithSection("DeviceFileDetails")
+				.WithProperty("PersistentUniqueId", mediaFileInfo.PersistentUniqueId)
+				.WithProperty("FullName", mediaFileInfo.FullName);
+
+			// [PathMapping] section (conditionally)
+			if(relativeDirectoryPathRaw != null || relativeDirectoryPath != null) {
+				var pathMappingSection = sidecar.WithSection("PathMapping");
+				if(relativeDirectoryPathRaw != null) {
+					pathMappingSection.WithProperty("OriginalRelativeDirectoryPath", relativeDirectoryPathRaw);
+				}
+				if(relativeDirectoryPath != null) {
+					pathMappingSection.WithProperty("SanitizedRelativeDirectoryPath", relativeDirectoryPath);
+				}
+			}
+
+			// [DeviceDetails] section
+			sidecar.WithSection("DeviceDetails")
+				.WithProperty("DeviceId", mediaDevice.DeviceId)
+				.WithProperty("Description", mediaDevice.Description)
+				.WithProperty("FriendlyName", mediaDevice.FriendlyName)
+				.WithProperty("Manufacturer", mediaDevice.Manufacturer)
+				.WithProperty("Model", mediaDevice.Model)
+				.WithProperty("SerialNumber", mediaDevice.SerialNumber);
+
+			// Write to file using IniSideCarWriter
+			var writer = new IniSideCarWriter();
+			writer.WriteToFile(sidecar, sideCarFullPath);
+
 			return new FileInfo(sideCarFullPath);
 		}
 		FileInfo CreateSideCarFileInfo(DateTime backupStartDateTime, DriveInfo driveInfo, FileInfo targetTempFileInfo, FileInfo fileInfo) {
@@ -886,48 +887,58 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			if(targetTempFileInfo.DirectoryName == null) throw new Exception("Something is wrong, I do not know why this directoryName is null: " + targetTempFileInfo.FullName);
 			string sideCarFullPath = Path.Combine(targetTempFileInfo.DirectoryName, name + extension);
 
-			using(StreamWriter writer = new StreamWriter(sideCarFullPath)) {
-				IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
+			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
 
-				string filePersistentUniqueId = fileInfo.FullName;
-				string fileFullName = fileInfo.FullName;
+			string filePersistentUniqueId = fileInfo.FullName;
+			string fileFullName = fileInfo.FullName;
 
-				string driveId = driveInfo.Name;
-				string driveDescription = driveInfo.DriveType.ToString();
-				string driveVolumeLabel = driveInfo.VolumeLabel;
+			string driveId = driveInfo.Name;
+			string driveDescription = driveInfo.DriveType.ToString();
+			string driveVolumeLabel = driveInfo.VolumeLabel;
 
-				List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
+			List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
 
-				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fileInfo.FullName, hashTypesToCompute);
+			IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fileInfo.FullName, hashTypesToCompute);
 
-				writer.WriteLine("[Settings]");
-				writer.WriteLine("OriginalFileName=" + targetTempFileInfo.Name);
-				writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToString("o"));
-				writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToString("o"));
-				writer.WriteLine("LastWriteDateTime=" + targetTempFileInfo.LastWriteTime.ToString("o"));
-				writer.WriteLine("MediaTakenDateTime=" + metadataFileInfo.GetCreatedMediaFileDateTime()?.ToString("o"));
-				writer.WriteLine();
+			// Create SideCarDocument using new API
+			SideCarDocument sidecar = new();
 
-				writer.WriteLine("[BackupInfo]");
-				writer.WriteLine("BackupDateTime=" + backupStartDateTime.ToString("o"));
-				writer.WriteLine();
+			// [Settings] section
+			sidecar.WithSection("Settings")
+				.WithProperty("OriginalFileName", targetTempFileInfo.Name)
+				.WithProperty("CreateDateTime", targetTempFileInfo.CreationTime)
+				.WithProperty("LastAccessDateTime", targetTempFileInfo.LastAccessTime)
+				.WithProperty("LastWriteDateTime", targetTempFileInfo.LastWriteTime)
+				.WithProperty("MediaTakenDateTime", metadataFileInfo.GetCreatedMediaFileDateTime());
 
-				// [FileHash] section
-				writer.WriteLine("[FileHash]");
-				foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
-					writer.WriteLine($"{hashName}={hashes[hashType]}");
-				}
 
-				writer.WriteLine("[DriveFileDetails]");
-				writer.WriteLine("PersistentUniqueId=" + filePersistentUniqueId);
-				writer.WriteLine("FullName=" + fileFullName);
-				writer.WriteLine();
 
-				writer.WriteLine("[DriveDetails]");
-				writer.WriteLine("DriveId=" + driveId);
-				writer.WriteLine("Description=" + driveDescription);
-				writer.WriteLine("VolumeLabel=" + driveVolumeLabel);
+			// [BackupInfo] section
+			sidecar.WithSection("BackupInfo")
+				.WithProperty("BackupDateTime", backupStartDateTime);
+
+
+			// [FileHash] section
+			var fileHashSection = sidecar.WithSection("FileHash");
+			foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
+				fileHashSection.WithProperty(hashName, hashes[hashType]);
 			}
+
+			// [DriveFileDetails] section
+			sidecar.WithSection("DriveFileDetails")
+				.WithProperty("PersistentUniqueId", fileInfo.FullName)
+				.WithProperty("FullName", fileInfo.FullName);
+
+			// [DriveDetails] section
+			sidecar.WithSection("DriveDetails")
+				.WithProperty("DriveId", driveInfo.Name)
+				.WithProperty("Description", driveInfo.DriveType.ToString())
+				.WithProperty("VolumeLabel", driveInfo.VolumeLabel);
+
+			// Write to file using IniSideCarWriter
+			IniSideCarWriter writer = new();
+			writer.WriteToFile(sidecar, sideCarFullPath);
+
 			return new FileInfo(sideCarFullPath);
 		}
 

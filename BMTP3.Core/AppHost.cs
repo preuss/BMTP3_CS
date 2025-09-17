@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core {
-	[SupportedOSPlatform("windows7.0")]
+	[SupportedOSPlatform("windows10.0")]
 	internal class AppHost {
 		private readonly IAnsiConsole _console;
 		private readonly IConfiguration _configuration;

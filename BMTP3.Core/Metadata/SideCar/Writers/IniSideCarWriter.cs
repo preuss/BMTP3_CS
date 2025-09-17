@@ -31,15 +31,15 @@ namespace BMTP3.Core.Metadata.SideCar.Writers {
         public string WriteToString(SideCarDocument document) {
             ArgumentNullException.ThrowIfNull(document);
 
-            var sb = new StringBuilder();
+            StringBuilder sb = new();
             
-            foreach (var section in document.GetSortedSections()) {
+            foreach (SideCarSection section in document.GetSortedSections()) {
                 // Write section header
                 sb.AppendLine($"[{section.Name}]");
                 
                 // Write properties for this section
-                foreach (var property in section.GetSortedProperties()) {
-                    sb.AppendLine($"{property.Key}={property.Value ?? ""}");
+                foreach (SideCarProperty property in section.GetSortedProperties()) {
+                    sb.AppendLine($"{property.Key}={property.Value}");
                 }
                 
                 // Add empty line after each section (except the last)
