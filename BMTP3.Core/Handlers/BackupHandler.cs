@@ -741,14 +741,29 @@ namespace BMTP3.Core.Handlers {
 			("BLAKE3_256",       BLAKE3_256),
 			("BLAKE3_512",       BLAKE3_512),
 		];
-		private FileInfo CreateSideCarFileInternal(
+		/// <summary>
+		/// Creates a SideCarDocument from provided data without writing to file
+		/// </summary>
+		/// <param name="backupStartDateTime">When the backup started</param>
+		/// <param name="targetTempFileInfo">Temp file to extract metadata from</param>
+		/// <param name="persistentUniqueId">Unique identifier for the source file</param>
+		/// <param name="sourceFullName">Full path of source file</param>
+		/// <param name="fileDetailsSectionName">Name of the file details section</param>
+		/// <param name="sourceDetailsSectionName">Name of the source details section</param>
+		/// <param name="sourceDetails">Dictionary of source device/drive details</param>
+		/// <param name="hashes">Pre-computed hash values</param>
+		/// <param name="pathMappingData">Optional path mapping information</param>
+		/// <returns>Configured SideCarDocument ready for writing</returns>
+		private SideCarDocument CreateSideCarDocument(
 			DateTime backupStartDateTime,
 			FileInfo targetTempFileInfo,
 			string persistentUniqueId,
 			string sourceFullName,
 			string fileDetailsSectionName,
 			string sourceDetailsSectionName,
-			IReadOnlyDictionary<string, string> sourceDetails
+			IReadOnlyDictionary<string, string> sourceDetails,
+			IReadOnlyDictionary<HashCalculator.HashType, string> hashes,
+			(string? originalPath, string? sanitizedPath)? pathMappingData = null
 		) {
 			string sideCarFullPath = Path.ChangeExtension(targetTempFileInfo.FullName, ".ini");
 			if(targetTempFileInfo.DirectoryName == null) {
@@ -757,15 +772,12 @@ namespace BMTP3.Core.Handlers {
 
 			IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
 
-			List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
-
-			IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(targetTempFileInfo.FullName, hashTypesToCompute);
-
 			// Create SideCarDocument
 			SideCarDocument sidecar = new();
+			int weight = 10;
 
 			// [Settings] section
-			sidecar.WithSection("Settings")
+			sidecar.WithSection("Settings", ++weight)
 				.WithProperty("OriginalFileName", targetTempFileInfo.Name)
 				.WithProperty("CreateDateTime", targetTempFileInfo.CreationTime)
 				.WithProperty("LastAccessDateTime", targetTempFileInfo.LastAccessTime)
@@ -773,31 +785,45 @@ namespace BMTP3.Core.Handlers {
 				.WithProperty("MediaTakenDateTime", metadataFileInfo.GetCreatedMediaFileDateTime());
 
 			// [BackupInfo] section
-			sidecar.WithSection("BackupInfo")
+			sidecar.WithSection("BackupInfo", ++weight)
 				.WithProperty("BackupDateTime", backupStartDateTime);
 
 			// [FileHash] section
-			var fileHashSection = sidecar.WithSection("FileHash");
-			foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
-				fileHashSection.WithProperty(hashName, hashes[hashType]);
+			SideCarSection fileHashSection = sidecar.WithSection("FileHash", ++weight);
+			foreach(KeyValuePair<HashCalculator.HashType, string> hashEntry in hashes) {
+				string? hashName = HashOutputMap
+					.Where(x => x.hashType == hashEntry.Key)
+					.Select(x => x.hashName)
+					.FirstOrDefault();
+				if(string.IsNullOrEmpty(hashName)) {
+					continue;
+				}
+				fileHashSection.WithProperty(hashName, hashEntry.Value);
 			}
 
 			// [Device/Drive File Details] section
-			sidecar.WithSection(fileDetailsSectionName)
+			sidecar.WithSection(fileDetailsSectionName, ++weight)
 				.WithProperty("PersistentUniqueId", persistentUniqueId)
 				.WithProperty("FullName", sourceFullName);
 
+			// [PathMapping] section (conditionally)
+			if(pathMappingData.HasValue) {
+				var pathMappingSection = sidecar.WithSection("PathMapping", ++weight);
+				if(pathMappingData.Value.originalPath != null) {
+					pathMappingSection.WithProperty("OriginalRelativeDirectoryPath", pathMappingData.Value.originalPath);
+				}
+				if(pathMappingData.Value.sanitizedPath != null) {
+					pathMappingSection.WithProperty("SanitizedRelativeDirectoryPath", pathMappingData.Value.sanitizedPath);
+				}
+			}
+
 			// [Device/Drive Details] section
-			var sourceDetailsSection = sidecar.WithSection(sourceDetailsSectionName);
+			SideCarSection sourceDetailsSection = sidecar.WithSection(sourceDetailsSectionName, ++weight);
 			foreach(KeyValuePair<string, string> detail in sourceDetails) {
 				sourceDetailsSection.WithProperty(detail.Key, detail.Value);
 			}
 
-			// Write to file using IniSideCarWriter
-			var writer = new IniSideCarWriter();
-			writer.WriteToFile(sidecar, sideCarFullPath);
-
-			return new FileInfo(sideCarFullPath);
+			return sidecar;
 		}
 		FileInfo CreateSideCarFileInfo(DateTime backupStartDateTime, MediaDevice mediaDevice, FileInfo targetTempFileInfo, MediaFileInfo mediaFileInfo, string? relativeDirectoryPathRaw = null, string? relativeDirectoryPath = null) {
 			string fullName = targetTempFileInfo.FullName;
@@ -844,7 +870,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				.WithProperty("BackupDateTime", backupStartDateTime);
 
 			// [FileHash] section
-			var fileHashSection = sidecar.WithSection("FileHash");
+			SideCarSection fileHashSection = sidecar.WithSection("FileHash");
 			foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
 				fileHashSection.WithProperty(hashName, hashes[hashType]);
 			}
@@ -856,7 +882,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 
 			// [PathMapping] section (conditionally)
 			if(relativeDirectoryPathRaw != null || relativeDirectoryPath != null) {
-				var pathMappingSection = sidecar.WithSection("PathMapping");
+				SideCarSection pathMappingSection = sidecar.WithSection("PathMapping");
 				if(relativeDirectoryPathRaw != null) {
 					pathMappingSection.WithProperty("OriginalRelativeDirectoryPath", relativeDirectoryPathRaw);
 				}
@@ -875,7 +901,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				.WithProperty("SerialNumber", mediaDevice.SerialNumber);
 
 			// Write to file using IniSideCarWriter
-			var writer = new IniSideCarWriter();
+			IniSideCarWriter writer = new();
 			writer.WriteToFile(sidecar, sideCarFullPath);
 
 			return new FileInfo(sideCarFullPath);
@@ -919,7 +945,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 
 
 			// [FileHash] section
-			var fileHashSection = sidecar.WithSection("FileHash");
+			SideCarSection fileHashSection = sidecar.WithSection("FileHash");
 			foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
 				fileHashSection.WithProperty(hashName, hashes[hashType]);
 			}
