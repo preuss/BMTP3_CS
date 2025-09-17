@@ -1,4 +1,4 @@
-﻿using BMTP3.Core.Configs;
+using BMTP3.Core.Configs;
 using BMTP3.Core.Configuration;
 using BMTP3.Core.Handlers;
 using BMTP3.Core.Handlers.EventHandlers;
@@ -52,6 +52,7 @@ namespace BMTP3.Core {
 			Message = LogManager.GetMessageWriter();
 		}
 		private static bool RequestToQuit { get; set; }
+
 		static async Task<int> Main(string[] args) {
 #if DEBUG
 			// Test only code here.
@@ -93,6 +94,7 @@ namespace BMTP3.Core {
 				args = ["--backup", "TestAndroidBackup.toml"];
 				//args = ["--backup", "TestLocalFolderBackup.toml"];
 				//args = ["--verifyPath", ];
+				Console.WriteLine($"Hello world");
 			}
 #endif
 			foreach(var x in args) {

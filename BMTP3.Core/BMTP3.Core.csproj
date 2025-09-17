@@ -24,7 +24,7 @@
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.9" />
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="NExifTool" Version="0.12.0" />
     <PackageReference Include="SHA3.Net" Version="2.0.0" />
     <PackageReference Include="SharpHash" Version="1.2.0" />
@@ -86,8 +86,7 @@
 
   <ItemGroup>
     <Reference Include="MediaDevices">
-      <HintPath>..\..\MediaDevices-FixErrors\Src\MediaDevices80\bin\Debug\net8.0-windows7.0\MediaDevices.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\GlobalPreussProjects\MediaDevices-FixErrors\Src\MediaDevices80\bin\Debug\net8.0-windows7.0\MediaDevices.dll</HintPath>
     </Reference>
   </ItemGroup>
 
