@@ -146,7 +146,7 @@ namespace BMTP3.Core.Handlers {
 					//backupHandler.BackupDevices(foundDevicesAndConfig);
 					//backupHandler.BackupDevicesAsync(foundDevicesAndConfig).GetAwaiter().GetResult();
 					if(cancellationToken.IsCancellationRequested) {
-						logger.ZLogTrace($"Cancelled during device bakcup: {friendlyName}");
+						logger.ZLogTrace($"Cancelled during device backup: {friendlyName}");
 						Console.WriteLine("Backup afbrudt.");
 						cancellationToken.ThrowIfCancellationRequested();
 						return;
