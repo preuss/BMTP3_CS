@@ -727,6 +727,74 @@ namespace BMTP3.Core.Handlers {
 
 			return true;
 		}
+		// Includes alias lines (e.g. "SHA3_512=" using FIPS202 result)
+		private static readonly (string hashName, HashCalculator.HashType hashType)[] HashOutputMap =
+		[
+			("SHA3_512_KECCAK",  SHA3_512_KECCAK),
+			("SHA3_512_FIPS202", SHA3_512_FIPS202),
+			("SHA3_512",         SHA3_512_FIPS202), // alias for SHA3_512_FIPS202
+			("SHA2_512",         SHA2_512),
+			("SHA2_256",         SHA2_256),
+			("MD5",              MD5_128),
+			("BLAKE3_256",       BLAKE3_256),
+			("BLAKE3_512",       BLAKE3_512),
+		];
+		private FileInfo CreateSideCarFileInternal(
+			DateTime backupStartDateTime,
+			FileInfo targetTempFileInfo,
+			string persistentUniqueId,
+			string sourceFullName,
+			string fileDetailsSectionName,
+			string sourceDetailsSectionName,
+			IReadOnlyDictionary<string, string> sourceDetails
+		) {
+			string sideCarFullPath = Path.ChangeExtension(targetTempFileInfo.FullName, ".ini");
+			if(targetTempFileInfo.DirectoryName == null) {
+				throw new Exception($"DirectoryName er null for midlertidig fil: {targetTempFileInfo.FullName}");
+			}
+
+			using(StreamWriter writer = new StreamWriter(sideCarFullPath)) {
+				IMetadataFileInfo metadataFileInfo = new MetadataExtractorFileInfo(targetTempFileInfo);
+
+				List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
+
+				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(targetTempFileInfo.FullName, hashTypesToCompute);
+
+				// [Settings] section
+				writer.WriteLine("[Settings]");
+				writer.WriteLine($"OriginalFileName={targetTempFileInfo.Name}");
+				writer.WriteLine("CreateDateTime=" + targetTempFileInfo.CreationTime.ToString("o"));
+				writer.WriteLine("LastAccessDateTime=" + targetTempFileInfo.LastAccessTime.ToString("o"));
+				writer.WriteLine("LastWriteDateTime=" + targetTempFileInfo.LastWriteTime.ToString("o"));
+				writer.WriteLine("MediaTakenDateTime=" + metadataFileInfo.GetCreatedMediaFileDateTime()?.ToString("o"));
+				writer.WriteLine();
+
+				// [BackupInfo] section
+				writer.WriteLine("[BackupInfo]");
+				writer.WriteLine($"BackupDateTime={backupStartDateTime:o}");
+				writer.WriteLine();
+
+				// [FileHash] section
+				writer.WriteLine("[FileHash]");
+				foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
+					writer.WriteLine($"{hashName}={hashes[hashType]}");
+				}
+				writer.WriteLine();
+
+				// [Device/Drive File Details] section
+				writer.WriteLine($"[{fileDetailsSectionName}]");
+				writer.WriteLine($"PersistentUniqueId={persistentUniqueId}");
+				writer.WriteLine($"FullName={sourceFullName}");
+				writer.WriteLine();
+
+				// [Device/Drive Details] section
+				writer.WriteLine($"[{sourceDetailsSectionName}]");
+				foreach(var detail in sourceDetails) {
+					writer.WriteLine($"{detail.Key}={detail.Value}");
+				}
+			}
+			return new FileInfo(sideCarFullPath);
+		}
 		FileInfo CreateSideCarFileInfo(DateTime backupStartDateTime, MediaDevice mediaDevice, FileInfo targetTempFileInfo, MediaFileInfo mediaFileInfo, string? relativeDirectoryPathRaw = null, string? relativeDirectoryPath = null) {
 			string fullName = targetTempFileInfo.FullName;
 			string name = targetTempFileInfo.Name;
@@ -748,24 +816,8 @@ namespace BMTP3.Core.Handlers {
 				string deviceModel = mediaDevice.Model;
 				string deviceSerialNumber = mediaDevice.SerialNumber;
 
-				List<HashCalculator.HashType> hashTypes = [
-						SHA3_512_KECCAK,
-						SHA3_512_FIPS202,
-						SHA2_512,
-						SHA2_256,
-						MD5_128,
-						BLAKE3_256,
-						BLAKE3_512,
-
-					];
-				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fullName, hashTypes);
-				string sha3_512_keccak_str = hashes[SHA3_512_KECCAK];
-				string sha3_512_fips202_str = hashes[SHA3_512_FIPS202];
-				string sha2_512_str = hashes[SHA2_512];
-				string sha2_256_str = hashes[SHA2_256];
-				string md5_128 = hashes[MD5_128];
-				string blake3_256_str = hashes[BLAKE3_256];
-				string blake3_512_str = hashes[BLAKE3_512];
+				List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
+				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fullName, hashTypesToCompute);
 
 				/*
 OriginalFileName=IMG_20230222_140525_807.jpg
@@ -793,15 +845,11 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				writer.WriteLine("BackupDateTime=" + backupStartDateTime.ToString("o"));
 				writer.WriteLine();
 
+				// [FileHash] section
 				writer.WriteLine("[FileHash]");
-				writer.WriteLine("SHA3_512_KECCAK=" + sha3_512_keccak_str);
-				writer.WriteLine("SHA3_512_FIPS202=" + sha3_512_fips202_str);
-				writer.WriteLine("SHA3_512=" + sha3_512_fips202_str);
-				writer.WriteLine("SHA2_512=" + sha2_512_str);
-				writer.WriteLine("SHA2_256=" + sha2_256_str);
-				writer.WriteLine("MD5=" + md5_128);
-				writer.WriteLine("BLAKE3_256=" + blake3_256_str);
-				writer.WriteLine("BLAKE3_512=" + blake3_512_str);
+				foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
+					writer.WriteLine($"{hashName}={hashes[hashType]}");
+				}
 				writer.WriteLine();
 
 				writer.WriteLine("[DeviceFileDetails]");
@@ -848,25 +896,9 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				string driveDescription = driveInfo.DriveType.ToString();
 				string driveVolumeLabel = driveInfo.VolumeLabel;
 
-				List<HashCalculator.HashType> hashTypes = [
-					SHA3_512_KECCAK,
-					SHA3_512_FIPS202,
-					SHA2_512,
-					SHA2_256,
-					MD5_128,
-					BLAKE3_256,
-					BLAKE3_512,
-				];
+				List<HashCalculator.HashType> hashTypesToCompute = HashOutputMap.Select(x => x.hashType).Distinct().ToList();
 
-				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fileInfo.FullName, hashTypes);
-
-				string sha3_512_keccak_str = hashes[SHA3_512_KECCAK];
-				string sha3_512_fips202_str = hashes[SHA3_512_FIPS202];
-				string sha2_512_str = hashes[SHA2_512];
-				string sha2_256_str = hashes[SHA2_256];
-				string md5_128 = hashes[MD5_128];
-				string blake3_256_str = hashes[BLAKE3_256];
-				string blake3_512_str = hashes[BLAKE3_512];
+				IReadOnlyDictionary<HashCalculator.HashType, string> hashes = BackupHelper.ComputeHashes(fileInfo.FullName, hashTypesToCompute);
 
 				writer.WriteLine("[Settings]");
 				writer.WriteLine("OriginalFileName=" + targetTempFileInfo.Name);
@@ -880,16 +912,11 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 				writer.WriteLine("BackupDateTime=" + backupStartDateTime.ToString("o"));
 				writer.WriteLine();
 
+				// [FileHash] section
 				writer.WriteLine("[FileHash]");
-				writer.WriteLine("SHA3_512_KECCAK=" + sha3_512_keccak_str);
-				writer.WriteLine("SHA3_512_FIPS202=" + sha3_512_fips202_str);
-				writer.WriteLine("SHA3_512=" + sha3_512_fips202_str);
-				writer.WriteLine("SHA2_512=" + sha2_512_str);
-				writer.WriteLine("SHA2_256=" + sha2_256_str);
-				writer.WriteLine("MD5=" + md5_128);
-				writer.WriteLine("BLAKE3_256=" + blake3_256_str);
-				writer.WriteLine("BLAKE3_512=" + blake3_512_str);
-				writer.WriteLine();
+				foreach((string hashName, HashCalculator.HashType hashType) in HashOutputMap) {
+					writer.WriteLine($"{hashName}={hashes[hashType]}");
+				}
 
 				writer.WriteLine("[DriveFileDetails]");
 				writer.WriteLine("PersistentUniqueId=" + filePersistentUniqueId);
