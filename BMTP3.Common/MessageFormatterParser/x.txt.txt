@@ -1,0 +1,62 @@
+using System;
+using System.Text;
+
+// ... (resten af Lexer2 klassen)
+
+    // Metode til at scanne en almindelig streng (literal string)
+    private Token ScanLiteralString()
+    {
+        // Vi scanner alle tegn, indtil vi finder en placeholder startsekvens eller escape-sekvens
+        
+        StringBuilder buffer = new StringBuilder();
+        int startColumn = _charStream.ColumnNumber;
+
+        // Tjekker om der er tegn at scanne
+        if (!HasNextToken())
+        {
+            throw new InvalidOperationException("Der er ingen tegn at scanne for en literal string.");
+        }
+        
+        while (HasNextToken())
+        {
+            char peekNextChar = _charStream.Peek();
+
+            // Tjekker for escape-sekvenser eller start på en placeholder
+            if (_charStream.HasChars(2))
+            {
+                char peekSecondChar = _charStream.Peek(2)[1];
+
+                // Håndterer "escaped braces" - '{{' og '}}'
+                if (peekNextChar == '{' && peekSecondChar == '{')
+                {
+                    _charStream.Next(); // Forbruger det første '{'
+                    buffer.Append(_charStream.Next()); // Forbruger det andet '{' og tilføjer et enkelt '{' til bufferen
+                    continue; // Fortsætter til næste tegn
+                }
+                else if (peekNextChar == '}' && peekSecondChar == '}')
+                {
+                    _charStream.Next(); // Forbruger det første '}'
+                    buffer.Append(_charStream.Next()); // Forbruger det andet '}' og tilføjer et enkelt '}' til bufferen
+                    continue; // Fortsætter til næste tegn
+                }
+                
+                // Stopper, hvis vi finder starten på en placeholder (${ eller #{)
+                if ((peekNextChar == '$' || peekNextChar == '#') && peekSecondChar == '{')
+                {
+                    break;
+                }
+            }
+
+            // Håndterer almindelige tegn og tilføjer dem til bufferen
+            buffer.Append(_charStream.Next());
+        }
+
+        // Kaster en undtagelse, hvis der intet blev scannet, i overensstemmelse med dine krav
+        if (buffer.Length == 0)
+        {
+             // Denne del burde ikke blive nået, hvis funktionen kaldes korrekt.
+             throw new InvalidOperationException("ScanLiteralString metoden blev kaldt, men ingen tegn kunne scannes.");
+        }
+
+        return new Token(TokenType.LiteralString, buffer.ToString(), startColumn);
+    }

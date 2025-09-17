@@ -1,0 +1,127 @@
+﻿using System;
+using System.Collections.Generic;
+using Xunit;
+using BMTP3.Common.MessageFormatterParser;
+using Xunit.Abstractions;
+
+namespace BMTP3.Common.Tests.MessageFormatterParser {
+	public class MessageFormatterParserTests {
+		[Fact]
+		public void Format_SimplePlaceholder_ReturnsCorrectOutput() {
+			// Arrange
+			var template = "Backup: ${filename}";
+			var values = new Dictionary<string, object> { { "filename", "photo.jpg" } };
+
+			// Act
+			var result = new MessageFormatter().Format(template, values);
+
+			// Assert
+			Assert.Equal("Backup: photo.jpg", result);
+		}
+
+		[Fact]
+		public void Format_IndexedPlaceholder_ReturnsCorrectOutput() {
+			// Arrange
+			var template = "Size: #{0}";
+			var values = new Dictionary<string, object> { { "0", 1024.0 } };
+
+			// Act
+			var result = new MessageFormatter().Format(template, values);
+
+			// Assert
+			Assert.Equal("Size: 1024", result);
+		}
+
+		[Fact]
+		public void Format_FunctionCall_AppliesFunctionCorrectly() {
+			// Arrange
+			var template = "File: ${filename.toUpper()}";
+			var values = new Dictionary<string, object> { { "filename", "photo.jpg" } };
+
+			// Act
+			var result = new MessageFormatter().Format(template, values);
+
+			// Assert
+			Assert.Equal("File: PHOTO.JPG", result);
+		}
+
+		[Fact]
+		public void Format_CustomPattern_FormatsCorrectly() {
+			// Arrange
+			var template = "Date: ${date:yyyy,MM/dd:EEE}";
+			var values = new Dictionary<string, object> { { "date", "2025-04-17" } };
+
+			// Act
+			var result = new MessageFormatter().Format(template, values);
+
+			// Assert
+			Assert.Equal("Date: 2025,04/17:Thu", result);
+		}
+
+		[Fact]
+		public void Format_NestedPlaceholder_FormatsCorrectly() {
+			// Arrange
+			var template = "Backup: ${date:yyyy,MM/dd:EEE ${filename}}";
+			var values = new Dictionary<string, object>
+			{
+				{ "date", "2025-04-17" },
+				{ "filename", "photo.jpg" }
+			};
+
+			// Act
+			var result = new MessageFormatter().Format(template, values);
+
+			// Assert
+			Assert.Equal("Backup: 2025,04/17:Thu photo.jpg", result);
+		}
+
+		[Fact]
+		public void Format_IfCondition_EvaluatesCorrectly() {
+			// Arrange
+			var template = "Files: ${count,if,eq0?no files:${other} files}";
+			var values = new Dictionary<string, object>
+			{
+				{ "count", 2.0 },
+				{ "other", "two" }
+			};
+
+			// Act
+			var result = new MessageFormatter().Format(template, values);
+
+			// Assert
+			Assert.Equal("Files: two files", result);
+		}
+
+		[Fact]
+		public void Format_EscapedBraces_OutputsLiteralBraces() {
+			// Arrange
+			var template = "Literal: ${argument:{{filename}}}}";
+			var values = new Dictionary<string, object> { { "argument", "value" } };
+
+			// Act
+			var result = new MessageFormatter().Format(template, values);
+
+			// Assert
+			Assert.Equal("Literal: {filename}", result);
+		}
+
+		[Theory]
+		[InlineData("${filename", "Expected } at position")]
+		[InlineData("${date.toUpper()}", "Invalid function toUpper for type")]
+		[InlineData("${date,number:yyyy-MM-dd}", "Invalid type")]
+		[InlineData("${count,if,eq0?no files}", "Expected :")]
+		public void Format_InvalidInput_ThrowsException(string template, string expectedErrorPart) {
+			// Arrange
+			var values = new Dictionary<string, object>
+			{
+				{ "filename", "photo.jpg" },
+				{ "date", new DateOnly(2025, 4, 17) },
+				{ "count", 2.0 }
+			};
+
+			// Act & Assert
+			var exception = Assert.Throws<Exception>(() => new MessageFormatter().Format(template, values));
+			Assert.Contains(expectedErrorPart, exception.Message);
+		}
+	}
+}

@@ -1,0 +1,41 @@
+﻿message           ::= text | placeholder | text placeholder message ; /* Message: text, placeholders, or both */
+text              ::= char* ; /* Any string without ${ or #{, escaped {{ and }} */
+
+placeholder       ::= message-format-expression | message-eval-expression ; /* Placeholder: either format or eval */
+
+message-format-expression ::= "${" name function* ("," type ("," style)?)? (":" custom-pattern)? "}" 
+                            | "#{" index function* ("," type ("," style)?)? (":" custom-pattern)? "}" ; /* Format: ${name...} or #{index...} */
+message-eval-expression   ::= "${" name ("§" eval-type eval-pattern?)? "}" 
+                            | "#{" index ("§" eval-type eval-pattern?)? "}" ; /* Eval: ${name§...} or #{index§...} */
+
+name              ::= identifier ; /* Name: only identifier */
+index             ::= digit+ ; /* Index: one or more digits */
+identifier        ::= [a-z,A-Z_] [a-z,A-Z,_,0-9]* ; /* Identifier: starts with a-z, A-Z, _, followed by a-z, A-Z, _, 0-9 */
+digit             ::= [0-9] ; /* Digits 0-9 */
+
+function          ::= "." identifier "()" ; /* Function: .identifier() */
+
+type              ::= identifier ; /* Type: e.g., number, string */
+style             ::= identifier ; /* Style: e.g., currency, upper */
+custom-pattern    ::= pattern-content ; /* Raw string, balanced {} or [], escaped {{, }} */
+
+eval-type         ::= identifier ; /* Eval-type: e.g., eq0, if, choice */
+eval-pattern      ::= "," pattern-content 
+                    | "[" pattern-content "]" 
+                    | "{" pattern-content "}" ; /* Pattern: comma-separated, or balanced [] or {} */
+pattern-content   ::= char* ; /* Raw string, balanced {} or [], escaped {{, }} */
+
+string-literal ::= triple-single-quote-string
+                 | triple-double-quote-string
+                 | acute-accent-string
+                 | slash-string ;
+
+triple-single-quote-string ::= triple-single-quote ( char_excluding_single_quote | "\\'" | "\\\\" )* triple-single-quote ;
+triple-double-quote-string ::= triple-double-quote ( char_excluding_double_quote | '\\"' | "\\\\" )* triple-double-quote ;
+acute-accent-string        ::= acute-accent ( char_excluding_acute_accent | "\\´" | "\\\\" )* acute-accent ;
+slash-string               ::= slash ( char_excluding_slash | "\\/" | "\\\\" )* slash ;
+
+triple-single-quote ::= "'''"
+triple-double-quote ::= '"""'
+acute-accent        ::= "´"
+slash               ::= "/"
