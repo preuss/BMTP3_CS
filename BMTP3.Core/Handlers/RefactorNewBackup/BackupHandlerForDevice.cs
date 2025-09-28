@@ -2,9 +2,11 @@
 using BMTP3.Core.BackupSource.PortableDevices;
 using BMTP3.Core.CompareFiles;
 using BMTP3.Core.Configs;
+using BMTP3.Core.Configuration;
+using BMTP3.Core.Exceptions;
+using BMTP3.Core.IO.Consoles.Progress;
 using BMTP3.Core.IO.Consoles.Progress.Columns;
 using BMTP3.Core.IO.Consoles.ProgressStatus;
-using BMTP3.Core.IO.Consoles.Progress;
 using BMTP3.Core.IO.Consoles.Spinner;
 using BMTP3.Core.Metadata;
 using BMTP3.Core.StringVariableSubstitution;
@@ -16,10 +18,9 @@ using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using System.Threading;
 using ZLogger;
 using static BMTP3.Core.Handlers.HashCalculator.HashType;
-using BMTP3.Core.Configuration;
-using BMTP3.Core.Exceptions;
 
 
 namespace BMTP3.Core.Handlers.RefactorNewBackup {
@@ -204,17 +205,17 @@ namespace BMTP3.Core.Handlers.RefactorNewBackup {
 								fileProgress.ProgressChanged += (sender, report) => {
 									downloadFileTask.Value(report.BytesRead);
 								};
-
+								CancellationToken cancellationToken = CancellationTokenGenerator.NewToken();
 								bool isSaved;
 								if(!config.HasFilePattern()) {
 									//throw new InvalidOperationException("Har ikke File Pattern, og mangler at implementere BackupFromPath(device, fromPath, targetDirectoryPath, tempDirectoryInfo);");
 									const bool addSideCarFile = false;
-									isSaved = BackupFromPath(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress);
+									isSaved = BackupFromPath(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, addSideCarFile, fileProgress, cancellationToken);
 								} else {
 									string filePattern = config.FilePattern!;
 									string filePatternIfExist = config.FilePatternIfExist!;
 
-									isSaved = BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress);
+									isSaved = BackupFromPathWithFilePattern(backupStartDateTime, device, sourceMediaFileInfo, targetDirectoryInfo, tempDirectoryInfo, config.CompareByBinary ?? true, filePattern, filePatternIfExist, fileProgress, cancellationToken);
 								}
 								pendingFileInfo.IsSaved = isSaved;
 								overallTask.Increment(1);
@@ -357,9 +358,9 @@ namespace BMTP3.Core.Handlers.RefactorNewBackup {
 
 			return progressTracker;
 		}
-		bool BackupFromPath(DateTime backupStartDateTime, MediaDevice mediaDevice, MediaFileInfo sourceMediaFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, IProgress<FileProgressReport> fileProgress) {
+		bool BackupFromPath(DateTime backupStartDateTime, MediaDevice mediaDevice, MediaFileInfo sourceMediaFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, bool addSideCarFile, IProgress<FileProgressReport> fileProgress, CancellationToken cancellationToken = default) {
 			double kilobytes = sourceMediaFileInfo.Length / 1024.0;
-			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceMediaFileInfo, fileProgress);
+			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceMediaFileInfo, fileProgress, cancellationToken);
 
 			FileInfo? targetTempSideCarFileInfo = null;
 			if(addSideCarFile) {
@@ -406,9 +407,9 @@ namespace BMTP3.Core.Handlers.RefactorNewBackup {
 			}
 			return true;
 		}
-		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, MediaDevice mediaDevice, MediaFileInfo sourceMediaFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress) {
+		bool BackupFromPathWithFilePattern(DateTime backupStartDateTime, MediaDevice mediaDevice, MediaFileInfo sourceMediaFileInfo, DirectoryInfo targetDirectoryInfo, DirectoryInfo tempDirectoryInfo, bool compareByBinary, string filePattern, string filePatternIfExist, IProgress<FileProgressReport> fileProgress, CancellationToken cancellationToken = default) {
 			double kilobytes = sourceMediaFileInfo.Length / 1024.0;
-			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceMediaFileInfo, fileProgress);
+			FileInfo targetTempFileInfo = DownloadToTempFile(tempDirectoryInfo, sourceMediaFileInfo, fileProgress, cancellationToken);
 
 			FileInfo targetTempSideCarFileInfo = CreateSideCarFileInfo(backupStartDateTime, mediaDevice, targetTempFileInfo, sourceMediaFileInfo);
 
@@ -475,11 +476,11 @@ namespace BMTP3.Core.Handlers.RefactorNewBackup {
 
 			return true;
 		}
-		FileInfo DownloadToTempFile(DirectoryInfo tempDirectoryInfo, MediaFileInfo sourceMediaFileInfo, IProgress<FileProgressReport> fileProgress) {
+		FileInfo DownloadToTempFile(DirectoryInfo tempDirectoryInfo, MediaFileInfo sourceMediaFileInfo, IProgress<FileProgressReport> fileProgress, CancellationToken cancellationToken) {
 			string fileName = sourceMediaFileInfo.Name;
 			FileInfo targetTempFileInfo = tempDirectoryInfo.CombineToFileInfo(fileName);
 
-			sourceMediaFileInfo.CopyTo(targetTempFileInfo.FullName, fileProgress);
+			sourceMediaFileInfo.CopyTo(targetTempFileInfo.FullName, progressReporter: fileProgress, cancellationToken: cancellationToken);
 
 			BackupHelper.UpdateFileTimestamp(sourceMediaFileInfo, targetTempFileInfo);
 
