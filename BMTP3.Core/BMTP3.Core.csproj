@@ -79,13 +79,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Commands\" />
+    <Folder Include="Services\Interfaces\" />
+    <Folder Include="Services\Implementations\" />
+    <Folder Include="Commands\Handlers\" />
     <Folder Include="Models\" />
     <Folder Include="Utilities\" />
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="MediaDevices, Version=1.12.3.0, Culture=neutral, PublicKeyToken=null">
+    <Reference Include="MediaDevices">
       <HintPath>..\..\..\GlobalPreussProjects\MediaDevices-FixErrors\Src\MediaDevices\bin\Debug\net8.0-windows\MediaDevices.dll</HintPath>
     </Reference>
   </ItemGroup>
