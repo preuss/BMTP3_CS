@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "BMTP3.Consoles": {
+      "commandName": "Project",
+      "commandLineArgs": "--version"
+    }
+  }
+}

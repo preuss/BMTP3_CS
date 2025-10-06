@@ -79,7 +79,7 @@ namespace BMTP3.Core.Configuration {
 			services.AddSingleton<BackupExceptionHandlerService>();
 		}
 		private IConfiguration CreateConfiguration() {
-			var builder = new ConfigurationBuilder()
+			IConfigurationBuilder builder = new ConfigurationBuilder()
 				.SetBasePath(Directory.GetCurrentDirectory())
 				.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
 
