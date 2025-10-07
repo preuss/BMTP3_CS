@@ -1,0 +1,21 @@
+﻿<Project>
+	<PropertyGroup>
+		<Major>0</Major>
+		<Minor>3</Minor>
+		<Patch>4</Patch>
+		<BuildNumber>106</BuildNumber>
+		<ReleaseChannel>beta</ReleaseChannel>
+		<ReleaseChannelNumber>100</ReleaseChannelNumber>
+	<!--
+		<VersionSuffix>alpha</VersionSuffix>
+		<VersionSuffix>beta</VersionSuffix>
+		<VersionSuffix>rc</VersionSuffix>
+		<VersionSuffix>preview</VersionSuffix>
+		<VersionSuffix>dev</VersionSuffix>
+		<VersionSuffix>exp</VersionSuffix>
+	-->
+
+		<VersionPrefix>$(Major).$(Minor).$(Patch).$(BuildNumber)</VersionPrefix>
+		<VersionSuffix>$(ReleaseChannel)$(ReleaseChannelNumber)</VersionSuffix>
+	</PropertyGroup>
+</Project>

@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <!-- Ensure the script only runs once per build session -->
+    <_BuildFirstOnceExecuted>false</_BuildFirstOnceExecuted>
+  </PropertyGroup>
+  <Target Name="RunBuildFirstOnce"
+          BeforeTargets="Build"
+          Condition="'$(_BuildFirstOnceExecuted)' != 'true'">
+    <Message Text="Invoking BuildFirstOnce.proj..." Importance="high" />
+    <MSBuild Projects="$(SolutionDir)BuildFirstOnce\BuildFirstOnce.proj" Targets="RunBumpScript" />
+    <PropertyGroup>
+      <_BuildFirstOnceExecuted>true</_BuildFirstOnceExecuted>
+    </PropertyGroup>
+  </Target>
+</Project>
