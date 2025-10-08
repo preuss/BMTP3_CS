@@ -160,7 +160,7 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			AssertTokens(expectedTokens, actualTokens);
 		}
 
-		//[Fact]
+		[Fact]
 		public void ScanToken_LoneDollarOrHash_ReturnsLiteralString() {
 			// Arrange
 			var lexer = new Lexer("text $ #");

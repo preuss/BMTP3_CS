@@ -181,7 +181,7 @@ public class Lexer2Tests {
 		AssertTokens(expectedTokens, actualTokens);
 	}
 
-	//[Fact]
+	[Fact]
 	public void ScanToken_LoneDollarOrHash_ReturnsLiteralString() {
 		// Arrange
 		Lexer2 lexer = new("text $ #");
