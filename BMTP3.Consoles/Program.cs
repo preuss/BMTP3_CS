@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.CommandLine;
+using System.CommandLine.Parsing;
 
 namespace BMTP3.Consoles;
 
@@ -12,7 +13,7 @@ public class Program {
 	{
 		args = ["backup", "--path", "C:\\BackupFolder"];
 		args = ["backup", "asdf", "-unknown", "--help"];
-		args = ["-v", "-v", "-v", "-v", "-v", "--help"];
+		args = ["backup", "-v", "true", "true", "-v", "false", "false", "false", "-vvvv", "-v", "-v", "--help"];
 		args = ["backup", "-v", "-v", "-v", "-v", "-v"];
 
 		IServiceProvider serviceProvider = ApplicationStartup.CreateConfiguration(args);
@@ -21,22 +22,25 @@ public class Program {
 
 		var rootCommand = new RootCommand("BMTP3 CLI");
 
-		var verboseOption = new Option<int>("verbose")
+		var verboseOption = new Option<bool>("--verbose")
 		{
 			Description = "Enable verbose output. Repeat for more detail.",
-			Arity = ArgumentArity.ZeroOrMore
 		};
 		verboseOption.Aliases.Add("-v");
-		verboseOption.Aliases.Add("--verbose");
-		verboseOption.CustomParser = argumentResult => argumentResult.Tokens.Count;
+		//verboseOption.Aliases.Add("--verbose");
+		//verboseOption.CustomParser = argumentResult => argumentResult.Tokens.Count;
 
 
+		rootCommand.Options.Add(verboseOption);
+		rootCommand.Subcommands.Add(new BackupConsoleCommand() {Options = { verboseOption }});
+		rootCommand.Subcommands.Add(new VerifyConsoleCommand());
 
-		rootCommand.Add(verboseOption);
-		rootCommand.Add(new BackupConsoleCommand() {Options = { verboseOption }});
-		rootCommand.Add(new VerifyConsoleCommand());
-
-		var parseResult= rootCommand.Parse(args);
+		ParseResult parseResult= rootCommand.Parse(args);
+		OptionResult? or = parseResult.GetResult(verboseOption);
+		if(or != null)
+		{
+			Console.WriteLine(or.IdentifierTokenCount);
+		}
 		await parseResult.InvokeAsync();
 		//await app.RunAsync();
 		await Task.CompletedTask;
