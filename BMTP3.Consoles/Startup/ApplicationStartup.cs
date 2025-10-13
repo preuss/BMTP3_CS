@@ -11,7 +11,7 @@ using System.Threading.Tasks;
 namespace BMTP3.Consoles.Startup;
 
 public class ApplicationStartup {
-	public static IServiceProvider CreateConfiguration(string[] args) {
+	public static IServiceProvider InitializeServiceProvider(string[] args) {
 		//IHostBuilder builder = Host.CreateDefaultBuilder(args);
 		//IConfigurationBuilder builder = new ConfigurationBuilder();
 

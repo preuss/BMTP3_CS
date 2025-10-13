@@ -16,7 +16,7 @@ public class Program {
 		args = ["backup", "-v", "true", "true", "-v", "false", "false", "false", "-vvvv", "-v", "-v", "--help"];
 		args = ["backup", "-v", "-v", "-v", "-v", "-v"];
 
-		IServiceProvider serviceProvider = ApplicationStartup.CreateConfiguration(args);
+		IServiceProvider serviceProvider = ApplicationStartup.InitializeServiceProvider(args);
 
 		var app = serviceProvider.GetRequiredService<ConsoleApplication>();
 
@@ -31,6 +31,27 @@ public class Program {
 
 		VerifyConsoleCommand verifyCommand = new();
 		rootCommand.Subcommands.Add(verifyCommand);
+
+		Option<FileInfo> fileOption = new("--file") {
+			Description = "The file to read and display on the console."
+		};
+		Option<int> delayOption = new("--delay") {
+			Description = "Delay between lines, specified as milliseconds per character in a line.",
+			DefaultValueFactory = parseResult => 42
+		};
+		Option<ConsoleColor> fgcolorOption = new("--fgcolor") {
+			Description = "Foreground color of text displayed on the console.",
+			DefaultValueFactory = parseResult => ConsoleColor.White
+		};
+		Option<bool> lightModeOption = new("--light-mode") {
+			Description = "Background color of text displayed on the console: default is black, light mode is white."
+		};
+		Command c = new("read", "Read and display the file."){
+			fileOption,
+			delayOption,
+			//fgcolorOption,
+			lightModeOption
+		};
 
 		ParseResult parseResult= rootCommand.Parse(args);
 		await parseResult.InvokeAsync();
