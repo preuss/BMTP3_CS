@@ -6,48 +6,38 @@ using System.Threading.Tasks;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
-public class BackupConsoleCommand : Command
+public class BackupConsoleCommand : BaseConsoleCommand<GlobalOptionsModel, BackupOptionsModel>
 {
-    public BackupConsoleCommand() : base("backup", "Perform backup")
-    {
-        SetAction(HandleBackupAsync);
-    }
+	public BackupConsoleCommand() : base("backup", "Perform backup") { }
 
-    /// <summary>
-    /// Entry point for the backup command action.
-    /// </summary>
-    private async Task<int> HandleBackupAsync(ParseResult parseResult, CancellationToken cancellationToken)
-    {
-	    int verbosity = 0;
-		if(parseResult.GetResult("--verbose") is OptionResult verboseOpt)
-		{
-			verbosity = verboseOpt.IdentifierTokenCount;
-		}
+	/// <summary>
+	/// Entry point for the backup command action.
+	/// </summary>
+	protected override async Task<int> DoCommandAsync(
+		GlobalOptionsModel globalOptionsModel, 
+		BackupOptionsModel optionsModel, 
+		ParseResult parseResult, 
+		CancellationToken cancellationToken
+	)
+	{
+		int verbosity = globalOptionsModel.Verbose;
+		
+		Console.WriteLine("Verbose Level: " + verbosity);
 
-	    Console.WriteLine("Verbosity Level: " + verbosity);
+		// Simulates backup work here.
+		await Task.Delay(100, cancellationToken);
+		// Add your actual backup logic here
 
-		Console.WriteLine($"Verbosity Level: {verbosity}");
-		// Call private methods to structure your code
-		await DoBackupAsync(cancellationToken);
-        PrintResult();
-        return 0;
-    }
+		PrintResult();
+		return 0;
+	}
 
-    /// <summary>
-    /// Simulates backup work. Replace with actual backup logic.
-    /// </summary>
-    private async Task DoBackupAsync(CancellationToken cancellationToken)
-    {
-        await Task.Delay(100, cancellationToken);
-        // Add your actual backup logic here
-    }
-
-    /// <summary>
-    /// Prints the result of the backup operation.
-    /// </summary>
-    private void PrintResult()
-    {
-        Console.WriteLine("Backup completed!");
-    }
+	/// <summary>
+	/// Prints the result of the backup operation.
+	/// </summary>
+	private void PrintResult()
+	{
+		Console.WriteLine("Backup completed!");
+	}
 }
 

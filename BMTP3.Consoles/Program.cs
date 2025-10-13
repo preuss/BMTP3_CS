@@ -22,25 +22,17 @@ public class Program {
 
 		var rootCommand = new RootCommand("BMTP3 CLI");
 
-		var verboseOption = new Option<bool>("--verbose")
-		{
-			Description = "Enable verbose output. Repeat for more detail.",
-		};
-		verboseOption.Aliases.Add("-v");
-		//verboseOption.Aliases.Add("--verbose");
-		//verboseOption.CustomParser = argumentResult => argumentResult.Tokens.Count;
 
+		GlobalOptionsModel globalOptions = new GlobalOptionsModel();
+		globalOptions.GetAllOptions().ForEach(option => rootCommand.Options.Add(option));
 
-		rootCommand.Options.Add(verboseOption);
-		rootCommand.Subcommands.Add(new BackupConsoleCommand() {Options = { verboseOption }});
-		rootCommand.Subcommands.Add(new VerifyConsoleCommand());
+		BackupConsoleCommand backupCommand = new();
+		rootCommand.Subcommands.Add(backupCommand);
+
+		VerifyConsoleCommand verifyCommand = new();
+		rootCommand.Subcommands.Add(verifyCommand);
 
 		ParseResult parseResult= rootCommand.Parse(args);
-		OptionResult? or = parseResult.GetResult(verboseOption);
-		if(or != null)
-		{
-			Console.WriteLine(or.IdentifierTokenCount);
-		}
 		await parseResult.InvokeAsync();
 		//await app.RunAsync();
 		await Task.CompletedTask;

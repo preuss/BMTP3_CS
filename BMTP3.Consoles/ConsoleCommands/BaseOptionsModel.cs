@@ -1,0 +1,107 @@
+﻿using System;
+using System.Collections.Generic;
+using System.CommandLine;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BMTP3.Consoles.ConsoleCommands;
+public abstract class BaseOptionsModel
+{
+	public virtual void PopulateFromParseResult(ParseResult parseResult)
+	{
+		var type = GetType();
+		var staticProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
+
+		// Track Parse{Name}Option
+		HashSet<string> assigned = new(StringComparer.Ordinal);
+
+		foreach(var parseProp in staticProps.Where(p => p.Name.StartsWith("Parse") && p.Name.EndsWith("Option")))
+		{
+			var baseName = parseProp.Name.Substring("Parse".Length, parseProp.Name.Length - "Parse".Length - "Option".Length);
+
+			var instanceProp = type.GetProperty(baseName, BindingFlags.Public | BindingFlags.Instance);
+			if(instanceProp == null || !instanceProp.CanWrite)
+			{
+				continue;
+			}
+
+			if(parseProp.GetValue(null) is not Delegate parserFunc)
+			{
+				continue;
+			}
+
+			object? value = parserFunc.DynamicInvoke(parseResult);
+			if(value != null)
+			{
+				instanceProp.SetValue(this, value);
+				assigned.Add(baseName);
+			}
+		}
+
+		foreach(var optionProp in staticProps.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType)))
+		{
+			// Fx VerboseOption -> Verbose
+			string baseName = optionProp.Name.EndsWith("Option", StringComparison.Ordinal)
+				? optionProp.Name[..^"Option".Length]
+				: optionProp.Name;
+
+			if (assigned.Contains(baseName))
+			{
+				// Already delegated to Parse{Name}Option
+				continue;
+			}
+
+			var instanceProp = type.GetProperty(baseName, BindingFlags.Public | BindingFlags.Instance);
+			if(instanceProp == null || !instanceProp.CanWrite)
+			{
+				continue;
+			}
+
+			if(optionProp.GetValue(null) is not Option opt)
+			{
+				continue;
+			}
+
+			object? value = GetOptionValue(parseResult, opt, instanceProp.PropertyType);
+			if(value != null)
+			{
+				instanceProp.SetValue(this, value);
+			}
+		}
+	}
+	private static object? GetOptionValue(ParseResult parseResult, Option opt, Type targetType)
+	{
+		var method = typeof(ParseResult)
+			.GetMethods()
+			.FirstOrDefault(m => m.Name == "GetValue" && m.IsGenericMethod && m.GetParameters().Length == 1);
+
+		if(method != null)
+		{
+			var generic = method.MakeGenericMethod(targetType);
+			return generic.Invoke(parseResult, new object[] { opt });
+		}
+		return null;
+	}
+	public List<Option> GetAllOptions()
+	{
+		var type = GetType();
+		return type
+			.GetProperties(BindingFlags.Public | BindingFlags.Static)
+			.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType))
+			.Select(p => p.GetValue(null))
+			.OfType<Option>()
+			.ToList();
+	}
+
+	public IEnumerable<Delegate> GetAllParseOptions()
+	{
+		var type = GetType();
+		return type
+			.GetProperties(BindingFlags.Public | BindingFlags.Static)
+			.Where(p => p.Name.StartsWith("Parse") && p.Name.EndsWith("Option") && typeof(Delegate).IsAssignableFrom(p.PropertyType))
+			.Select(p => p.GetValue(null))
+			.OfType<Delegate>();
+	}
+}

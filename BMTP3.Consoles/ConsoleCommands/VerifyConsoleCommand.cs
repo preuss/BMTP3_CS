@@ -6,11 +6,19 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Consoles.ConsoleCommands;
-public class VerifyConsoleCommand : Command {
+public class VerifyConsoleCommand : BaseConsoleCommand<GlobalOptionsModel, VerifyOptionsModel> {
 	public VerifyConsoleCommand() : base("verify", "Verificér backup") {
-		SetAction((ParseResult parseResult) => {
-			Console.WriteLine("Verificering udføres...");
-			// Her kan du kalde din verify-logik
-		});
+	}
+
+	protected override async Task<int> DoCommandAsync(
+		GlobalOptionsModel globalOptionsModel, 
+		VerifyOptionsModel optionsModel, 
+		ParseResult parseResult,
+		CancellationToken cancellationToken
+	)
+	{
+		Console.WriteLine("Verificering udføres...");
+		await Task.Delay(1000, cancellationToken);
+		return 0;
 	}
 }
