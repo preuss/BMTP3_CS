@@ -25,6 +25,7 @@ public class BackupConsoleCommand : BaseConsoleCommand<GlobalOptionsModel, Backu
 		int verbosity = globalOptionsModel.Verbose;
 		
 		Console.WriteLine("Verbose Level: " + verbosity);
+		Console.WriteLine("Delay: " + optionsModel.Delay);
 
 		// Simulates backup work here.
 		await Task.Delay(100, cancellationToken);

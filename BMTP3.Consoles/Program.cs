@@ -14,7 +14,7 @@ public class Program {
 		args = ["backup", "--path", "C:\\BackupFolder"];
 		args = ["backup", "asdf", "-unknown", "--help"];
 		args = ["backup", "-v", "true", "true", "-v", "false", "false", "false", "-vvvv", "-v", "-v", "--help"];
-		args = ["backup", "-v", "-v", "-v", "-v", "-v"];
+		args = ["backup", "-v", "-v", "-v", "-v", "-v", "--delay"];
 
 		IServiceProvider serviceProvider = ApplicationStartup.InitializeServiceProvider(args);
 
@@ -32,9 +32,11 @@ public class Program {
 		VerifyConsoleCommand verifyCommand = new();
 		rootCommand.Subcommands.Add(verifyCommand);
 
+		/*
 		Option<FileInfo> fileOption = new("--file") {
 			Description = "The file to read and display on the console."
 		};
+		
 		Option<int> delayOption = new("--delay") {
 			Description = "Delay between lines, specified as milliseconds per character in a line.",
 			DefaultValueFactory = parseResult => 42
@@ -52,6 +54,7 @@ public class Program {
 			//fgcolorOption,
 			lightModeOption
 		};
+		*/
 
 		ParseResult parseResult= rootCommand.Parse(args);
 		await parseResult.InvokeAsync();

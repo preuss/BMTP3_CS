@@ -73,14 +73,29 @@ public abstract class BaseOptionsModel
 	}
 	private static object? GetOptionValue(ParseResult parseResult, Option opt, Type targetType)
 	{
+		var optionType = typeof(Option<>).MakeGenericType(targetType);
+		if (!optionType.IsInstanceOfType(opt))
+		{
+			throw new InvalidOperationException(
+				$"Option instance is not of type Option<{targetType.Name}>. Actual type: {opt.GetType()}");
+		}
 		var method = typeof(ParseResult)
 			.GetMethods()
-			.FirstOrDefault(m => m.Name == "GetValue" && m.IsGenericMethod && m.GetParameters().Length == 1);
+			.Where(m =>
+				m.Name == nameof(ParseResult.GetValue) &&
+				m.IsGenericMethod &&
+				m.GetParameters().Length == 1
+		    )
+			.FirstOrDefault(m => 
+				m.GetParameters()[0].ParameterType.IsGenericType &&
+				m.GetParameters()[0].ParameterType.GetGenericTypeDefinition() == typeof(Option<>)
+			);
 
 		if(method != null)
 		{
 			var generic = method.MakeGenericMethod(targetType);
-			return generic.Invoke(parseResult, new object[] { opt });
+			object castedOpt = Convert.ChangeType(opt, optionType);
+			return generic.Invoke(parseResult, new object[] { castedOpt });
 		}
 		return null;
 	}
