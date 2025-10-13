@@ -12,9 +12,12 @@ public abstract class BaseOptionsModel
         var type = GetType();
         var staticProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static);
 
-        // Validate all Parse{Name}Option delegates
+        // Phase 1: Validate all custom parse delegates (Parse{name}Option)
+        // Ensures that every Parse{Name}Option has a matching writable instance property
+        // with a compatible type before attempting to invoke the parser.
         foreach (var parseProp in staticProps.Where(p => p.Name.StartsWith("Parse") && p.Name.EndsWith("Option")))
         {
+            // Extract base name: ParseVerboseOption -> Verbose
             var baseName = parseProp.Name.Substring("Parse".Length, parseProp.Name.Length - "Parse".Length - "Option".Length);
 
             var instanceProp = type.GetProperty(baseName, BindingFlags.Public | BindingFlags.Instance);
@@ -22,7 +25,8 @@ public abstract class BaseOptionsModel
             {
                 throw new InvalidOperationException(
                     $"Parse delegate '{parseProp.Name}' exists, but there is no instance property '{baseName}' on type '{type.FullName}'. " +
-                    $"Add a property '{baseName}' or remove '{parseProp.Name}'.");
+                    $"Add a property '{baseName}' or remove '{parseProp.Name}'."
+                );
             }
 
             if (!instanceProp.CanWrite)
@@ -37,6 +41,8 @@ public abstract class BaseOptionsModel
                     $"Parse delegate property '{parseProp.Name}' on '{type.FullName}' is null or not a delegate.");
             }
 
+            // Validate that parser return type is assignable to property type
+            // Example: Func<ParseResult, int> must return int for an int property
             var parserReturnType = parserFunc.GetType().GetMethod("Invoke")?.ReturnType;
             var propertyType = instanceProp.PropertyType;
             if (parserReturnType is not null && !propertyType.IsAssignableFrom(parserReturnType))
@@ -47,7 +53,9 @@ public abstract class BaseOptionsModel
             }
         }
 
-        // Track Parse{Name}Option assignments
+        // Phase 2: Execute custom parsers and populate properties
+        // Custom parsers override standard option binding and allow complex parsing logic
+        // (e.g., counting repeated flags like -v -v -v)
         HashSet<string> assigned = new(StringComparer.Ordinal);
 
         foreach (var parseProp in staticProps.Where(p => p.Name.StartsWith("Parse") && p.Name.EndsWith("Option")))
@@ -57,7 +65,7 @@ public abstract class BaseOptionsModel
             var instanceProp = type.GetProperty(baseName, BindingFlags.Public | BindingFlags.Instance);
             if (instanceProp == null || !instanceProp.CanWrite)
             {
-                continue;
+                continue; // Already validated above, but defensive check
             }
 
             if (parseProp.GetValue(null) is not Delegate parserFunc)
@@ -65,31 +73,34 @@ public abstract class BaseOptionsModel
                 continue;
             }
 
+            // Invoke the custom parser delegate with the ParseResult
             object? value = parserFunc.DynamicInvoke(parseResult);
             if (value != null)
             {
                 instanceProp.SetValue(this, value);
-                assigned.Add(baseName);
+                assigned.Add(baseName); // Mark as handled to skip standard binding
             }
         }
 
+        // Phase 3: Standard option binding for properties without custom parsers
+        // Automatically binds Option<T> values to instance properties using ParseResult.GetValue<T>()
         foreach (var optionProp in staticProps.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType)))
         {
-            // E.g. VerboseOption -> Verbose
+            // Strip "Option" suffix: VerboseOption -> Verbose, DelayOption -> Delay
             string baseName = optionProp.Name.EndsWith("Option", StringComparison.Ordinal)
                 ? optionProp.Name[..^"Option".Length]
                 : optionProp.Name;
 
             if (assigned.Contains(baseName))
             {
-                // Already delegated to Parse{Name}Option
+                // Skip if already handled by a custom parser in Phase 2
                 continue;
             }
 
             var instanceProp = type.GetProperty(baseName, BindingFlags.Public | BindingFlags.Instance);
             if (instanceProp == null || !instanceProp.CanWrite)
             {
-                continue;
+                continue; // No matching property or property is read-only
             }
 
             if (optionProp.GetValue(null) is not Option opt)
@@ -97,6 +108,7 @@ public abstract class BaseOptionsModel
                 continue;
             }
 
+            // Use reflection to call ParseResult.GetValue<T>(Option<T>) with the correct type
             object? value = GetOptionValue(parseResult, opt, instanceProp.PropertyType);
             if (value != null)
             {
