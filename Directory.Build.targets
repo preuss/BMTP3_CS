@@ -2,13 +2,21 @@
   <PropertyGroup>
     <!-- Ensure the script only runs once per build session -->
     <_BuildFirstOnceExecuted>false</_BuildFirstOnceExecuted>
+	  <!--
+    <_SolutionDir Condition="'$(SolutionDir)' == ''">$(SolutionDir)</_SolutionDir>
+	-->
+    <_SolutionDir Condition="!Exists('$(SolutionDir)')">$(MSBuildThisFileDirectory)</_SolutionDir>
+    <SolutionDir Condition="'$(SolutionDir)'=='' or '$(SolutionDir)'=='*Undefined*'">..\</SolutionDir>
   </PropertyGroup>
   <Target Name="RunBuildFirstOnce"
           BeforeTargets="Build"
           Condition="'$(_BuildFirstOnceExecuted)' != 'true'">
     <Message Text="Invoking BuildFirstOnce.proj..." Importance="high" />
-    <MSBuild Projects="$(SolutionDir)BuildFirstOnce\BuildFirstOnce.proj" Targets="RunBumpScript" />
-    <PropertyGroup>
+    <MSBuild Projects="$(SolutionDir)BuildFirstOnce\BuildFirstOnce.proj"
+             Targets="RunBumpScript"
+	         Condition="Exists('$(_SolutionDir)BuildFirstOnce\BuildFirstOnce.proj')"
+    />
+	<PropertyGroup>
       <_BuildFirstOnceExecuted>true</_BuildFirstOnceExecuted>
     </PropertyGroup>
   </Target>
