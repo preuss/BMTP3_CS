@@ -32,6 +32,16 @@ public abstract class BaseOptionsModel
 				continue;
 			}
 
+			// Validation: Return type from parserFunc need to match property type
+			var parserReturnType = parserFunc.GetType().GetMethod("Invoke")?.ReturnType;
+			var propertyType = instanceProp.PropertyType;
+			if (parserReturnType is not null && !propertyType.IsAssignableFrom(parserReturnType))
+			{
+				throw new InvalidOperationException(
+					$"Type mismatch: Parse{baseName}Option returns {parserReturnType.Name}, " +
+					$"but property '{baseName}' er is of type {propertyType.Name} i {type.Name}.");
+			}
+
 			object? value = parserFunc.DynamicInvoke(parseResult);
 			if(value != null)
 			{
@@ -42,7 +52,7 @@ public abstract class BaseOptionsModel
 
 		foreach(var optionProp in staticProps.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType)))
 		{
-			// Fx VerboseOption -> Verbose
+			// Is {name}Option -> {name}
 			string baseName = optionProp.Name.EndsWith("Option", StringComparison.Ordinal)
 				? optionProp.Name[..^"Option".Length]
 				: optionProp.Name;
@@ -76,8 +86,7 @@ public abstract class BaseOptionsModel
 		var optionType = typeof(Option<>).MakeGenericType(targetType);
 		if (!optionType.IsInstanceOfType(opt))
 		{
-			throw new InvalidOperationException(
-				$"Option instance is not of type Option<{targetType.Name}>. Actual type: {opt.GetType()}");
+			throw new InvalidOperationException($"Option instance is not of type Option<{targetType.Name}>. Actual type: {opt.GetType()}");
 		}
 		var method = typeof(ParseResult)
 			.GetMethods()
@@ -115,7 +124,11 @@ public abstract class BaseOptionsModel
 		var type = GetType();
 		return type
 			.GetProperties(BindingFlags.Public | BindingFlags.Static)
-			.Where(p => p.Name.StartsWith("Parse") && p.Name.EndsWith("Option") && typeof(Delegate).IsAssignableFrom(p.PropertyType))
+			.Where(p => 
+				p.Name.StartsWith("Parse") && 
+				p.Name.EndsWith("Option") && 
+				typeof(Delegate).IsAssignableFrom(p.PropertyType)
+			)
 			.Select(p => p.GetValue(null))
 			.OfType<Delegate>();
 	}
