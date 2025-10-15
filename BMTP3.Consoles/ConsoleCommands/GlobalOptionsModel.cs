@@ -8,7 +8,11 @@ using System.Reflection;
 namespace BMTP3.Consoles.ConsoleCommands;
 public class GlobalOptionsModel : BaseOptionsModel
 {
-	public static Option<bool> VerboseOption { get; } = new("--verbose", "-v") { Description = "Enable verbose output. Repeat for more detail."};
-	public static Func<ParseResult, int> ParseVerboseOption => result => result.GetResult(VerboseOption)?.IdentifierTokenCount ?? 0;
+	public static Option<int> VerboseOption { get; } = new("--verbose", "-v")
+	{
+		Description = "Enable verbose output. Repeat for more detail.",
+		Arity = ArgumentArity.Zero,
+		CustomParser = result => result.GetResult(VerboseOption)?.IdentifierTokenCount ?? 0
+	};
 	public int Verbose { get; set; }
 }
