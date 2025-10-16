@@ -10,7 +10,7 @@ public class VerifyConsoleCommand : BaseConsoleCommand<GlobalOptionsModel, Verif
 	public VerifyConsoleCommand() : base("verify", "Verificér backup") {
 	}
 
-	protected override async Task<int> DoCommandAsync(
+	protected override async Task<int> DoExecuteAsync(
 		GlobalOptionsModel globalOptionsModel, 
 		VerifyOptionsModel optionsModel, 
 		ParseResult parseResult,

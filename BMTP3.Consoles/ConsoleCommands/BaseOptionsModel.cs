@@ -31,7 +31,8 @@ public abstract class BaseOptionsModel
 		List<PropertyInfo> optionProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static)
 			.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType))
 			.Where(p => p.Name.EndsWith("Option", StringComparison.Ordinal))
-			.Where(p => p.PropertyType.IsConstructedGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Option<>))
+			//.Where(p => p.PropertyType.IsConstructedGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Option<>))
+			.Where(p => IsGenericTypeAssignableFrom(p.PropertyType, typeof(Option<>)))
 			.ToList();
 
 		Dictionary<string, PropertyInfo> instanceProps = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
@@ -51,17 +52,42 @@ public abstract class BaseOptionsModel
 			BindOptionPropertyFromParseResult(parseResult, optionProp, instanceProp);
 		}
 	}
+	private static Type? GetGenericType(Type? candidate, Type genericTypeDefinition)
+	{
+		// traverse inheritance hierarchy check if any base is a genericTypeDefinition
+		while(candidate != null && candidate != typeof(object))
+		{
+			if (candidate.IsGenericType && candidate.GetGenericTypeDefinition() == genericTypeDefinition)
+			{
+				return candidate.GetGenericArguments()[0];
+			}
+
+			candidate = candidate.BaseType!;
+		}
+		return null;
+	}
+	private static bool IsGenericTypeAssignableFrom(Type? candidate, Type genericTypeDefinition)
+	{
+		// traverse inheritance hierarchy check if any base is a genericTypeDefinition
+		return GetGenericType(candidate, genericTypeDefinition) != null;
+	}
 
 	private void BindOptionPropertyFromParseResult(ParseResult parseResult, PropertyInfo optionProp, PropertyInfo instanceProp)
 	{
 		// Get the generic argument type (T) from Option<T>
 		Type optionType = optionProp.PropertyType;
+		/*
 		if(!(optionType.IsConstructedGenericType && optionType.GetGenericTypeDefinition() == typeof(Option<>)))
+		{
+			throw new InvalidOperationException($"{optionProp.Name} is not an Option<T>");
+		}*/
+		Type? optionArgumentType = GetGenericType(optionType, typeof(Option<>));
+		if(optionArgumentType == null)
 		{
 			throw new InvalidOperationException($"{optionProp.Name} is not an Option<T>");
 		}
 
-		Type optionArgumentType = optionType.GetGenericArguments()[0];
+		//Type optionArgumentType = optionType.GetGenericArguments()[0];
 		if(instanceProp.PropertyType != optionArgumentType)
 		{
 			throw new InvalidOperationException($"Type mismatch: {optionProp.Name} is Option<{optionArgumentType.Name}>, but {instanceProp.Name} is {instanceProp.PropertyType.Name}");

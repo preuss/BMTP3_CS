@@ -7,9 +7,9 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Consoles.ConsoleCommands;
-public abstract class BaseConsoleCommand<TGlobalOptionsModel, TOptionsModel> : Command
+public abstract class BaseConsoleCommand<TGlobalOptionsModel, TLocalOptionsModel> : Command
 	where TGlobalOptionsModel : BaseOptionsModel, new()
-	where TOptionsModel : BaseOptionsModel, new()
+	where TLocalOptionsModel : BaseOptionsModel, new()
 {
 	protected BaseConsoleCommand(string name, string? description = null) : base(name, description)
 	{
@@ -25,7 +25,7 @@ public abstract class BaseConsoleCommand<TGlobalOptionsModel, TOptionsModel> : C
 			}
 		}
 
-		foreach(Option option in new TOptionsModel().GetAllOptions())
+		foreach(Option option in new TLocalOptionsModel().GetAllOptions())
 		{
 			if (!Options.Contains(option))
 			{
@@ -37,15 +37,15 @@ public abstract class BaseConsoleCommand<TGlobalOptionsModel, TOptionsModel> : C
 			}
 		}
 
-		SetAction(HandleAsyncInternal);
+		SetAction(ExecuteInternalAsync);
 	}
-	private async Task<int> HandleAsyncInternal(ParseResult parseResult, CancellationToken cancellationToken)
+	private async Task<int> ExecuteInternalAsync(ParseResult parseResult, CancellationToken cancellationToken)
 	{
 		try
 		{
 			TGlobalOptionsModel globalOptionsModel = DoBindGlobalOptionsModel(parseResult);
-			TOptionsModel optionsModel = DoBindOptionsModel(parseResult);
-			return await DoCommandAsync(globalOptionsModel, optionsModel, parseResult, cancellationToken);
+			TLocalOptionsModel optionsModel = DoBindOptionsModel(parseResult);
+			return await DoExecuteAsync(globalOptionsModel, optionsModel, parseResult, cancellationToken);
 		}
 		catch (Exception ex)
 		{
@@ -62,11 +62,11 @@ public abstract class BaseConsoleCommand<TGlobalOptionsModel, TOptionsModel> : C
 		return globalOptionsModel;
 	}
 
-	protected virtual TOptionsModel DoBindOptionsModel(ParseResult parseResult)
+	protected virtual TLocalOptionsModel DoBindOptionsModel(ParseResult parseResult)
 	{
-		TOptionsModel optionsModel = new();
+		TLocalOptionsModel optionsModel = new();
 		optionsModel.PopulateFromParseResult(parseResult);
 		return optionsModel;
 	}
-	protected abstract Task<int> DoCommandAsync(TGlobalOptionsModel globalOptionsModel, TOptionsModel optionsModel, ParseResult parseResult, CancellationToken cancellationToken);
+	protected abstract Task<int> DoExecuteAsync(TGlobalOptionsModel globalOptionsModel, TLocalOptionsModel optionsModel, ParseResult parseResult, CancellationToken cancellationToken);
 }

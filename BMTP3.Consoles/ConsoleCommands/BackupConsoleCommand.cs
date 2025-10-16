@@ -15,7 +15,7 @@ public class BackupConsoleCommand : BaseConsoleCommand<GlobalOptionsModel, Backu
 	/// <summary>
 	/// Entry point for the backup command action.
 	/// </summary>
-	protected override async Task<int> DoCommandAsync(
+	protected override async Task<int> DoExecuteAsync(
 		GlobalOptionsModel globalOptionsModel, 
 		BackupOptionsModel optionsModel, 
 		ParseResult parseResult, 
