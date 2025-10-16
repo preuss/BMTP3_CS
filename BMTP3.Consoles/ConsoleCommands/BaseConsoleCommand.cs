@@ -15,21 +15,43 @@ public abstract class BaseConsoleCommand<TGlobalOptionsModel, TOptionsModel> : C
 	{
 		foreach(Option option in new TGlobalOptionsModel().GetAllOptions())
 		{
-			Options.Add(option);
+			if (!Options.Contains(option))
+			{
+				Options.Add(option);
+			}
+			else
+			{
+				throw new InvalidOperationException($"Option {option.Name} is already defined.");
+			}
 		}
 
 		foreach(Option option in new TOptionsModel().GetAllOptions())
 		{
-			Options.Add(option);
+			if (!Options.Contains(option))
+			{
+				Options.Add(option);
+			}
+			else
+			{
+				throw new InvalidOperationException($"Option {option.Name} is already defined.");
+			}
 		}
 
 		SetAction(HandleAsyncInternal);
 	}
 	private async Task<int> HandleAsyncInternal(ParseResult parseResult, CancellationToken cancellationToken)
 	{
-		TGlobalOptionsModel globalOptionsModel = DoBindGlobalOptionsModel(parseResult);
-		TOptionsModel optionsModel = DoBindOptionsModel(parseResult);
-		return await DoCommandAsync(globalOptionsModel, optionsModel, parseResult, cancellationToken);
+		try
+		{
+			TGlobalOptionsModel globalOptionsModel = DoBindGlobalOptionsModel(parseResult);
+			TOptionsModel optionsModel = DoBindOptionsModel(parseResult);
+			return await DoCommandAsync(globalOptionsModel, optionsModel, parseResult, cancellationToken);
+		}
+		catch (Exception ex)
+		{
+			await Console.Error.WriteLineAsync($"Error executing command: {ex.Message}");
+			return 1;
+		}
 	}
 
 	protected virtual TGlobalOptionsModel DoBindGlobalOptionsModel(ParseResult parseResult)
