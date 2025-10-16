@@ -10,10 +10,7 @@ public class RepeatableFlagOption : Option<int>
 {
 	public RepeatableFlagOption(string name, params string[] aliases) : base(name, aliases)
 	{
-		Arity = ArgumentArity.ZeroOrMore;
-		CustomParser = argumentResult =>
-		{
-			return argumentResult.GetResult(this)?.IdentifierTokenCount ?? 0;
-		};
+		Arity = ArgumentArity.Zero;
+		CustomParser = argumentResult => argumentResult.GetResult(this)?.IdentifierTokenCount ?? 0;
 	}
 }
