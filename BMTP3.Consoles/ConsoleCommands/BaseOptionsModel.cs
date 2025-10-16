@@ -16,37 +16,33 @@ namespace BMTP3.Consoles.ConsoleCommands;
 /// </remarks>
 public abstract class BaseOptionsModel
 {
-	// Holds metadata for a validated parse delegate.
-	private sealed record OptionPropertyInfo(
-		string BaseName,
-		Option OptionInstance,
-		Type OptionValueType,
-		PropertyInfo InstanceProperty,
-		Delegate? ParseDelegate
-	);
 	private static string ExtractOptionBaseName(string optionPropertyName) =>
 		optionPropertyName.Substring(0, optionPropertyName.Length - "Option".Length);
 
 
+	/// <summary>
+	/// Populates instance properties from a <see cref="ParseResult"/> using the static Option{T} properties.
+	/// </summary>
+	/// <param name="parseResult">The parse result produced by System.CommandLine.</param>
 
 	public virtual void PopulateFromParseResult(ParseResult parseResult)
 	{
 		Type type = GetType();
 		List<PropertyInfo> optionProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static)
 			.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType))
-			.Where(p => p.Name.EndsWith("Option"))
+			.Where(p => p.Name.EndsWith("Option", StringComparison.Ordinal))
 			.Where(p => p.PropertyType.IsConstructedGenericType && p.PropertyType.GetGenericTypeDefinition() == typeof(Option<>))
 			.ToList();
 
 		Dictionary<string, PropertyInfo> instanceProps = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
 			.Where(p => p.CanWrite)
 			.Where(p => p.CanRead)
-			.ToDictionary(p => p.Name, p => p);
+			.ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
 
 		//MethodInfo getValueMethod = GetParseResultMethodGetValueGeneric(parseResult);
 		foreach(PropertyInfo optionProp in optionProps)
 		{
-			string baseName = optionProp.Name.Substring(0, optionProp.Name.Length - "Option".Length);
+			string baseName = ExtractOptionBaseName(optionProp.Name);
 			if(!instanceProps.TryGetValue(baseName, out PropertyInfo? instanceProp))
 			{
 				throw new InvalidOperationException($"The corresponding instance property {baseName} does not exist for {optionProp.Name}");
@@ -100,12 +96,13 @@ public abstract class BaseOptionsModel
 
 		object? value = genericGetValue.Invoke(parseResult, new object[] { optionInstance });
 
-		// Set the value on the instance property if not null and type matches
+		// Assign if value is present or property is nullable.
 		if(value != null || IsNullableType(instanceProp.PropertyType))
 		{
 			if(value != null && value.GetType() != instanceProp.PropertyType)
 			{
-				throw new InvalidOperationException($"{instanceProp.Name} is type mismatch with Option<T>");
+				throw new InvalidOperationException($"Resolved value type '{value.GetType().Name}' does not match instance property '{instanceProp.Name}' of type '{instanceProp.PropertyType.Name}'.");
+
 			}
 			instanceProp.SetValue(this, value);
 		}
@@ -114,10 +111,13 @@ public abstract class BaseOptionsModel
 	{
 		return Nullable.GetUnderlyingType(type) != null || !type.IsValueType;
 	}
+	/// <summary>
+	/// Returns all defined static Option properties for this model type.
+	/// </summary>
 
 	public List<Option> GetAllOptions()
 	{
-		var type = GetType();
+		Type type = GetType();
 		return type
 			.GetProperties(BindingFlags.Public | BindingFlags.Static)
 			.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType))
