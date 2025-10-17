@@ -1,8 +1,6 @@
 <Project DefaultTargets="RunBumpScript">
-
   <Target Name="RunBumpScript">
-    <Message Text="Run bump-build.ps1 to bump version..." Importance="high" />
-    <Exec Command='powershell -ExecutionPolicy Bypass -File "$(SolutionDir)bump-build.ps1" -PropsPath "$(SolutionDir)Directory.Build.props"' />
+	  <Message Text="Run bump-build.ps1 to bump version..." Importance="high" />
+    <Exec Command='powershell -ExecutionPolicy Bypass -File "$(_SolutionDir)bump-build.ps1" -PropsPath "$(_SolutionDir)Directory.Build.props"' />
   </Target>
-
 </Project>

@@ -2,20 +2,28 @@
   <PropertyGroup>
     <!-- Ensure the script only runs once per build session -->
     <_BuildFirstOnceExecuted>false</_BuildFirstOnceExecuted>
-	  <!--
-    <_SolutionDir Condition="'$(SolutionDir)' == ''">$(SolutionDir)</_SolutionDir>
-	-->
-    <_SolutionDir Condition="!Exists('$(SolutionDir)')">$(MSBuildThisFileDirectory)</_SolutionDir>
-    <SolutionDir Condition="'$(SolutionDir)'=='' or '$(SolutionDir)'=='*Undefined*'">..\</SolutionDir>
+
+    <_SolutionDir Condition="!Exists('$(_SolutionDir)')">$(SolutionDir)</_SolutionDir>
+    <_SolutionDir Condition="!Exists('$(_SolutionDir)')">$(MSBuildThisFileDirectory)</_SolutionDir>
+    <_SolutionDir Condition="'$(_SolutionDir) '== '' or '$(_SolutionDir)' == '*Undefined*'">..\</_SolutionDir>
   </PropertyGroup>
   <Target Name="RunBuildFirstOnce"
           BeforeTargets="Build"
           Condition="'$(_BuildFirstOnceExecuted)' != 'true'">
-    <Message Text="Invoking BuildFirstOnce.proj..." Importance="high" />
-    <MSBuild Projects="$(SolutionDir)BuildFirstOnce\BuildFirstOnce.proj"
-             Targets="RunBumpScript"
-	         Condition="Exists('$(_SolutionDir)BuildFirstOnce\BuildFirstOnce.proj')"
-    />
+	  <Message Text="Invoking BuildFirstOnce.proj..." Importance="high" />
+<!--
+	  <Message Text="Invoking BuildFirstOnce.proj... SoltionDir               = $(SolutionDir)" Importance="high" />
+	  <Message Text="Invoking BuildFirstOnce.proj... _SoltionDir              = $(_SolutionDir)" Importance="high" />
+	  <Message Text="Invoking BuildFirstOnce.proj... MSBuildThisFileDirectory = $(MSBuildThisFileDirectory)" Importance="high" />
+	  <Message Text="Invoking BuildFirstOnce.proj... Directory exists: $(MSBuildThisFileDirectory)" Condition="Exists('$(MSBuildThisFileDirectory)')" Importance="high" />
+	  <Message Text="Invoking BuildFirstOnce.proj... Directory does NOT exist: $(MSBuildThisFileDirectory)" Condition="!Exists('$(MSBuildThisFileDirectory)')" Importance="high" />
+-->
+	  <Message Text="Invoking BuildFirstOnce.proj... _BuildFirstOnceExecuted = $(_BuildFirstOnceExecuted)" Importance="high" />
+    <MSBuild Projects="$(_SolutionDir)BuildFirstOnce\BuildFirstOnce.proj"
+	           Targets="RunBumpScript"
+	           Properties="_SolutionDir=$(_SolutionDir)"
+	           Condition="Exists('$(_SolutionDir)BuildFirstOnce\BuildFirstOnce.proj')"
+	  />
 	<PropertyGroup>
       <_BuildFirstOnceExecuted>true</_BuildFirstOnceExecuted>
     </PropertyGroup>
