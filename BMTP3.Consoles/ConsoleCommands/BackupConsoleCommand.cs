@@ -8,24 +8,37 @@ using Microsoft.Extensions.Configuration;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
-public class BackupConsoleCommand : BaseConsoleCommand<GlobalOptionsModel, BackupOptionsModel>
-{
-	public BackupConsoleCommand() : base("backup", "Perform backup") { }
+public class BackupConsoleCommand : BaseConsoleCommand {
+	public GlobalOptionsModel GlobalOptions { get; }
+	public BackupOptionsModel BackupOptions { get; }
+	public required IServiceProvider ServiceProvider { get; init; }
+
+	public BackupConsoleCommand() : this("backup", "Perform backup", new GlobalOptionsModel(), new BackupOptionsModel()) { }
+
+	private BackupConsoleCommand(
+		string name, 
+		string description, 
+		GlobalOptionsModel globalOptionsModel, 
+		BackupOptionsModel backupOptionsModel
+	) : base(name, description, globalOptionsModel, backupOptionsModel)
+	{
+		GlobalOptions = globalOptionsModel;
+		BackupOptions = backupOptionsModel;
+	}
 
 	/// <summary>
 	/// Entry point for the backup command action.
 	/// </summary>
 	protected override async Task<int> DoExecuteAsync(
-		GlobalOptionsModel globalOptionsModel, 
-		BackupOptionsModel optionsModel, 
-		ParseResult parseResult, 
+		ParseResult parseResult,
 		CancellationToken cancellationToken
-	)
-	{
-		int verbosity = globalOptionsModel.Verbose;
-		
+	) {
+		int verbosity = GlobalOptions.Verbose;
+
 		Console.WriteLine("Verbose Level: " + verbosity);
-		Console.WriteLine("Delay: " + optionsModel.Delay);
+		Console.WriteLine("Delay: " + BackupOptions.Delay);
+
+		//var backupMaster = ServiceProvider.GetService<BackupMaster>();
 
 		// Simulates backup work here.
 		await Task.Delay(100, cancellationToken);
@@ -38,8 +51,7 @@ public class BackupConsoleCommand : BaseConsoleCommand<GlobalOptionsModel, Backu
 	/// <summary>
 	/// Prints the result of the backup operation.
 	/// </summary>
-	private void PrintResult()
-	{
+	private void PrintResult() {
 		Console.WriteLine("Backup completed!");
 	}
 }

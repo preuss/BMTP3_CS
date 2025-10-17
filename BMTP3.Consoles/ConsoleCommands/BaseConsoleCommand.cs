@@ -7,45 +7,37 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Consoles.ConsoleCommands;
-public abstract class BaseConsoleCommand<TGlobalOptionsModel, TLocalOptionsModel> : Command
-	where TGlobalOptionsModel : BaseOptionsModel, new()
-	where TLocalOptionsModel : BaseOptionsModel, new()
+public abstract class BaseConsoleCommand : Command
 {
-	protected BaseConsoleCommand(string name, string? description = null) : base(name, description)
+	private readonly BaseOptionsModel[] _optionsModels;
+	protected BaseConsoleCommand(
+		string name, 
+		string? description = null,
+		params BaseOptionsModel[] optionsModels
+	) : base(name, description)
 	{
-		foreach(Option option in new TGlobalOptionsModel().GetAllOptions())
+		_optionsModels = optionsModels;
+		foreach (BaseOptionsModel optionsModel in _optionsModels)
 		{
-			if (!Options.Contains(option))
-			{
-				Options.Add(option);
-			}
-			else
-			{
-				throw new InvalidOperationException($"Option {option.Name} is already defined.");
+			foreach(Option option in optionsModel.GetAllOptions()) {
+				if(!Options.Contains(option)) {
+					Options.Add(option);
+				} else {
+					throw new InvalidOperationException($"Option {option.Name} is already defined.");
+				}
 			}
 		}
-
-		foreach(Option option in new TLocalOptionsModel().GetAllOptions())
-		{
-			if (!Options.Contains(option))
-			{
-				Options.Add(option);
-			}
-			else
-			{
-				throw new InvalidOperationException($"Option {option.Name} is already defined.");
-			}
-		}
-
 		SetAction(ExecuteInternalAsync);
 	}
 	private async Task<int> ExecuteInternalAsync(ParseResult parseResult, CancellationToken cancellationToken)
 	{
 		try
 		{
-			TGlobalOptionsModel globalOptionsModel = DoBindGlobalOptionsModel(parseResult);
-			TLocalOptionsModel optionsModel = DoBindOptionsModel(parseResult);
-			return await DoExecuteAsync(globalOptionsModel, optionsModel, parseResult, cancellationToken);
+			foreach (var optionsModel in _optionsModels)
+			{
+				DoBindOptionsModel(parseResult, optionsModel);
+			}
+			return await DoExecuteAsync(parseResult, cancellationToken);
 		}
 		catch (Exception ex)
 		{
@@ -53,20 +45,9 @@ public abstract class BaseConsoleCommand<TGlobalOptionsModel, TLocalOptionsModel
 			return 1;
 		}
 	}
-
-	protected virtual TGlobalOptionsModel DoBindGlobalOptionsModel(ParseResult parseResult)
-	{
-		TGlobalOptionsModel globalOptionsModel = new();
-		globalOptionsModel.PopulateFromParseResult(parseResult);
-
-		return globalOptionsModel;
-	}
-
-	protected virtual TLocalOptionsModel DoBindOptionsModel(ParseResult parseResult)
-	{
-		TLocalOptionsModel optionsModel = new();
+	protected virtual BaseOptionsModel DoBindOptionsModel(ParseResult parseResult, BaseOptionsModel optionsModel) {
 		optionsModel.PopulateFromParseResult(parseResult);
 		return optionsModel;
 	}
-	protected abstract Task<int> DoExecuteAsync(TGlobalOptionsModel globalOptionsModel, TLocalOptionsModel optionsModel, ParseResult parseResult, CancellationToken cancellationToken);
+	protected abstract Task<int> DoExecuteAsync(ParseResult parseResult, CancellationToken cancellationToken);
 }

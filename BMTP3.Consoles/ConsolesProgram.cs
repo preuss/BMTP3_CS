@@ -8,7 +8,7 @@ using System.CommandLine.Parsing;
 
 namespace BMTP3.Consoles;
 
-public class Program {
+public class ConsolesProgram {
 	public static async Task<int> Main(string[] args)
 	{
 		args = ["backup", "--path", "C:\\BackupFolder"];
@@ -26,7 +26,7 @@ public class Program {
 		GlobalOptionsModel globalOptions = new GlobalOptionsModel();
 		globalOptions.GetAllOptions().ForEach(option => rootCommand.Options.Add(option));
 
-		BackupConsoleCommand backupCommand = new();
+		BackupConsoleCommand backupCommand = new() { ServiceProvider = serviceProvider};
 		rootCommand.Subcommands.Add(backupCommand);
 
 		VerifyConsoleCommand verifyCommand = new();
@@ -59,7 +59,7 @@ public class Program {
 		ParseResult parseResult= rootCommand.Parse(args);
 		await parseResult.InvokeAsync();
 		//await app.RunAsync();
-		await Task.CompletedTask;
+		//await Task.CompletedTask;
 		return 0;
 	}
 }
