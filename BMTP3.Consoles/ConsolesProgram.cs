@@ -14,7 +14,7 @@ public class ConsolesProgram {
 		args = ["backup", "--path", "C:\\BackupFolder"];
 		args = ["backup", "asdf", "-unknown", "--help"];
 		args = ["backup", "-v", "true", "true", "-v", "false", "false", "false", "-vvvv", "-v", "-v", "--help"];
-		args = ["backup", "-v", "-v", "-v", "-v", "-v", "--delay=45"];
+		args = ["backup", "-v", "-v", "-v", "-v", "-v", "--delay=45", "--help"];
 
 		IServiceProvider serviceProvider = ApplicationStartup.InitializeServiceProvider(args);
 
