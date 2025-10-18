@@ -57,10 +57,11 @@ public class BackupOptionsModel : BaseOptionsModel
 		Arity = ArgumentArity.ZeroOrOne
 	};
 	public bool Recursive { get; set; }
-	public static Option<string> CollisionStrategyOption { get; } = new("--collision-strategy", "-c") {
+	public static Option<string> CollisionStrategyOption { get; } = new Option<string>("--collision-strategy", "-c") {
 		Description = "Strategy for file name collisions: increment, overwrite, skip, error.",
-		Arity = ArgumentArity.ZeroOrOne
-	};
+		Arity = ArgumentArity.ZeroOrOne,
+		DefaultValueFactory = argumentResult => "increment"
+	}.AcceptOnlyFromAmong("increment", "overwrite", "skip", "error");
 	public string? CollisionStrategy { get; set; }
 	public static Option<string> FilePatternOption { get; } = new("--file-pattern", "-p") {
 		Description = "Pattern for naming backup files.",
