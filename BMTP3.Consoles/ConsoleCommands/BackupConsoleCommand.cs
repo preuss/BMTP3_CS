@@ -41,7 +41,7 @@ public class BackupConsoleCommand : BaseConsoleCommand {
 		Console.WriteLine("Simulate Min: " + BackupOptionsModel.SimulateOption.Arity.MinimumNumberOfValues);
 		Console.WriteLine("Simulate Max: " + BackupOptionsModel.SimulateOption.Arity.MaximumNumberOfValues);
 		Console.WriteLine("Config: " + BackupOptions.Config);
-		Console.WriteLine("Config Exists: " + BackupOptions.Config.Exists);
+		Console.WriteLine("Config Exists: " + BackupOptions.Config?.Exists);
 
 
 		//var backupMaster = ServiceProvider.GetService<BackupMaster>();

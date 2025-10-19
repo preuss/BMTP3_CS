@@ -20,6 +20,5 @@ public class GlobalOptionsModel : BaseOptionsModel
 	{
 		Description = "Enable verbose output. Repeat for more detail.",
 	};
-
 	public int Verbose { get; set; } = 99;
 }

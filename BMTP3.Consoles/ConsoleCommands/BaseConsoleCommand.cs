@@ -27,6 +27,8 @@ public abstract class BaseConsoleCommand : Command
 				}
 			}
 		}
+		BaseOptionsModel.ValidateDuplicateNameAndAlias(_optionsModels);
+
 		SetAction(ExecuteInternalAsync);
 	}
 	private async Task<int> ExecuteInternalAsync(ParseResult parseResult, CancellationToken cancellationToken)
