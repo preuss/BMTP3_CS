@@ -31,7 +31,6 @@ public abstract class BaseOptionsModel
 		return binders;
 	}
 
-	private record NameOptionModelType(string Name, Option Option, Type ModelType);
 	public static void ValidateDuplicateNameAndAlias(IEnumerable<BaseOptionsModel> models)
 	{
 		// Collect all option names and aliases, with references to their Option and model Type
@@ -136,24 +135,17 @@ public abstract class BaseOptionsModel
 	{
 		// Get the generic argument type (T) from Option<T>
 		Type optionType = optionProp.PropertyType;
-		/*
-		if(!(optionType.IsConstructedGenericType && optionType.GetGenericTypeDefinition() == typeof(Option<>)))
-		{
-			throw new InvalidOperationException($"{optionProp.Name} is not an Option<T>");
-		}*/
 		Type? optionArgumentType = GetGenericType(optionType, typeof(Option<>));
 		if(optionArgumentType == null)
 		{
 			throw new InvalidOperationException($"{optionProp.Name} is not an Option<T>");
 		}
 
-		//Type optionArgumentType = optionType.GetGenericArguments()[0];
 		if(instanceProp.PropertyType != optionArgumentType)
 		{
 			throw new InvalidOperationException($"Type mismatch: {optionProp.Name} is Option<{optionArgumentType.Name}>, but {instanceProp.Name} is {instanceProp.PropertyType.Name}");
 		}
 
-		// Get the Option<T> instance from the static property
 		if(optionProp.GetValue(null) is not Option optionInstance)
 		{
 			throw new InvalidOperationException($"Option instance for {optionProp.Name} is not an Option");
@@ -163,7 +155,6 @@ public abstract class BaseOptionsModel
 			throw new InvalidOperationException($"Option instance for {optionProp.Name} is not of type Option<{optionArgumentType.Name}>. Actual type: {optionInstance.GetType()}");
 		}
 
-		// Find the generic GetValue<T>(Option<T>) method
 		MethodInfo? getValueMethod = typeof(ParseResult)
 			.GetMethods()
 			.FirstOrDefault(m =>
@@ -200,18 +191,8 @@ public abstract class BaseOptionsModel
 	/// <summary>
 	/// Returns all defined static Option properties for this model type.
 	/// </summary>
-
 	public List<Option> GetAllOptions()
 	{
 		return GetOrCreateOptionBinders().Keys.ToList();
-		/*
-		Type type = GetType();
-		return type
-			.GetProperties(BindingFlags.Public | BindingFlags.Static)
-			.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType))
-			.Select(p => p.GetValue(null))
-			.OfType<Option>()
-			.ToList();
-			*/
 	}
 }
