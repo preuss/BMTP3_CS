@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BMTP3.Common.MessageFormatterParser {
 	// Example usage
-	public class Program {
+	public class MessageFormatterProgram {
 		public static void Main() {
 			var template = "Backup: ${filename.toUpper()} on ${date:yyyy,MM/dd:EEE ${filename}}";
 			var values = new Dictionary<string, object>

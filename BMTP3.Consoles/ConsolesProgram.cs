@@ -21,26 +21,6 @@ public class ConsolesProgram {
 		//args = ["verify", "-v", "-v", "-v", "-v", "-v", "-d", "--help"];
 		//args = ["verify", "-v", "-v", "-v", "-v", "-v", "-d"];
 		//args = ["verify", "--help"];
-		//TestMultipleCommands(args);
-		//return 0;
-
-		string matchPath = "C:\\start\\anotherdir\\file.jpeg";
-		string matchFailPath = "C:\\start\\anotherdir\\fileB.jpeg";
-		string globPattern = "C:\\**\\file[!B].jpeg";
-		RunFormattedTest(globPattern);
-
-		Console.WriteLine("--- Tester DotNet.Glob (DGlob) ---");
-		Console.WriteLine($"Sti: {matchPath}");
-		Console.WriteLine($"Pattern: {globPattern}");
-		var dglob = DGlob.Glob.Parse(globPattern);
-		bool dMatch = dglob.IsMatch(matchPath);
-		Console.WriteLine($"Resultat DGlob: {dMatch}");
-
-		bool dMatch_Fail = dglob.IsMatch(matchFailPath);
-		Console.WriteLine($"Sti (Fejltest): {matchFailPath}");
-		Console.WriteLine($"Resultat (Fejltest): {dMatch_Fail}");
-
-		return 0;
 
 		IServiceProvider serviceProvider = ApplicationStartup.InitializeServiceProvider(args);
 
@@ -60,40 +40,14 @@ public class ConsolesProgram {
 
 		var o = rootCommand.Options;
 		Console.WriteLine($"Options i root Command: " + o.Count);
-		for(int i = 0; i < o.Count; i++) {
-			var option = o[i];
+		foreach (var option in o)
+		{
 			Console.WriteLine(option);
 		}
 
-		/*
-		Option<FileInfo> fileOption = new("--file") {
-			Description = "The file to read and display on the console."
-		};
-		
-		Option<int> delayOption = new("--delay") {
-			Description = "Delay between lines, specified as milliseconds per character in a line.",
-			DefaultValueFactory = parseResult => 42
-		};
-		Option<ConsoleColor> fgcolorOption = new("--fgcolor") {
-			Description = "Foreground color of text displayed on the console.",
-			DefaultValueFactory = parseResult => ConsoleColor.White
-		};
-		Option<bool> lightModeOption = new("--light-mode") {
-			Description = "Background color of text displayed on the console: default is black, light mode is white."
-		};
-		Command c = new("read", "Read and display the file."){
-			fileOption,
-			delayOption,
-			//fgcolorOption,
-			lightModeOption
-		};
-		*/
 
 		ParseResult parseResult = rootCommand.Parse(args);
-		await parseResult.InvokeAsync();
-		//await app.RunAsync();
-		//await Task.CompletedTask;
-		return 0;
+		return await parseResult.InvokeAsync();
 	}
 
 	private static void TestMultipleCommands(string[] args) {
