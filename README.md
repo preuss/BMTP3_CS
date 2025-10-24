@@ -76,4 +76,4 @@ Update documentation as new features are added.
 
 You are welcome to support this project. 
 
-[![Donate](https://raw.githubusercontent.com/Bassman2/MediaDevices/master/.github/images/donate.gif)](https://www.paypal.me/GBassman)
+[![Donate](https://raw.githubusercontent.com/preuss/BMTP3_CS/dev/develop_4_ai_refactor/.github/images/donate.gif)](https://www.paypal.me/JPreuss)
