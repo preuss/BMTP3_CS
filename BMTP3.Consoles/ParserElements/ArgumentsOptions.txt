@@ -1,0 +1,91 @@
+// --------------------------------------------------
+// ENUMS (Strategies)
+// --------------------------------------------------
+
+/// <summary>Defines the strategy for creating the destination folder structure.</summary>
+public enum OutputStructureStrategies
+{
+    PreserveSourceTree, // Preserves the original folder hierarchy from the source.
+    Flat,               // Places all files directly into the root destination folder.
+    CustomPathPattern,  // Uses the PathPattern to define the entire path, including folders and filename.
+}
+
+/// <summary>Defines the type of resolution method to be applied when a file collision is detected.</summary>
+public enum CollisionResolutionTypes
+{
+    Overwrite, // Overwrites the existing file.
+    Skip,      // Skips the current file.
+    Error,     // Stops the backup process.
+    Rename     // Renames the new file using a specific strategy.
+}
+
+/// <summary>Defines how the existing file in the destination is compared to the source file before CollisionResolutionTypes is applied.</summary>
+public enum CollisionComparisonTypes
+{
+    None,    // Skips content comparison. Proceeds directly to CollisionResolutionTypes (Overwrite, Rename, etc.).
+    Hash,    // Compares file content using a hash algorithm (e.g., SHA-256). Skips copy if hashes are identical.
+    Binary   // Compares file content byte-by-byte. Skips copy if files are bit-for-bit identical.
+}
+
+/// <summary>Defines the strategy for renaming a file when CollisionResolutionTypes is 'Rename'.</summary>
+public enum RenameStrategies
+{
+    Increment,                 // Appends a sequential number (e.g., file_1.ext).
+    Timestamp,                 // Appends a timestamp to the file name.
+    Hash,                      // Appends a short content hash to the file name.
+    CustomCollisionPathPattern // Uses a custom pattern defined in CollisionPathPattern.
+}
+
+
+/// <summary>Defines the type of metadata file (sidecar) to be created next to each backed-up file.</summary>
+public enum SidecarFormats
+{
+    None,       // No metadata file is created per file.
+    Ini,        // Creates an INI file (e.g., file.jpg.ini) next to each file.
+    Json,       // Creates a JSON file (e.g., file.jpg.json) next to each file.
+}
+
+/// <summary>Defines the centralized catalog or index structure for the entire backup set.</summary>
+public enum BackupIndexTypes
+{
+    None,       // No central metadata file or database is created.
+    Json,       // Creates a single JSON file containing all backup metadata (e.g., backup_catalog.json).
+    Database,   // Creates a centralized SQLite database containing all metadata (e.g., backup.db).
+}
+
+
+// --------------------------------------------------
+// CONFIGURATION (Options)
+// --------------------------------------------------
+
+/// <summary>Defines the complete set of user-selected options for a backup job.</summary>
+public sealed record BackupOptionsModel
+{
+    // SOURCE/DESTINATION
+    public required DirectoryInfo SourceDirectory { get; init; }                    // Source folder to back up (can be a device folder or local filesystem path).
+    public required DirectoryInfo OutputDirectory { get; init; }                    / Destination folder where backup files will be written.
+    public bool Recursive { get; init; } = true;                                    // Include subfolders recursively (default = true).
+
+    // OUTPUT/NAMING
+    public required OutputStructureStrategies OutputStrategy { get; init; }         // Folder structure strategy.
+    public string? CustomOutputFilePath { get; init; }                              // Custom output file path (used if OutputStrategy = CustomPathPattern).
+
+    // COLLISION POLICY
+    public required CollisionResolutionTypes CollisionResolutionType { get; init; } // Primary action upon collision: Overwrite, Skip, Error, or Rename.
+    public required CollisionComparisonTypes ComparisonType { get; init; }          // How to compare existing files before applying collision resolution: None, Hash, or Binary.
+    public RenameStrategies? RenameStrategy { get; init; }                          // Method for renaming if CollisionResolutionType = Rename.
+    public string? CustomCollisionOutputFilePath { get; init; }                     // Custom output file path used when RenameStrategy = CustomCollisionPathPattern.
+
+    // FILTERING (GLOB PATTERNS)
+    public required List<string> IncludePatterns { get; init; }                     // Glob patterns to explicitly include files or folders in the backup. If empty, all files are included.
+    
+    public required List<string> ExcludePatterns { get; init; }                     // Glob patterns to exclude files or folders from the backup. Applied after inclusion rules.
+
+    // METADATA
+    public required SidecarFormats SidecarFormat { get; init; }                     // Metadata type for individual files (sidecar).
+    public required BackupIndexTypes BackupIndexType { get; init; }                 // Centralized catalog structure for the entire backup.
+
+    // MISC
+    public bool Simulate { get; init; } = false;                                    // If true → dry-run (no file operations).
+    public int Delay { get; init; } = 0;                                            // Delay in milliseconds between processing files (useful for throttling or testing).
+}
