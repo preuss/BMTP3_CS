@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core.Options {
-	internal class CommandOptions {
+	public class CommandOptions {
 		private IArguments? _combinedArguments;
 		public required bool HelpCalled { get; init; }
 		public required bool HasErrors { get; init; }

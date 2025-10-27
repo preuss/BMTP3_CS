@@ -14,7 +14,7 @@ public class BackupOptionsModel : BaseOptionsModel {
 
 	public static Option<FileInfo> ConfigOption { get; } = new("--config", "-c") {
 		Description = "Path to the backup configuration file (TOML or JSON).",
-		DefaultValueFactory = parseResult => new FileInfo("default.toml")
+		DefaultValueFactory = parseResult => new FileInfo("default.toml"),
 	};
 	public FileInfo? Config { get; set; }
 
@@ -82,7 +82,7 @@ public class BackupOptionsModel : BaseOptionsModel {
 		Arity = ArgumentArity.ZeroOrOne,
 		DefaultValueFactory = argumentResult => RenameStrategies.Increment
 	};
-	public RenameStrategies? RenameStrategy { get; set; }
+	public RenameStrategies RenameStrategy { get; set; }
 
 	public static Option<string> CustomCollisionOutputFilePathOption { get; } = new("--collision-pattern") {
 			Description = "Custom pattern used when RenameStrategy = CustomCollisionPathPattern.",
@@ -94,14 +94,14 @@ public class BackupOptionsModel : BaseOptionsModel {
 	// FILTERING (Include/Exclude)
 	// --------------------------------------------------
 
-	public static Option<string[]> IncludePatternsOption { get; } = new("--include") {
+	public static Option<List<string>> IncludePatternsOption { get; } = new("--include") {
 		Description = "Glob patterns of files or folders to explicitly include (comma-separated).",
 		Arity = ArgumentArity.ZeroOrMore
 	};
 	public List<string> IncludePatterns { get; set; } = new();
 
 
-	public static Option<string[]> ExcludePatternsOption { get; } = new("--exclude") {
+	public static Option<List<string>> ExcludePatternsOption { get; } = new("--exclude") {
 		Description = "Glob patterns of files or folders to exclude (comma-separated).",
 		Arity = ArgumentArity.ZeroOrMore
 	};
@@ -139,4 +139,9 @@ public class BackupOptionsModel : BaseOptionsModel {
 		DefaultValueFactory = parseResult => 42,
 	};
 	public int Delay { get; set; }
+
+	protected override void DoAddValidators()
+	{
+		
+	}
 }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Reflection;
 
 namespace BMTP3.Consoles.ConsoleCommands;
+
 public class GlobalOptionsModel : BaseOptionsModel
 {
 	/*
@@ -20,5 +21,6 @@ public class GlobalOptionsModel : BaseOptionsModel
 	{
 		Description = "Enable verbose output. Repeat for more detail.",
 	};
+
 	public int Verbose { get; set; } = 99;
 }

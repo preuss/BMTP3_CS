@@ -4,7 +4,7 @@ using Microsoft.Extensions.Configuration;
 using System.Collections.Immutable;
 
 namespace BMTP3.Core.Handlers {
-	internal class ConfigurationHandler {
+	public class ConfigurationHandler {
 		public CommandOptions Arguments { get; private set; }
 		public IBackupSettings? BackupSettings { get; private set; }
 

@@ -20,7 +20,7 @@ namespace BMTP3.Core.Handlers {
 	/// //TODO: I am thinking of refactor rename this to BackupController
 	/// </summary>
 	[SupportedOSPlatform("windows10.0")]
-	internal class BackupMaster {
+	public class BackupMaster {
 		private static readonly ILogger<BackupMaster> logger = LogManager.GetLogger<BackupMaster>();
 
 		private readonly BackupExceptionHandlerService backupExceptionHandlerService;

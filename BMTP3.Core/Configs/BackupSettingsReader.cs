@@ -8,7 +8,7 @@ using Tomlyn.Model;
 using Tomlyn.Syntax;
 
 namespace BMTP3.Core.Configs {
-	internal class BackupSettingsReader {
+	public class BackupSettingsReader {
 		public BackupSettingsReader() {
 		}
 		public ConfigModel LoadDeviceConfigModel(FileInfo configFileInfo) {

@@ -22,4 +22,8 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BMTP3.Core\BMTP3.Core.csproj" />
+  </ItemGroup>
+
 </Project>

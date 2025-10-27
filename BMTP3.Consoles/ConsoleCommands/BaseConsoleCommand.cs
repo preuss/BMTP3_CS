@@ -48,7 +48,7 @@ public abstract class BaseConsoleCommand : Command
 		}
 	}
 	protected virtual BaseOptionsModel DoBindOptionsModel(ParseResult parseResult, BaseOptionsModel optionsModel) {
-		optionsModel.PopulateFromParseResult(parseResult);
+		optionsModel.ApplyOptions(parseResult);
 		return optionsModel;
 	}
 	protected abstract Task<int> DoExecuteAsync(ParseResult parseResult, CancellationToken cancellationToken);

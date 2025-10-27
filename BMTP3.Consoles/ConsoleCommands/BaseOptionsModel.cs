@@ -22,7 +22,7 @@ public abstract class BaseOptionsModel
     /// Gets or creates the option binders for this model type.
     /// </summary>
     /// <returns>A dictionary mapping options to actions that bind their values to instance properties.</returns>
-    protected Dictionary<Option, Action<ParseResult>> GetOrCreateOptionBinders()
+    private Dictionary<Option, Action<ParseResult>> GetOrCreateOptionBinders()
     {
         // TODO: Add thread safe caching
         var type = GetType();
@@ -30,6 +30,7 @@ public abstract class BaseOptionsModel
         {
             binders = DoDefineOptions();
             _optionBindersCache[type] = binders;
+            DoAddValidators();
         }
         return binders;
     }
@@ -118,10 +119,22 @@ public abstract class BaseOptionsModel
         optionPropertyName.Substring(0, optionPropertyName.Length - "Option".Length);
 
     /// <summary>
-    /// Populates instance properties from a <see cref="ParseResult"/> using the static Option{T} properties.
+    /// Applies command line options from the given <see cref="ParseResult"/> to this model instance.
+    /// Calls <see cref="DoPopulate"/> and <see cref="DoValidateAndSetDefaults"/> in sequence.
     /// </summary>
-    /// <param name="parseResult">The parse result produced by System.CommandLine.</param>
-    public virtual void PopulateFromParseResult(ParseResult parseResult)
+    /// <param name="parseResult">The parsed command line result.</param>
+    public void ApplyOptions(ParseResult parseResult)
+    {
+	    DoPopulate(parseResult);
+	    DoValidateAndSetDefaults(parseResult);
+    }
+    
+    /// <summary>
+    /// Populates this model's properties from the provided <see cref="ParseResult"/>.
+    /// Binds values from static Option{T} properties to corresponding instance properties.
+    /// </summary>
+    /// <param name="parseResult">The parsed command line result.</param>
+    protected virtual void DoPopulate(ParseResult parseResult)
     {
         Dictionary<Option, Action<ParseResult>> optionBinders = GetOrCreateOptionBinders();
         foreach (var binder in optionBinders.Values)
@@ -236,4 +249,13 @@ public abstract class BaseOptionsModel
     {
         return GetOrCreateOptionBinders().Keys.ToList();
     }
+
+    protected virtual void DoAddValidators() { }
+
+    /// <summary>
+    /// Performs validation and/or sets default values for this model after population.
+    /// Override in derived classes to implement custom validation or defaulting logic.
+    /// </summary>
+    /// <param name="result">The parsed command line result.</param>
+    protected virtual void DoValidateAndSetDefaults(ParseResult result) { }
 }

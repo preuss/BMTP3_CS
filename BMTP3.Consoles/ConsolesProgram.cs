@@ -20,7 +20,8 @@ public class ConsolesProgram {
 		args = ["backup", "-v", "-v", "-v", "-v", "-v", "--delay=45"];
 		//args = ["verify", "-v", "-v", "-v", "-v", "-v", "-d", "--help"];
 		//args = ["verify", "-v", "-v", "-v", "-v", "-v", "-d"];
-		args = ["backup", "--help"];
+		args = ["backup", "", "--output-structure=xxx", "--help"];
+		args = ["backup", "--config=default.toml", "--output-structure=PreserveSourceTree"];
 
 		IServiceProvider serviceProvider = ApplicationStartup.InitializeServiceProvider(args);
 

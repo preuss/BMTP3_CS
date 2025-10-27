@@ -4,6 +4,7 @@ using System.CommandLine.Parsing;
 using System.Dynamic;
 using System.Threading;
 using System.Threading.Tasks;
+using BMTP3.Core.Handlers;
 using Microsoft.Extensions.Configuration;
 
 namespace BMTP3.Consoles.ConsoleCommands;
@@ -45,6 +46,7 @@ public class BackupConsoleCommand : BaseConsoleCommand {
 
 
 		//var backupMaster = ServiceProvider.GetService<BackupMaster>();
+		BackupMaster bm;
 
 		// Simulates backup work here.
 		await Task.Delay(100, cancellationToken);
