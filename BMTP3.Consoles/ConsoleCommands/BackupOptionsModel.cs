@@ -64,10 +64,10 @@ public class BackupOptionsModel : BaseOptionsModel {
 	// COLLISION HANDLING
 	// --------------------------------------------------
 	public static Option<CollisionResolutionTypes> CollisionResolutionTypeOption { get; } = new("--collision-resolution") {
-		Description = "Defines how to handle existing files: Overwrite, Skip, Error, or Rename.",
-		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => CollisionResolutionTypes.Rename
-	};
+			Description = "Defines how to handle existing files: Overwrite, Skip, Error, or Rename.",
+			Arity = ArgumentArity.ZeroOrOne,
+			DefaultValueFactory = argumentResult => CollisionResolutionTypes.Rename
+		};
 	public CollisionResolutionTypes CollisionResolutionType { get; set; }
 
 	public static Option<CollisionComparisonTypes> CollisionComparisonOption { get; } = new("--collision-compare") {
@@ -85,9 +85,9 @@ public class BackupOptionsModel : BaseOptionsModel {
 	public RenameStrategies RenameStrategy { get; set; }
 
 	public static Option<string> CustomCollisionOutputFilePathOption { get; } = new("--collision-pattern") {
-			Description = "Custom pattern used when RenameStrategy = CustomCollisionPathPattern.",
-			Arity = ArgumentArity.ZeroOrOne
-		};
+		Description = "Custom pattern used when RenameStrategy = CustomCollisionPathPattern.",
+		Arity = ArgumentArity.ZeroOrOne
+	};
 	public string? CustomCollisionOutputFilePath { get; set; }
 
 	// --------------------------------------------------
@@ -126,13 +126,13 @@ public class BackupOptionsModel : BaseOptionsModel {
 	};
 	public BackupIndexTypes BackupIndexType { get; set; }
 
-    // --------------------------------------------------
-    // EXECUTION
-    // --------------------------------------------------
+	// --------------------------------------------------
+	// EXECUTION
+	// --------------------------------------------------
     public static Option<bool> SimulateOption { get; } = new("--dry-run", "-n", "--simulate") {
-        Description = "Simulates the backup without performing any write operations."
-    };
-    public bool Simulate { get; set; }
+		Description = "Simulates the backup without performing any write operations."
+	};
+	public bool Simulate { get; set; }
 
 	public static Option<int> DelayOption { get; } = new("--delay", "-w", "--wait") {
 		Description = "Delay between file operations, in milliseconds (useful for throttling or testing).",

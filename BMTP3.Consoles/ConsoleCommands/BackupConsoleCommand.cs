@@ -9,17 +9,20 @@ using Microsoft.Extensions.Configuration;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
-public class BackupConsoleCommand : BaseConsoleCommand {
-	public GlobalOptionsModel GlobalOptions { get; }
-	public BackupOptionsModel BackupOptions { get; }
+public class BackupConsoleCommand : BaseConsoleCommand
+{
+	private GlobalOptionsModel GlobalOptions { get; }
+	private BackupOptionsModel BackupOptions { get; }
 	public required IServiceProvider ServiceProvider { get; init; }
 
-	public BackupConsoleCommand() : this("backup", "Perform backup", new GlobalOptionsModel(), new BackupOptionsModel()) { }
+	public BackupConsoleCommand() : this("backup", "Perform backup", new GlobalOptionsModel(), new BackupOptionsModel())
+	{
+	}
 
 	private BackupConsoleCommand(
-		string name, 
-		string description, 
-		GlobalOptionsModel globalOptionsModel, 
+		string name,
+		string description,
+		GlobalOptionsModel globalOptionsModel,
 		BackupOptionsModel backupOptionsModel
 	) : base(name, description, globalOptionsModel, backupOptionsModel)
 	{
@@ -33,7 +36,21 @@ public class BackupConsoleCommand : BaseConsoleCommand {
 	protected override async Task<int> DoExecuteAsync(
 		ParseResult parseResult,
 		CancellationToken cancellationToken
-	) {
+	)
+	{
+		foreach (var optionsModel in new BaseOptionsModel[] { this.GlobalOptions, this.BackupOptions })
+		{
+			var lines = optionsModel.GetOptionPropertyValues();
+			string header = $"{optionsModel.GetType().Name}:";
+			Console.WriteLine(header);
+			Console.WriteLine(new string('=', header.Length));
+			foreach (var line in lines)
+			{
+				Console.WriteLine("  " + line);
+			}
+		}
+
+
 		int verbosity = GlobalOptions.Verbose;
 
 		Console.WriteLine("Verbose Level: " + verbosity);
@@ -59,7 +76,8 @@ public class BackupConsoleCommand : BaseConsoleCommand {
 	/// <summary>
 	/// Prints the result of the backup operation.
 	/// </summary>
-	private void PrintResult() {
+	private void PrintResult()
+	{
 		Console.WriteLine("Backup completed!");
 	}
 }
