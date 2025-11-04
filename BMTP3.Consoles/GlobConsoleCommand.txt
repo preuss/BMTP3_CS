@@ -1,0 +1,80 @@
+using System.CommandLine;
+using BMTP3.Consoles.ConsoleCommands;
+using BMTP3.Consoles.Services;
+using BMTP3.Consoles.Utilities;
+using Microsoft.Extensions.DependencyInjection;
+using System.Text.RegularExpressions;
+using DGlob = DotNet.Globbing;
+using System.Linq; // Tilføjet, da ToList() og Max() bruges
+
+namespace BMTP3.Consoles.ConsoleCommands
+{
+    public class GlobConsoleCommand : BaseConsoleCommand
+    {
+        public GlobConsoleCommand() : base("glob", "Globbing utility command")
+        {
+            var globPatternArgument = new Argument<string>(
+                name: "globPattern",
+                description: "The glob pattern to test."
+            );
+            AddArgument(globPatternArgument);
+
+            this.SetAction(async (parseResult) =>
+            {
+                var globPattern = parseResult.GetValue(globPatternArgument)!;
+                RunFormattedTest(globPattern);
+                return 0;
+            });
+        }
+
+        public void RunFormattedTest(string globPatternInput)
+        {
+            var testCases = new[]
+            {
+                new { Path = "C:\\start\\anotherdir\\fileA.jpeg", Expected = true },
+                new { Path = "C:\\start\\anotherdir\\fileB.jpeg", Expected = false },
+                new { Path = "C:\\start\\anotherdir\\fileC.jpeg", Expected = true },
+                new { Path = "C:\\start\\anotherdir\\fileAB.jpeg", Expected = false },
+                new { Path = "C:\\start\\anotherdir\\file.jpeg", Expected = false }
+            }.ToList();
+
+            // Sørger for, at stien bruger fremadrettede skråstreger (for globbing)
+            string globPattern = globPatternInput.Replace('\\', '/');
+            var dglob = DGlob.Glob.Parse(globPattern);
+
+            Console.WriteLine($"--- Tester DotNet.Glob ---");
+            Console.WriteLine($"Glob Pattern: {globPattern}");
+            Console.WriteLine("--------------------------");
+
+            int padding = testCases.Max(tc => tc.Path.Length) + 3;
+
+            Console.WriteLine($"{"Sti",-padding} {"Forventet",-10} {"Faktisk",-10} {"Status",-10}");
+            Console.WriteLine(new string('-', padding + 30));
+
+            foreach (var testCase in testCases)
+            {
+                string pathConverted = testCase.Path;
+                pathConverted = pathConverted.Replace('\\', '/');
+                
+                // DotNet.Glob test
+                bool actualMatch = dglob.IsMatch(pathConverted);
+
+                // Regex test (Bemærk: GlobConverter er nødvendig i BMTP3.Consoles.Utilities)
+                string regexPattern = GlobConverter.GlobToRegex(globPattern);
+                // Console.WriteLine("Regex Pattern: " + regexPattern); // Vises kun én gang, da mønstret er det samme
+                Regex regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+                // Genbruger actualMatch til regex-resultatet, hvis den forrige linje var en fejl i koden
+                // Hvis du vil vise begge resultater (DotNet.Glob og Regex), skal du bruge en anden variabel.
+                // Jeg antager, at linje 57 og 61 skulle udføre det samme match med forskellige metoder.
+                actualMatch = regex.Match(pathConverted).Success; 
+
+                string status = actualMatch == testCase.Expected ? "✅ OK" : "❌ FEJL";
+
+                Console.WriteLine(string.Format(
+                    $"{{0,-{padding}}} {{1,-10}} {{2,-10}} {{3,-10}}", // Retter formatstrengen til at bruge variablen padding korrekt
+                    testCase.Path, testCase.Expected, actualMatch, status
+                ));
+            }
+        }
+    }
+}

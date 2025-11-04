@@ -19,7 +19,7 @@ namespace BMTP3.Core.Handlers {
 	/// BackupMaster is the main class of BMTP3.
 	/// //TODO: I am thinking of refactor rename this to BackupController
 	/// </summary>
-	[SupportedOSPlatform("windows10.0")]
+	[SupportedOSPlatform("windows7.0")]
 	public class BackupMaster {
 		private static readonly ILogger<BackupMaster> logger = LogManager.GetLogger<BackupMaster>();
 
