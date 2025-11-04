@@ -1,65 +1,186 @@
 ```mermaid
 classDiagram
-    class ConsolesProgram {
-        +Main(string[] args)
-    }
+direction LR
 
-    class ApplicationStartup {
-        +InitializeServiceProvider(string[] args) IServiceProvider
-    }
+class ILexer {
+    <<interface>>
+}
+class AbstractLexer {
+    <<abstract>>
+}
+class Lexer
+class Lexer2
+class IMessageFormatter {
+    <<interface>>
+}
+class MessageFormatter
+class AstNode {
+    <<abstract>>
+}
+class PlaceholderNode {
+    <<abstract>>
+}
+class FunctionCallNode
+class IfConditionNode
+class IndexedPlaceholderNode
+class LiteralNode
+class NamedPlaceholderNode
+class PatternNode
+class RootNode
+class TextNode
+class Parser2
 
-    class ConsoleApplication {
-    }
+ILexer <|-- AbstractLexer
+ILexer <|-- Lexer
+ILexer <|-- Lexer2
+IMessageFormatter <|-- MessageFormatter
+AstNode <|-- PlaceholderNode
+AstNode <|-- FunctionCallNode
+AstNode <|-- IfConditionNode
+AstNode <|-- LiteralNode
+AstNode <|-- PatternNode
+AstNode <|-- RootNode
+AstNode <|-- TextNode
+PlaceholderNode <|-- IndexedPlaceholderNode
+PlaceholderNode <|-- NamedPlaceholderNode
+Parser2 o-- Lexer2
+RootNode o-- AstNode
 
-    namespace System.CommandLine {
-        class Command {
-        }
-        class RootCommand {
-        }
-        class Option {
-        }
-        class Argument {
-        }
-    }
+class IConsoleWriter {
+    <<interface>>
+}
+class AnsiConsoleWriter
+class SystemConsoleWriter
+class IClock {
+    <<interface>>
+}
+class SystemClock
+class ConsoleApplication
 
-    class BaseConsoleCommand {
-    }
+IConsoleWriter <|-- AnsiConsoleWriter
+IConsoleWriter <|-- SystemConsoleWriter
+IClock <|-- SystemClock
+ConsoleApplication o-- IClock
+ConsoleApplication o-- IConsoleWriter
 
-    class BackupConsoleCommand {
-    }
+class Command {
+    <<external>>
+}
+class BaseConsoleCommand {
+    <<abstract>>
+}
+class BackupConsoleCommand
+class VerifyConsoleCommand
 
-    class VerifyConsoleCommand {
-    }
+Command <|-- BaseConsoleCommand
+BaseConsoleCommand <|-- BackupConsoleCommand
+BaseConsoleCommand <|-- VerifyConsoleCommand
+BackupConsoleCommand o-- IServiceProvider
 
-    class GlobConsoleCommand {
-    }
+class IConsole {
+    <<interface>>
+}
+class AnsiConsoleWrapper
+class SystemConsoleWrapper
+class ConsoleDecorator
+class TextWriter {
+    <<external>>
+}
 
-    class GlobalOptionsModel {
-        +GetAllOptions() List~Option~
-    }
+IConsole <|-- AnsiConsoleWrapper
+IConsole <|-- SystemConsoleWrapper
+TextWriter <|-- ConsoleDecorator
 
-    class GlobConverter {
-        +GlobToRegex(string globPattern) string
-    }
+class IMediaDeviceService {
+    <<interface>>
+}
+class MediaDeviceServiceProd
+class MediaDeviceServiceTest
 
-    Command <|-- RootCommand
-    Command <|-- BaseConsoleCommand
-    BaseConsoleCommand <|-- BackupConsoleCommand
-    BaseConsoleCommand <|-- VerifyConsoleCommand
-    BaseConsoleCommand <|-- GlobConsoleCommand
+IMediaDeviceService <|-- MediaDeviceServiceProd
+IMediaDeviceService <|-- MediaDeviceServiceTest
 
-    ConsolesProgram ..> ApplicationStartup : uses
-    ConsolesProgram ..> ConsoleApplication : uses
-    ConsolesProgram ..> RootCommand : creates
-    ConsolesProgram ..> BackupConsoleCommand : creates
-    ConsolesProgram ..> VerifyConsoleCommand : creates
-    ConsolesProgram ..> GlobConsoleCommand : creates
-    ConsolesProgram ..> GlobalOptionsModel : creates
+class ISourceConfig {
+    <<interface>>
+}
+class BaseSourceConfig {
+    <<abstract>>
+}
+class DeviceSourceConfig
+class DriveSourceConfig
+class IBackupSettings {
+    <<interface>>
+}
+class BackupSettingsImpl
 
-    RootCommand "1" o-- "*" Command : has subcommands
-    RootCommand "1" o-- "*" Option : has options
+ISourceConfig <|-- BaseSourceConfig
+BaseSourceConfig <|-- DeviceSourceConfig
+BaseSourceConfig <|-- DriveSourceConfig
+IBackupSettings <|-- BackupSettingsImpl
+IBackupSettings o-- ISourceConfig
 
-    BackupConsoleCommand ..> IServiceProvider : uses
-    GlobConsoleCommand ..> GlobConverter : uses
+class IBackupSource {
+    <<interface>>
+}
+class BackupConfigSource
+class BackupJob {
+    <<abstract>>
+}
+class DriveBackupJob
+class DeviceBackupJob
+
+BackupConfigSource o-- ISourceConfig
+BackupJob <|-- DriveBackupJob
+BackupJob <|-- DeviceBackupJob
+BackupJob o-- ISourceConfig
+
+class IBackupHandler {
+    <<interface>>
+}
+class BackupHandler
+class INewBackupHandler {
+    <<interface>>
+}
+class AbstractBackupHandler {
+    <<abstract>>
+}
+class BackupHandlerForDevice
+class BackupHandlerForDrive
+class IBackupStrategy {
+    <<interface>>
+}
+
+IBackupHandler <|-- BackupHandler
+INewBackupHandler <|-- AbstractBackupHandler
+AbstractBackupHandler <|-- BackupHandlerForDevice
+AbstractBackupHandler <|-- BackupHandlerForDrive
+IBackupStrategy o-- INewBackupHandler
+BackupHandler o-- BackupHelper
+BackupHandlerForDevice o-- BackupHelper
+
+class IMetadataFileInfo {
+    <<interface>>
+}
+class AbstractMetadataFileInfo {
+    <<abstract>>
+}
+class MetadataExtractorFileInfo
+class ISideCarWriter {
+    <<interface>>
+}
+class IniSideCarWriter
+
+IMetadataFileInfo <|-- AbstractMetadataFileInfo
+AbstractMetadataFileInfo <|-- MetadataExtractorFileInfo
+ISideCarWriter <|-- IniSideCarWriter
+
+class AppHost
+class ConfigurationHandler
+class BackupMaster
+
+AppHost o-- ConfigurationHandler
+AppHost o-- IServiceProvider
+ConfigurationHandler o-- IBackupSettings
+BackupMaster o-- IBackupHandler
 
 ```
