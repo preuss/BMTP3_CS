@@ -12,7 +12,7 @@ public class ConfigAppSetup : IConfigSetup
 {
 	public void Configure(IConfigurationManager builder) {
 		builder.SetBasePath(Directory.GetCurrentDirectory());
-		builder.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+		builder.AddJsonFile("appsettings.json", optional: false, reloadOnChange: false);
 		
 		String environment = GetCurrentEnvironmentValue(builder["Environment"]);
 		builder.AddJsonFile($"appsettings.{environment}.json", optional: true, reloadOnChange: false);

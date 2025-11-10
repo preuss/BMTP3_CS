@@ -1,5 +1,6 @@
 ﻿using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.Startup;
+using BMTP3.Consoles.Startup.Configurations;
 using BMTP3.Consoles.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +14,17 @@ using DGlob = DotNet.Globbing;
 namespace BMTP3.Consoles;
 
 public class ConsolesProgram {
+	public static void ApplyConfigSetups(IConfigurationManager configuration, IEnumerable<IConfigSetup> setups) {
+		foreach(var setup in setups) {
+			setup.Configure(configuration);
+		}
+	}
+
+	public static void ApplyServiceSetups(IServiceCollection services, IEnumerable<IServiceSetup> setups, IConfiguration configuration) {
+		foreach(var setup in setups) {
+			setup.Configure(services, configuration);
+		}
+	}
 	public static async Task<int> Main(string[] args) {
 		args = ["backup", "--path", "C:\\BackupFolder"];
 		args = ["backup", "asdf", "-unknown", "--help"];
@@ -23,7 +35,24 @@ public class ConsolesProgram {
 		args = ["backup", "", "--output-structure=xxx", "--help"];
 		args = ["backup", "--config=default.toml", "--output-structure=PreserveSourceTree"];
 
-		IServiceProvider serviceProvider = ApplicationStartup.InitializeServiceProvider(args);
+		HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+		List<IConfigSetup> configSetups = new()
+		{
+			new ConfigAppSetup()
+		};
+		ApplyConfigSetups(builder.Configuration, configSetups);
+
+		List<IServiceSetup> serviceSetups = new()
+		{
+			new LoggingServiceSetup(),
+			new ApplicationServiceSetup()
+		};
+		ApplyServiceSetups(builder.Services, serviceSetups, builder.Configuration);
+
+		IHost host = builder.Build();
+
+		//IServiceProvider serviceProvider = ApplicationStartup.InitializeServiceProvider(args);
+		IServiceProvider serviceProvider = host.Services;
 
 		var app = serviceProvider.GetRequiredService<ConsoleApplication>();
 
@@ -35,6 +64,7 @@ public class ConsolesProgram {
 
 		BackupConsoleCommand backupCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(backupCommand);
+		
 
 		VerifyConsoleCommand verifyCommand = new();
 		rootCommand.Subcommands.Add(verifyCommand);
