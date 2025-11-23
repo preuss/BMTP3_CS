@@ -23,6 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\BMTP3.Core2\BMTP3.Core2.csproj" />
     <ProjectReference Include="..\BMTP3.Core\BMTP3.Core.csproj" />
   </ItemGroup>
 

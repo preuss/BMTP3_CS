@@ -45,6 +45,7 @@ public class ConsolesProgram {
 		List<IServiceSetup> serviceSetups = new()
 		{
 			new LoggingServiceSetup(),
+			new ConsolesServiceSetup(),
 			new ApplicationServiceSetup()
 		};
 		ApplyServiceSetups(builder.Services, serviceSetups, builder.Configuration);

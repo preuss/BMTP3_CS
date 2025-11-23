@@ -1,11 +1,13 @@
-﻿using System;
+﻿using BMTP3.Consoles.Services;
+using BMTP3.Core.Handlers;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Dynamic;
 using System.Threading;
 using System.Threading.Tasks;
-using BMTP3.Core.Handlers;
-using Microsoft.Extensions.Configuration;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -38,18 +40,8 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		CancellationToken cancellationToken
 	)
 	{
-		foreach (var optionsModel in new BaseOptionsModel[] { this.GlobalOptions, this.BackupOptions })
-		{
-			var lines = optionsModel.GetOptionPropertyValues();
-			string header = $"{optionsModel.GetType().Name}:";
-			Console.WriteLine(header);
-			Console.WriteLine(new string('=', header.Length));
-			foreach (var line in lines)
-			{
-				Console.WriteLine("  " + line);
-			}
-		}
-
+		ConsolesPrinter consolePrinter = ServiceProvider.GetService<ConsolesPrinter>() ?? throw new InvalidOperationException("ConsolePrinter service not found.");
+		consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		int verbosity = GlobalOptions.Verbose;
 
@@ -60,7 +52,6 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		Console.WriteLine("Simulate Max: " + BackupOptionsModel.SimulateOption.Arity.MaximumNumberOfValues);
 		Console.WriteLine("Config: " + BackupOptions.Config);
 		Console.WriteLine("Config Exists: " + BackupOptions.Config?.Exists);
-
 
 		//var backupMaster = ServiceProvider.GetService<BackupMaster>();
 		BackupMaster bm;

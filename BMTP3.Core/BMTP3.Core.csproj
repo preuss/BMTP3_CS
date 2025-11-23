@@ -82,7 +82,6 @@
     <Folder Include="BackupNew\Extensions\" />
     <Folder Include="BackupNew\Pipeline\" />
     <Folder Include="BackupNew\Processing\Stages\" />
-    <Folder Include="NetBackupFlow\" />
     <Folder Include="Services\Interfaces\" />
     <Folder Include="Services\Implementations\" />
     <Folder Include="Commands\Handlers\" />
