@@ -27,4 +27,10 @@
     <ProjectReference Include="..\BMTP3.Core\BMTP3.Core.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="MediaDevices">
+      <HintPath>..\..\..\GlobalPreussProjects\MediaDevices-FixErrors\Src\MediaDevices\bin\Release\net8.0-windows\MediaDevices.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

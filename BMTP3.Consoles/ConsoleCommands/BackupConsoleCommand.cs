@@ -1,5 +1,7 @@
 ﻿using BMTP3.Consoles.Services;
 using BMTP3.Core.Handlers;
+using BMTP3.Core2.BackupNew.Reader;
+using MediaDevices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using System;
@@ -54,7 +56,14 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		Console.WriteLine("Config Exists: " + BackupOptions.Config?.Exists);
 
 		//var backupMaster = ServiceProvider.GetService<BackupMaster>();
-		BackupMaster bm;
+		//BackupMaster bm;
+
+		IEnumerable<MediaDevice> privateDevices = MediaDevice.GetPrivateDevices();
+		IEnumerable<MediaDevice> publicDevices = MediaDevice.GetDevices();
+		MediaDeviceScanner mediaDeviceScanner = new MediaDeviceScanner();
+		IEnumerable<MediaDevices.MediaFileInfo> files = mediaDeviceScanner.ScanAll();
+		Console.WriteLine($"Found {files.Count()} files on the media device.");
+		mediaDeviceScanner._device.Disconnect();
 
 		// Simulates backup work here.
 		await Task.Delay(100, cancellationToken);

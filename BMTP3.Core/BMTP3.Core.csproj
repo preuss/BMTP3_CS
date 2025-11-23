@@ -93,9 +93,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="MediaDevices, Version=1.12.0.0, Culture=neutral, PublicKeyToken=null" Version="1.12.0.0">
-      <HintPath>..\..\..\GlobalPreussProjects\MediaDevices-FixErrors\Src\MediaDevices\bin\Debug\net8.0-windows\MediaDevices.dll</HintPath>
-      <SpecificVersion>False</SpecificVersion>
+    <Reference Include="MediaDevices">
+      <HintPath>..\..\..\GlobalPreussProjects\MediaDevices-FixErrors\Src\MediaDevices\bin\Release\net8.0-windows\MediaDevices.dll</HintPath>
     </Reference>
   </ItemGroup>
 
