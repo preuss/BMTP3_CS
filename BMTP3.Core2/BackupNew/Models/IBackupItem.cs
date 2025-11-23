@@ -8,29 +8,30 @@ using System.Threading.Tasks;
 
 namespace BMTP3.Core.BackupNew.Models;
 /// <summary>
-/// Det centrale dataobjekt, der repræsenterer en enkelt fil i hele backup-processen.
-/// Objektet "rejser" gennem alle stadier og bliver løbende beriget med data.
+/// The central data object representing a single file throughout the entire backup process.
+/// The object "travels" through all stages and is continuously enriched with additional data.
 /// </summary>
-public interface IBackupItem {
+public interface IBackupItem
+{
 	/// <summary>
-	/// Adgang til filens aktuelle indhold (kan skifte fra MTP-stream til lokal temp-fil osv.)
+	/// Access to the file's current content (may change from an MTP stream to a local temp file, etc.).
 	/// </summary>
 	ISourceContent Content { get; }
 
 	/// <summary>
-	/// Samling af al metadata – navn, sti, hashes, timestamps, osv.
-	/// Beriges af hvert stage i pipelinen.
+	/// Collection of all metadata – name, path, hashes, timestamps, etc.
+	/// Enriched by each stage in the pipeline.
 	/// </summary>
-	Metadata Metadata { get; }
+	BackupMetadata Metadata { get; }
 
 	/// <summary>
-	/// Nuværende tilstand i backup-processen.
+	/// The current state within the backup process.
 	/// </summary>
 	BackupState State { get; }
 
 	/// <summary>
-	/// Fejlinformation for dette specifikke item.
-	/// Tillader at et enkelt item fejler uden at stoppe hele backuppen.
+	/// Error information for this specific item.
+	/// Allows a single item to fail without stopping the entire backup.
 	/// </summary>
 	ErrorInfo ErrorInfo { get; }
 }

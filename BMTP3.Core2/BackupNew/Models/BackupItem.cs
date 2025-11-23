@@ -14,12 +14,12 @@ namespace BMTP3.Core.BackupNew.Models;
 /// </summary>
 public class BackupItem : IBackupItem {
 	public ISourceContent Content { get; private set; }
-	public Metadata Metadata { get; }
+	public BackupMetadata Metadata { get; }
 	public BackupState State { get; private set; }
 	public ErrorInfo ErrorInfo { get; }
 
 	// Private constructor – all object state is initialized here
-	private BackupItem(ISourceContent content, Metadata metadata) {
+	private BackupItem(ISourceContent content, BackupMetadata metadata) {
 		ArgumentNullException.ThrowIfNull(content);
 		ArgumentNullException.ThrowIfNull(metadata);
 		Content = content;
@@ -38,7 +38,7 @@ public class BackupItem : IBackupItem {
 			throw new ArgumentException("Original file name is required.", nameof(originalFileName));
 		}
 
-		var metadata = new Metadata();
+		var metadata = new BackupMetadata();
 		metadata.Set(MetadataKey.OriginalFileName, originalFileName);
 		metadata.Set(MetadataKey.Size, content.Length);
 
@@ -59,13 +59,19 @@ public class BackupItem : IBackupItem {
 
 	/// <summary>
 	/// Advances the item to a new processing state.
-	/// Only forward progression is allowed, except for terminal states.
+	/// Only forward progression is allowed, except for terminal states (Failed, Skipped).
+	/// Thread-safe to prevent race conditions.
 	/// </summary>
-	public void AdvanceTo(BackupState newState) {
-		if(newState < State && newState is not (BackupState.Failed or BackupState.Skipped)) {
-			throw new InvalidOperationException($"Cannot revert state from {State} to {newState}");
-		}
+	public void AdvanceTo(BackupState newState)
+	{
+		lock(this)
+		{
+			if(newState < State && newState is not (BackupState.Failed or BackupState.Skipped))
+			{
+				throw new InvalidOperationException($"Cannot revert state from {State} to {newState}");
+			}
 
-		State = newState;
+			State = newState;
+		}
 	}
 }
