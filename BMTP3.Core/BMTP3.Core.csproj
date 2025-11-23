@@ -10,6 +10,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="BackupNew\Extensions\**" />
+    <Compile Remove="BackupNew\Pipeline\**" />
+    <Compile Remove="BackupNew\Processing\**" />
+    <EmbeddedResource Remove="BackupNew\Extensions\**" />
+    <EmbeddedResource Remove="BackupNew\Pipeline\**" />
+    <EmbeddedResource Remove="BackupNew\Processing\**" />
+    <None Remove="BackupNew\Extensions\**" />
+    <None Remove="BackupNew\Pipeline\**" />
+    <None Remove="BackupNew\Processing\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Blake3" Version="2.0.0" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
     <PackageReference Include="FluentCommandLineParser.NETStandard" Version="1.5.0.31-commands" />
@@ -79,9 +91,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="BackupNew\Extensions\" />
-    <Folder Include="BackupNew\Pipeline\" />
-    <Folder Include="BackupNew\Processing\Stages\" />
+    <Folder Include="BackupNew\" />
     <Folder Include="Services\Interfaces\" />
     <Folder Include="Services\Implementations\" />
     <Folder Include="Commands\Handlers\" />
