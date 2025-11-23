@@ -10,15 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="BackupNew\Extensions\**" />
-    <Compile Remove="BackupNew\Pipeline\**" />
-    <Compile Remove="BackupNew\Processing\**" />
-    <EmbeddedResource Remove="BackupNew\Extensions\**" />
-    <EmbeddedResource Remove="BackupNew\Pipeline\**" />
-    <EmbeddedResource Remove="BackupNew\Processing\**" />
-    <None Remove="BackupNew\Extensions\**" />
-    <None Remove="BackupNew\Pipeline\**" />
-    <None Remove="BackupNew\Processing\**" />
+    <Compile Remove="BackupNew\**" />
+    <EmbeddedResource Remove="BackupNew\**" />
+    <None Remove="BackupNew\**" />
   </ItemGroup>
 
   <ItemGroup>
@@ -91,7 +85,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="BackupNew\" />
     <Folder Include="Services\Interfaces\" />
     <Folder Include="Services\Implementations\" />
     <Folder Include="Commands\Handlers\" />
@@ -100,8 +93,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="MediaDevices">
+    <Reference Include="MediaDevices, Version=1.12.0.0, Culture=neutral, PublicKeyToken=null" Version="1.12.0.0">
       <HintPath>..\..\..\GlobalPreussProjects\MediaDevices-FixErrors\Src\MediaDevices\bin\Debug\net8.0-windows\MediaDevices.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
     </Reference>
   </ItemGroup>
 

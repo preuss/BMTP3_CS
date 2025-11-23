@@ -8,7 +8,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="NetBackupFlow\" />
+    <Reference Include="MediaDevices, Version=1.12.3.76, Culture=neutral, PublicKeyToken=null" Version="1.12.3.76">
+      <HintPath>..\..\..\GlobalPreussProjects\MediaDevices-FixErrors\Src\MediaDevices\bin\Debug\net8.0-windows\MediaDevices.dll</HintPath>
+      <SpecificVersion>False</SpecificVersion>
+    </Reference>
   </ItemGroup>
 
 </Project>
