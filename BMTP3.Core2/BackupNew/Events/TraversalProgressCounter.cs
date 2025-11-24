@@ -21,12 +21,12 @@ public class TraversalProgressCounter
 
 	public void IncrementFileCount(int incrementWith = 1)
 	{
-		if (incrementWith == 0) return;
+		if(incrementWith == 0) return;
 		FileAndDirectoryCount currentCount;
-		lock (_lock)
+		lock(_lock)
 		{
 			_fileCount += incrementWith;
-			currentCount = new (_fileCount, _directoryCount);
+			currentCount = new(_fileCount, _directoryCount);
 		}
 		PostEvent(FileCountChanged, currentCount.FileCount);
 		PostEvent(CombinedCountChanged, currentCount);
@@ -34,22 +34,38 @@ public class TraversalProgressCounter
 
 	public void IncrementDirectoryCount(int incrementWith = 1)
 	{
-		if (incrementWith == 0) return;
+		if(incrementWith == 0) return;
 		FileAndDirectoryCount currentCount;
-		lock (_lock)
+		lock(_lock)
 		{
 			_directoryCount += incrementWith;
-			currentCount = new (_fileCount, _directoryCount);
+			currentCount = new(_fileCount, _directoryCount);
 		}
+		PostEvent(DirectoryCountChanged, currentCount.DirectoryCount);
+		PostEvent(CombinedCountChanged, currentCount);
+	}
+
+	public void ReportCurrent()
+	{
+		FileAndDirectoryCount currentCount;
+		lock(_lock)
+		{
+			currentCount = new(_fileCount, _directoryCount);
+		}
+		PostEvent(FileCountChanged, currentCount.FileCount);
 		PostEvent(DirectoryCountChanged, currentCount.DirectoryCount);
 		PostEvent(CombinedCountChanged, currentCount);
 	}
 
 	private void PostEvent<T>(EventHandler<T>? handler, T value)
 	{
-		if (handler != null)
+		if(handler != null)
 		{
-			_syncContext.Post(_ => handler(this, value), null);
+			_syncContext.Post(static state =>
+			{
+				var (h, v, sender) = ((EventHandler<T>, T, TraversalProgressCounter))state!;
+				h(sender, v);
+			}, (handler, value, this));
 		}
 	}
 }
