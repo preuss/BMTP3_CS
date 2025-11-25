@@ -12,11 +12,25 @@ public class TraversalProgressCounter
 
 	public event EventHandler<int>? FileCountChanged;
 	public event EventHandler<int>? DirectoryCountChanged;
-	public event EventHandler<FileAndDirectoryCount>? CombinedCountChanged;
+	public event EventHandler<ProgressSnapshotCount>? CombinedCountChanged;
 
+	/// <summary>
+	/// Creates a counter using the current synchronization context.
+	/// </summary>
 	public TraversalProgressCounter()
 	{
 		_syncContext = SynchronizationContext.Current ?? new SynchronizationContext();
+	}
+
+	/// <summary>
+	/// Atomically gets a snapshot of both counts.
+	/// </summary>
+	public ProgressSnapshotCount GetSnapshot()
+	{
+		lock(_lock)
+		{
+			return new ProgressSnapshotCount(_fileCount, _directoryCount);
+		}
 	}
 
 	/// <summary>
@@ -25,16 +39,17 @@ public class TraversalProgressCounter
 	public void IncrementFileCount(int incrementWith = 1)
 	{
 		if(incrementWith == 0) return;
+		if(incrementWith < 0) throw new ArgumentOutOfRangeException(nameof(incrementWith), "Negative increments are not allowed.");
 
-		FileAndDirectoryCount currentCount;
+		ProgressSnapshotCount snapshot;
 		lock(_lock)
 		{
 			_fileCount += incrementWith;
-			currentCount = new(_fileCount, _directoryCount);
+			snapshot = new ProgressSnapshotCount(_fileCount, _directoryCount);
 		}
 
-		PostEvent(FileCountChanged, currentCount.FileCount);
-		PostEvent(CombinedCountChanged, currentCount);
+		PostEvent(FileCountChanged, snapshot.FileCount);
+		PostEvent(CombinedCountChanged, snapshot);
 	}
 
 	/// <summary>
@@ -43,16 +58,36 @@ public class TraversalProgressCounter
 	public void IncrementDirectoryCount(int incrementWith = 1)
 	{
 		if(incrementWith == 0) return;
+		if(incrementWith < 0) throw new ArgumentOutOfRangeException(nameof(incrementWith), "Negative increments are not allowed.");
 
-		FileAndDirectoryCount currentCount;
+		ProgressSnapshotCount snapshot;
 		lock(_lock)
 		{
 			_directoryCount += incrementWith;
-			currentCount = new(_fileCount, _directoryCount);
+			snapshot = new ProgressSnapshotCount(_fileCount, _directoryCount);
 		}
 
-		PostEvent(DirectoryCountChanged, currentCount.DirectoryCount);
-		PostEvent(CombinedCountChanged, currentCount);
+		PostEvent(DirectoryCountChanged, snapshot.DirectoryCount);
+		PostEvent(CombinedCountChanged, snapshot);
+	}
+
+	/// <summary>
+	/// Sets both counts explicitly and raises change events (useful for restore scenarios).
+	/// </summary>
+	private void SetCounts(int fileCount, int directoryCount)
+	{
+		if(fileCount < 0) throw new ArgumentOutOfRangeException(nameof(fileCount));
+		if(directoryCount < 0) throw new ArgumentOutOfRangeException(nameof(directoryCount));
+		ProgressSnapshotCount snapshot;
+		lock(_lock)
+		{
+			_fileCount = fileCount;
+			_directoryCount = directoryCount;
+			snapshot = new ProgressSnapshotCount(_fileCount, _directoryCount);
+		}
+		PostEvent(FileCountChanged, snapshot.FileCount);
+		PostEvent(DirectoryCountChanged, snapshot.DirectoryCount);
+		PostEvent(CombinedCountChanged, snapshot);
 	}
 
 	/// <summary>
@@ -61,15 +96,10 @@ public class TraversalProgressCounter
 	/// </summary>
 	public void ReportCurrent()
 	{
-		FileAndDirectoryCount currentCount;
-		lock(_lock)
-		{
-			currentCount = new(_fileCount, _directoryCount);
-		}
-
-		PostEvent(FileCountChanged, currentCount.FileCount);
-		PostEvent(DirectoryCountChanged, currentCount.DirectoryCount);
-		PostEvent(CombinedCountChanged, currentCount);
+		var snapshot = GetSnapshot();
+		PostEvent(FileCountChanged, snapshot.FileCount);
+		PostEvent(DirectoryCountChanged, snapshot.DirectoryCount);
+		PostEvent(CombinedCountChanged, snapshot);
 	}
 
 	/// <summary>
@@ -77,17 +107,7 @@ public class TraversalProgressCounter
 	/// </summary>
 	public void Reset()
 	{
-		FileAndDirectoryCount currentCount;
-		lock(_lock)
-		{
-			_fileCount = 0;
-			_directoryCount = 0;
-			currentCount = new(_fileCount, _directoryCount);
-		}
-
-		PostEvent(FileCountChanged, currentCount.FileCount);
-		PostEvent(DirectoryCountChanged, currentCount.DirectoryCount);
-		PostEvent(CombinedCountChanged, currentCount);
+		SetCounts(0, 0);
 	}
 
 	/// <summary>
@@ -108,6 +128,28 @@ public class TraversalProgressCounter
 }
 
 /// <summary>
-/// Immutable snapshot of file and directory counts.
+/// Immutable snapshot of file and directory counts at a given progress state.
 /// </summary>
-public record FileAndDirectoryCount(int FileCount, int DirectoryCount);
+public readonly struct ProgressSnapshotCount
+{
+    /// <summary>
+    /// Gets the number of files in the snapshot.
+    /// </summary>
+    public int FileCount { get; }
+
+    /// <summary>
+    /// Gets the number of directories in the snapshot.
+    /// </summary>
+    public int DirectoryCount { get; }
+
+    /// <summary>
+    /// Initializes a new immutable snapshot with the specified file and directory counts.
+    /// </summary>
+    /// <param name="fileCount">Number of files.</param>
+    /// <param name="directoryCount">Number of directories.</param>
+    public ProgressSnapshotCount(int fileCount, int directoryCount)
+    {
+        FileCount = fileCount;
+        DirectoryCount = directoryCount;
+    }
+}
