@@ -11,5 +11,5 @@ public interface IFileSourceScanner<TFileInfo>
 	/// <summary>
 	/// Traverses the source and returns all file entries.
 	/// </summary>
-	IEnumerable<TFileInfo> TraverseFiles(bool recursive = true, Events.TraversalProgressCounter? progress = null);
+	IEnumerable<TFileInfo> TraverseFiles(bool recursive = true, Events.TraversalProgressCounter? progress = null, CancellationToken cancellationToken = default);
 }

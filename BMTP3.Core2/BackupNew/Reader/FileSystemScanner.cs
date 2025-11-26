@@ -23,13 +23,14 @@ public class FileSystemScanner : IFileSourceScanner<FileInfo>
 		_root = new DirectoryInfo(rootPath);
 	}
 
-	public IEnumerable<FileInfo> TraverseFiles(bool recursive = true, Events.TraversalProgressCounter? progress = null)
+	public IEnumerable<FileInfo> TraverseFiles(bool recursive = true, Events.TraversalProgressCounter? progress = null, CancellationToken cancellationToken = default)
 	{
-		return Traverse(_root, recursive, progress);
+		return Traverse(_root, recursive, progress, cancellationToken);
 	}
 
-	private IEnumerable<FileInfo> Traverse(DirectoryInfo dir, bool recursive, Events.TraversalProgressCounter? progress)
+	private IEnumerable<FileInfo> Traverse(DirectoryInfo dir, bool recursive, Events.TraversalProgressCounter? progress, CancellationToken cancellationToken = default)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		foreach (var file in dir.GetFiles())
 		{
 			progress?.IncrementFileCount();
