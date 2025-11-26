@@ -1,51 +1,66 @@
 ﻿using MediaDevices;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Versioning;
 
 namespace BMTP3.Core2.BackupNew.Reader;
 
+[SupportedOSPlatform("windows7.0")]
 /// <summary>
 /// Scans a MediaDevice and enumerates all MediaFileInfo entries.
 /// </summary>
 public class MediaDeviceScanner : IFileSourceScanner<MediaFileInfo>
 {
 	private readonly MediaDevice _device;
+	private readonly bool _useBulkReportProgress;
+	private readonly uint _comReadFilesCache;
 
-	public MediaDeviceScanner()
+	public MediaDeviceScanner(MediaDevice device, bool useBulkReportProgressFilesPerDirectory = false, uint comReadFilesCache = 32)
 	{
-		var mediaDevice = MediaDevice.GetDevices().FirstOrDefault() ?? throw new InvalidOperationException("No media devices found.");
-		mediaDevice.ConnectAsReadonly();
-		_device = mediaDevice;
+		ArgumentNullException.ThrowIfNull(device);
+		_device = device;
+
+		_useBulkReportProgress = useBulkReportProgressFilesPerDirectory;
+		_comReadFilesCache = comReadFilesCache;
 	}
 
-	public MediaDeviceScanner(MediaDevice device)
-	{
-		_device = device ?? throw new ArgumentNullException(nameof(device));
-	}
+	public MediaDeviceScanner(MediaDevice mediaDevice) : this(mediaDevice, false, 32)
+	{ }
 
+	/// <summary>
+	/// Traverses the device and returns all files as a fully materialized list.
+	/// </summary>
 	public IEnumerable<MediaFileInfo> TraverseFiles(bool recursive = true, Events.TraversalProgressCounter? progress = null)
 	{
-		var files = new List<MediaFileInfo>();
-		Traverse(_device.GetRootDirectory(), recursive, progress, files);
-		//files = _device.GetRootDirectory().EnumerateFiles(null, SearchOption.AllDirectories).ToList();
+		var root = _device.GetRootDirectory();
+		var files = Traverse(root, recursive, progress);
 		return files;
 	}
 
-	private void Traverse(MediaDirectoryInfo dir, bool recursive, Events.TraversalProgressCounter? progress, List<MediaFileInfo> files)
+	/// <summary>
+	/// Recursively collects files and returns a new list for each directory.
+	/// </summary>
+	private List<MediaFileInfo> Traverse(MediaDirectoryInfo dir, bool recursive, Events.TraversalProgressCounter? progress)
 	{
-		const uint MaxFilesPerQuery = 32;
-		const bool UseBulkEnumeration = true;
-		if(UseBulkEnumeration)
+		var result = new List<MediaFileInfo>();
+
+		if (_useBulkReportProgress)
 		{
-			var fileList = dir.EnumerateFiles(MaxFilesPerQuery).ToList();
-			progress?.IncrementFileCount(fileList.Count);
-			files.AddRange(fileList);
-		} else
-		{
-			// Only works if EnumerateFiles supports yielding
-			foreach(var file in dir.EnumerateFiles(MaxFilesPerQuery))
+			while (true)
 			{
+				var batch = dir.EnumerateFiles(_comReadFilesCache).ToList();
+				result.AddRange(batch);
+				progress?.IncrementFileCount(batch.Count);
+
+			}
+		}
+		else
+		{
+			foreach (var file in dir.EnumerateFiles(_comReadFilesCache))
+			{
+				result.Add(file);
 				progress?.IncrementFileCount();
-				files.Add(file);
 			}
 		}
 
@@ -54,8 +69,11 @@ public class MediaDeviceScanner : IFileSourceScanner<MediaFileInfo>
 			foreach (var subDir in dir.EnumerateDirectories())
 			{
 				progress?.IncrementDirectoryCount();
-				Traverse(subDir, true, progress, files);
+				var subFiles = Traverse(subDir, true, progress);
+				result.AddRange(subFiles);
 			}
 		}
+
+		return result;
 	}
 }

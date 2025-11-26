@@ -61,7 +61,9 @@ public class BackupConsoleCommand : BaseConsoleCommand
 
 		IEnumerable<MediaDevice> privateDevices = MediaDevice.GetPrivateDevices();
 		IEnumerable<MediaDevice> publicDevices = MediaDevice.GetDevices();
-		MediaDeviceScanner mediaDeviceScanner = new MediaDeviceScanner();
+		MediaDevice device = publicDevices.FirstOrDefault() ?? throw new InvalidOperationException("No media devices found.");
+		device.Connect();
+		MediaDeviceScanner mediaDeviceScanner = new MediaDeviceScanner(device);
 		TraversalProgressCounter progressCounter = new TraversalProgressCounter();
 		progressCounter.CombinedCountChanged += (sender, snapshot) =>
 		{
@@ -69,7 +71,7 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		};
 		IEnumerable<MediaDevices.MediaFileInfo> files = mediaDeviceScanner.TraverseFiles(progress: progressCounter);
 		Console.WriteLine($"Found {files.Count()} files on the media device.");
-		mediaDeviceScanner._device.Disconnect();
+		device.Disconnect();
 
 		// Simulates backup work here.
 		await Task.Delay(100, cancellationToken);
