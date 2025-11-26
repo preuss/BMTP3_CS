@@ -1,24 +1,18 @@
 ﻿using MediaDevices;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Reader;
 
 /// <summary>
 /// Scans a MediaDevice and enumerates all MediaFileInfo entries.
-/// Prints progress to console every 100 files.
 /// </summary>
 public class MediaDeviceScanner : IFileSourceScanner<MediaFileInfo>
 {
-	public readonly MediaDevice _device;
+	private readonly MediaDevice _device;
 
 	public MediaDeviceScanner()
 	{
-		var mediaDevice = MediaDevice.GetDevices().FirstOrDefault()
-			?? throw new InvalidOperationException("No media devices found.");
+		var mediaDevice = MediaDevice.GetDevices().FirstOrDefault() ?? throw new InvalidOperationException("No media devices found.");
 		mediaDevice.ConnectAsReadonly();
 		_device = mediaDevice;
 	}
@@ -28,45 +22,39 @@ public class MediaDeviceScanner : IFileSourceScanner<MediaFileInfo>
 		_device = device ?? throw new ArgumentNullException(nameof(device));
 	}
 
-	public IEnumerable<MediaFileInfo> ScanAll()
+	public IEnumerable<MediaFileInfo> TraverseFiles(bool recursive = true, Events.TraversalProgressCounter? progress = null)
 	{
-		int count = 0;
-		const int progressInterval = 100;
-		const int maxFiles = 5000;
-
-		foreach(var file in ScanRecursive(_device.GetRootDirectory()))
-		{
-			count++;
-			if(count % progressInterval == 0)
-			{
-				Console.WriteLine($"Scanned {count} files so far...");
-			}
-
-			yield return file;
-
-			if(count > maxFiles) {
-				Console.WriteLine($"Stopping scan after {count} files.");
-				yield break;
-			}
-		}
-
-		Console.WriteLine($"Scan complete. Total files: {count}");
+		var files = new List<MediaFileInfo>();
+		Traverse(_device.GetRootDirectory(), recursive, progress, files);
+		//files = _device.GetRootDirectory().EnumerateFiles(null, SearchOption.AllDirectories).ToList();
+		return files;
 	}
 
-	private IEnumerable<MediaFileInfo> ScanRecursive(MediaDirectoryInfo dir)
+	private void Traverse(MediaDirectoryInfo dir, bool recursive, Events.TraversalProgressCounter? progress, List<MediaFileInfo> files)
 	{
-		// yield files in current directory
-		foreach(var file in dir.EnumerateFiles())
+		const uint MaxFilesPerQuery = 32;
+		const bool UseBulkEnumeration = true;
+		if(UseBulkEnumeration)
 		{
-			yield return file;
+			var fileList = dir.EnumerateFiles(MaxFilesPerQuery).ToList();
+			progress?.IncrementFileCount(fileList.Count);
+			files.AddRange(fileList);
+		} else
+		{
+			// Only works if EnumerateFiles supports yielding
+			foreach(var file in dir.EnumerateFiles(MaxFilesPerQuery))
+			{
+				progress?.IncrementFileCount();
+				files.Add(file);
+			}
 		}
 
-		// recurse into subdirectories
-		foreach(var subDir in dir.EnumerateDirectories())
+		if (recursive)
 		{
-			foreach(var file in ScanRecursive(subDir))
+			foreach (var subDir in dir.EnumerateDirectories())
 			{
-				yield return file;
+				progress?.IncrementDirectoryCount();
+				Traverse(subDir, true, progress, files);
 			}
 		}
 	}

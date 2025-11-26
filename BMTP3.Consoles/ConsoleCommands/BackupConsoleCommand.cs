@@ -1,5 +1,6 @@
 ﻿using BMTP3.Consoles.Services;
 using BMTP3.Core.Handlers;
+using BMTP3.Core2.BackupNew.Events;
 using BMTP3.Core2.BackupNew.Reader;
 using MediaDevices;
 using Microsoft.Extensions.Configuration;
@@ -61,7 +62,12 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		IEnumerable<MediaDevice> privateDevices = MediaDevice.GetPrivateDevices();
 		IEnumerable<MediaDevice> publicDevices = MediaDevice.GetDevices();
 		MediaDeviceScanner mediaDeviceScanner = new MediaDeviceScanner();
-		IEnumerable<MediaDevices.MediaFileInfo> files = mediaDeviceScanner.ScanAll();
+		TraversalProgressCounter progressCounter = new TraversalProgressCounter();
+		progressCounter.CombinedCountChanged += (sender, snapshot) =>
+		{
+			Console.WriteLine($"Scanned {snapshot.FileCount} files and {snapshot.DirectoryCount} directories so far...");
+		};
+		IEnumerable<MediaDevices.MediaFileInfo> files = mediaDeviceScanner.TraverseFiles(progress: progressCounter);
 		Console.WriteLine($"Found {files.Count()} files on the media device.");
 		mediaDeviceScanner._device.Disconnect();
 
