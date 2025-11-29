@@ -1,7 +1,7 @@
 ﻿using BMTP3.Consoles.Services;
 using BMTP3.Core.Handlers;
 using BMTP3.Core2.BackupNew.Events;
-using BMTP3.Core2.BackupNew.Reader;
+using BMTP3.Core2.BackupNew.Traversal;
 using MediaDevices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -59,19 +59,14 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		//var backupMaster = ServiceProvider.GetService<BackupMaster>();
 		//BackupMaster bm;
 
-		IEnumerable<MediaDevice> privateDevices = MediaDevice.GetPrivateDevices();
-		IEnumerable<MediaDevice> publicDevices = MediaDevice.GetDevices();
-		MediaDevice device = publicDevices.FirstOrDefault() ?? throw new InvalidOperationException("No media devices found.");
-		device.Connect();
-		MediaDeviceScanner mediaDeviceScanner = new MediaDeviceScanner(device);
-		TraversalProgressCounter progressCounter = new TraversalProgressCounter();
-		progressCounter.CombinedCountChanged += (sender, snapshot) =>
+		IProgress<TraversalProgress> progress =  new Progress<TraversalProgress>(snapshot => Console.WriteLine($"Scanned {snapshot.FileCount} files and {snapshot.DirectoryCount} directories so far..."));
+		//List<MediaFileInfo> files = await mediaDeviceScanner.ScanAsync("", true, progress, cancellationToken).ToListAsync(cancellationToken);
+		List<FileInfo> files = new();
+		await foreach(FileInfo fileInfo in new FileSystemScanner().ScanAsync("C:\\Temp", true, progress, cancellationToken))
 		{
-			Console.WriteLine($"Scanned {snapshot.FileCount} files and {snapshot.DirectoryCount} directories so far...");
-		};
-		IEnumerable<MediaDevices.MediaFileInfo> files = mediaDeviceScanner.TraverseFiles(progress: progressCounter);
+			files.Add(fileInfo);
+		}
 		Console.WriteLine($"Found {files.Count()} files on the media device.");
-		device.Disconnect();
 
 		// Simulates backup work here.
 		await Task.Delay(100, cancellationToken);
