@@ -22,11 +22,11 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var lexer = new Lexer("some text ${ name }");
 			var expectedTokens = new List<Token>
 			{
-				new Token(TokenType.LiteralString, "some text ", 0),
-				new Token(TokenType.DollarBraceOpen, "${", 10),
-				new Token(TokenType.Identifier, "name", 13),
-				new Token(TokenType.BraceClose, "}", 18),
-				new Token(TokenType.EOF, "", 19)
+				new Token(TokenType.LiteralString, "some text ", 0, 0, 0),
+				new Token(TokenType.DollarBraceOpen, "${", 10, 0, 0),
+				new Token(TokenType.Identifier, "name", 13, 0, 0),
+				new Token(TokenType.BraceClose, "}", 18, 0, 0),
+				new Token(TokenType.EOF, "", 19, 0, 0)
 			};
 			var actualTokens = new List<Token>();
 
@@ -45,18 +45,18 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var lexer = new Lexer("${date.toUpper(),number:yyyy-MM-dd}");
 			var expectedTokens = new List<Token>
 			{
-				new Token(TokenType.DollarBraceOpen, "${", 0),
-				new Token(TokenType.Identifier, "date", 2),
-				new Token(TokenType.Dot, ".", 6),
-				new Token(TokenType.Identifier, "toUpper", 7),
-				new Token(TokenType.ParenOpen, "(", 14),
-				new Token(TokenType.ParenClose, ")", 15),
-				new Token(TokenType.Comma, ",", 16),
-				new Token(TokenType.Identifier, "number", 17),
-				new Token(TokenType.Colon, ":", 23),
-				new Token(TokenType.Identifier, "yyyy-MM-dd", 24),
-				new Token(TokenType.BraceClose, "}", 34),
-				new Token(TokenType.EOF, "", 35)
+				new Token(TokenType.DollarBraceOpen, "${", 0, 0, 0),
+				new Token(TokenType.Identifier, "date", 2, 0, 0),
+				new Token(TokenType.Dot, ".", 6, 0, 0),
+				new Token(TokenType.Identifier, "toUpper", 7, 0, 0),
+				new Token(TokenType.ParenOpen, "(", 14, 0, 0),
+				new Token(TokenType.ParenClose, ")", 15, 0, 0),
+				new Token(TokenType.Comma, ",", 16, 0, 0),
+				new Token(TokenType.Identifier, "number", 17, 0, 0),
+				new Token(TokenType.Colon, ":", 23, 0, 0),
+				new Token(TokenType.Identifier, "yyyy-MM-dd", 24, 0, 0),
+				new Token(TokenType.BraceClose, "}", 34, 0, 0),
+				new Token(TokenType.EOF, "", 35, 0, 0)
 			};
 			var actualTokens = new List<Token>();
 
@@ -72,21 +72,21 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		[Fact]
 		public void ScanToken_EvalPattern_ReturnsCorrectTokens() {
 			// Arrange
-			var lexer = new Lexer("${count§eq0,0#low}");
+			var lexer = new Lexer("${count§eq0,0#{low}}");
 			var expectedTokens = new List<Token>
 			{
-				new Token(TokenType.DollarBraceOpen, "${", 0),
-				new Token(TokenType.Identifier, "count", 2),
-				new Token(TokenType.Section, "§", 7),
-				new Token(TokenType.Identifier, "eq0", 8),
-				new Token(TokenType.Comma, ",", 11),
-				new Token(TokenType.LiteralInteger, "0", 12),
-				new Token(TokenType.HashBraceOpen, "#{", 13),
-				new Token(TokenType.Identifier, "low", 15),
-				new Token(TokenType.BraceClose, "}", 18),
-				new Token(TokenType.EOF, "", 19)
-			};
-			var actualTokens = new List<Token>();
+				new Token(TokenType.DollarBraceOpen, "${", 0, 0, 0),
+				new Token(TokenType.Identifier, "count", 2, 0, 0),
+				new Token(TokenType.Section, "§", 7, 0, 0),
+				new Token(TokenType.Identifier, "eq0", 8, 0, 0),
+				new Token(TokenType.Comma, ",", 11, 0, 0),
+				new Token(TokenType.LiteralInteger, "0", 12, 0, 0),
+				new Token(TokenType.HashBraceOpen, "#{", 13, 0, 0),
+				                				new Token(TokenType.Identifier, "low", 15, 0, 0),
+				                				new Token(TokenType.BraceClose, "}", 18, 0, 0),
+				                				new Token(TokenType.LiteralString, "}", 19, 0, 0),
+				                				new Token(TokenType.EOF, "", 20, 0, 0)
+				                			};			var actualTokens = new List<Token>();
 
 			// Act
 			while(lexer.HasNextToken()) {
@@ -103,12 +103,12 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var lexer = new Lexer("text {{escaped}} text");
 			var expectedTokens = new List<Token>
 			{
-				new Token(TokenType.LiteralString, "text ", 0),
-				new Token(TokenType.LiteralString, "{{", 5),
-				new Token(TokenType.LiteralString, "escaped", 7),
-				new Token(TokenType.LiteralString, "}}", 14),
-				new Token(TokenType.LiteralString, " text", 16),
-				new Token(TokenType.EOF, "", 21)
+				new Token(TokenType.LiteralString, "text ", 0, 0, 0),
+				new Token(TokenType.LiteralString, "{{", 5, 0, 0),
+				new Token(TokenType.LiteralString, "escaped", 7, 0, 0),
+				new Token(TokenType.LiteralString, "}}", 14, 0, 0),
+				new Token(TokenType.LiteralString, " text", 16, 0, 0),
+				new Token(TokenType.EOF, "", 21, 0, 0)
 			};
 			var actualTokens = new List<Token>();
 
@@ -127,8 +127,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var lexer = new Lexer("hello");
 			var expectedTokens = new List<Token>
 			{
-				new Token(TokenType.LiteralString, "hello", 0),
-				new Token(TokenType.EOF, "", 5)
+				new Token(TokenType.LiteralString, "hello", 0, 0, 0),
+				new Token(TokenType.EOF, "", 5, 0, 0)
 			};
 			var actualTokens = new List<Token>();
 
@@ -146,8 +146,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var lexer = new Lexer("hello world");
 			var expectedTokens = new List<Token>
 			{
-				new Token(TokenType.LiteralString, "hello world", 0),
-				new Token(TokenType.EOF, "", 11)
+				new Token(TokenType.LiteralString, "hello world", 0, 0, 0),
+				new Token(TokenType.EOF, "", 11, 0, 0)
 			};
 			var actualTokens = new List<Token>();
 
@@ -166,8 +166,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var lexer = new Lexer("text $ #");
 			var expectedTokens = new List<Token>
 			{
-				new Token(TokenType.LiteralString, "text $ #", 0),
-				new Token(TokenType.EOF, "", 8)
+				new Token(TokenType.LiteralString, "text $ #", 0, 0, 0),
+				new Token(TokenType.EOF, "", 8, 0, 0)
 			};
 			var actualTokens = new List<Token>();
 
@@ -186,7 +186,7 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var lexer = new Lexer("");
 			var expectedTokens = new List<Token>
 			{
-				new Token(TokenType.EOF, "", 0)
+				new Token(TokenType.EOF, "", 0, 0, 0)
 			};
 			var actualTokens = new List<Token>();
 

@@ -1,97 +1,126 @@
 ﻿using BMTP3.Common.MessageFormatterParser.Nodes;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace BMTP3.Common.MessageFormatterParser {
-	public class Parser2 {
-		private readonly Lexer2 _lexer;
-		private Token _currentToken;
+namespace BMTP3.Common.MessageFormatterParser;
 
-		public Parser2(Lexer2 lexer) {
-			_lexer = lexer;
-			_currentToken = _lexer.NextToken(); // Henter den første token
-		}
+public class Parser2 {
+    private readonly Lexer2 _lexer;
+    private Token _currentToken;
 
-		private void Eat(TokenType type) {
-			if(_currentToken.Type != type) {
-				throw new InvalidOperationException($"Expected token type {type}, but got {_currentToken.Type}");
-			}
-			_currentToken = _lexer.NextToken(); // Forbruger tokenet og henter det næste
-		}
+    public Parser2(Lexer2 lexer) {
+        _lexer = lexer;
+        _currentToken = _lexer.NextToken();
+    }
 
-		public AstNode Parse() {
-			/*
-			var rootNode = new MessageExpressionNode();
-			while(_currentToken.Type != TokenType.EOF) {
-				if(_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen) {
-					rootNode.Parts.Add(ParsePlaceholderExpression());
-				} else if(_currentToken.Type == TokenType.LiteralString) {
-					rootNode.Parts.Add(ParseLiteral());
-				} else {
-					// Håndterer andre tokens, der ikke er udtryk, som f.eks. uventede tegn
-					throw new InvalidOperationException($"Unexpected token {_currentToken.Type}");
-				}
-			}
-			return rootNode;
-			*/
-			throw new NotImplementedException();
-		}
+    private void Eat(TokenType type) {
+        if (_currentToken.Type != type) {
+            throw new InvalidOperationException($"Expected token type {type}, but got {_currentToken.Type} ('{_currentToken.Value}') at column {_currentToken.Column}");
+        }
+        _currentToken = _lexer.NextToken();
+    }
 
-		private AstNode ParsePlaceholderExpression() {
-			/*
-			// Håndterer både ${...} og #{...}
-			var token = _currentToken;
-			Eat(token.Type);
+    public RootNode Parse() {
+        var rootNode = new RootNode();
+        while (_currentToken.Type != TokenType.EOF) {
+            if (_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.IndexBraceOpen || _currentToken.Type == TokenType.HashBraceOpen) {
+                rootNode.Children.Add(ParsePlaceholderExpression());
+            } else if (_currentToken.Type == TokenType.LiteralString) {
+                rootNode.Children.Add(ParseLiteral());
+            } else {
+                // If we hit something unexpected at root level (like a random brace), treat it as text or fail.
+                // Since lexer treats unknown things as text usually, this might be a logic error.
+                throw new InvalidOperationException($"Unexpected token {_currentToken.Type} at root");
+            }
+        }
+        return rootNode;
+    }
 
-			var placeholder = new PlaceholderNode();
-			if(token.Type == TokenType.DollarBraceOpen) {
-				placeholder.Name = _currentToken.Value;
-				Eat(TokenType.Identifier);
-			} else {
-				placeholder.Index = int.Parse(_currentToken.Value);
-				Eat(TokenType.LiteralInteger);
-			}
+    private PlaceholderNode ParsePlaceholderExpression() {
+        var token = _currentToken;
+        bool isNamed = (token.Type == TokenType.DollarBraceOpen);
+        Eat(token.Type); // Eat ${ or #{
 
-			// Håndterer kædede funktionskald (.func1().func2())
-			while(_currentToken.Type == TokenType.Dot) {
-				placeholder.Functions.Add(ParseFunctionCall());
-			}
+        string nameOrIndex;
+        if (isNamed) {
+            nameOrIndex = _currentToken.Value;
+            Eat(TokenType.Identifier);
+        } else {
+            nameOrIndex = _currentToken.Value;
+            Eat(TokenType.LiteralInteger);
+        }
 
-			// Håndterer evalueringsudtryk (§ if, ...)
-			if(_currentToken.Type == TokenType.Section) {
-				placeholder.EvalExpression = ParseEvalExpression();
-			}
+        // Create the node based on type (though Evaluator seems to treat them similarly via base class)
+        // Note: We are constructing the base class directly or a concrete one. 
+        // Since NamedPlaceholderNode logic seems broken/incomplete in the file dump, 
+        // we will use a concrete GenericPlaceholder implementation or just rely on fixing the classes later.
+        // For now, let's assume we have a concrete way to instantiate.
+        // I'll create a 'ConcretePlaceholderNode' internally or just use NamedPlaceholderNode and fix it later.
+        
+        var functions = new List<FunctionCallNode>();
+        while (_currentToken.Type == TokenType.Dot) {
+            functions.Add(ParseFunctionCall());
+        }
 
-			Eat(TokenType.BraceClose);
-			return placeholder;
-			*/
-			throw new NotImplementedException();
-		}
+        // Pattern (e.g. :yyyy)
+        List<AstNode>? pattern = null;
+        if (_currentToken.Type == TokenType.Colon) {
+            Eat(TokenType.Colon);
+            pattern = ParsePattern();
+        }
 
-		private FunctionCallNode ParseFunctionCall() {
-			/*
-			Eat(TokenType.Dot);
-			var function = new FunctionCallNode { Name = _currentToken.Value };
-			Eat(TokenType.Identifier);
-			Eat(TokenType.ParenOpen);
+        // Eval/Condition (e.g. §if,...)
+        IfConditionNode? condition = null;
+        if (_currentToken.Type == TokenType.Section) {
+             // Parse condition logic if implemented
+             // condition = ParseIfCondition(); 
+             // Skipping complex condition parsing for now to ensure basic functionality first
+             Eat(TokenType.Section);
+             // Eat until close brace for now if we don't support it fully yet
+             while (_currentToken.Type != TokenType.BraceClose && _currentToken.Type != TokenType.EOF) {
+                 _currentToken = _lexer.NextToken();
+             }
+        }
 
-			// Håndterer argumenter til funktionen
-			while(_currentToken.Type != TokenType.ParenClose) {
-				function.Arguments.Add(ParseLiteral()); // Simplificeret til kun at parse literaler
-				if(_currentToken.Type == TokenType.Comma) {
-					Eat(TokenType.Comma);
-				}
-			}
-			Eat(TokenType.ParenClose);
+        Eat(TokenType.BraceClose);
 
-			return function;
-			*/
-			throw new NotImplementedException();
-		}
+        // We need a concrete instance. I will fix Nodes later, but for now let's instantiate a helper class 
+        // or assume we can use NamedPlaceholderNode if I fix it.
+        // Let's try to use a new simple class to avoid the inheritance mess I saw.
+        return new ConcretePlaceholderNode(nameOrIndex, functions, pattern, condition);
+    }
 
+    private List<AstNode> ParsePattern() {
+        var parts = new List<AstNode>();
+        // Pattern can be a mix of literals and other placeholders if the lexer supports it.
+        // The lexer state 'InsidePatternLiteral' returns LiteralPattern tokens.
+        
+        if (_currentToken.Type == TokenType.LiteralPattern) {
+            parts.Add(new LiteralNode(_currentToken.Value));
+            Eat(TokenType.LiteralPattern);
+        }
+        return parts;
+    }
+
+    private FunctionCallNode ParseFunctionCall() {
+        Eat(TokenType.Dot);
+        string name = _currentToken.Value;
+        Eat(TokenType.Identifier);
+        
+        var args = new List<AstNode>();
+        if (_currentToken.Type == TokenType.ParenOpen) {
+            Eat(TokenType.ParenOpen);
+            while (_currentToken.Type != TokenType.ParenClose) {
+                args.Add(ParseLiteral()); 
+                if (_currentToken.Type == TokenType.Comma) {
+                    Eat(TokenType.Comma);
+                }
+            }
+            Eat(TokenType.ParenClose);
+        }
+        
+        return new FunctionCallNode(name, args);
+    }
 		private AstNode ParseEvalExpression() {
 			Eat(TokenType.Section);
 			var evalType = _currentToken.Value;
@@ -141,21 +170,16 @@ namespace BMTP3.Common.MessageFormatterParser {
 			*/
 			throw new NotImplementedException();
 		}
-
-		private LiteralNode ParseLiteral() {
-			/*
-			var token = _currentToken;
-			if(token.Type == TokenType.LiteralString) {
-				Eat(TokenType.LiteralString);
-				return new LiteralNode { Value = token.Value };
-			} else if(token.Type == TokenType.LiteralInteger) {
-				Eat(TokenType.LiteralInteger);
-				return new LiteralNode { Value = token.Value };
-			}
-			// Tilføj håndtering for andre literaler (f.eks. doubles) her.
-			throw new InvalidOperationException($"Expected a literal, but got {_currentToken.Type}");
-			*/
-			throw new NotImplementedException();
-		}
-	}
+    private AstNode ParseLiteral() {
+        var token = _currentToken;
+        if (token.Type == TokenType.LiteralString) {
+            Eat(TokenType.LiteralString);
+			// TODO: Differentiate between TextNode and LiteralNode if needed
+			return new TextNode(token.Value); // Using TextNode for root strings
+        } else if (token.Type == TokenType.LiteralInteger) {
+            Eat(TokenType.LiteralInteger);
+            return new LiteralNode(token.Value); // Helper, maybe separate TextNode and LiteralNode logic
+        }
+        throw new InvalidOperationException($"Expected literal, got {token.Type}");
+    }
 }

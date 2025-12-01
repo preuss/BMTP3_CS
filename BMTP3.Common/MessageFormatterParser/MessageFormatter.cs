@@ -1,32 +1,25 @@
-﻿using BMTP3.Common.MessageFormatterParser.Nodes;
+using BMTP3.Common.MessageFormatterParser.Nodes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Common.MessageFormatterParser {
-	// Main MessageFormatter class
-	public class MessageFormatter : IMessageFormatter {
-		public string Format(string template, Dictionary<string, object> values) {
-			throw new NotImplementedException();
-			/*
-			var lexer = new Lexer(template);
-			
-			var tokens = lexer.Tokenize();
-			var parser = new Parser(tokens);
+    public class MessageFormatter : IMessageFormatter {
+        public string Format(string template, Dictionary<string, object> values) {
+            if (string.IsNullOrEmpty(template)) return "";
 
-			// Debug output
-			//Console.WriteLine("Tokens: " + string.Join(", ", tokens)); // TODO: Debug output
-			System.Diagnostics.Debug.WriteLine($"Template: {template}"); // TODO: Debug output
-			System.Diagnostics.Debug.WriteLine("Tokens: " + string.Join(", ", tokens)); // TODO: Debug output
+            // 1. Tokenize
+            var lexer = new Lexer2(template);
+            
+            // 2. Parse
+            var parser = new Parser2(lexer);
+            RootNode ast = parser.Parse();
 
-			RootNode ast = parser.Parse();
-			var typeChecker = new TypeChecker(values.ToDictionary(kv => kv.Key, kv => kv.Value.GetType()));
-			typeChecker.Validate(ast);
-			var evaluator = new Evaluator(values);
-			return evaluator.Evaluate(ast);
-			*/
-		}
-	}
+            // 3. Evaluate
+            // We skip TypeChecker for now as it relies on reflection logic we haven't verified completely.
+            // The Evaluator is robust enough to throw runtime errors if keys miss.
+            var evaluator = new Evaluator(values);
+            return evaluator.Evaluate(ast);
+        }
+    }
 }

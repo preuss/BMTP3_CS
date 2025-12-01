@@ -42,11 +42,11 @@ public class Lexer2Tests {
 		// Arrange
 		Lexer2 lexer = new("some text $x ${ name }");
 		List<Token> expectedTokens = [
-			new Token(TokenType.LiteralString, "some text $x ", 0),
-			new Token(TokenType.DollarBraceOpen, "${", 13),
-			new Token(TokenType.Identifier, "name", 16),
-			new Token(TokenType.BraceClose, "}", 21),
-			new Token(TokenType.EOF, "", 22)
+			new Token(TokenType.LiteralString, "some text $x ", 0, 0, 0),
+			new Token(TokenType.DollarBraceOpen, "${", 13, 0, 0),
+			new Token(TokenType.Identifier, "name", 16, 0, 0),
+			new Token(TokenType.BraceClose, "}", 21, 0, 0),
+			new Token(TokenType.EOF, "", 22, 0, 0)
 		];
 		List<Token> actualTokens = [];
 
@@ -65,18 +65,18 @@ public class Lexer2Tests {
 		// Arrange
 		Lexer2 lexer = new("${date.toUpper(),date:yyyy-MM-dd}");
 		List<Token> expectedTokens = [
-			new Token(TokenType.DollarBraceOpen, "${", 0),
-			new Token(TokenType.Identifier, "date", 2),
-			new Token(TokenType.Dot, ".", 6),
-			new Token(TokenType.Identifier, "toUpper", 7),
-			new Token(TokenType.ParenOpen, "(", 14),
-			new Token(TokenType.ParenClose, ")", 15),
-			new Token(TokenType.Comma, ",", 16),
-			new Token(TokenType.Identifier, "date", 17),
-			new Token(TokenType.Colon, ":", 21),
-			new Token(TokenType.LiteralPattern, "yyyy-MM-dd", 22),
-			new Token(TokenType.BraceClose, "}", 32),
-			new Token(TokenType.EOF, "", 33)
+			new Token(TokenType.DollarBraceOpen, "${", 0, 0, 0),
+			new Token(TokenType.Identifier, "date", 2, 0, 0),
+			new Token(TokenType.Dot, ".", 6, 0, 0),
+			new Token(TokenType.Identifier, "toUpper", 7, 0, 0),
+			new Token(TokenType.ParenOpen, "(", 14, 0, 0),
+			new Token(TokenType.ParenClose, ")", 15, 0, 0),
+			new Token(TokenType.Comma, ",", 16, 0, 0),
+			new Token(TokenType.Identifier, "date", 17, 0, 0),
+			new Token(TokenType.Colon, ":", 21, 0, 0),
+			new Token(TokenType.LiteralPattern, "yyyy-MM-dd", 22, 0, 0),
+			new Token(TokenType.BraceClose, "}", 32, 0, 0),
+			new Token(TokenType.EOF, "", 33, 0, 0)
 		];
 		List<Token> actualTokens = [];
 
@@ -95,19 +95,19 @@ public class Lexer2Tests {
 		// Arrange
 		Lexer2 lexer = new("${count§if,eq 0?0:`low`}");
 		List<Token> expectedTokens = [
-			new Token(TokenType.DollarBraceOpen, "${", 0),
-			new Token(TokenType.Identifier, "count", 2),
-			new Token(TokenType.Section, "§", 7),
-			new Token(TokenType.Identifier, "if", 8),
-			new Token(TokenType.Comma, ",", 10),
-			new Token(TokenType.Identifier, "eq", 11),
-			new Token(TokenType.LiteralInteger, "0", 14),
-			new Token(TokenType.QuestionMark, "?", 15),
-			new Token(TokenType.LiteralInteger, "0", 16),
-			new Token(TokenType.Colon, ":", 17),
-			new Token(TokenType.LiteralString, "low", 18),
-			new Token(TokenType.BraceClose, "}", 23),
-			new Token(TokenType.EOF, "", 24)
+			new Token(TokenType.DollarBraceOpen, "${", 0, 0, 0),
+			new Token(TokenType.Identifier, "count", 2, 0, 0),
+			new Token(TokenType.Section, "§", 7, 0, 0),
+			new Token(TokenType.Identifier, "if", 8, 0, 0),
+			new Token(TokenType.Comma, ",", 10, 0, 0),
+			new Token(TokenType.Identifier, "eq", 11, 0, 0),
+			new Token(TokenType.LiteralInteger, "0", 14, 0, 0),
+			new Token(TokenType.QuestionMark, "?", 15, 0, 0),
+			new Token(TokenType.LiteralInteger, "0", 16, 0, 0),
+			new Token(TokenType.Colon, ":", 17, 0, 0),
+			new Token(TokenType.LiteralString, "low", 18, 0, 0),
+			new Token(TokenType.BraceClose, "}", 23, 0, 0),
+			new Token(TokenType.EOF, "", 24, 0, 0)
 		];
 		List<Token> actualTokens = new();
 
@@ -126,8 +126,8 @@ public class Lexer2Tests {
 		// Arrange
 		Lexer2 lexer = new("text {{escaped}} text");
 		List<Token> expectedTokens = [
-			new Token(TokenType.LiteralString, "text {escaped} text", 0),
-			new Token(TokenType.EOF, "", 21)
+			new Token(TokenType.LiteralString, "text {escaped} text", 0, 0, 0),
+			new Token(TokenType.EOF, "", 21, 0, 0)
 		];
 		List<Token> actualTokens = [];
 
@@ -146,8 +146,8 @@ public class Lexer2Tests {
 		// Arrange
 		Lexer2 lexer = new("hello");
 		List<Token> expectedTokens = [
-			new Token(TokenType.LiteralString, "hello", 0),
-			new Token(TokenType.EOF, "", 5)
+			new Token(TokenType.LiteralString, "hello", 0, 0, 0),
+			new Token(TokenType.EOF, "", 5, 0, 0)
 		];
 		List<Token> actualTokens = [];
 
@@ -166,8 +166,8 @@ public class Lexer2Tests {
 		// Arrange
 		Lexer2 lexer = new("hello world");
 		List<Token> expectedTokens = [
-			new Token(TokenType.LiteralString, "hello world", 0),
-			new Token(TokenType.EOF, "", 11)
+			new Token(TokenType.LiteralString, "hello world", 0, 0, 0),
+			new Token(TokenType.EOF, "", 11, 0, 0)
 		];
 		List<Token> actualTokens = [];
 
@@ -186,8 +186,8 @@ public class Lexer2Tests {
 		// Arrange
 		Lexer2 lexer = new("text $ #");
 		List<Token> expectedTokens = [
-			new Token(TokenType.LiteralString, "text $ #", 0),
-			new Token(TokenType.EOF, "", 8)
+			new Token(TokenType.LiteralString, "text $ #", 0, 0, 0),
+			new Token(TokenType.EOF, "", 8, 0, 0)
 		];
 		List<Token> actualTokens = [];
 
@@ -195,6 +195,7 @@ public class Lexer2Tests {
 		while(lexer.HasNextToken()) {
 			actualTokens.Add(lexer.NextToken());
 		}
+		actualTokens.Add(lexer.NextToken());
 
 		// Assert
 		AssertTokens(expectedTokens, actualTokens);
@@ -205,7 +206,7 @@ public class Lexer2Tests {
 		// Arrange
 		Lexer2 lexer = new("");
 		List<Token> expectedTokens = [
-			new Token(TokenType.EOF, "", 0)
+			new Token(TokenType.EOF, "", 0, 0, 0)
 		];
 		List<Token> actualTokens = [];
 

@@ -8,17 +8,23 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="BackupNew\Reader\**" />
+    <EmbeddedResource Remove="BackupNew\Reader\**" />
+    <None Remove="BackupNew\Reader\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Reference Include="MediaDevices">
       <HintPath>..\..\..\GlobalPreussProjects\MediaDevices-FixErrors\Src\MediaDevices\bin\Release\net8.0-windows\MediaDevices.dll</HintPath>
     </Reference>
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="BackupNew\Reader\" />
+    <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.0" />
+    <ProjectReference Include="..\BMTP3.Common\BMTP3.Common.csproj" />
   </ItemGroup>
 
 </Project>

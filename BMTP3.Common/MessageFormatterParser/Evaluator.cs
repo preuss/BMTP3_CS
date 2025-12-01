@@ -37,8 +37,8 @@ namespace BMTP3.Common.MessageFormatterParser {
 				bool conditionMet = EvaluateCondition(node.Condition, value);
 				var stringToEvaluate = conditionMet ? node.Condition.TrueValue : node.Condition.FalseValue;
 				var tempAst = new RootNode();
-				tempAst.Children.AddRange(stringToEvaluate);
-				return Evaluate(tempAst);
+				tempAst.Children.AddRange(stringToEvaluate!);
+				return Evaluate(tempAst)!;
 			}
 
 			// Handle pattern
@@ -47,14 +47,33 @@ namespace BMTP3.Common.MessageFormatterParser {
 				foreach(var item in node.Pattern) {
 					if(item is TextNode text) {
 						// Handle date formatting for specific patterns
-						if(node.NameOrIndex == "date" && value is string dateStr &&
-							DateTime.TryParse(dateStr, out var date)) {
+						DateTime date = DateTime.MinValue;
+						bool isDate = false;
+
+						if (value is DateTime dt) 
+						{ 
+							date = dt; 
+							isDate = true; 
+						}
+						else if (value is string s && DateTime.TryParse(s, out var parsed)) 
+						{ 
+							date = parsed; 
+							isDate = true; 
+						}
+
+						if(node.NameOrIndex == "date" && isDate) {
 							if(text.Value == "yyyy")
 								patternResult += date.Year.ToString("D4");
 							else if(text.Value == "MM")
 								patternResult += date.Month.ToString("D2");
 							else if(text.Value == "dd")
 								patternResult += date.Day.ToString("D2");
+							else if(text.Value == "HH")
+								patternResult += date.ToString("HH"); // Fix: Add time support
+							else if(text.Value == "mm")
+								patternResult += date.ToString("mm"); // Fix: Add time support
+							else if(text.Value == "ss")
+								patternResult += date.ToString("ss"); // Fix: Add time support
 							else if(text.Value == "EEE")
 								patternResult += date.ToString("ddd", CultureInfo.InvariantCulture).Substring(0, 3);
 							else

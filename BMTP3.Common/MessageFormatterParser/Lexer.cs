@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -22,90 +22,140 @@ namespace BMTP3.Common.MessageFormatterParser {
 		};
 		private readonly CharStream _charStream;
 		private LexerState _state;
-		private readonly StringBuilder _buffer;
-		private int _tokenPosition;
-		private bool _inPlaceholder;
+        private int _position;
 
 		public Lexer(string input) {
 			_charStream = new CharStream(input);
 			_state = LexerState.Base;
-			_buffer = new StringBuilder();
-			_tokenPosition = 0;
-			_inPlaceholder = false;
+            _position = 0;
 		}
 
 		public Token NextToken() {
-			if(_state == LexerState.EOF) {
-				throw new InvalidOperationException("Cannot scan token after EOF");
-			}
-			if(IsEOF()) {
-				_state = LexerState.EOF;
-				return new Token(TokenType.EOF, string.Empty, _tokenPosition);
-			}
+            if (_state == LexerState.EOF) {
+                throw new InvalidOperationException("Cannot scan token after EOF");
+            }
+            
+            // Check for EOF but be careful if we are in a state that expects more input.
+            if (IsEOF()) {
+                if (_state == LexerState.Placeholder) {
+                     throw new InvalidOperationException("Unterminated placeholder");
+                }
+                _state = LexerState.EOF;
+                return new Token(TokenType.EOF, string.Empty, _position, _charStream.LineNumber, _charStream.ColumnNumber);
+            }
 
-			while(HasNextToken()) {
-				char nextChar = PeekNextChar();
-				switch(_state) {
-					case LexerState.Base:
-						if(nextChar == '$') {
-							_state = LexerState.Dollar;
-						} else {
-							_state = LexerState.Text;
-						}
-						_buffer.Append(NextChar());
-						continue;
-					case LexerState.Text:
-						if(nextChar == '$') {
-							_state = LexerState.Dollar;
-						}
-						_buffer.Append(NextChar());
-						continue;
-					case LexerState.Dollar:
-						if(nextChar == '{') {
-							_state = LexerState.BraceOpen;
-						}
-						_buffer.Append(NextChar());
-						continue;
-					case LexerState.Hash:
-					case LexerState.BraceOpen:
-					case LexerState.Placeholder:
-					case LexerState.EscapedBrace:
-					case LexerState.EOF:
-					default:
-						throw new InvalidOperationException($"Invalid state: {_state}");
-				}
-			}
+            int startCol = _charStream.ColumnNumber;
+            int startLine = _charStream.LineNumber;
+            int startPos = _position;
 
-			// Find the right state to scan
-			if(_state == LexerState.Base) {
-				char peekChar = PeekNextChar();
-				if(peekChar == '$') {
-					_state = LexerState.Dollar;
-				} else if(peekChar == '#') {
-					_state = LexerState.Hash;
-				} else {
-					_state = LexerState.Text;
-				}
-			}
+            if (_state == LexerState.Base) {
+                // Check for ${
+                if (_charStream.HasChars(2)) {
+                    var chars = _charStream.Peek(2);
+                    if (chars[0] == '$' && chars[1] == '{') {
+                        NextChar(); NextChar();
+                        _state = LexerState.Placeholder;
+                        return new Token(TokenType.DollarBraceOpen, "${", startPos, startLine, startCol);
+                    }
+                    if (chars[0] == '{' && chars[1] == '{') {
+                         NextChar(); NextChar();
+                         return new Token(TokenType.LiteralString, "{{", startPos, startLine, startCol);
+                    }
+                    if (chars[0] == '}' && chars[1] == '}') {
+                         NextChar(); NextChar();
+                         return new Token(TokenType.LiteralString, "}}", startPos, startLine, startCol);
+                    }
+                }
+                
+                // Read text
+                StringBuilder sb = new StringBuilder();
+                while (!IsEOF()) {
+                    // Check break conditions
+                    if (_charStream.HasChars(2)) {
+                         var chars = _charStream.Peek(2);
+                         if (chars[0] == '$' && chars[1] == '{') break;
+                         if (chars[0] == '{' && chars[1] == '{') break;
+                         if (chars[0] == '}' && chars[1] == '}') break;
+                    }
+                    sb.Append(NextChar());
+                }
+                
+                if (sb.Length > 0) {
+                    return new Token(TokenType.LiteralString, sb.ToString(), startPos, startLine, startCol);
+                }
+            }
+            else if (_state == LexerState.Placeholder) {
+                SkipWhitespace();
+                
+                // Fix: Check EOF before proceeding, but throw only if we really expected a token.
+                // However, IsEOF() returns true if we are at end.
+                // If we are in Placeholder state, EOF is an error (Unterminated).
+                if (IsEOF()) {
+                     throw new InvalidOperationException("Unterminated placeholder");
+                }
+                
+                startCol = _charStream.ColumnNumber;
+                startLine = _charStream.LineNumber;
+                startPos = _position;
+                
+                char c = PeekNextChar();
+                
+                if (c == '}') {
+                    NextChar();
+                    _state = LexerState.Base;
+                    return new Token(TokenType.BraceClose, "}", startPos, startLine, startCol);
+                }
+                if (c == '.') { NextChar(); return new Token(TokenType.Dot, ".", startPos, startLine, startCol); }
+                if (c == ',') { NextChar(); return new Token(TokenType.Comma, ",", startPos, startLine, startCol); }
+                if (c == ':') { NextChar(); return new Token(TokenType.Colon, ":", startPos, startLine, startCol); }
+                if (c == '(') { NextChar(); return new Token(TokenType.ParenOpen, "(", startPos, startLine, startCol); }
+                if (c == ')') { NextChar(); return new Token(TokenType.ParenClose, ")", startPos, startLine, startCol); }
+                if (c == '§') { NextChar(); return new Token(TokenType.Section, "§", startPos, startLine, startCol); }
+                if (c == '?') { NextChar(); return new Token(TokenType.QuestionMark, "?", startPos, startLine, startCol); }
+                
+                if (_charStream.HasChars(2)) {
+                    var chars = _charStream.Peek(2);
+                    if (chars[0] == '#' && chars[1] == '{') {
+                        NextChar(); NextChar();
+                        return new Token(TokenType.HashBraceOpen, "#{", startPos, startLine, startCol);
+                    }
+                }
 
-			_tokenPosition = _charStream.ColumnNumber;
-			_buffer.Clear();
-			while(!IsEOF()) {
-				_buffer.Append(NextChar()); // Brug den nye NextChar metode
-			}
-			if(_buffer.Length > 0) {
-				return new Token(TokenType.LiteralString, _buffer.ToString(), _tokenPosition);
-			}
-
-			_state = LexerState.EOF;
-			return new Token(TokenType.EOF, string.Empty, _tokenPosition);
+                if (char.IsDigit(c)) {
+                    StringBuilder sb = new StringBuilder();
+                    while (!IsEOF() && char.IsDigit(PeekNextChar())) {
+                        sb.Append(NextChar());
+                    }
+                    return new Token(TokenType.LiteralInteger, sb.ToString(), startPos, startLine, startCol);
+                }
+                
+                if (IsIdentifierStart(c)) {
+                     StringBuilder sb = new StringBuilder();
+                     while (!IsEOF() && IsIdentifierPart(PeekNextChar())) {
+                         sb.Append(NextChar());
+                     }
+                     return new Token(TokenType.Identifier, sb.ToString(), startPos, startLine, startCol);
+                }
+                
+                throw new InvalidOperationException($"Unexpected character: {c}");
+            }
+            
+             throw new InvalidOperationException("Unexpected state");
 		}
 
 		public bool HasNextToken() {
 			return _state != LexerState.EOF;
 		}
+        
+        private bool IsIdentifierStart(char c) {
+            return char.IsLetter(c) || c == '_' || c == '$' || c == '@'; 
+        }
+        private bool IsIdentifierPart(char c) {
+            return char.IsLetterOrDigit(c) || c == '_' || c == '$' || c == '@' || c == '-';
+        }
 
 		public char NextChar() {
+            _position++;
 			return _charStream.Next();
 		}
 		public char PeekNextChar() {
@@ -117,33 +167,9 @@ namespace BMTP3.Common.MessageFormatterParser {
 		}
 
 		private void SkipWhitespace() {
-			while(!IsEOF() && char.IsWhiteSpace(_charStream.Peek())) { // Brug Peek
-				NextChar(); // Brug NextChar
+			while(!IsEOF() && char.IsWhiteSpace(_charStream.Peek())) { 
+				NextChar(); 
 			}
-		}
-
-		private Token ScanInitial() {
-			throw new NotImplementedException();
-		}
-
-		private Token ScanDollar() {
-			throw new NotImplementedException();
-		}
-
-		private Token ScanHash() {
-			throw new NotImplementedException();
-		}
-
-		private Token ScanBraceOpen() {
-			throw new NotImplementedException();
-		}
-
-		private Token ScanEscapedBrace() {
-			throw new NotImplementedException();
-		}
-
-		private Token ScanText() {
-			throw new NotImplementedException();
 		}
 	}
 }

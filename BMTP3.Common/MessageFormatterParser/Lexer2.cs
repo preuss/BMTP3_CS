@@ -27,11 +27,11 @@ public class Lexer2 : ILexer {
 
 	public Token NextToken() {
 		if(!HasNextToken()) {
-			return new Token(TokenType.EOF, string.Empty, _charStream.ColumnNumber);
+			return new Token(TokenType.EOF, string.Empty, _charStream.ColumnNumber, _charStream.LineNumber, _charStream.ColumnNumber);
 		}
 
 		int startColumn = _charStream.ColumnNumber;
-		TokenType tokenType = TokenType.LiteralString;
+
 
 		if(_currentLexerState == LexerState.Default) {
 			if(_charStream.HasChars(2)) {
@@ -40,12 +40,12 @@ public class Lexer2 : ILexer {
 					_charStream.Next();
 					_charStream.Next();
 					_currentLexerState = LexerState.InsideExpression;
-					return new Token(TokenType.DollarBraceOpen, "${", startColumn);
+					return new Token(TokenType.DollarBraceOpen, "${", startColumn, _charStream.LineNumber, startColumn);
 				} else if(twoChars[0] == '#' && twoChars[1] == '{') {
 					_charStream.Next();
 					_charStream.Next();
 					_currentLexerState = LexerState.InsideExpression;
-					return new Token(TokenType.IndexBraceOpen, "#{", startColumn);
+					return new Token(TokenType.IndexBraceOpen, "#{", startColumn, _charStream.LineNumber, startColumn);
 				}
 			}
 
@@ -59,26 +59,26 @@ public class Lexer2 : ILexer {
 			if(peekNextChar == '}') {
 				_charStream.Next();
 				_currentLexerState = LexerState.Default;
-				return new Token(TokenType.BraceClose, "}", startColumn);
+				return new Token(TokenType.BraceClose, "}", startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == '.') {
 				_charStream.Next();
-				return new Token(TokenType.Dot, ".", startColumn);
+				return new Token(TokenType.Dot, ".", startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == ',') {
 				_charStream.Next();
-				return new Token(TokenType.Comma, ",", startColumn);
+				return new Token(TokenType.Comma, ",", startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == ':') {
 				_charStream.Next();
 				_currentLexerState = LexerState.InsidePatternLiteral;
-				return new Token(TokenType.Colon, ":", startColumn);
+				return new Token(TokenType.Colon, ":", startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == '(') {
 				_charStream.Next();
-				return new Token(TokenType.ParenOpen, "(", startColumn);
+				return new Token(TokenType.ParenOpen, "(", startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == ')') {
 				_charStream.Next();
-				return new Token(TokenType.ParenClose, ")", startColumn);
+				return new Token(TokenType.ParenClose, ")", startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == '§' || peekNextChar == '¶') {
 				_currentLexerState = LexerState.InsideEvalPattern;
-				return new Token(TokenType.Section, _charStream.Next(), startColumn);
+				return new Token(TokenType.Section, _charStream.Next(), startColumn, _charStream.LineNumber, startColumn);
 			}
 
 			return ScanIdentifier();
@@ -95,9 +95,9 @@ public class Lexer2 : ILexer {
 			char peekNextChar = _charStream.Peek();
 
 			if(peekNextChar == '?') {
-				return new Token(TokenType.QuestionMark, _charStream.Next(), startColumn);
+				return new Token(TokenType.QuestionMark, _charStream.Next(), startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == ':') {
-				return new Token(TokenType.Colon, _charStream.Next(), startColumn);
+				return new Token(TokenType.Colon, _charStream.Next(), startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == '`' || peekNextChar == '\'' || peekNextChar == '\"' || peekNextChar == '´' || peekNextChar == '/') {
 				return ScanLiteralStringInExpression();
 			} else if(char.IsLetter(peekNextChar)) {
@@ -107,14 +107,14 @@ public class Lexer2 : ILexer {
 			} else if(peekNextChar == '}') {
 				_charStream.Next();
 				_currentLexerState = LexerState.Default;
-				return new Token(TokenType.BraceClose, "}", startColumn);
+				return new Token(TokenType.BraceClose, "}", startColumn, _charStream.LineNumber, startColumn);
 			} else if(peekNextChar == ',') {
-				return new Token(TokenType.Comma, _charStream.Next(), startColumn);
+				return new Token(TokenType.Comma, _charStream.Next(), startColumn, _charStream.LineNumber, startColumn);
 			} else if(_charStream.HasChars(2) && _charStream.Peek(2)[0] == '#' && _charStream.Peek(2)[1] == '{') {
 				_charStream.Next();
 				_charStream.Next();
 				_currentLexerState = LexerState.InsideExpression;
-				return new Token(TokenType.HashBraceOpen, "#{", startColumn);
+				return new Token(TokenType.HashBraceOpen, "#{", startColumn, _charStream.LineNumber, startColumn);
 			}
 
 			throw new InvalidOperationException($"Invalid character in eval pattern: '{peekNextChar}'");
@@ -174,8 +174,7 @@ public class Lexer2 : ILexer {
 				throw new InvalidOperationException("Problem no EOF but still no literal string");
 			}
 		}
-
-		return new Token(TokenType.LiteralString, buffer.ToString(), startColumn);
+		return new Token(TokenType.LiteralString, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
 	private Token ScanLiteralInteger() {
 		int startColumn = _charStream.ColumnNumber;
@@ -189,7 +188,7 @@ public class Lexer2 : ILexer {
 			throw new InvalidOperationException("Expected an integer but found none.");
 		}
 
-		return new Token(TokenType.LiteralInteger, buffer.ToString(), startColumn);
+		return new Token(TokenType.LiteralInteger, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
 
 	private Token ScanPattern() {
@@ -218,7 +217,7 @@ public class Lexer2 : ILexer {
 			buffer.Append(_charStream.Next());
 		}
 
-		return new Token(TokenType.LiteralPattern, buffer.ToString(), startColumn);
+		return new Token(TokenType.LiteralPattern, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
 	private Token ScanLiteralStringInExpression() {
 		int startColumn = _charStream.ColumnNumber;
@@ -239,7 +238,7 @@ public class Lexer2 : ILexer {
 		}
 
 		_charStream.Next();
-		return new Token(TokenType.LiteralString, buffer.ToString(), startColumn);
+		return new Token(TokenType.LiteralString, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
 	private Token ScanIdentifier() {
 		/*
@@ -262,7 +261,7 @@ public class Lexer2 : ILexer {
 			throw new InvalidDataException($"Next char is illegal identifier '{peekFirstChar}'");
 		}
 
-		char peekNextChar;
+
 		while(HasNextToken() && IsLegalIdentifierCharacter(_charStream.Peek())) {
 			buffer.Append(_charStream.Next());
 		}
@@ -270,7 +269,7 @@ public class Lexer2 : ILexer {
 		if(!HasNextToken()) {
 			throw new InvalidOperationException("Invalid identifier, because not end message formatter");
 		}
-		return new Token(TokenType.Identifier, buffer.ToString(), startColumn);
+		return new Token(TokenType.Identifier, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
 
 	private bool IsLegalIdentifierFirstCharacter(char firstCharacter) {
@@ -300,7 +299,7 @@ public class Lexer2 : ILexer {
 		}
 
 		_currentLexerState = LexerState.InsideExpression;
-		return new Token(TokenType.LiteralPattern, buffer.ToString(), startColumn);
+		return new Token(TokenType.LiteralPattern, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
 
 	private void RemoveWhitespaces() {

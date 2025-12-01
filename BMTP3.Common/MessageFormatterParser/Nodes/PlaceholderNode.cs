@@ -9,7 +9,7 @@ namespace BMTP3.Common.MessageFormatterParser.Nodes {
 	public abstract class PlaceholderNode : AstNode {
 		public string NameOrIndex { get; }
 		public List<FunctionCallNode> Functions { get; } = new List<FunctionCallNode>();
-		public string? Type { get; }
+		public new string? Type { get; }
 		public string? Style { get; }
 		public List<AstNode>? Pattern { get; }
 		public IfConditionNode? Condition { get; }
