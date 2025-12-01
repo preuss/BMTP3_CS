@@ -53,7 +53,7 @@ public sealed class FileSystemScanner : ITraversalScanner<FileInfo>
 		);
 
 		await foreach(var file in ScanInternalAsync(
-			dirInfo, recursive, progress, cancellationToken,
+			dirInfo, recursive, progress,
 			onFile: f =>
 			{
 				snapshot = snapshot with
@@ -75,13 +75,15 @@ public sealed class FileSystemScanner : ITraversalScanner<FileInfo>
 					DirectoryCountChanged = true
 				};
 				progress?.Report(snapshot);
-			}))
+			},
+			cancellationToken
+		))
 		{
 			yield return file;
 		}
 	}
 
-	private async IAsyncEnumerable<FileInfo> ScanInternalAsync(DirectoryInfo dir, bool recursive, IProgress<TraversalProgress>? progress, [EnumeratorCancellation] CancellationToken cancellationToken, Action<FileInfo> onFile, Action<DirectoryInfo> onDirectory)
+	private async IAsyncEnumerable<FileInfo> ScanInternalAsync(DirectoryInfo dir, bool recursive, Action<FileInfo> onFile, Action<DirectoryInfo> onDirectory, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		foreach(var file in SafeGetFiles(dir))
 		{
@@ -102,7 +104,7 @@ public sealed class FileSystemScanner : ITraversalScanner<FileInfo>
 
 				onDirectory(subDir);
 
-				await foreach(var f in ScanInternalAsync(subDir, recursive, progress, cancellationToken, onFile, onDirectory))
+				await foreach(var f in ScanInternalAsync(subDir, recursive, onFile, onDirectory, cancellationToken))
 				{
 					yield return f;
 				}

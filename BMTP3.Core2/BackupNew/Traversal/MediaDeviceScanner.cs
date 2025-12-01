@@ -69,7 +69,7 @@ public sealed class MediaDeviceScanner : ITraversalScanner<MediaFileInfo>
 		);
 
 		await foreach(var file in ScanInternalAsync(
-			rootDir, recursive, progress,
+			rootDir, recursive,
 			onFile: f =>
 			{
 				snapshot = snapshot with
@@ -92,14 +92,14 @@ public sealed class MediaDeviceScanner : ITraversalScanner<MediaFileInfo>
 				};
 				progress?.Report(snapshot);
 			},
-			cancellationToken)
-		)
+			cancellationToken
+		))
 		{
 			yield return file;
 		}
 	}
 
-	private async IAsyncEnumerable<MediaFileInfo> ScanInternalAsync(MediaDirectoryInfo dir, bool recursive, IProgress<TraversalProgress>? progress, Action<MediaFileInfo> onFile, Action<MediaDirectoryInfo> onDirectory, [EnumeratorCancellation] CancellationToken cancellationToken)
+	private async IAsyncEnumerable<MediaFileInfo> ScanInternalAsync(MediaDirectoryInfo dir, bool recursive, Action<MediaFileInfo> onFile, Action<MediaDirectoryInfo> onDirectory, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		foreach(var file in SafeEnumerateFiles(dir))
 		{
@@ -120,7 +120,7 @@ public sealed class MediaDeviceScanner : ITraversalScanner<MediaFileInfo>
 
 				onDirectory(subDir);
 
-				await foreach(var f in ScanInternalAsync(subDir, recursive, progress, onFile, onDirectory, cancellationToken))
+				await foreach(var f in ScanInternalAsync(subDir, recursive, onFile, onDirectory, cancellationToken))
 				{
 					yield return f;
 				}
