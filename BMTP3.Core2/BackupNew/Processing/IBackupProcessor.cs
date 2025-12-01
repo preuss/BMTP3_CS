@@ -1,4 +1,4 @@
-namespace BMTP3.Core.BackupNew.Processing;
+namespace BMTP3.Core2.BackupNew.Processing;
 
 public interface IBackupProcessor
 {

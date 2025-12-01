@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.BackupNew.Errors;
+namespace BMTP3.Core2.BackupNew.Errors;
 /// <summary>
 /// Holds all errors that occurred for a specific backup item.
 /// The collection is read-only from the outside and thread-safe for adding errors.

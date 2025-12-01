@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Runtime.Versioning;
 
-namespace BMTP3.Core.BackupNew.Content;
+namespace BMTP3.Core2.BackupNew.Content;
 /// <summary>
 /// ISourceContent implementation for files on MTP/PTP devices (phones, cameras, etc.).
 /// Wraps a MediaFileInfo from the MediaDevices library.

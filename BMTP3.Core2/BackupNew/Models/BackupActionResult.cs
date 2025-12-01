@@ -1,4 +1,4 @@
-namespace BMTP3.Core.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Models;
 
 public class BackupActionResult
 {

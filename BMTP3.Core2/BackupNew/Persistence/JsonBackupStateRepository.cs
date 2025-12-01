@@ -1,6 +1,6 @@
-using BMTP3.Core.BackupNew.Models;
+using BMTP3.Core2.BackupNew.Models;
 
-namespace BMTP3.Core.BackupNew.Persistence;
+namespace BMTP3.Core2.BackupNew.Persistence;
 
 public class JsonBackupStateRepository // : IBackupStateRepository
 {

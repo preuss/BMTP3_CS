@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
 /// Flexible thread-safe property bag for all metadata associated with a backup item.
 /// Designed to be enriched by each stage in the pipeline.

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
 /// Definerer alle mulige tilstande et IBackupItem kan befinde sig i.
 /// Rækkefølgen er vigtig – vi bruger den til validering i BackupItem.AdvanceTo().

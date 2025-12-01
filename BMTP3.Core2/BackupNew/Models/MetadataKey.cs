@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
 /// Alle kendte metadata-nøgler.
 /// Brug af enum + attribute giver både typesikkerhed og mulighed for at serialisere til læsbare strings.

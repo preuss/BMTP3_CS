@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.BackupNew.Content;
+namespace BMTP3.Core2.BackupNew.Content;
 /// <summary>
 /// ISourceContent implementation that reads from a regular file on disk.
 /// </summary>

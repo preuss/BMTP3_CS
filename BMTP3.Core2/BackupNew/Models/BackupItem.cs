@@ -1,12 +1,12 @@
-﻿using BMTP3.Core.BackupNew.Content;
-using BMTP3.Core.BackupNew.Errors;
+﻿using BMTP3.Core2.BackupNew.Content;
+using BMTP3.Core2.BackupNew.Errors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Models;
 
 /// <summary>
 /// Concrete implementation of IBackupItem.
