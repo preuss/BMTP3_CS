@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Common.MessageFormatterParser.Nodes {
+﻿namespace BMTP3.Common.MessageFormatterParser.Nodes
+{
 	// Placeholder node for ${name} or #{index}
-	public abstract class PlaceholderNode : AstNode {
+	public abstract class PlaceholderNode : AstNode
+	{
 		public string NameOrIndex { get; }
 		public List<FunctionCallNode> Functions { get; } = new List<FunctionCallNode>();
 		public new string? Type { get; }
@@ -16,7 +12,8 @@ namespace BMTP3.Common.MessageFormatterParser.Nodes {
 
 		public PlaceholderNode(string nameOrIndex, string? type = null, string? style = null,
 			List<AstNode>? pattern = null, IfConditionNode? condition = null)
-			: base(NodeType.Placeholder) {
+			: base(NodeType.Placeholder)
+		{
 			NameOrIndex = nameOrIndex;
 			Type = type;
 			Style = style;
@@ -24,7 +21,8 @@ namespace BMTP3.Common.MessageFormatterParser.Nodes {
 			Condition = condition;
 		}
 
-		public PlaceholderNode(NodeType nodeType) : this(nodeType.ToString()) {
+		public PlaceholderNode(NodeType nodeType) : this(nodeType.ToString())
+		{
 
 		}
 	}

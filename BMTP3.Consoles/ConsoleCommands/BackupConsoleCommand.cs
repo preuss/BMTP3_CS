@@ -1,16 +1,6 @@
 ﻿using BMTP3.Consoles.Services;
-using BMTP3.Core.Handlers;
-using BMTP3.Core2.BackupNew.Events;
-using BMTP3.Core2.BackupNew.Traversal;
-using MediaDevices;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using System;
 using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.Dynamic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -56,9 +46,8 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		Console.WriteLine("Config: " + BackupOptions.Config);
 		Console.WriteLine("Config Exists: " + BackupOptions.Config?.Exists);
 
-		//var backupMaster = ServiceProvider.GetService<BackupMaster>();
-		//BackupMaster bm;
-
+		// TODO: Wire up the new IBackupEngine here. The old scanner logic has been removed.
+		/*
 		IProgress<TraversalProgress> progress =  new Progress<TraversalProgress>(snapshot => Console.WriteLine($"Scanned {snapshot.FileCount} files and {snapshot.DirectoryCount} directories so far..."));
 		//List<MediaFileInfo> files = await mediaDeviceScanner.ScanAsync("", true, progress, cancellationToken).ToListAsync(cancellationToken);
 		List<FileInfo> files = new();
@@ -67,6 +56,7 @@ public class BackupConsoleCommand : BaseConsoleCommand
 			files.Add(fileInfo);
 		}
 		Console.WriteLine($"Found {files.Count()} files on the media device.");
+		*/
 
 		// Simulates backup work here.
 		await Task.Delay(100, cancellationToken);

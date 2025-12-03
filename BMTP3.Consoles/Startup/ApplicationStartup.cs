@@ -1,17 +1,13 @@
 ﻿using BMTP3.Consoles.Startup.Configurations;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Consoles.Startup;
 
-public class ApplicationStartup {
-	public static IServiceProvider InitializeServiceProvider(string[] args) {
+public class ApplicationStartup
+{
+	public static IServiceProvider InitializeServiceProvider(string[] args)
+	{
 		//IHostBuilder builder = Host.CreateDefaultBuilder(args);
 		//IConfigurationBuilder builder = new ConfigurationBuilder();
 
@@ -22,7 +18,8 @@ public class ApplicationStartup {
 			new ConfigAppSetup()
 		];
 
-		foreach(var configurator in configurators) {
+		foreach(var configurator in configurators)
+		{
 			configurator.Configure(configBuilder);
 		}
 		IConfigurationRoot configuration = configBuilder.Build();
@@ -33,7 +30,8 @@ public class ApplicationStartup {
 			new LoggingServiceSetup(),
 			new ApplicationServiceSetup()
 		];
-		foreach(IServiceSetup serviceSetup in serviceSetupList) {
+		foreach(IServiceSetup serviceSetup in serviceSetupList)
+		{
 			serviceSetup.Configure(services, configuration);
 		}
 

@@ -1,17 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Common.MessageFormatterParser.Nodes {
+﻿namespace BMTP3.Common.MessageFormatterParser.Nodes
+{
 	// Function call node (e.g., .toUpper(4,5))
-	public class FunctionCallNode : AstNode {
+	public class FunctionCallNode : AstNode
+	{
 		public string Name { get; }
 		public List<AstNode> Arguments { get; }
 
 		public FunctionCallNode(string name, List<AstNode> arguments)
-			: base(NodeType.FunctionCall) {
+			: base(NodeType.FunctionCall)
+		{
 			Name = name;
 			Arguments = arguments;
 		}

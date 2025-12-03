@@ -1,10 +1,5 @@
 ﻿using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Errors;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Models;
 
@@ -12,14 +7,16 @@ namespace BMTP3.Core2.BackupNew.Models;
 /// Concrete implementation of IBackupItem.
 /// Fully encapsulated, immutable from the outside except through explicit methods.
 /// </summary>
-public class BackupItem : IBackupItem {
+public class BackupItem : IBackupItem
+{
 	public ISourceContent Content { get; private set; }
 	public BackupMetadata Metadata { get; }
 	public BackupState State { get; private set; }
 	public ErrorInfo ErrorInfo { get; }
 
 	// Private constructor – all object state is initialized here
-	private BackupItem(ISourceContent content, BackupMetadata metadata) {
+	private BackupItem(ISourceContent content, BackupMetadata metadata)
+	{
 		ArgumentNullException.ThrowIfNull(content);
 		ArgumentNullException.ThrowIfNull(metadata);
 		Content = content;
@@ -32,9 +29,11 @@ public class BackupItem : IBackupItem {
 	/// Creates a new BackupItem instance.
 	/// This is the only way to instantiate the class.
 	/// </summary>
-	public static BackupItem Create(ISourceContent content, string originalFileName, string? relativePath = null) {
+	public static BackupItem Create(ISourceContent content, string originalFileName, string? relativePath = null)
+	{
 		ArgumentNullException.ThrowIfNull(content);
-		if(string.IsNullOrWhiteSpace(originalFileName)) {
+		if(string.IsNullOrWhiteSpace(originalFileName))
+		{
 			throw new ArgumentException("Original file name is required.", nameof(originalFileName));
 		}
 
@@ -42,7 +41,8 @@ public class BackupItem : IBackupItem {
 		metadata.Set(MetadataKey.OriginalFileName, originalFileName);
 		metadata.Set(MetadataKey.Size, content.Length);
 
-		if(!string.IsNullOrWhiteSpace(relativePath)) {
+		if(!string.IsNullOrWhiteSpace(relativePath))
+		{
 			metadata.Set(MetadataKey.SourceRelativePath, relativePath);
 		}
 
@@ -53,7 +53,8 @@ public class BackupItem : IBackupItem {
 	/// Replaces the current content source.
 	/// Used only when downloading from a remote device to a local temporary file.
 	/// </summary>
-	public void ReplaceContent(ISourceContent newContent) {
+	public void ReplaceContent(ISourceContent newContent)
+	{
 		Content = newContent ?? throw new ArgumentNullException(nameof(newContent));
 	}
 

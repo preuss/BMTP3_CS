@@ -1,120 +1,118 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Text.RegularExpressions;
-using System.Threading;
-using System.Threading.Tasks;
-using BMTP3.Core2.BackupNew2.Interfaces;
-using BMTP3.Core2.BackupNew2.Models;
-using BMTP3.Core2.BackupNew2.Models.Configuration;
-using BMTP3.Core2.BackupNew2.Models.Internal;
 
 namespace BMTP3.Core2.BackupNew2.Traversal;
-
 /// <summary>
-/// Traverses a local file system and yields IBackupItems.
-/// Combines robust traversal logic with the new IBackupScanner interface.
+/// Traverses a local file system and streams <see cref="FileInfo"/> entries.
+/// Implements <see cref="ITraversalScanner{TEntry}"/> with FileInfo as the entry type.
 /// </summary>
-public sealed class FileSystemScanner : IBackupScanner
+public sealed class FileSystemScanner : ITraversalScanner<FileInfo>
 {
-    public async IAsyncEnumerable<IBackupItem> ScanAsync(BackupJob job, [EnumeratorCancellation] CancellationToken ct)
-    {
-        if (job.SourceType != SourceType.FileSystem)
-        {
-            yield break;
-        }
+	/// <summary>
+	/// Performs a traversal of the file system starting at <paramref name="rootPath"/>.
+	/// 
+	/// Constructor parameters should only capture dependencies required for the scanner to exist.
+	/// Method parameters represent operational choices that can vary per call:
+	/// - <paramref name="rootPath"/> specifies the starting point of traversal.
+	/// - <paramref name="recursive"/> controls whether subdirectories are scanned.
+	/// - <paramref name="progress"/> allows reporting of traversal snapshots via IProgress.
+	/// - <paramref name="cancellationToken"/> enables cooperative cancellation.
+	/// 
+	/// The method is synchronous and returns an <see cref="IEnumerable{FileInfo}"/> that is lazy:
+	/// entries are produced one at a time as the caller iterates.
+	/// </summary>
+	public IEnumerable<FileInfo> Scan(string rootPath, bool recursive = true, IProgress<TraversalProgress>? progress = null, CancellationToken cancellationToken = default)
+	{
+		return ScanAsync(rootPath, recursive, progress, cancellationToken)
+			.ToBlockingEnumerable(cancellationToken);
+	}
 
-        string rootPath = job.SourcePath;
-        if (!Directory.Exists(rootPath))
-        {
-             yield break;
-        }
+	/// <summary>
+	/// Performs a traversal of the file system asynchronously starting at <paramref name="rootPath"/>.
+	/// 
+	/// As with <see cref="Scan"/>, constructor parameters define dependencies while method parameters
+	/// define operational choices. The method supports <c>await foreach</c> and streams entries lazily.
+	/// </summary>
+	public async IAsyncEnumerable<FileInfo> ScanAsync(string rootPath, bool recursive = true, IProgress<TraversalProgress>? progress = null, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+	{
+		DirectoryInfo dirInfo = new(rootPath);
 
-        // Prepare filters
-        var includeRegexes = job.IncludePatterns?.Select(GlobToRegex).ToList() ?? new List<Regex>();
-        var excludeRegexes = job.ExcludePatterns?.Select(GlobToRegex).ToList() ?? new List<Regex>();
+		// Single snapshot object, updated with 'with' each time
+		TraversalProgress snapshot = new TraversalProgress(
+			FileCount: 0,
+			LastFileName: null,
+			FileCountChanged: false,
+			DirectoryCount: 0,
+			LastDirectoryName: null,
+			DirectoryCountChanged: false
+		);
 
-        DirectoryInfo dirInfo = new(rootPath);
+		await foreach(var file in ScanInternalAsync(
+			dirInfo, recursive, progress,
+			onFile: f =>
+			{
+				snapshot = snapshot with
+				{
+					FileCount = snapshot.FileCount + 1,
+					LastFileName = f.Name,
+					FileCountChanged = true,
+					DirectoryCountChanged = false
+				};
+				progress?.Report(snapshot);
+			},
+			onDirectory: d =>
+			{
+				snapshot = snapshot with
+				{
+					DirectoryCount = snapshot.DirectoryCount + 1,
+					LastDirectoryName = d.Name,
+					FileCountChanged = false,
+					DirectoryCountChanged = true
+				};
+				progress?.Report(snapshot);
+			},
+			cancellationToken
+		))
+		{
+			yield return file;
+		}
+	}
 
-        await foreach (var fileInfo in ScanInternalAsync(dirInfo, job.Recursive, ct))
-        {
-            if (!ShouldProcess(fileInfo.FullName, includeRegexes, excludeRegexes))
-            {
-                continue;
-            }
+	private async IAsyncEnumerable<FileInfo> ScanInternalAsync(DirectoryInfo dir, bool recursive, IProgress<TraversalProgress>? progress, Action<FileInfo> onFile, Action<DirectoryInfo> onDirectory, [EnumeratorCancellation] CancellationToken cancellationToken)
+	{
+		foreach(var file in SafeGetFiles(dir))
+		{
+			cancellationToken.ThrowIfCancellationRequested();
 
-            var content = new FileSourceContent(fileInfo);
-            var item = new BackupItem(content);
-            
-            // Basic metadata
-            item.Metadata.Set(MetadataKey.SourceRelativePath, Path.GetRelativePath(rootPath, fileInfo.FullName));
-            item.Metadata.Set(MetadataKey.OriginalSourceId, job.SourceId);
-            item.Metadata.Set(MetadataKey.SizeBytes, content.SizeBytes);
-            item.Metadata.Set(MetadataKey.OriginalFileName, content.Name);
+			onFile(file);
+			yield return file;
 
-            yield return item;
-        }
-    }
+			// Cooperative scheduling in long traversals
+			await Task.Yield();
+		}
 
-    private async IAsyncEnumerable<FileInfo> ScanInternalAsync(DirectoryInfo dir, bool recursive, [EnumeratorCancellation] CancellationToken cancellationToken)
-    {
-        // Process files in current dir
-        foreach (var file in SafeGetFiles(dir))
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            yield return file;
-            
-            // Cooperative yield
-            await Task.Yield();
-        }
+		if(recursive)
+		{
+			foreach(var subDir in SafeGetDirectories(dir))
+			{
+				cancellationToken.ThrowIfCancellationRequested();
 
-        // Process subdirectories
-        if (recursive)
-        {
-            foreach (var subDir in SafeGetDirectories(dir))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                await foreach (var f in ScanInternalAsync(subDir, recursive, cancellationToken))
-                {
-                    yield return f;
-                }
-            }
-        }
-    }
+				onDirectory(subDir);
 
-    private static IEnumerable<FileInfo> SafeGetFiles(DirectoryInfo dir)
-    {
-        try { return dir.GetFiles(); } catch { return Array.Empty<FileInfo>(); }
-    }
+				await foreach(var f in ScanInternalAsync(subDir, recursive, progress, onFile, onDirectory, cancellationToken))
+				{
+					yield return f;
+				}
+			}
+		}
+	}
 
-    private static IEnumerable<DirectoryInfo> SafeGetDirectories(DirectoryInfo dir)
-    {
-        try { return dir.GetDirectories(); } catch { return Array.Empty<DirectoryInfo>(); }
-    }
+	private static IEnumerable<FileInfo> SafeGetFiles(DirectoryInfo dir)
+	{
+		try { return dir.GetFiles(); } catch { return Array.Empty<FileInfo>(); }
+	}
 
-    private bool ShouldProcess(string fullPath, List<Regex> includes, List<Regex> excludes)
-    {
-        string filename = Path.GetFileName(fullPath);
-
-        if (excludes.Count > 0)
-        {
-            if (excludes.Any(r => r.IsMatch(filename))) return false;
-        }
-
-        if (includes.Count == 0)
-        {
-            return true;
-        }
-
-        return includes.Any(r => r.IsMatch(filename));
-    }
-
-    private static Regex GlobToRegex(string glob)
-    {
-        var regexPattern = "^" + Regex.Escape(glob).Replace("\\*", ".*").Replace("\\?", ".") + "$";
-        return new Regex(regexPattern, RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    }
+	private static IEnumerable<DirectoryInfo> SafeGetDirectories(DirectoryInfo dir)
+	{
+		try { return dir.GetDirectories(); } catch { return Array.Empty<DirectoryInfo>(); }
+	}
 }

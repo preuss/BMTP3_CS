@@ -1,31 +1,46 @@
-using System.IO;
 using BMTP3.Core2.BackupNew2.Interfaces;
 
 namespace BMTP3.Core2.BackupNew2.Models.Internal;
 
-public class FileSourceContent : ISourceContent
+/// <summary>
+/// ISourceContent implementation that reads from a regular file on disk.
+/// </summary>
+public sealed class FileInfoSourceContent : ISourceContent
 {
-    private readonly FileInfo _fileInfo;
+	private readonly FileInfo _fileInfo;
+	private bool _disposed;
 
-    public FileSourceContent(string path)
-    {
-        _fileInfo = new FileInfo(path);
-    }
+	public FileInfoSourceContent(string filePath) : this(new FileInfo(filePath))
+	{
+	}
+	public FileInfoSourceContent(FileInfo fileInfo)
+	{
+		_fileInfo = fileInfo ?? throw new ArgumentNullException(nameof(fileInfo));
+		if(!_fileInfo.Exists)
+		{
+			throw new FileNotFoundException($"File not found: {fileInfo.FullName}");
+		}
+	}
 
-    public FileSourceContent(FileInfo fi)
-    {
-        _fileInfo = fi;
-    }
+	public ulong Length => (ulong)_fileInfo.Length;
 
-    public string Name => _fileInfo.Name;
+	public Stream OpenRead()
+	{
+		// return _fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
+		// FileShare.ReadWrite allows other processes (e.g. phone sync tools) to keep the file open
+		return new FileStream(
+			_fileInfo.FullName,
+			FileMode.Open,
+			FileAccess.Read,
+			FileShare.Read);
+	}
 
-    public string OriginalPath => _fileInfo.FullName;
-
-    public long SizeBytes => _fileInfo.Length;
-
-    public Stream OpenReadStream()
-    {
-        // Open with Read sharing to avoid locking issues if possible
-        return _fileInfo.Open(FileMode.Open, FileAccess.Read, FileShare.Read);
-    }
+	public void Dispose()
+	{
+		if(!_disposed)
+		{
+			// Nothing to dispose – the stream is owned by the caller
+			_disposed = true;
+		}
+	}
 }

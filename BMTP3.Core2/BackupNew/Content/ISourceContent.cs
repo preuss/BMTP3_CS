@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.Content;
+﻿namespace BMTP3.Core2.BackupNew.Content;
 /// <summary>
 /// Minimal abstraction over any source of file content.
 /// Provides only the size and a readable stream – no metadata, no path information.
 /// </summary>
-public interface ISourceContent : IDisposable {
+public interface ISourceContent : IDisposable
+{
 	/// <summary>
 	/// Size of the content in bytes. Used for progress reporting and buffer allocation.
 	/// </summary>

@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Common.MessageFormatterParser {
+﻿namespace BMTP3.Common.MessageFormatterParser
+{
 	// Token types
-	public enum TokenType {
+	public enum TokenType
+	{
 		LiteralString,      // Raw strings, including text outside expressions and custom-pattern/eval-pattern (e.g., "some text ", "yyyy-MM-dd")
 		DollarBraceOpen,    // "${"
 		IndexBraceOpen,     // "#{"

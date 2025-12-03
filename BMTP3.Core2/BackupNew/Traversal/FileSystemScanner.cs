@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Runtime.CompilerServices;
 
 namespace BMTP3.Core2.BackupNew.Traversal;
 /// <summary>
@@ -83,7 +77,7 @@ public sealed class FileSystemScanner : ITraversalScanner<FileInfo>
 		}
 	}
 
-	private async IAsyncEnumerable<FileInfo> ScanInternalAsync(DirectoryInfo dir, bool recursive, Action<FileInfo> onFile, Action<DirectoryInfo> onDirectory, [EnumeratorCancellation] CancellationToken cancellationToken)
+	private async IAsyncEnumerable<FileInfo> ScanInternalAsync(DirectoryInfo dir, bool recursive, IProgress<TraversalProgress>? progress, Action<FileInfo> onFile, Action<DirectoryInfo> onDirectory, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		foreach(var file in SafeGetFiles(dir))
 		{
@@ -104,7 +98,7 @@ public sealed class FileSystemScanner : ITraversalScanner<FileInfo>
 
 				onDirectory(subDir);
 
-				await foreach(var f in ScanInternalAsync(subDir, recursive, onFile, onDirectory, cancellationToken))
+				await foreach(var f in ScanInternalAsync(subDir, recursive, progress, onFile, onDirectory, cancellationToken))
 				{
 					yield return f;
 				}

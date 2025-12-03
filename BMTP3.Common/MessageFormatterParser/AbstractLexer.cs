@@ -1,11 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 
-namespace BMTP3.Common.MessageFormatterParser {
-	public abstract class AbstractLexer : ILexer {
+namespace BMTP3.Common.MessageFormatterParser
+{
+	public abstract class AbstractLexer : ILexer
+	{
 		protected static readonly HashSet<string> knownFunctions = new HashSet<string>
 {
 			"toUpper", "toLower", "trim", "abs", "round", "toString"
@@ -30,7 +28,8 @@ namespace BMTP3.Common.MessageFormatterParser {
 		protected int _tokenPosition;
 		protected char _lastChar;
 		protected bool _inPlaceholder;
-		protected AbstractLexer(CharStream charStream) {
+		protected AbstractLexer(CharStream charStream)
+		{
 			_charStream = charStream ?? throw new ArgumentNullException(nameof(charStream), "CharStream cannot be null.");
 
 			_state = LexerState.Base;

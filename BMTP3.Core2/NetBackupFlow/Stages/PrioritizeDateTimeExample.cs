@@ -1,33 +1,30 @@
 using BMTP3.Core2.NetBackupFlow.Models;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.NetBackupFlow.Stages
 {
-    public class PrioritizeDateTimeExample
-    {
-        private (DateTimeOffset, TimestampSource) GetPrioritizedDateTime(DateTimeOffset? internalMetadata, DateTimeOffset? authoredDate, DateTimeOffset? creationTime, DateTimeOffset? lastWriteTime)
-        {
-            if (internalMetadata.HasValue && internalMetadata.Value > DateTimeOffset.MinValue)
-            {
-                return (internalMetadata.Value, TimestampSource.InternalMetadata);
-            }
-            if (authoredDate.HasValue && authoredDate.Value > DateTimeOffset.MinValue)
-            {
-                return (authoredDate.Value, TimestampSource.DeviceMetadata);
-            }
-            if (creationTime.HasValue && creationTime.Value > DateTimeOffset.MinValue)
-            {
-                return (creationTime.Value, TimestampSource.FilesystemCreation);
-            }
-            if (lastWriteTime.HasValue && lastWriteTime.Value > DateTimeOffset.MinValue)
-            {
-                return (lastWriteTime.Value, TimestampSource.FilesystemModification);
-            }
+	public class PrioritizeDateTimeExample
+	{
+		private (DateTimeOffset, TimestampSource) GetPrioritizedDateTime(DateTimeOffset? internalMetadata, DateTimeOffset? authoredDate, DateTimeOffset? creationTime, DateTimeOffset? lastWriteTime)
+		{
+			if(internalMetadata.HasValue && internalMetadata.Value > DateTimeOffset.MinValue)
+			{
+				return (internalMetadata.Value, TimestampSource.InternalMetadata);
+			}
+			if(authoredDate.HasValue && authoredDate.Value > DateTimeOffset.MinValue)
+			{
+				return (authoredDate.Value, TimestampSource.DeviceMetadata);
+			}
+			if(creationTime.HasValue && creationTime.Value > DateTimeOffset.MinValue)
+			{
+				return (creationTime.Value, TimestampSource.FilesystemCreation);
+			}
+			if(lastWriteTime.HasValue && lastWriteTime.Value > DateTimeOffset.MinValue)
+			{
+				return (lastWriteTime.Value, TimestampSource.FilesystemModification);
+			}
 
-            return (DateTimeOffset.Now, TimestampSource.CurrentTime); // Fallback
-        }
-    }
+			return (DateTimeOffset.Now, TimestampSource.CurrentTime); // Fallback
+		}
+	}
 }
 

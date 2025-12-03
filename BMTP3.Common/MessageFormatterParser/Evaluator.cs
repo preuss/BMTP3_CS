@@ -1,18 +1,22 @@
 ﻿using BMTP3.Common.MessageFormatterParser.Nodes;
-using System;
 using System.Globalization;
 
-namespace BMTP3.Common.MessageFormatterParser {
-	public class Evaluator {
+namespace BMTP3.Common.MessageFormatterParser
+{
+	public class Evaluator
+	{
 		private readonly Dictionary<string, object> values;
 
-		public Evaluator(Dictionary<string, object> values) {
+		public Evaluator(Dictionary<string, object> values)
+		{
 			this.values = values;
 		}
 
-		public string Evaluate(RootNode ast) {
+		public string Evaluate(RootNode ast)
+		{
 			var result = "";
-			foreach(var node in ast.Children) {
+			foreach(var node in ast.Children)
+			{
 				if(node is TextNode text)
 					result += text.Value;
 				else if(node is PlaceholderNode placeholder)
@@ -21,19 +25,22 @@ namespace BMTP3.Common.MessageFormatterParser {
 			return result;
 		}
 
-		private string EvaluatePlaceholder(PlaceholderNode node) {
+		private string EvaluatePlaceholder(PlaceholderNode node)
+		{
 			if(!values.ContainsKey(node.NameOrIndex))
 				throw new Exception($"Undefined value: {node.NameOrIndex}");
 
 			var value = values[node.NameOrIndex];
 
 			// Apply functions
-			foreach(var func in node.Functions) {
+			foreach(var func in node.Functions)
+			{
 				value = ApplyFunction(func.Name, value);
 			}
 
 			// Handle if condition
-			if(node.Condition != null) {
+			if(node.Condition != null)
+			{
 				bool conditionMet = EvaluateCondition(node.Condition, value);
 				var stringToEvaluate = conditionMet ? node.Condition.TrueValue : node.Condition.FalseValue;
 				var tempAst = new RootNode();
@@ -42,26 +49,29 @@ namespace BMTP3.Common.MessageFormatterParser {
 			}
 
 			// Handle pattern
-			if(node.Pattern != null) {
+			if(node.Pattern != null)
+			{
 				var patternResult = "";
-				foreach(var item in node.Pattern) {
-					if(item is TextNode text) {
+				foreach(var item in node.Pattern)
+				{
+					if(item is TextNode text)
+					{
 						// Handle date formatting for specific patterns
 						DateTime date = DateTime.MinValue;
 						bool isDate = false;
 
-						if (value is DateTime dt) 
-						{ 
-							date = dt; 
-							isDate = true; 
-						}
-						else if (value is string s && DateTime.TryParse(s, out var parsed)) 
-						{ 
-							date = parsed; 
-							isDate = true; 
+						if(value is DateTime dt)
+						{
+							date = dt;
+							isDate = true;
+						} else if(value is string s && DateTime.TryParse(s, out var parsed))
+						{
+							date = parsed;
+							isDate = true;
 						}
 
-						if(node.NameOrIndex == "date" && isDate) {
+						if(node.NameOrIndex == "date" && isDate)
+						{
 							if(text.Value == "yyyy")
 								patternResult += date.Year.ToString("D4");
 							else if(text.Value == "MM")
@@ -78,7 +88,8 @@ namespace BMTP3.Common.MessageFormatterParser {
 								patternResult += date.ToString("ddd", CultureInfo.InvariantCulture).Substring(0, 3);
 							else
 								patternResult += text.Value; // Bevar specialtegn som '/', ':', eller ' '
-						} else {
+						} else
+						{
 							patternResult += text.Value;
 						}
 					} else if(item is LiteralNode literal)
@@ -99,7 +110,8 @@ namespace BMTP3.Common.MessageFormatterParser {
 			return value.ToString();
 		}
 
-		private bool EvaluateCondition(IfConditionNode condition, object value) {
+		private bool EvaluateCondition(IfConditionNode condition, object value)
+		{
 			/*
 			if(condition.ConditionOperator == "eq0")
 				return Convert.ToDouble(value) == 0;
@@ -109,7 +121,8 @@ namespace BMTP3.Common.MessageFormatterParser {
 			return false;
 		}
 
-		private object ApplyFunction(string func, object value) {
+		private object ApplyFunction(string func, object value)
+		{
 			if(func == "toUpper" && value is string s)
 				return s.ToUpper();
 			if(func == "toLower" && value is string s2)

@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.Models;
+﻿namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
 /// Definerer alle mulige tilstande et IBackupItem kan befinde sig i.
 /// Rækkefølgen er vigtig – vi bruger den til validering i BackupItem.AdvanceTo().
 /// </summary>
-public enum BackupState {
+public enum BackupState
+{
 	/// <summary>
 	/// Nyoprettet – intet er gjort endnu.
 	/// </summary>

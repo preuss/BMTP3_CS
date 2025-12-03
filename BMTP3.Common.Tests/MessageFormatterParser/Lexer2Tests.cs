@@ -1,25 +1,25 @@
 ﻿using BMTP3.Common.MessageFormatterParser;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Common.Tests.MessageFormatterParser;
 
-public class Lexer2Tests {
-	private void AssertTokensx(List<Token> expected, List<Token> actual) {
+public class Lexer2Tests
+{
+	private void AssertTokensx(List<Token> expected, List<Token> actual)
+	{
 		Assert.Equal(expected.Count, actual.Count);
-		for(int i = 0; i < expected.Count; i++) {
+		for(int i = 0; i < expected.Count; i++)
+		{
 			Assert.Equal(expected[i].Type, actual[i].Type);
 			Assert.Equal(expected[i].Value, actual[i].Value);
 			Assert.Equal(expected[i].Position, actual[i].Position);
 		}
 	}
-	private void AssertTokens(List<Token> expected, List<Token> actual) {
+	private void AssertTokens(List<Token> expected, List<Token> actual)
+	{
 		Assert.True(expected.Count == actual.Count, $"Expected {expected.Count} tokens but found {actual.Count}.");
 
-		for(int i = 0; i < expected.Count; i++) {
+		for(int i = 0; i < expected.Count; i++)
+		{
 			var expectedToken = expected[i];
 			var actualToken = actual[i];
 
@@ -38,7 +38,8 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_SimpleInput_ReturnsCorrectTokens() {
+	public void ScanToken_SimpleInput_ReturnsCorrectTokens()
+	{
 		// Arrange
 		Lexer2 lexer = new("some text $x ${ name }");
 		List<Token> expectedTokens = [
@@ -51,7 +52,8 @@ public class Lexer2Tests {
 		List<Token> actualTokens = [];
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			actualTokens.Add(lexer.NextToken());
 		}
 		actualTokens.Add(lexer.NextToken());
@@ -61,7 +63,8 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_ComplexInput_ReturnsCorrectTokens() {
+	public void ScanToken_ComplexInput_ReturnsCorrectTokens()
+	{
 		// Arrange
 		Lexer2 lexer = new("${date.toUpper(),date:yyyy-MM-dd}");
 		List<Token> expectedTokens = [
@@ -81,7 +84,8 @@ public class Lexer2Tests {
 		List<Token> actualTokens = [];
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			actualTokens.Add(lexer.NextToken());
 		}
 		actualTokens.Add(lexer.NextToken());
@@ -91,7 +95,8 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_EvalPattern_ReturnsCorrectTokens() {
+	public void ScanToken_EvalPattern_ReturnsCorrectTokens()
+	{
 		// Arrange
 		Lexer2 lexer = new("${count§if,eq 0?0:`low`}");
 		List<Token> expectedTokens = [
@@ -112,7 +117,8 @@ public class Lexer2Tests {
 		List<Token> actualTokens = new();
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			actualTokens.Add(lexer.NextToken());
 		}
 		actualTokens.Add(lexer.NextToken());
@@ -122,7 +128,8 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_EscapedBraces_ReturnsCorrectTokens() {
+	public void ScanToken_EscapedBraces_ReturnsCorrectTokens()
+	{
 		// Arrange
 		Lexer2 lexer = new("text {{escaped}} text");
 		List<Token> expectedTokens = [
@@ -132,7 +139,8 @@ public class Lexer2Tests {
 		List<Token> actualTokens = [];
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			actualTokens.Add(lexer.NextToken());
 		}
 		actualTokens.Add(lexer.NextToken());
@@ -142,7 +150,8 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_PlainText_ReturnsSimpleSingleLiteralString() {
+	public void ScanToken_PlainText_ReturnsSimpleSingleLiteralString()
+	{
 		// Arrange
 		Lexer2 lexer = new("hello");
 		List<Token> expectedTokens = [
@@ -152,7 +161,8 @@ public class Lexer2Tests {
 		List<Token> actualTokens = [];
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			actualTokens.Add(lexer.NextToken());
 		}
 		actualTokens.Add(lexer.NextToken());
@@ -162,7 +172,8 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_PlainText_ReturnsSingleLiteralString() {
+	public void ScanToken_PlainText_ReturnsSingleLiteralString()
+	{
 		// Arrange
 		Lexer2 lexer = new("hello world");
 		List<Token> expectedTokens = [
@@ -172,7 +183,8 @@ public class Lexer2Tests {
 		List<Token> actualTokens = [];
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			actualTokens.Add(lexer.NextToken());
 		}
 		actualTokens.Add(lexer.NextToken());
@@ -182,7 +194,8 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_LoneDollarOrHash_ReturnsLiteralString() {
+	public void ScanToken_LoneDollarOrHash_ReturnsLiteralString()
+	{
 		// Arrange
 		Lexer2 lexer = new("text $ #");
 		List<Token> expectedTokens = [
@@ -192,7 +205,8 @@ public class Lexer2Tests {
 		List<Token> actualTokens = [];
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			actualTokens.Add(lexer.NextToken());
 		}
 		actualTokens.Add(lexer.NextToken());
@@ -202,7 +216,8 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_EmptyInput_ReturnsEOF() {
+	public void ScanToken_EmptyInput_ReturnsEOF()
+	{
 		// Arrange
 		Lexer2 lexer = new("");
 		List<Token> expectedTokens = [
@@ -211,7 +226,8 @@ public class Lexer2Tests {
 		List<Token> actualTokens = [];
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			actualTokens.Add(lexer.NextToken());
 		}
 		actualTokens.Add(lexer.NextToken());
@@ -221,25 +237,30 @@ public class Lexer2Tests {
 	}
 
 	[Fact]
-	public void ScanToken_UnterminatedPlaceholder_ThrowsException() {
+	public void ScanToken_UnterminatedPlaceholder_ThrowsException()
+	{
 		// Arrange
 		Lexer2 lexer = new("${name");
 
 		// Act & Assert
-		Assert.Throws<InvalidOperationException>(() => {
-			while(lexer.HasNextToken()) {
+		Assert.Throws<InvalidOperationException>(() =>
+		{
+			while(lexer.HasNextToken())
+			{
 				lexer.NextToken();
 			}
 		});
 	}
 
 	[Fact]
-	public void HasMoreTokens_ReturnsFalseAfterEOF() {
+	public void HasMoreTokens_ReturnsFalseAfterEOF()
+	{
 		// Arrange
 		Lexer2 lexer = new("text");
 
 		// Act
-		while(lexer.HasNextToken()) {
+		while(lexer.HasNextToken())
+		{
 			lexer.NextToken();
 		}
 

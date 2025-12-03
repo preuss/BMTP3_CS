@@ -1,28 +1,25 @@
-﻿using System;
-using System.Collections.Generic;
-using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 public abstract class BaseConsoleCommand : Command
 {
 	private readonly BaseOptionsModel[] _optionsModels;
 	protected BaseConsoleCommand(
-		string name, 
+		string name,
 		string? description = null,
 		params BaseOptionsModel[] optionsModels
 	) : base(name, description)
 	{
 		_optionsModels = optionsModels;
-		foreach (BaseOptionsModel optionsModel in _optionsModels)
+		foreach(BaseOptionsModel optionsModel in _optionsModels)
 		{
-			foreach(Option option in optionsModel.GetAllOptions()) {
-				if(!Options.Contains(option)) {
+			foreach(Option option in optionsModel.GetAllOptions())
+			{
+				if(!Options.Contains(option))
+				{
 					Options.Add(option);
-				} else {
+				} else
+				{
 					throw new InvalidOperationException($"Option {option.Name} is already defined.");
 				}
 			}
@@ -35,19 +32,19 @@ public abstract class BaseConsoleCommand : Command
 	{
 		try
 		{
-			foreach (var optionsModel in _optionsModels)
+			foreach(var optionsModel in _optionsModels)
 			{
 				DoBindOptionsModel(parseResult, optionsModel);
 			}
 			return await DoExecuteAsync(parseResult, cancellationToken);
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			await Console.Error.WriteLineAsync($"Error executing command: {ex.Message}");
 			return 1;
 		}
 	}
-	protected virtual BaseOptionsModel DoBindOptionsModel(ParseResult parseResult, BaseOptionsModel optionsModel) {
+	protected virtual BaseOptionsModel DoBindOptionsModel(ParseResult parseResult, BaseOptionsModel optionsModel)
+	{
 		optionsModel.ApplyOptions(parseResult);
 		return optionsModel;
 	}

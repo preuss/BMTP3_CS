@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 
 namespace BMTP3.Common.MessageFormatterParser;
 
-public class CharStream {
+public class CharStream
+{
 	public const string POSIX = "\n"; // LF    = Unix-style line endings
 	public const string WINDOWS_DOS = "\r\n"; // CR LF = Windows / DOS-style line endings
 	public const string COMMODORE = "\r"; // CR    = Commodore-style line endings
@@ -33,11 +29,13 @@ public class CharStream {
 	/// </summary>
 	/// <param name="stream">The stream to be read from.</param>
 	/// <exception cref="ArgumentNullException">Thrown if the stream is null.</exception>
-	public CharStream(Stream stream) : this(stream, [POSIX]) {
+	public CharStream(Stream stream) : this(stream, [POSIX])
+	{
 	}
 
 	public CharStream(string input, string[] newLineSequences) : this(new MemoryStream(Encoding.UTF8.GetBytes(input)),
-		newLineSequences) {
+		newLineSequences)
+	{
 	}
 
 	/// <summary>
@@ -48,16 +46,21 @@ public class CharStream {
 	/// <exception cref="ArgumentNullException">Thrown if the stream is null.</exception>
 	/// <exception cref="ArgumentException">Thrown if the new line sequences array is null or empty.</exception>
 	/// <exception cref="ArgumentException">Thrown if any of the new line sequences are not a valid new line sequence.</exception>
-	public CharStream(Stream stream, string[] newLineSequences) {
+	public CharStream(Stream stream, string[] newLineSequences)
+	{
 		this.stream = stream ?? throw new ArgumentNullException(nameof(stream));
 		this.reader = new StreamReader(stream);
 
-		if(newLineSequences == null || newLineSequences.Length == 0) {
+		if(newLineSequences == null || newLineSequences.Length == 0)
+		{
 			throw new ArgumentException("New line sequences cannot be null or empty", nameof(newLineSequences));
-		} else {
+		} else
+		{
 			HashSet<string> validNewLineSequencesSet = new HashSet<string> { POSIX, WINDOWS_DOS, COMMODORE, ACORN };
-			foreach(string newLineSequence in newLineSequences) {
-				if(!validNewLineSequencesSet.Contains(newLineSequence)) {
+			foreach(string newLineSequence in newLineSequences)
+			{
+				if(!validNewLineSequencesSet.Contains(newLineSequence))
+				{
 					throw new ArgumentException($"Invalid new line sequence: {newLineSequence}",
 						nameof(newLineSequences));
 				}
@@ -73,46 +76,58 @@ public class CharStream {
 	/// If a sequence is found, line and column numbers are updated, and the sequence characters are removed from the stream.
 	/// </summary>
 	/// <returns>The length of the identified and consumed newline sequence, or 0 if no sequence was found.</returns>
-	private int TryAdvanceNewLine() {
+	private int TryAdvanceNewLine()
+	{
 		int localMinNewLineLength = newLineSequences.Min(s => s.Length);
 		int localMaxNewLineLength = newLineSequences.Max(s => s.Length);
 
-		if(!HasChars(1)) {
+		if(!HasChars(1))
+		{
 			return 0;
 		}
 
 		int peekCount = HasCharsCount(localMaxNewLineLength);
 
-		if(peekCount == 0) {
+		if(peekCount == 0)
+		{
 			return 0;
 		}
 
-		if(peekCount < localMinNewLineLength) {
+		if(peekCount < localMinNewLineLength)
+		{
 			return 0; // Not enough characters available to match any newline sequence.
 		}
 
 		List<char> peekedChars = Peek(peekCount);
 
 		// Iterate through newline sequences, prioritized by length (longest first).
-		foreach(var newLineSequence in newLineSequences) {
-			if(peekedChars.Count >= newLineSequence.Length) {
+		foreach(var newLineSequence in newLineSequences)
+		{
+			if(peekedChars.Count >= newLineSequence.Length)
+			{
 				bool matches = true;
-				for(int i = 0; i < newLineSequence.Length; i++) {
-					if(peekedChars[i] != newLineSequence[i]) {
+				for(int i = 0; i < newLineSequence.Length; i++)
+				{
+					if(peekedChars[i] != newLineSequence[i])
+					{
 						matches = false;
 						break; // Mismatch. Check next sequence.
 					}
 				}
 
-				if(matches) {
+				if(matches)
+				{
 					lineNumber++;
 					columnNumber = 0; // Reset column for the new line.
 
 					// Consume characters of the matched newline sequence.
-					for(int i = 0; i < newLineSequence.Length; i++) {
-						if(peekBuffer.Count > 0) {
+					for(int i = 0; i < newLineSequence.Length; i++)
+					{
+						if(peekBuffer.Count > 0)
+						{
 							peekBuffer.Dequeue(); // From internal buffer.
-						} else {
+						} else
+						{
 							reader.Read(); // Directly from underlying stream.
 						}
 					}
@@ -132,25 +147,30 @@ public class CharStream {
 	/// </summary>
 	/// <returns>The next character in the stream.</returns>
 	/// <exception cref="CharStreamException">Thrown if the end of the stream is encountered.</exception>
-	public char Next() {
+	public char Next()
+	{
 		int consumedNewLineLength = TryAdvanceNewLine();
 
-		if(consumedNewLineLength > 0) {
+		if(consumedNewLineLength > 0)
+		{
 			// Line and column numbers are already updated by TryAdvanceNewLine().
 			return defaultNewLineChar;
 		}
 
 		// If no newline was consumed, check if there are any characters left.
-		if(EndOfStream) {
+		if(EndOfStream)
+		{
 			throw new CharStreamException($"End of stream at line {lineNumber}, column {columnNumber}", lineNumber,
 				columnNumber);
 		}
 
 		char c;
-		if(peekBuffer.Count > 0) {
+		if(peekBuffer.Count > 0)
+		{
 			// Prioritize consuming from the internal peekBuffer.
 			c = peekBuffer.Dequeue();
-		} else {
+		} else
+		{
 			// Fallback to reading directly from the underlying stream.
 			c = (char)reader.Read();
 		}
@@ -167,13 +187,16 @@ public class CharStream {
 	/// <returns>A list containing the retrieved characters.</returns>
 	/// <exception cref="ArgumentException">Thrown if the character count is negative.</exception>
 	/// <exception cref="CharStreamException">Thrown if there are not enough characters in the stream to satisfy the request.</exception>
-	public List<char> Next(int count) {
-		if(count < 0) {
+	public List<char> Next(int count)
+	{
+		if(count < 0)
+		{
 			throw new ArgumentException("Character count cannot be negative", nameof(count));
 		}
 
 		var result = new List<char>();
-		for(int i = 0; i < count; i++) {
+		for(int i = 0; i < count; i++)
+		{
 			// By calling the single-character Next() method, we ensure that
 			// all newline handling and position updates are consistently applied.
 			result.Add(Next());
@@ -187,12 +210,15 @@ public class CharStream {
 	/// </summary>
 	/// <returns>The next character in the stream.</returns>
 	/// <exception cref="CharStreamException">Thrown if the end of the stream is encountered.</exception>
-	public char Peek() {
-		if(peekBuffer.Count > 0) {
+	public char Peek()
+	{
+		if(peekBuffer.Count > 0)
+		{
 			return peekBuffer.Peek();
 		}
 
-		if(reader.EndOfStream) {
+		if(reader.EndOfStream)
+		{
 			throw new CharStreamException($"End of stream at line {lineNumber}, column {columnNumber}", lineNumber,
 				columnNumber);
 		}
@@ -209,14 +235,17 @@ public class CharStream {
 	/// <returns>A list containing the peeked characters.</returns>
 	/// <exception cref="ArgumentException">Thrown if the character count is negative.</exception>
 	/// <exception cref="CharStreamException">Thrown if there are not enough characters in the stream to satisfy the request.</exception>
-	public List<char> Peek(int count) {
+	public List<char> Peek(int count)
+	{
 		if(count < 0) throw new ArgumentException("Character count cannot be negative");
 		var result = new List<char>();
-		while(peekBuffer.Count < count && !reader.EndOfStream) {
+		while(peekBuffer.Count < count && !reader.EndOfStream)
+		{
 			peekBuffer.Enqueue((char)reader.Read());
 		}
 
-		if(peekBuffer.Count < count) {
+		if(peekBuffer.Count < count)
+		{
 			throw new CharStreamException(
 				$"Not enough characters in stream (requested {count}, found {peekBuffer.Count}) at line {lineNumber}, column {columnNumber}",
 				lineNumber, columnNumber);
@@ -230,9 +259,11 @@ public class CharStream {
 	/// </summary>
 	/// <param name="desiredCount"></param>
 	/// <returns>readable characters, up to desiredCount</returns>
-	private int HasCharsCount(int desiredCount) {
+	private int HasCharsCount(int desiredCount)
+	{
 		if(desiredCount < 0) return 0;
-		while(peekBuffer.Count < desiredCount && !reader.EndOfStream) {
+		while(peekBuffer.Count < desiredCount && !reader.EndOfStream)
+		{
 			peekBuffer.Enqueue((char)reader.Read());
 		}
 
@@ -245,9 +276,11 @@ public class CharStream {
 	/// </summary>
 	/// <param name="count">The minimum number of characters to check for.</param>
 	/// <returns>True if there are at least 'count' characters available; otherwise, false.</returns>
-	public bool HasChars(int count) {
+	public bool HasChars(int count)
+	{
 		if(count < 0) return false;
-		while(peekBuffer.Count < count && !reader.EndOfStream) {
+		while(peekBuffer.Count < count && !reader.EndOfStream)
+		{
 			peekBuffer.Enqueue((char)reader.Read());
 		}
 

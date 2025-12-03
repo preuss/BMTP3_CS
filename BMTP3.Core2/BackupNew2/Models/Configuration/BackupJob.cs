@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+using BMTP3.Core2.BackupNew2.Models.Configuration.Enums;
 
 namespace BMTP3.Core2.BackupNew2.Models.Configuration;
 
@@ -8,136 +8,136 @@ namespace BMTP3.Core2.BackupNew2.Models.Configuration;
 /// </summary>
 public class BackupJob
 {
-    // --------------------------------------------------
-    // 1. IDENTIFICATION
-    // --------------------------------------------------
-    
-    /// <summary>
-    /// Friendly name for the job (e.g., "iPhone Photos", "C-Drive Docs").
-    /// Used for logging and display.
-    /// </summary>
-    public string Name { get; set; } = string.Empty;
+	// --------------------------------------------------
+	// 1. IDENTIFICATION
+	// --------------------------------------------------
 
-    // --------------------------------------------------
-    // 2. SOURCE DEFINITION
-    // --------------------------------------------------
+	/// <summary>
+	/// Friendly name for the job (e.g., "iPhone Photos", "C-Drive Docs").
+	/// Used for logging and display.
+	/// </summary>
+	public string Name { get; set; } = string.Empty;
 
-    /// <summary>
-    /// The type of source (FileSystem vs. MTP Device).
-    /// </summary>
-    public SourceType SourceType { get; set; }
+	// --------------------------------------------------
+	// 2. SOURCE DEFINITION
+	// --------------------------------------------------
 
-    /// <summary>
-    /// The unique identifier for the source. This could be a device ID, a drive letter, or a network path.
-    /// <para>FileSystem: Drive letter or root path (e.g., "C:", "\\Nas\Share").</para>
-    /// <para>MTP: The friendly name of the device (e.g., "Apple iPhone", "Galaxy S21").</para>
-    /// </summary>
-    public string SourceId { get; set; } = string.Empty; // CHANGED FROM SourceDeviceId
+	/// <summary>
+	/// The type of source (FileSystem vs. MTP Device).
+	/// </summary>
+	public SourceType SourceType { get; set; }
 
-    /// <summary>
-    /// The specific path within the device to back up.
-    /// <para>FileSystem: Absolute path (e.g., "Users\John\Pictures").</para>
-    /// <para>MTP: Path relative to device root (e.g., "\Internal Storage\DCIM").</para>
-    /// </summary>
-    public string SourcePath { get; set; } = string.Empty;
+	/// <summary>
+	/// The unique identifier for the source. This could be a device ID, a drive letter, or a network path.
+	/// <para>FileSystem: Drive letter or root path (e.g., "C:", "\\Nas\Share").</para>
+	/// <para>MTP: The friendly name of the device (e.g., "Apple iPhone", "Galaxy S21").</para>
+	/// </summary>
+	public string SourceId { get; set; } = string.Empty; // CHANGED FROM SourceDeviceId
 
-    // --------------------------------------------------
-    // 3. DESTINATION
-    // --------------------------------------------------
+	/// <summary>
+	/// The specific path within the device to back up.
+	/// <para>FileSystem: Absolute path (e.g., "Users\John\Pictures").</para>
+	/// <para>MTP: Path relative to device root (e.g., "\Internal Storage\DCIM").</para>
+	/// </summary>
+	public string SourcePath { get; set; } = string.Empty;
 
-    /// <summary>
-    /// The root folder where backups will be stored.
-    /// </summary>
-    public string OutputPath { get; set; } = string.Empty;
+	// --------------------------------------------------
+	// 3. DESTINATION
+	// --------------------------------------------------
 
-    // --------------------------------------------------
-    // 4. SCOPE & FILTERING
-    // --------------------------------------------------
+	/// <summary>
+	/// The root folder where backups will be stored.
+	/// </summary>
+	public string OutputPath { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Whether to traverse subdirectories.
-    /// </summary>
-    public bool Recursive { get; set; } = true;
+	// --------------------------------------------------
+	// 4. SCOPE & FILTERING
+	// --------------------------------------------------
 
-    /// <summary>
-    /// Glob patterns to include (e.g., "**/*.jpg"). Empty = Include All.
-    /// </summary>
-    public List<string> IncludePatterns { get; set; } = new();
+	/// <summary>
+	/// Whether to traverse subdirectories.
+	/// </summary>
+	public bool Recursive { get; set; } = true;
 
-    /// <summary>
-    /// Glob patterns to exclude (e.g., "**/.git", "**/*.tmp").
-    /// </summary>
-    public List<string> ExcludePatterns { get; set; } = new();
+	/// <summary>
+	/// Glob patterns to include (e.g., "**/*.jpg"). Empty = Include All.
+	/// </summary>
+	public List<string> IncludePatterns { get; set; } = new();
 
-    // --------------------------------------------------
-    // 5. OUTPUT STRUCTURE & NAMING
-    // --------------------------------------------------
+	/// <summary>
+	/// Glob patterns to exclude (e.g., "**/.git", "**/*.tmp").
+	/// </summary>
+	public List<string> ExcludePatterns { get; set; } = new();
 
-    /// <summary>
-    /// Strategy for folder structure (Preserve vs Flat vs Custom).
-    /// </summary>
-    public OutputStructureStrategy OutputStrategy { get; set; } = OutputStructureStrategy.PreserveSourceTree; // UPDATED DEFAULT
+	// --------------------------------------------------
+	// 5. OUTPUT STRUCTURE & NAMING
+	// --------------------------------------------------
 
-    /// <summary>
-    /// Template pattern for output path if OutputStrategy is CustomPathPattern.
-    /// Supports variables: ${yyyy}, ${MM}, ${originalName}, etc.
-    /// </summary>
-    public string? CustomOutputPathPattern { get; set; }
+	/// <summary>
+	/// Strategy for folder structure (Preserve vs Flat vs Custom).
+	/// </summary>
+	public OutputStructureStrategy OutputStrategy { get; set; } = OutputStructureStrategy.PreserveSourceTree; // UPDATED DEFAULT
 
-    // --------------------------------------------------
-    // 6. COLLISION & VERSIONING POLICY
-    // --------------------------------------------------
+	/// <summary>
+	/// Template pattern for output path if OutputStrategy is CustomPathPattern.
+	/// Supports variables: ${yyyy}, ${MM}, ${originalName}, etc.
+	/// </summary>
+	public string? CustomOutputPathPattern { get; set; }
 
-    /// <summary>
-    /// How to compare files before deciding on a collision (None, Hash, Binary).
-    /// Default is Binary for maximum data integrity.
-    /// </summary>
-    public CollisionComparisonType ComparisonType { get; set; } = CollisionComparisonType.Binary;  // UPDATED DEFAULT
+	// --------------------------------------------------
+	// 6. COLLISION & VERSIONING POLICY
+	// --------------------------------------------------
 
-    /// <summary>
-    /// Action to take if a collision is confirmed (Overwrite, Skip, Rename).
-    /// Default is Rename to prevent data loss and ensure process completion.
-    /// </summary>
-    public CollisionResolutionType CollisionResolution { get; set; } = CollisionResolutionType.Rename; // UPDATED DEFAULT
+	/// <summary>
+	/// How to compare files before deciding on a collision (None, Hash, Binary).
+	/// Default is Binary for maximum data integrity.
+	/// </summary>
+	public CollisionComparisonType ComparisonType { get; set; } = CollisionComparisonType.Binary;  // UPDATED DEFAULT
 
-    /// <summary>
-    /// Strategy for renaming if CollisionResolution is 'Rename'.
-    /// Default is Increment for simple versioning.
-    /// </summary>
-    public RenameStrategy RenameStrategy { get; set; } = RenameStrategy.Increment; // UPDATED DEFAULT and not nullable
+	/// <summary>
+	/// Action to take if a collision is confirmed (Overwrite, Skip, Rename).
+	/// Default is Rename to prevent data loss and ensure process completion.
+	/// </summary>
+	public CollisionResolutionType CollisionResolution { get; set; } = CollisionResolutionType.Rename; // UPDATED DEFAULT
 
-    /// <summary>
-    /// Template pattern for renaming if RenameStrategy is CustomCollisionPathPattern.
-    /// </summary>
-    public string? CustomCollisionPathPattern { get; set; }
+	/// <summary>
+	/// Strategy for renaming if CollisionResolution is 'Rename'.
+	/// Default is Increment for simple versioning.
+	/// </summary>
+	public RenameStrategy RenameStrategy { get; set; } = RenameStrategy.Increment; // UPDATED DEFAULT and not nullable
 
-    // --------------------------------------------------
-    // 7. METADATA & LOGGING
-    // --------------------------------------------------
+	/// <summary>
+	/// Template pattern for renaming if RenameStrategy is CustomCollisionPathPattern.
+	/// </summary>
+	public string? CustomCollisionPathPattern { get; set; }
 
-    /// <summary>
-    /// Format for per-file metadata sidecars.
-    /// Default is Ini for human-readable metadata.
-    /// </summary>
-    public SidecarFormat SidecarFormat { get; set; } = SidecarFormat.Ini; // UPDATED DEFAULT
+	// --------------------------------------------------
+	// 7. METADATA & LOGGING
+	// --------------------------------------------------
 
-    /// <summary>
-    /// Format for centralized backup index/catalog.
-    /// Default is Json for easy inspection and versioning.
-    /// </summary>
-    public BackupIndexType BackupIndexType { get; set; } = BackupIndexType.Json; // UPDATED DEFAULT
+	/// <summary>
+	/// Format for per-file metadata sidecars.
+	/// Default is Ini for human-readable metadata.
+	/// </summary>
+	public SidecarFormat SidecarFormat { get; set; } = SidecarFormat.Ini; // UPDATED DEFAULT
 
-    // --------------------------------------------------
-    // 8. EXECUTION CONTROL
-    // --------------------------------------------------
+	/// <summary>
+	/// Format for centralized backup index/catalog.
+	/// Default is Json for easy inspection and versioning.
+	/// </summary>
+	public BackupIndexType BackupIndexType { get; set; } = BackupIndexType.Json; // UPDATED DEFAULT
 
-    /// <summary>
-    /// If true, calculates paths and decisions but performs no I/O (Write/Delete).
-    /// </summary>
-    public bool DryRun { get; set; } = false;
+	// --------------------------------------------------
+	// 8. EXECUTION CONTROL
+	// --------------------------------------------------
 
-    /// <summary>
-    /// Artificial delay in ms between items (for throttling).
-    /// </summary>
-    public int DelayMs { get; set; } = 0;
+	/// <summary>
+	/// If true, calculates paths and decisions but performs no I/O (Write/Delete).
+	/// </summary>
+	public bool DryRun { get; set; } = false;
+
+	/// <summary>
+	/// Artificial delay in ms between items (for throttling).
+	/// </summary>
+	public int DelayMs { get; set; } = 0;
 }

@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.Errors;
-public class BackupError {
+﻿namespace BMTP3.Core2.BackupNew.Errors;
+public class BackupError
+{
 	public required string StageName { get; init; }
 	public required string Message { get; init; }
 	public DateTime Timestamp { get; init; } = DateTime.Now;

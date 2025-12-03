@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.CommandLine;
-using System.Linq;
+﻿using System.CommandLine;
 using System.Reflection;
 
 namespace BMTP3.Consoles.ConsoleCommands;
@@ -26,7 +23,7 @@ public abstract class BaseOptionsModel
 	{
 		// TODO: Add thread safe caching
 		var type = GetType();
-		if (!_optionBindersCache.TryGetValue(type, out var binders))
+		if(!_optionBindersCache.TryGetValue(type, out var binders))
 		{
 			binders = DoDefineOptions();
 			_optionBindersCache[type] = binders;
@@ -61,7 +58,7 @@ public abstract class BaseOptionsModel
 			.Where(g => g.Count() > 1)
 			.ToList();
 
-		if (duplicates.Any())
+		if(duplicates.Any())
 		{
 			string msg = string.Join(
 				Environment.NewLine,
@@ -72,7 +69,7 @@ public abstract class BaseOptionsModel
 					))
 				)
 			);
-            throw new InvalidOperationException("Duplicate option names or aliases detected:" + Environment.NewLine + msg);
+			throw new InvalidOperationException("Duplicate option names or aliases detected:" + Environment.NewLine + msg);
 		}
 	}
 
@@ -96,17 +93,17 @@ public abstract class BaseOptionsModel
 			.Where(p => p.CanRead)
 			.ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
 
-		foreach (PropertyInfo optionProp in optionProps)
+		foreach(PropertyInfo optionProp in optionProps)
 		{
 			string baseName = ExtractOptionBaseName(optionProp.Name);
-			if (!instanceProps.TryGetValue(baseName, out PropertyInfo? instanceProp))
+			if(!instanceProps.TryGetValue(baseName, out PropertyInfo? instanceProp))
 			{
-                throw new InvalidOperationException($"The corresponding instance property {baseName} does not exist for {optionProp.Name}");
+				throw new InvalidOperationException($"The corresponding instance property {baseName} does not exist for {optionProp.Name}");
 			}
 
 			Option? optionInstance = (Option?)optionProp.GetValue(null);
 			ArgumentNullException.ThrowIfNull(optionInstance);
-            dict.Add(optionInstance, parseResult => BindOptionPropertyFromParseResult(parseResult, optionProp, instanceProp));
+			dict.Add(optionInstance, parseResult => BindOptionPropertyFromParseResult(parseResult, optionProp, instanceProp));
 		}
 
 		return dict;
@@ -139,7 +136,7 @@ public abstract class BaseOptionsModel
 	protected virtual void DoPopulate(ParseResult parseResult)
 	{
 		Dictionary<Option, Action<ParseResult>> optionBinders = GetOrCreateOptionBinders();
-		foreach (var binder in optionBinders.Values)
+		foreach(var binder in optionBinders.Values)
 		{
 			binder(parseResult);
 		}
@@ -153,9 +150,9 @@ public abstract class BaseOptionsModel
 	/// <returns>The generic argument type, or null if not found.</returns>
 	private static Type? GetGenericType(Type? candidate, Type genericTypeDefinition)
 	{
-		while (candidate != null && candidate != typeof(object))
+		while(candidate != null && candidate != typeof(object))
 		{
-			if (candidate.IsGenericType && candidate.GetGenericTypeDefinition() == genericTypeDefinition)
+			if(candidate.IsGenericType && candidate.GetGenericTypeDefinition() == genericTypeDefinition)
 			{
 				return candidate.GetGenericArguments()[0];
 			}
@@ -183,27 +180,27 @@ public abstract class BaseOptionsModel
 	/// <param name="parseResult">The parse result.</param>
 	/// <param name="optionProp">The static option property.</param>
 	/// <param name="instanceProp">The instance property.</param>
-    private void BindOptionPropertyFromParseResult(ParseResult parseResult, PropertyInfo optionProp, PropertyInfo instanceProp)
+	private void BindOptionPropertyFromParseResult(ParseResult parseResult, PropertyInfo optionProp, PropertyInfo instanceProp)
 	{
 		Type optionType = optionProp.PropertyType;
 		Type? optionArgumentType = GetGenericType(optionType, typeof(Option<>));
-		if (optionArgumentType == null)
+		if(optionArgumentType == null)
 		{
 			throw new InvalidOperationException($"{optionProp.Name} is not an Option<T>");
 		}
 
-		if (instanceProp.PropertyType != optionArgumentType)
+		if(instanceProp.PropertyType != optionArgumentType)
 		{
-            throw new InvalidOperationException($"Type mismatch: {optionProp.Name} is Option<{optionArgumentType.Name}>, but {instanceProp.Name} is {instanceProp.PropertyType.Name}");
+			throw new InvalidOperationException($"Type mismatch: {optionProp.Name} is Option<{optionArgumentType.Name}>, but {instanceProp.Name} is {instanceProp.PropertyType.Name}");
 		}
 
-		if (optionProp.GetValue(null) is not Option optionInstance)
+		if(optionProp.GetValue(null) is not Option optionInstance)
 		{
 			throw new InvalidOperationException($"Option instance for {optionProp.Name} is not an Option");
 		}
-		if (!optionType.IsInstanceOfType(optionInstance))
+		if(!optionType.IsInstanceOfType(optionInstance))
 		{
-            throw new InvalidOperationException($"Option instance for {optionProp.Name} is not of type Option<{optionArgumentType.Name}>. Actual type: {optionInstance.GetType()}");
+			throw new InvalidOperationException($"Option instance for {optionProp.Name} is not of type Option<{optionArgumentType.Name}>. Actual type: {optionInstance.GetType()}");
 		}
 
 		MethodInfo? getValueMethod = typeof(ParseResult)
@@ -215,7 +212,7 @@ public abstract class BaseOptionsModel
 				&& m.GetParameters()[0].ParameterType.IsGenericType
 				&& m.GetParameters()[0].ParameterType.GetGenericTypeDefinition() == typeof(Option<>)
 			);
-		if (getValueMethod == null)
+		if(getValueMethod == null)
 		{
 			throw new InvalidOperationException("Could not find generic GetValue<T>(Option<T>) method on ParseResult");
 		}
@@ -225,11 +222,11 @@ public abstract class BaseOptionsModel
 		object? value = genericGetValue.Invoke(parseResult, new object[] { optionInstance });
 
 		// Assign if value is present or property is nullable.
-		if (value != null || IsNullableType(instanceProp.PropertyType))
+		if(value != null || IsNullableType(instanceProp.PropertyType))
 		{
-			if (value != null && value.GetType() != instanceProp.PropertyType)
+			if(value != null && value.GetType() != instanceProp.PropertyType)
 			{
-                throw new InvalidOperationException($"Resolved value type '{value.GetType().Name}' does not match instance property '{instanceProp.Name}' of type '{instanceProp.PropertyType.Name}'.");
+				throw new InvalidOperationException($"Resolved value type '{value.GetType().Name}' does not match instance property '{instanceProp.Name}' of type '{instanceProp.PropertyType.Name}'.");
 			}
 			instanceProp.SetValue(this, value);
 		}
@@ -296,10 +293,10 @@ public abstract class BaseOptionsModel
 		);
 		result.Add(underline);
 
-		foreach (var optionProp in optionProps)
+		foreach(var optionProp in optionProps)
 		{
 			string baseName = optionProp.Name.Substring(0, optionProp.Name.Length - "Option".Length);
-			if (instanceProps.TryGetValue(baseName, out var instanceProp))
+			if(instanceProps.TryGetValue(baseName, out var instanceProp))
 			{
 				var optionInstance = optionProp.GetValue(null) as Option;
 				var value = instanceProp.GetValue(this);
@@ -314,11 +311,11 @@ public abstract class BaseOptionsModel
 
 				// Render List<string> as comma-separated
 				string valueStr;
-				if (value is List<string> list)
+				if(value is List<string> list)
 					valueStr = "[" + string.Join(", ", list.Select(s => $"\"{s}\"")) + "]";
-				else if (value is string str)
+				else if(value is string str)
 					valueStr = $"\"{str}\"";
-				else if (value is FileSystemInfo info)
+				else if(value is FileSystemInfo info)
 					valueStr = $"\"{info}\"";
 				else
 					valueStr = value?.ToString() ?? "(null)";

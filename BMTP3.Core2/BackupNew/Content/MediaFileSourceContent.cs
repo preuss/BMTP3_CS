@@ -1,9 +1,4 @@
 ﻿using MediaDevices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Runtime.Versioning;
 
 namespace BMTP3.Core2.BackupNew.Content;
@@ -12,11 +7,13 @@ namespace BMTP3.Core2.BackupNew.Content;
 /// Wraps a MediaFileInfo from the MediaDevices library.
 /// </summary>
 [SupportedOSPlatform("windows7.0")]
-public sealed class MediaFileSourceContent : ISourceContent {
+public sealed class MediaFileSourceContent : ISourceContent
+{
 	private readonly MediaFileInfo _mediaFileInfo;
 	private bool _disposed;
 
-	public MediaFileSourceContent(MediaFileInfo mediaFileInfo) {
+	public MediaFileSourceContent(MediaFileInfo mediaFileInfo)
+	{
 		_mediaFileInfo = mediaFileInfo ?? throw new ArgumentNullException(nameof(mediaFileInfo));
 	}
 
@@ -29,14 +26,18 @@ public sealed class MediaFileSourceContent : ISourceContent {
 	/// Opens a readable stream to the file content on the device.
 	/// The caller is responsible for disposing the returned stream.
 	/// </summary>
-	public Stream OpenRead() {
+	public Stream OpenRead()
+	{
 		if(_disposed)
+		{
 			throw new ObjectDisposedException(nameof(MediaFileSourceContent));
+		}
 
 		return _mediaFileInfo.OpenRead();
 	}
 
-	public void Dispose() {
+	public void Dispose()
+	{
 		_disposed = true;
 		// No resources to release — stream is owned by caller
 	}

@@ -1,6 +1,3 @@
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
-using System.Threading;
 using BMTP3.Core2.BackupNew2.Models.Configuration;
 
 namespace BMTP3.Core2.BackupNew2.Interfaces;
@@ -12,8 +9,8 @@ namespace BMTP3.Core2.BackupNew2.Interfaces;
 /// </summary>
 public interface IBackupScanner
 {
-    /// <summary>
-    /// Scans the source defined in the job and yields items found.
-    /// </summary>
-    IAsyncEnumerable<IBackupItem> ScanAsync(BackupJob job, CancellationToken ct);
+	/// <summary>
+	/// Scans the source defined in the job and yields items found.
+	/// </summary>
+	IAsyncEnumerable<IBackupItem> ScanAsync(BackupJob job, CancellationToken ct);
 }

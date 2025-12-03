@@ -1,34 +1,30 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BMTP3.Consoles.Services;
+﻿using BMTP3.Consoles.Services;
 
 namespace BMTP3.Consoles;
-public class ConsoleApplication {
+public class ConsoleApplication
+{
 	private readonly IClock _clock;
-    private readonly IConsoleWriter _writer;
+	private readonly IConsoleWriter _writer;
 
-    public ConsoleApplication(IClock clock, IConsoleWriter writer)
-    {
-        _clock = clock;
-        _writer = writer;
-    }
+	public ConsoleApplication(IClock clock, IConsoleWriter writer)
+	{
+		_clock = clock;
+		_writer = writer;
+	}
 
-    public async Task<int> RunAsync(string[] args)
-    {
-        _writer.WriteLine($"Programmet startede: {_clock.UtcNow}");
-        _writer.WriteLine("Argumenter modtaget:");
-        foreach (var arg in args)
-        {
-            _writer.WriteLine(arg);
-        }
+	public async Task<int> RunAsync(string[] args)
+	{
+		_writer.WriteLine($"Programmet startede: {_clock.UtcNow}");
+		_writer.WriteLine("Argumenter modtaget:");
+		foreach(var arg in args)
+		{
+			_writer.WriteLine(arg);
+		}
 
-        // Her kan du udvide med command parsing, service calls osv.
-        await Task.Delay(100); // Simulerer async arbejde
+		// Her kan du udvide med command parsing, service calls osv.
+		await Task.Delay(100); // Simulerer async arbejde
 
-        return 0; // Exit code
-    }
+		return 0; // Exit code
+	}
 
 }

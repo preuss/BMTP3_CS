@@ -1,5 +1,3 @@
-using System.Threading;
-using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew2.Models.Configuration;
 
 namespace BMTP3.Core2.BackupNew2.Interfaces;
@@ -9,16 +7,16 @@ namespace BMTP3.Core2.BackupNew2.Interfaces;
 /// </summary>
 public interface IBackupStep
 {
-    /// <summary>
-    /// The unique name of the step (e.g., "FileAnalysis").
-    /// </summary>
-    string Name { get; }
+	/// <summary>
+	/// The unique name of the step (e.g., "FileAnalysis").
+	/// </summary>
+	string Name { get; }
 
-    /// <summary>
-    /// Executes the step logic on the given backup item.
-    /// </summary>
-    /// <param name="item">The item to process.</param>
-    /// <param name="jobConfig">The global configuration for the current job.</param>
-    /// <param name="ct">Cancellation token.</param>
-    Task ExecuteAsync(IBackupItem item, BackupJob jobConfig, CancellationToken ct);
+	/// <summary>
+	/// Executes the step logic on the given backup item.
+	/// </summary>
+	/// <param name="item">The item to process.</param>
+	/// <param name="jobConfig">The global configuration for the current job.</param>
+	/// <param name="ct">Cancellation token.</param>
+	Task ExecuteAsync(IBackupItem item, BackupJob jobConfig, CancellationToken ct);
 }

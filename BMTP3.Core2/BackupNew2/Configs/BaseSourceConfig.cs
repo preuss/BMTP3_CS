@@ -1,12 +1,10 @@
 ﻿using BMTP3.Core2.BackupNew2.Models.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using BMTP3.Core2.BackupNew2.Models.Configuration.Enums;
 
-namespace BMTP3.Core2.Configs {
-	public abstract class BaseSourceConfig : ISourceConfig {
+namespace BMTP3.Core2.BackupNew2.Configs
+{
+	public abstract class BaseSourceConfig : ISourceConfig
+	{
 		/// <summary>
 		/// Default should be false
 		/// </summary>
@@ -24,10 +22,12 @@ namespace BMTP3.Core2.Configs {
 		public string? FilePattern { get; set; }
 		public string? FilePatternIfExist { get; set; }
 		public abstract SourceType SourceType { get; }
-		public override bool Equals(object? obj) {
+		public override bool Equals(object? obj)
+		{
 			return Equals(obj as ISourceConfig);
 		}
-		public bool Equals(ISourceConfig? other) {
+		public bool Equals(ISourceConfig? other)
+		{
 			return other != null &&
 				   Enabled == other.Enabled &&
 				   CompareByBinary == other.CompareByBinary &&
@@ -41,7 +41,8 @@ namespace BMTP3.Core2.Configs {
 				   FilePatternIfExist == other.FilePatternIfExist &&
 				   SourceType == other.SourceType;
 		}
-		public override int GetHashCode() {
+		public override int GetHashCode()
+		{
 			var hash = new HashCode();
 			hash.Add(Enabled);
 			hash.Add(CompareByBinary);

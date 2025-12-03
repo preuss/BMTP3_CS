@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.Errors;
+﻿namespace BMTP3.Core2.BackupNew.Errors;
 /// <summary>
 /// Holds all errors that occurred for a specific backup item.
 /// The collection is read-only from the outside and thread-safe for adding errors.
 /// </summary>
-public class ErrorInfo {
+public class ErrorInfo
+{
 	private readonly List<BackupError> _errors = new();
 
 	public IReadOnlyList<BackupError> Errors => _errors.AsReadOnly();
@@ -19,8 +14,10 @@ public class ErrorInfo {
 	/// <summary>
 	/// Adds a new error to the collection.
 	/// </summary>
-	public void AddError(string stageName, string message, Exception? ex = null) {
-		var error = new BackupError {
+	public void AddError(string stageName, string message, Exception? ex = null)
+	{
+		var error = new BackupError
+		{
 			StageName = stageName,
 			Message = message,
 			ExceptionType = ex?.GetType().Name,
@@ -33,7 +30,8 @@ public class ErrorInfo {
 	/// <summary>
 	/// Adds an already constructed BackupError instance.
 	/// </summary>
-	public void AddError(BackupError error) {
+	public void AddError(BackupError error)
+	{
 		_errors.Add(error ?? throw new ArgumentNullException(nameof(error)));
 	}
 

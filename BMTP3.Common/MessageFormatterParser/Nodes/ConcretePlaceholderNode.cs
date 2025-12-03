@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Common.MessageFormatterParser.Nodes;
+﻿namespace BMTP3.Common.MessageFormatterParser.Nodes;
 // Helper class to bypass the abstract/broken hierarchy for now
 public class ConcretePlaceholderNode : PlaceholderNode
 {

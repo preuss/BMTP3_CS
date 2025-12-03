@@ -1,15 +1,14 @@
 ﻿using BMTP3.Common.MessageFormatterParser;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace BMTP3.Common.Tests.MessageFormatterParser {
-	public class LexerTests {
-		private void AssertTokens(List<Token> expected, List<Token> actual) {
+namespace BMTP3.Common.Tests.MessageFormatterParser
+{
+	public class LexerTests
+	{
+		private void AssertTokens(List<Token> expected, List<Token> actual)
+		{
 			Assert.Equal(expected.Count, actual.Count);
-			for(int i = 0; i < expected.Count; i++) {
+			for(int i = 0; i < expected.Count; i++)
+			{
 				Assert.Equal(expected[i].Type, actual[i].Type);
 				Assert.Equal(expected[i].Value, actual[i].Value);
 				Assert.Equal(expected[i].Position, actual[i].Position);
@@ -17,7 +16,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ScanToken_SimpleInput_ReturnsCorrectTokens() {
+		public void ScanToken_SimpleInput_ReturnsCorrectTokens()
+		{
 			// Arrange
 			var lexer = new Lexer("some text ${ name }");
 			var expectedTokens = new List<Token>
@@ -31,7 +31,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var actualTokens = new List<Token>();
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				actualTokens.Add(lexer.NextToken());
 			}
 
@@ -40,7 +41,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ScanToken_ComplexInput_ReturnsCorrectTokens() {
+		public void ScanToken_ComplexInput_ReturnsCorrectTokens()
+		{
 			// Arrange
 			var lexer = new Lexer("${date.toUpper(),number:yyyy-MM-dd}");
 			var expectedTokens = new List<Token>
@@ -61,7 +63,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var actualTokens = new List<Token>();
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				actualTokens.Add(lexer.NextToken());
 			}
 
@@ -70,7 +73,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ScanToken_EvalPattern_ReturnsCorrectTokens() {
+		public void ScanToken_EvalPattern_ReturnsCorrectTokens()
+		{
 			// Arrange
 			var lexer = new Lexer("${count§eq0,0#{low}}");
 			var expectedTokens = new List<Token>
@@ -82,14 +86,15 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 				new Token(TokenType.Comma, ",", 11, 0, 0),
 				new Token(TokenType.LiteralInteger, "0", 12, 0, 0),
 				new Token(TokenType.HashBraceOpen, "#{", 13, 0, 0),
-				                				new Token(TokenType.Identifier, "low", 15, 0, 0),
-				                				new Token(TokenType.BraceClose, "}", 18, 0, 0),
-				                				new Token(TokenType.LiteralString, "}", 19, 0, 0),
-				                				new Token(TokenType.EOF, "", 20, 0, 0)
-				                			};			var actualTokens = new List<Token>();
+												new Token(TokenType.Identifier, "low", 15, 0, 0),
+												new Token(TokenType.BraceClose, "}", 18, 0, 0),
+												new Token(TokenType.LiteralString, "}", 19, 0, 0),
+												new Token(TokenType.EOF, "", 20, 0, 0)
+											}; var actualTokens = new List<Token>();
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				actualTokens.Add(lexer.NextToken());
 			}
 
@@ -98,7 +103,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ScanToken_EscapedBraces_ReturnsCorrectTokens() {
+		public void ScanToken_EscapedBraces_ReturnsCorrectTokens()
+		{
 			// Arrange
 			var lexer = new Lexer("text {{escaped}} text");
 			var expectedTokens = new List<Token>
@@ -113,7 +119,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var actualTokens = new List<Token>();
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				actualTokens.Add(lexer.NextToken());
 			}
 
@@ -122,7 +129,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ScanToken_PlainText_ReturnsSimpleSingleLiteralString() {
+		public void ScanToken_PlainText_ReturnsSimpleSingleLiteralString()
+		{
 			// Arrange
 			var lexer = new Lexer("hello");
 			var expectedTokens = new List<Token>
@@ -133,7 +141,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var actualTokens = new List<Token>();
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				actualTokens.Add(lexer.NextToken());
 			}
 
@@ -141,7 +150,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			AssertTokens(expectedTokens, actualTokens);
 		}
 		[Fact]
-		public void ScanToken_PlainText_ReturnsSingleLiteralString() {
+		public void ScanToken_PlainText_ReturnsSingleLiteralString()
+		{
 			// Arrange
 			var lexer = new Lexer("hello world");
 			var expectedTokens = new List<Token>
@@ -152,7 +162,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var actualTokens = new List<Token>();
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				actualTokens.Add(lexer.NextToken());
 			}
 
@@ -161,7 +172,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ScanToken_LoneDollarOrHash_ReturnsLiteralString() {
+		public void ScanToken_LoneDollarOrHash_ReturnsLiteralString()
+		{
 			// Arrange
 			var lexer = new Lexer("text $ #");
 			var expectedTokens = new List<Token>
@@ -172,7 +184,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var actualTokens = new List<Token>();
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				actualTokens.Add(lexer.NextToken());
 			}
 
@@ -181,7 +194,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ScanToken_EmptyInput_ReturnsEOF() {
+		public void ScanToken_EmptyInput_ReturnsEOF()
+		{
 			// Arrange
 			var lexer = new Lexer("");
 			var expectedTokens = new List<Token>
@@ -191,7 +205,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 			var actualTokens = new List<Token>();
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				actualTokens.Add(lexer.NextToken());
 			}
 
@@ -200,23 +215,28 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ScanToken_UnterminatedPlaceholder_ThrowsException() {
+		public void ScanToken_UnterminatedPlaceholder_ThrowsException()
+		{
 			// Arrange
 			var lexer = new Lexer("${name");
 
 			// Act & Assert
-			Assert.Throws<InvalidOperationException>(() => {
-				while(lexer.HasNextToken()) {
+			Assert.Throws<InvalidOperationException>(() =>
+			{
+				while(lexer.HasNextToken())
+				{
 					lexer.NextToken();
 				}
 			});
 		}
 
 		[Fact]
-		public void PeekNextChar_AtEOF_ThrowsException() {
+		public void PeekNextChar_AtEOF_ThrowsException()
+		{
 			// Arrange
 			var lexer = new Lexer("");
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				lexer.NextToken(); // Consume EOF
 			}
 
@@ -226,10 +246,12 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void ConsumeNextChar_AtEOF_ThrowsException() {
+		public void ConsumeNextChar_AtEOF_ThrowsException()
+		{
 			// Arrange
 			var lexer = new Lexer("");
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				lexer.NextToken(); // Consume EOF
 			}
 
@@ -239,12 +261,14 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void HasMoreTokens_ReturnsFalseAfterEOF() {
+		public void HasMoreTokens_ReturnsFalseAfterEOF()
+		{
 			// Arrange
 			var lexer = new Lexer("text");
 
 			// Act
-			while(lexer.HasNextToken()) {
+			while(lexer.HasNextToken())
+			{
 				lexer.NextToken();
 			}
 

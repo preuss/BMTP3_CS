@@ -1,23 +1,21 @@
-﻿using System;
-using System.Collections.Generic;
-using System.CommandLine;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
-public class VerifyConsoleCommand : BaseConsoleCommand {
+public class VerifyConsoleCommand : BaseConsoleCommand
+{
 	public GlobalOptionsModel GlobalOptions { get; }
 	public VerifyOptionsModel VerifyOptions { get; }
 
-	public VerifyConsoleCommand() : this("verify", "Verificér backup", new GlobalOptionsModel(), new VerifyOptionsModel()) {
+	public VerifyConsoleCommand() : this("verify", "Verificér backup", new GlobalOptionsModel(), new VerifyOptionsModel())
+	{
 	}
 	public VerifyConsoleCommand(
 		string name,
 		string description,
 		GlobalOptionsModel globalOptionsModel,
 		VerifyOptionsModel verifyOptionsModel
-	) : base(name, description, globalOptionsModel, verifyOptionsModel) {
+	) : base(name, description, globalOptionsModel, verifyOptionsModel)
+	{
 		GlobalOptions = globalOptionsModel;
 		VerifyOptions = verifyOptionsModel;
 	}
@@ -25,7 +23,8 @@ public class VerifyConsoleCommand : BaseConsoleCommand {
 	protected override async Task<int> DoExecuteAsync(
 		ParseResult parseResult,
 		CancellationToken cancellationToken
-	) {
+	)
+	{
 		Console.WriteLine("Verificering udføres...");
 		Console.WriteLine("DeepValidation: " + VerifyOptions.DeepValidation);
 		Console.WriteLine("DeepValidation: " + VerifyOptions.DeepValidation.GetType());

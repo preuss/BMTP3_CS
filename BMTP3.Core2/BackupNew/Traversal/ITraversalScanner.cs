@@ -1,6 +1,4 @@
-﻿using System.Collections.Generic;
-
-namespace BMTP3.Core2.BackupNew.Traversal;
+﻿namespace BMTP3.Core2.BackupNew.Traversal;
 
 /// <summary>
 /// Defines a generic contract for scanning a source and producing raw entries.

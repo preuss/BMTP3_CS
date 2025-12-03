@@ -1,7 +1,4 @@
-﻿using System;
-using System.Threading;
-
-namespace BMTP3.Core2.BackupNew.Events;
+﻿namespace BMTP3.Core2.BackupNew.Events;
 public class TraversalProgressCounter
 {
 	private int _fileCount;
@@ -132,24 +129,24 @@ public class TraversalProgressCounter
 /// </summary>
 public readonly struct ProgressSnapshotCount
 {
-    /// <summary>
-    /// Gets the number of files in the snapshot.
-    /// </summary>
-    public int FileCount { get; }
+	/// <summary>
+	/// Gets the number of files in the snapshot.
+	/// </summary>
+	public int FileCount { get; }
 
-    /// <summary>
-    /// Gets the number of directories in the snapshot.
-    /// </summary>
-    public int DirectoryCount { get; }
+	/// <summary>
+	/// Gets the number of directories in the snapshot.
+	/// </summary>
+	public int DirectoryCount { get; }
 
-    /// <summary>
-    /// Initializes a new immutable snapshot with the specified file and directory counts.
-    /// </summary>
-    /// <param name="fileCount">Number of files.</param>
-    /// <param name="directoryCount">Number of directories.</param>
-    public ProgressSnapshotCount(int fileCount, int directoryCount)
-    {
-        FileCount = fileCount;
-        DirectoryCount = directoryCount;
-    }
+	/// <summary>
+	/// Initializes a new immutable snapshot with the specified file and directory counts.
+	/// </summary>
+	/// <param name="fileCount">Number of files.</param>
+	/// <param name="directoryCount">Number of directories.</param>
+	public ProgressSnapshotCount(int fileCount, int directoryCount)
+	{
+		FileCount = fileCount;
+		DirectoryCount = directoryCount;
+	}
 }

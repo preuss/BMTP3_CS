@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
+﻿using System.Text.RegularExpressions;
 
 namespace BMTP3.Consoles.Utilities;
-public static class GlobConverter {
+public static class GlobConverter
+{
 	// Regex pattern to match either forward slash (/) or backslash (\) as a path separator.
 	private const string SeparatorRegex = @"[/\\]";
 
@@ -14,9 +10,11 @@ public static class GlobConverter {
 	/// Converts a Glob pattern into a Regex pattern, supporting Standard Globs, 
 	/// Recursive (**), all POSIX/Bash Extglobs (@, +, ?, !) and extended suffix negation.
 	/// </summary>
-	public static string GlobToRegex(string globPattern) {
+	public static string GlobToRegex(string globPattern)
+	{
 		// 1. Handle Global Negation: !(*.jpg) (Priority for POSIX syntax)
-		if(globPattern.StartsWith("!(") && globPattern.EndsWith(")")) {
+		if(globPattern.StartsWith("!(") && globPattern.EndsWith(")"))
+		{
 			string positivePattern = globPattern.Substring(2, globPattern.Length - 3);
 			// Internal conversion without anchors, as the Lookahead will anchor the entire string.
 			string positiveRegex = ConvertCoreGlobToRegex(positivePattern, ignoreAnchors: true);
@@ -29,11 +27,13 @@ public static class GlobConverter {
 
 		// 2. Handle Extended Suffix Negation: *.!(jpg)
 		// This implements the requested local Negative Lookahead Suffix Match.
-		if(globPattern.Contains("!(") && globPattern.Contains(")") && globPattern.EndsWith(")")) {
+		if(globPattern.Contains("!(") && globPattern.Contains(")") && globPattern.EndsWith(")"))
+		{
 			int negationStart = globPattern.LastIndexOf("!(");
 			int negationEnd = globPattern.LastIndexOf(')');
 
-			if(negationStart > 0 && negationEnd == globPattern.Length - 1) {
+			if(negationStart > 0 && negationEnd == globPattern.Length - 1)
+			{
 				string negatedSuffix = globPattern.Substring(negationStart + 2, negationEnd - (negationStart + 2));
 				// Convert the suffix to be negated into its Regex form. We only care about literal matching here.
 				string negatedRegex = Regex.Escape(negatedSuffix).Replace(@"\*", ".*").Replace(@"\?", ".");
@@ -53,7 +53,8 @@ public static class GlobConverter {
 	/// <summary>
 	/// Handles the core conversion logic for all supported Glob elements.
 	/// </summary>
-	private static string ConvertCoreGlobToRegex(string globPattern, bool ignoreAnchors) {
+	private static string ConvertCoreGlobToRegex(string globPattern, bool ignoreAnchors)
+	{
 		// Define the Regex pattern for path separators (forward or backslash).
 		const string SeparatorRegex = @"[/\\]";
 
@@ -117,7 +118,8 @@ public static class GlobConverter {
 		// --- Final Anchors ---
 
 		// Add anchors
-		if(!ignoreAnchors) {
+		if(!ignoreAnchors)
+		{
 			regexPattern = $"^{regexPattern}$";
 		}
 

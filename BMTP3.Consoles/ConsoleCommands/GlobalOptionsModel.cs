@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.Linq;
-using System.Reflection;
-
-namespace BMTP3.Consoles.ConsoleCommands;
+﻿namespace BMTP3.Consoles.ConsoleCommands;
 
 public class GlobalOptionsModel : BaseOptionsModel
 {

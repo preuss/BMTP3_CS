@@ -1,30 +1,44 @@
-using System;
-using System.IO;
-using System.Runtime.Versioning;
 using BMTP3.Core2.BackupNew2.Interfaces;
 using MediaDevices;
+using System.Runtime.Versioning;
 
 namespace BMTP3.Core2.BackupNew2.Models.Internal;
 
+/// <summary>
+/// ISourceContent implementation for files on MTP/PTP devices (phones, cameras, etc.).
+/// Wraps a MediaFileInfo from the MediaDevices library.
+/// </summary>
 [SupportedOSPlatform("windows7.0")]
-public class MediaDeviceSourceContent : ISourceContent
+public sealed class MediaFileSourceContent : ISourceContent
 {
-    private readonly MediaFileInfo _mediaFileInfo;
+	private readonly MediaFileInfo _mediaFileInfo;
+	private bool _disposed;
 
-    public MediaDeviceSourceContent(MediaFileInfo mediaFileInfo)
-    {
-        _mediaFileInfo = mediaFileInfo ?? throw new ArgumentNullException(nameof(mediaFileInfo));
-    }
+	public MediaFileSourceContent(MediaFileInfo mediaFileInfo)
+	{
+		_mediaFileInfo = mediaFileInfo ?? throw new ArgumentNullException(nameof(mediaFileInfo));
+	}
 
-    public string Name => _mediaFileInfo.Name;
+	/// <summary>
+	/// Gets the size of the file on the device in bytes.
+	/// </summary>
+	public ulong Length => _mediaFileInfo.Length;
 
-    public string OriginalPath => _mediaFileInfo.FullName;
+	/// <summary>
+	/// Opens a readable stream to the file content on the device.
+	/// The caller is responsible for disposing the returned stream.
+	/// </summary>
+	public Stream OpenRead()
+	{
+		if(_disposed)
+			throw new ObjectDisposedException(nameof(MediaFileSourceContent));
 
-    // Cast ulong to long. In practice, file sizes won't exceed long.MaxValue (9 EB) soon.
-    public long SizeBytes => (long)_mediaFileInfo.Length;
+		return _mediaFileInfo.OpenRead();
+	}
 
-    public Stream OpenReadStream()
-    {
-        return _mediaFileInfo.OpenRead();
-    }
+	public void Dispose()
+	{
+		_disposed = true;
+		// No resources to release — stream is owned by caller
+	}
 }

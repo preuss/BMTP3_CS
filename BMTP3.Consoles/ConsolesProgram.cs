@@ -1,31 +1,34 @@
 ﻿using BMTP3.Consoles.ConsoleCommands;
-using BMTP3.Consoles.Startup;
 using BMTP3.Consoles.Startup.Configurations;
 using BMTP3.Consoles.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.CommandLine;
-using System.CommandLine.Parsing;
-using System.IO;
 using System.Text.RegularExpressions;
 using DGlob = DotNet.Globbing;
 
 namespace BMTP3.Consoles;
 
-public class ConsolesProgram {
-	public static void ApplyConfigSetups(IConfigurationManager configuration, IEnumerable<IConfigSetup> setups) {
-		foreach(var setup in setups) {
+public class ConsolesProgram
+{
+	public static void ApplyConfigSetups(IConfigurationManager configuration, IEnumerable<IConfigSetup> setups)
+	{
+		foreach(var setup in setups)
+		{
 			setup.Configure(configuration);
 		}
 	}
 
-	public static void ApplyServiceSetups(IServiceCollection services, IEnumerable<IServiceSetup> setups, IConfiguration configuration) {
-		foreach(var setup in setups) {
+	public static void ApplyServiceSetups(IServiceCollection services, IEnumerable<IServiceSetup> setups, IConfiguration configuration)
+	{
+		foreach(var setup in setups)
+		{
 			setup.Configure(services, configuration);
 		}
 	}
-	public static async Task<int> Main(string[] args) {
+	public static async Task<int> Main(string[] args)
+	{
 		args = ["backup", "--path", "C:\\BackupFolder"];
 		args = ["backup", "asdf", "-unknown", "--help"];
 		args = ["backup", "-v", "true", "true", "-v", "false", "false", "false", "-vvvv", "-v", "-v", "--help"];
@@ -65,14 +68,14 @@ public class ConsolesProgram {
 
 		BackupConsoleCommand backupCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(backupCommand);
-		
+
 
 		VerifyConsoleCommand verifyCommand = new();
 		rootCommand.Subcommands.Add(verifyCommand);
 
 		var o = rootCommand.Options;
 		Console.WriteLine($"Options i root Command: " + o.Count);
-		foreach (var option in o)
+		foreach(var option in o)
 		{
 			Console.WriteLine(option);
 		}
@@ -82,7 +85,8 @@ public class ConsolesProgram {
 		return await parseResult.InvokeAsync();
 	}
 
-	private static void TestMultipleCommands(string[] args) {
+	private static void TestMultipleCommands(string[] args)
+	{
 		args = ["cmd1", "--device", "DeviceA"];
 		args = ["cmd2", "--device", "DeviceB"];
 		args = ["cmd3", "--device", "DeviceC"];
@@ -114,19 +118,22 @@ public class ConsolesProgram {
 		rootCommand.Add(cmd3);
 
 		// Sæt handler for hver command
-		cmd1.SetAction((parseResult) => {
+		cmd1.SetAction((parseResult) =>
+		{
 			var device = parseResult.GetValue(deviceOption1);
 			Console.WriteLine($"cmd1 device: {device}");
 			return 0;
 		});
 
-		cmd2.SetAction((parseResult) => {
+		cmd2.SetAction((parseResult) =>
+		{
 			var device = parseResult.GetValue(deviceOption2);
 			Console.WriteLine($"cmd2 device: {device}");
 			return 0;
 		});
 
-		cmd3.SetAction((parseResult) => {
+		cmd3.SetAction((parseResult) =>
+		{
 			var device = parseResult.GetValue(deviceOption3);
 			Console.WriteLine($"cmd3 device: {device}");
 			return 0;
@@ -137,7 +144,8 @@ public class ConsolesProgram {
 		parseResult.Invoke();
 	}
 
-	public static void RunFormattedTest(string globPatternInput) {
+	public static void RunFormattedTest(string globPatternInput)
+	{
 		var testCases = new[]
 		{
 			new { Path = "C:\\start\\anotherdir\\fileA.jpeg", Expected = true },
@@ -160,7 +168,8 @@ public class ConsolesProgram {
 		Console.WriteLine("{\"Sti\",-" + padding + "} {\"Forventet\",-10} {\"Faktisk\",-10} {\"Status\",-10}");
 		Console.WriteLine(new string('-', padding + 30));
 
-		foreach(var testCase in testCases) {
+		foreach(var testCase in testCases)
+		{
 			string pathConverted = testCase.Path; // Use the actual path
 			pathConverted = pathConverted.Replace('\\', '/');
 

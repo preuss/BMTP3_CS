@@ -1,14 +1,12 @@
 ﻿using BMTP3.Common.MessageFormatterParser;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace BMTP3.Common.Tests.MessageFormatterParser {
-	public class CharStreamTests {
+namespace BMTP3.Common.Tests.MessageFormatterParser
+{
+	public class CharStreamTests
+	{
 		[Fact]
-		public void Next_WithSingleChar_ReturnsCorrectCharAndUpdatesPosition() {
+		public void Next_WithSingleChar_ReturnsCorrectCharAndUpdatesPosition()
+		{
 			// Arrange
 			var input = "a";
 			var stream = new CharStream(input);
@@ -27,7 +25,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void Next_WithEmptyStream_ThrowsException() {
+		public void Next_WithEmptyStream_ThrowsException()
+		{
 			// Arrange
 			var stream = new CharStream("");
 
@@ -42,7 +41,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void NextMultiple_WithMultipleChars_ReturnsCorrectListAndUpdatesPosition() {
+		public void NextMultiple_WithMultipleChars_ReturnsCorrectListAndUpdatesPosition()
+		{
 			// Arrange
 			var input = "hello\r\nworld"; // Default new line is \n, but this stream is initialized with \r\n, so we'll pass it explicitly.
 										  // The CharStream constructor without new line sequences defaults to POSIX (\n).
@@ -72,7 +72,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void NextMultiple_WithTooManyChars_ThrowsException() {
+		public void NextMultiple_WithTooManyChars_ThrowsException()
+		{
 			// Arrange
 			var input = "a\nb";
 			var stream = new CharStream(input);
@@ -89,7 +90,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void Peek_WithSingleChar_ReturnsCharWithoutConsuming() {
+		public void Peek_WithSingleChar_ReturnsCharWithoutConsuming()
+		{
 			// Arrange
 			var input = "a";
 			var stream = new CharStream(input);
@@ -107,7 +109,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void PeekMultiple_WithMultipleChars_ReturnsCorrectListWithoutConsuming() {
+		public void PeekMultiple_WithMultipleChars_ReturnsCorrectListWithoutConsuming()
+		{
 			// Arrange
 			var input = "hello";
 			var stream = new CharStream(input);
@@ -125,7 +128,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void PeekMultiple_WithTooManyChars_ThrowsException() {
+		public void PeekMultiple_WithTooManyChars_ThrowsException()
+		{
 			// Arrange
 			var input = "ab";
 			var stream = new CharStream(input);
@@ -141,7 +145,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void HasChars_WithEnoughChars_ReturnsTrue() {
+		public void HasChars_WithEnoughChars_ReturnsTrue()
+		{
 			// Arrange
 			var input = "hello";
 			var stream = new CharStream(input);
@@ -156,7 +161,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void HasChars_WithTooManyChars_ReturnsFalse() {
+		public void HasChars_WithTooManyChars_ReturnsFalse()
+		{
 			// Arrange
 			var input = "ab";
 			var stream = new CharStream(input);
@@ -171,7 +177,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void EndOfStream_WithEmptyStream_ReturnsTrue() {
+		public void EndOfStream_WithEmptyStream_ReturnsTrue()
+		{
 			// Arrange
 			var input = "";
 			var stream = new CharStream(input);
@@ -181,7 +188,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void EndOfStream_AfterReadingAllChars_ReturnsTrue() {
+		public void EndOfStream_AfterReadingAllChars_ReturnsTrue()
+		{
 			// Arrange
 			var input = "ab";
 			var stream = new CharStream(input);
@@ -198,7 +206,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		[InlineData("a\r\nb", CharStream.WINDOWS_DOS)] // Windows/DOS
 		[InlineData("a\rb", CharStream.COMMODORE)]    // Commodore
 		[InlineData("a\n\rb", CharStream.ACORN)]      // Acorn
-		public void LineAndColumnTracking_WithVariousNewLines_UpdatesCorrectly(string input, string newLineSequence) {
+		public void LineAndColumnTracking_WithVariousNewLines_UpdatesCorrectly(string input, string newLineSequence)
+		{
 			// Arrange
 			var stream = new CharStream(input, [newLineSequence]);
 
@@ -230,7 +239,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void Next_WithZeroCount_ReturnsEmptyListAndNoPositionChange() {
+		public void Next_WithZeroCount_ReturnsEmptyListAndNoPositionChange()
+		{
 			// Arrange
 			var input = "abc";
 			var stream = new CharStream(input);
@@ -246,7 +256,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		}
 
 		[Fact]
-		public void Peek_WithZeroCount_ReturnsEmptyListAndNoPositionChange() {
+		public void Peek_WithZeroCount_ReturnsEmptyListAndNoPositionChange()
+		{
 			// Arrange
 			var input = "abc";
 			var stream = new CharStream(input);
@@ -268,13 +279,15 @@ namespace BMTP3.Common.Tests.MessageFormatterParser {
 		[InlineData("a\rb", 3, 1, 1)]
 		[InlineData("a\n\rb", 3, 1, 1)]
 		[InlineData("", 0, 0, 0)]
-		public void PositionTracking_MultipleReads_UpdatesCorrectly(string input, int charCount, int expectedLine, int expectedColumn) {
+		public void PositionTracking_MultipleReads_UpdatesCorrectly(string input, int charCount, int expectedLine, int expectedColumn)
+		{
 			// Arrange
 			var allNewLineSequences = new[] { CharStream.POSIX, CharStream.WINDOWS_DOS, CharStream.COMMODORE, CharStream.ACORN };
 			var stream = new CharStream(input, allNewLineSequences);
 
 			// Act
-			if(charCount > 0) {
+			if(charCount > 0)
+			{
 				stream.Next(charCount);
 			}
 

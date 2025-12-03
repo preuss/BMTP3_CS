@@ -1,16 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.Configs {
-	internal class DeviceConfig {
+﻿namespace BMTP3.Core2.Configs
+{
+	internal class DeviceConfig
+	{
 		private string deviceName;
-		public DeviceConfig(string deviceName) {
+		public DeviceConfig(string deviceName)
+		{
 			this.deviceName = deviceName;
 		}
-		public string DeviceName {
+		public string DeviceName
+		{
 			get { return deviceName; }
 		}
 	}

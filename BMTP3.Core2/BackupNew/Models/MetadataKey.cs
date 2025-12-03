@@ -1,15 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.Models;
+﻿namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
 /// Alle kendte metadata-nøgler.
 /// Brug af enum + attribute giver både typesikkerhed og mulighed for at serialisere til læsbare strings.
 /// </summary>
-public enum MetadataKey {
+public enum MetadataKey
+{
 	// ── Identifikation ─────────────────────────────────────
 	[MetadataKeyInfo("original_source_id")]
 	OriginalSourceId,               // MTP PersistentUniqueId eller FileInfo.FullName
@@ -52,24 +47,12 @@ public enum MetadataKey {
 }
 
 /// <summary>
-/// Attribute der gør det muligt at mappe enum-værdien til en læsbar string ved serialisering.
+/// Attribute that makes it possible to map the enum value to a readable string during serialization.
 /// </summary>
 [AttributeUsage(AttributeTargets.Field)]
-public class MetadataKeyInfoAttribute : Attribute {
+public class MetadataKeyInfoAttribute : Attribute
+{
 	public string Key { get; }
 	public MetadataKeyInfoAttribute(string key) => Key = key;
 }
 
-// Ekstra hjælpemetode – gør det nemt at få string-repræsentationen
-public static class MetadataKeyExtensions {
-	public static string GetKey(this MetadataKey key) {
-		var field = key.GetType().GetField(key.ToString())
-					?? throw new ArgumentException($"No field found for {key}");
-
-		var attribute = field.GetCustomAttributes(typeof(MetadataKeyInfoAttribute), false)
-							 .Cast<MetadataKeyInfoAttribute>()
-							 .FirstOrDefault();
-
-		return attribute?.Key ?? key.ToString();
-	}
-}

@@ -1,33 +1,27 @@
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew2.Interfaces;
 using BMTP3.Core2.BackupNew2.Models;
 using BMTP3.Core2.BackupNew2.Models.Configuration;
+using BMTP3.Core2.BackupNew2.Models.Configuration.Enums;
 using BMTP3.Core2.BackupNew2.Traversal; // Added for scanner types (Important new line)
+using System.Diagnostics;
+using System.Formats.Tar;
 
 namespace BMTP3.Core2.BackupNew2.Engine;
 
 public class StandardBackupEngine : IBackupEngine
 {
-	private readonly IEnumerable<IBackupScanner> _allScanners; // Changed from single _scanner to all scanners
 	private readonly IEnumerable<IBackupStep> _pipelineSteps;
 	private readonly IBackupStateRepository _stateRepository;
 
 	public StandardBackupEngine(
-		IEnumerable<IBackupScanner> allScanners, // Now receives all scanners
 		IEnumerable<IBackupStep> pipelineSteps,
 		IBackupStateRepository stateRepository)
 	{
-		_allScanners = allScanners;
 		_pipelineSteps = pipelineSteps;
 		_stateRepository = stateRepository;
 	}
 
-	public async Task<BackupJobResult> ExecuteJobAsync(BackupJob job, IProgress<BackupProgress> progress, CancellationToken ct)
+	public async Task<BackupJobResult> RunAsync(BackupJob job, IProgress<BackupProgress> progress, CancellationToken ct)
 	{
 		var result = new BackupJobResult
 		{
@@ -42,25 +36,24 @@ public class StandardBackupEngine : IBackupEngine
 		try
 		{
 			// 1. Select the appropriate scanner based on job.SourceType
-			IBackupScanner selectedScanner;
+			List<BackupItem> backupItems = new List<BackupItem>();
 			if(job.SourceType == SourceType.MediaDevice)
 			{
-				selectedScanner = _allScanners.OfType<MediaDeviceScanner>().FirstOrDefault()
-									 ?? throw new InvalidOperationException("MediaDeviceScanner not found for MTP source type.");
+				// TODO: Add MediaDeviceScanner implementation and registration
 			} else if(job.SourceType == SourceType.FileSystem)
 			{
-				selectedScanner = _allScanners.OfType<FileSystemScanner>().FirstOrDefault()
-									 ?? throw new InvalidOperationException("FileSystemScanner not found for FileSystem source type.");
+				// TODO: Add FileSystemScanner implementation and registration
 			} else
 			{
 				throw new NotSupportedException($"SourceType '{job.SourceType}' is not supported.");
 			}
 
-			// 2. Load State
+
+			// Load State
 			await _stateRepository.LoadAsync();
 
 			// 3. Scan & Process Loop
-			await foreach(var item in selectedScanner.ScanAsync(job, ct)) // Use selected scanner
+			foreach(var item in backupItems) // Use selected scanner
 			{
 				ct.ThrowIfCancellationRequested();
 
@@ -81,7 +74,8 @@ public class StandardBackupEngine : IBackupEngine
 						} catch(Exception stepEx) when(stepEx is not OperationCanceledException)
 						{
 							// Step failure logic
-							item.Fail(stepEx.Message, step.Name, stepEx);
+							//item.Fail(stepEx.Message, step.Name, stepEx);
+							// TODO: Implement item.Fail method to set error info properly
 							// If a step fails, we generally break the pipeline for this item, 
 							// unless we implement specific recovery logic.
 							break;
@@ -99,7 +93,7 @@ public class StandardBackupEngine : IBackupEngine
 						{
 							currentProgress.ItemsProcessed++;
 							// Use TryGet here in case metadata is missing, or rely on the step to ensure its present
-							long bytes = item.Metadata.Get<long?>(MetadataKey.SizeBytes) ?? 0;
+							long bytes = item.Metadata.Get<long?>(MetadataKey.Length) ?? 0;
 							currentProgress.BytesProcessed += bytes;
 						} else if(item.Action == BackupActionType.Skip)
 						{
