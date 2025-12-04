@@ -37,7 +37,7 @@ public sealed class FileSystemScanner : ITraversalScanner<FileInfo>
 		DirectoryInfo dirInfo = new(rootPath);
 
 		// Single snapshot object, updated with 'with' each time
-		TraversalProgress snapshot = new TraversalProgress(
+		TraversalProgress snapshot = new(
 			FileCount: 0,
 			LastFileName: null,
 			FileCountChanged: false,
