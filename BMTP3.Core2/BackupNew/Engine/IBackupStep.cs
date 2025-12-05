@@ -7,6 +7,9 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps;
+/// <summary>
+/// Represents a single step in the sequential backup pipeline.
+/// </summary>
 public interface IBackupStep
 {
     /// <summary>
