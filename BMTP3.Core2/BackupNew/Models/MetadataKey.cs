@@ -1,58 +1,54 @@
-﻿namespace BMTP3.Core2.BackupNew.Models;
+using BMTP3.Core2.BackupNew2.Models;
+
+namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
-/// Alle kendte metadata-nøgler.
-/// Brug af enum + attribute giver både typesikkerhed og mulighed for at serialisere til læsbare strings.
+/// All known metadata keys.
+/// Using enum + attribute provides both type safety and the ability to serialize to readable strings.
 /// </summary>
 public enum MetadataKey
-{
-	// ── Identifikation ─────────────────────────────────────
-	[MetadataKeyInfo("original_source_id")]
-	OriginalSourceId,               // MTP PersistentUniqueId eller FileInfo.FullName
+	{
+		// File identification and integrity
+		[KeyStringValue("source_id")]
+		SourceId,// MTP PersistentUniqueId or FileInfo.FullName
+		[KeyStringValue("source_full_path")]
+		SourceFullPath,
+		[KeyStringValue("source_relative_path")]
+		SourceRelativePath,// E.g. "DCIM\100APPLE\" on the phone
+		[KeyStringValue("source_file_name")]
+		SourceFileName,
+		// length - Also stored in ISourceContent.Length
+		[KeyStringValue("length")]
+		Length,
 
-	[MetadataKeyInfo("original_file_name")]
-	OriginalFileName,
+		// ── Results from stages (enrichment) ─────────────────
+		[KeyStringValue("hashes")] // Can contain a Dictionary<string, string> e.g. {"SHA256": "...", "MD5": "..."}
+		Hashes,
 
-	[MetadataKeyInfo("source_relative_path")]
-	SourceRelativePath,             // F.eks. "DCIM\100APPLE\" på telefonen
+		// Device-specific information (from MTP/PTP)
+		[KeyStringValue("device_name")]
+		DeviceName,
+		[KeyStringValue("device_file_url")]
+		DeviceFileUrl,
+		[KeyStringValue("device_unique_id")]
+		DeviceUniqueId,
 
-	// ── Grundlæggende attributter ──────────────────────────
-	[MetadataKeyInfo("size")]
-	Size,                           // long – gemmes også i ISourceContent
+		// Normalized timestamps
+		[KeyStringValue("datetime_authored")]
+		AuthoredDateTime,         // Primary date (EXIF 'Date Taken', MTP 'Authored Date')
+		[KeyStringValue("datetime_modified")]
+		ModifiedDateTime,         // File content last changed (LastWriteTime / mtime)
+		[KeyStringValue("datetime_created")]
+		CreatedDateTime,          // File created on filesystem (CreationTime / btime)
+		[KeyStringValue("datetime_accessed")]
+		LastAccessDateTime,       // File last read (LastAccessTime / atime)
+		[KeyStringValue("datetime_metadata_changed")]
+		MetadataChangeDateTime,   // Metadata last changed (ctime)
 
-	// ── Tidsstempler fra kilden ───────────────────────────
-	[MetadataKeyInfo("datetime_authored")]
-	AuthoredDateTime,               // EXIF DateTimeOriginal eller lign.
-
-	[MetadataKeyInfo("datetime_modified")]
-	ModifiedDateTime,
-
-	[MetadataKeyInfo("datetime_created")]
-	CreatedDateTime,
-
-	// ── Resultater fra stages (berigelse) ──────────────────
-	[MetadataKeyInfo("local_temp_path")]
-	LocalTempPath,                  // string – fuld sti til midlertidig fil
-
-	[MetadataKeyInfo("hash_sha256")]
-	HashSha256,                     // string (hex)
-
-	[MetadataKeyInfo("final_target_path")]
-	FinalTargetPath,                // string – hvor filen ender i backup-mappen
-
-	// ── Fremtidige (eksempler du kan tilføje senere) ───────
-	// [MetadataKeyInfo("is_duplicate")]
-	// IsDuplicate,
-	// [MetadataKeyInfo("duplicate_of_path")]
-	// DuplicateOfPath,
-}
-
-/// <summary>
-/// Attribute that makes it possible to map the enum value to a readable string during serialization.
-/// </summary>
-[AttributeUsage(AttributeTargets.Field)]
-public class MetadataKeyInfoAttribute : Attribute
-{
-	public string Key { get; }
-	public MetadataKeyInfoAttribute(string key) => Key = key;
-}
-
+		// Target handling
+		[KeyStringValue("collision_index")]
+		CollisionIndex,
+		[KeyStringValue("local_temp_path")]
+		LocalTempPath,// string – full path to temporary file
+		[KeyStringValue("final_target_path")]
+		FinalTargetPath,// string – where the file ends up in the backup folder
+	}

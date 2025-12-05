@@ -10,9 +10,23 @@ namespace BMTP3.Core2.BackupNew.Models;
 public class BackupItem : IBackupItem
 {
 	public ISourceContent Content { get; private set; }
-	public BackupMetadata Metadata { get; }
+	public BackupMetadata Metadata { get; private set; }
 	public BackupState State { get; private set; }
-	public ErrorInfo ErrorInfo { get; }
+	public BackupActionType Action { get; private set; }
+	/// <summary>
+	/// Collection of all metadata – name, path, hashes, timestamps, etc.
+	/// Enriched by each stage in the pipeline.
+	/// </summary>
+	public BackupMetadata BackupMetadata { get; private set; }
+
+	public BackupProcessState ProcessState { get; private set; }
+	/// <summary>
+	/// The final outcome of the item's processing (e.g., Completed, Skipped, Failed).
+	/// This is set once the item reaches a terminal state.
+	/// </summary>
+	public BackupTerminalState TerminalState { get; private set; }
+	//TODO: Should this be nullable?
+	public ErrorInfo? ErrorInfo { get; private set; }
 
 	// Private constructor – all object state is initialized here
 	private BackupItem(ISourceContent content, BackupMetadata metadata)
@@ -22,6 +36,10 @@ public class BackupItem : IBackupItem
 		Content = content;
 		Metadata = metadata;
 		State = BackupState.Pending;
+		Action = BackupActionType.Unknown;
+		BackupMetadata = metadata;
+		ProcessState = BackupProcessState.New;
+		TerminalState = BackupTerminalState.None;
 		ErrorInfo = new ErrorInfo();
 	}
 
@@ -32,14 +50,12 @@ public class BackupItem : IBackupItem
 	public static BackupItem Create(ISourceContent content, string originalFileName, string? relativePath = null)
 	{
 		ArgumentNullException.ThrowIfNull(content);
-		if(string.IsNullOrWhiteSpace(originalFileName))
-		{
-			throw new ArgumentException("Original file name is required.", nameof(originalFileName));
-		}
+		ArgumentNullException.ThrowIfNullOrWhiteSpace(originalFileName);
 
-		var metadata = new BackupMetadata();
-		metadata.Set(MetadataKey.OriginalFileName, originalFileName);
-		metadata.Set(MetadataKey.Size, content.Length);
+		// Initialize essential metadata
+		BackupMetadata metadata = new();
+		metadata.Set(MetadataKey.SourceFileName, originalFileName);
+		metadata.Set(MetadataKey.Length, content.Length);
 
 		if(!string.IsNullOrWhiteSpace(relativePath))
 		{
@@ -47,6 +63,16 @@ public class BackupItem : IBackupItem
 		}
 
 		return new BackupItem(content, metadata);
+	}
+	public void Fail(string message, string stepName, Exception? ex = null)
+	{
+		State = BackupState.Failed;
+		ProcessState = BackupProcessState.Analyzed; // Or another appropriate state
+		Action = BackupActionType.Unknown; // Or Error, depending on your design
+		ErrorInfo errorInfo = new();
+		//ErrorInfo.AddError(stepName, message, DateTime.UtcNow, ex);
+		// TODO: Implement adding error to ErrorInfo
+
 	}
 
 	/// <summary>
@@ -56,23 +82,5 @@ public class BackupItem : IBackupItem
 	public void ReplaceContent(ISourceContent newContent)
 	{
 		Content = newContent ?? throw new ArgumentNullException(nameof(newContent));
-	}
-
-	/// <summary>
-	/// Advances the item to a new processing state.
-	/// Only forward progression is allowed, except for terminal states (Failed, Skipped).
-	/// Thread-safe to prevent race conditions.
-	/// </summary>
-	public void AdvanceTo(BackupState newState)
-	{
-		lock(this)
-		{
-			if(newState < State && newState is not (BackupState.Failed or BackupState.Skipped))
-			{
-				throw new InvalidOperationException($"Cannot revert state from {State} to {newState}");
-			}
-
-			State = newState;
-		}
 	}
 }

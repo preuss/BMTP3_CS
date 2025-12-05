@@ -1,7 +1,8 @@
-﻿namespace BMTP3.Core2.BackupNew.Content;
+namespace BMTP3.Core2.BackupNew.Content;
+
 /// <summary>
-/// Minimal abstraction over any source of file content.
-/// Provides only the size and a readable stream – no metadata, no path information.
+/// Abstraction for accessing the content of a source file, regardless of whether it is 
+/// on a local file system or a portable device (MTP).
 /// </summary>
 public interface ISourceContent : IDisposable
 {

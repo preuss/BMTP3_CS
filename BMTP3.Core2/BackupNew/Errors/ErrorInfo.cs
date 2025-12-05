@@ -1,10 +1,16 @@
-﻿namespace BMTP3.Core2.BackupNew.Errors;
+﻿using BMTP3.Core2.BackupNew.Models;
+
+namespace BMTP3.Core2.BackupNew.Errors;
 /// <summary>
+/// Captures error information related to a specific backup item.
 /// Holds all errors that occurred for a specific backup item.
 /// The collection is read-only from the outside and thread-safe for adding errors.
 /// </summary>
 public class ErrorInfo
 {
+	/// <summary>
+	/// The error messages.
+	/// </summary>
 	private readonly List<BackupError> _errors = new();
 
 	public IReadOnlyList<BackupError> Errors => _errors.AsReadOnly();
@@ -14,12 +20,15 @@ public class ErrorInfo
 	/// <summary>
 	/// Adds a new error to the collection.
 	/// </summary>
-	public void AddError(string stageName, string message, Exception? ex = null)
+	public void AddError(string stepName, string message, DateTime timestamp, Exception? ex = null)
 	{
 		var error = new BackupError
 		{
-			StageName = stageName,
+			StageName = stepName,
+			StepName = stepName,
 			Message = message,
+			Timestamp = timestamp,
+			Exception = ex,
 			ExceptionType = ex?.GetType().Name,
 			StackTrace = ex?.StackTrace
 		};

@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using BMTP3.Core2.NetBackupFlow.Extensions;
+using System.Collections.Concurrent;
 
 namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
@@ -26,7 +27,7 @@ public class BackupMetadata
 	/// <summary>
 	/// Gets a value, or null if the key does not exist.
 	/// </summary>
-	public T? Get<T>(MetadataKey key)
+	public T? Get<T>(MetadataKey key, bool useDefault = false, T? defaultValue = default)
 	{
 		if(!_data.TryGetValue(key, out var value))
 		{
@@ -47,7 +48,13 @@ public class BackupMetadata
 			return (T)Convert.ChangeType(value, typeof(T));
 		} catch(Exception ex) when(ex is InvalidCastException or FormatException or OverflowException)
 		{
-			throw new InvalidOperationException($"Cannot convert metadata value for key '{key.GetKey()}' to type {typeof(T).Name}. Stored type: {value.GetType().Name}, Value: {value}", ex);
+			if(useDefault)
+			{
+				// Conversion failed, return default rather than crash
+				// In a stricter system we might throw, but for metadata retrieval best-effort is often preferred.
+				return defaultValue;
+			}
+			throw new InvalidOperationException($"Cannot convert metadata value for key '{key.ToKeyString()}' to type {typeof(T).Name}. Stored type: {value.GetType().Name}, Value: {value}", ex);
 		}
 	}
 
@@ -59,7 +66,7 @@ public class BackupMetadata
 		var value = Get<T>(key);
 		if(value is null)
 		{
-			throw new InvalidOperationException($"Required metadata key '{key.GetKey()}' is missing.");
+			throw new InvalidOperationException($"Required metadata key '{key.ToKeyString()}' is missing.");
 		}
 
 		return value;
@@ -71,6 +78,14 @@ public class BackupMetadata
 	public bool Has(MetadataKey key) => _data.ContainsKey(key);
 
 	/// <summary>
+	/// Returns all stored metadata as a read-only dictionary.
+	/// </summary>
+	public IReadOnlyDictionary<MetadataKey, object?> GetAll()
+	{
+		return _data.ToDictionary(k => k.Key, v => v.Value);
+	}
+
+	/// <summary>
 	/// Returns all current keys (for debugging or serialization).
 	/// </summary>
 	public ICollection<MetadataKey> Keys => _data.Keys;
@@ -78,5 +93,5 @@ public class BackupMetadata
 	/// <summary>
 	/// Converts metadata to a serializable dictionary using readable string keys.
 	/// </summary>
-	public IDictionary<string, object?> ToDictionary() => _data.ToDictionary(kvp => kvp.Key.GetKey(), kvp => kvp.Value);
+	public IDictionary<string, object?> ToDictionary() => _data.ToDictionary(kvp => kvp.Key.ToKeyString(), kvp => kvp.Value);
 }

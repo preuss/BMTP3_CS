@@ -28,10 +28,7 @@ public sealed class MediaFileSourceContent : ISourceContent
 	/// </summary>
 	public Stream OpenRead()
 	{
-		if(_disposed)
-		{
-			throw new ObjectDisposedException(nameof(MediaFileSourceContent));
-		}
+		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileSourceContent));
 
 		return _mediaFileInfo.OpenRead();
 	}
