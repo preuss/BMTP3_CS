@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Repository;
+namespace BMTP3.Core2.BackupNew.Repositories;
 
 /// <summary>
 /// Repository for persisting and retrieving the state of backed-up items.

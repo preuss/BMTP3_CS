@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew2.Models;
+using BMTP3.Core2.BackupNew.Models;
 
 namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
