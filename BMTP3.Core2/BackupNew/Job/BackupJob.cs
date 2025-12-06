@@ -11,18 +11,52 @@ namespace BMTP3.Core2.BackupNew.Job;
 /// </summary>
 public class BackupJob
 {
+	public Guid JobId { get; }
+	public string? Name { get; }
+
 	/// <summary>
 	/// Current lifecycle state of the job.
 	/// </summary>
-	public JobState State { get; set; } = JobState.Ready;
+	public JobState State { get; private set; }
 
 	/// <summary>
 	/// Collection of items included in this job.
 	/// </summary>
-	public List<BackupItem> Items { get; } = new();
+	public List<BackupItem> Items { get; }
+
+	private readonly List<AuditJobEntry> _auditTrail = new();
+	/// <summary>
+	/// Audit trail of job state transitions (job-level only).
+	/// </summary>
+	public IReadOnlyList<AuditJobEntry> AuditTrail => _auditTrail;
 
 	/// <summary>
-	/// Audit trail of the job, recording state transitions and attempts.
+	/// Creates a new backup job with an initial state and optional items.
 	/// </summary>
-	public List<AuditEntry> AuditTrail { get; } = new();
+	public BackupJob(string? name = null, IEnumerable<BackupItem>? items = null)
+	{
+		JobId = Guid.NewGuid();
+		Name = name ?? JobId.ToString("b");
+
+		State = JobState.Ready;
+		Items = new();
+		_auditTrail = new();
+
+		if(items != null)
+		{
+			Items.AddRange(items);
+		}
+
+		AddAudit(JobState.Ready, "Job created");
+	}
+	internal void AddAudit(JobState state, string summary)
+	{
+		_auditTrail.Add(new AuditJobEntry
+		{
+			State = state,
+			Timestamp = DateTime.UtcNow,
+			Summary = summary,
+			ItemCount = Items.Count
+		});
+	}
 }

@@ -40,7 +40,7 @@ public interface IBackupItem
 	/// <summary>
 	/// The audit trail of the item, containing logs of all significant events.
 	/// </summary>
-	IReadOnlyList<AuditEntry> AuditTrail { get; }
+	IReadOnlyList<AuditItemEntry> AuditTrail { get; }
 
 	/// <summary>
 	/// The number of attempts made to process the item.

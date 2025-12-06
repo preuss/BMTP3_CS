@@ -21,8 +21,8 @@ public class BackupItem : IBackupItem
 	public ResultState ResultState { get; private set; }
 	public ErrorLog Errors { get; } = new ErrorLog();
 
-	private readonly List<AuditEntry> _auditTrail;
-	public IReadOnlyList<AuditEntry> AuditTrail => _auditTrail.AsReadOnly();
+	private readonly List<AuditItemEntry> _auditTrail;
+	public IReadOnlyList<AuditItemEntry> AuditTrail => _auditTrail.AsReadOnly();
 
 	public uint AttemptCount { get; private set; }
 
@@ -36,7 +36,7 @@ public class BackupItem : IBackupItem
 
 		LifecycleState = LifecycleState.New;
 		ResultState = ResultState.Pending;
-		_auditTrail = new List<AuditEntry>();
+		_auditTrail = new List<AuditItemEntry>();
 		AttemptCount = 0;
 	}
 
@@ -65,7 +65,7 @@ public class BackupItem : IBackupItem
 
 		Errors.AddError(stepName, message, DateTime.UtcNow, ex);
 
-		_auditTrail.Add(new AuditEntry
+		_auditTrail.Add(new AuditItemEntry
 		{
 			Stage = stepName,
 			AttemptCount = AttemptCount,
@@ -88,7 +88,7 @@ public class BackupItem : IBackupItem
 		LifecycleState = LifecycleState.Queued;
 		ResultState = ResultState.Pending;
 
-		_auditTrail.Add(new AuditEntry
+		_auditTrail.Add(new AuditItemEntry
 		{
 			Stage = "Queue",
 			AttemptCount = AttemptCount,
@@ -103,7 +103,7 @@ public class BackupItem : IBackupItem
 		LifecycleState = LifecycleState.Active;
 		AttemptCount++;
 
-		_auditTrail.Add(new AuditEntry
+		_auditTrail.Add(new AuditItemEntry
 		{
 			Stage = "Activate",
 			AttemptCount = AttemptCount,
@@ -120,7 +120,7 @@ public class BackupItem : IBackupItem
 		if(LifecycleState == LifecycleState.Active)
 			LifecycleState = LifecycleState.Processed;
 
-		_auditTrail.Add(new AuditEntry
+		_auditTrail.Add(new AuditItemEntry
 		{
 			Stage = "Result",
 			AttemptCount = AttemptCount,

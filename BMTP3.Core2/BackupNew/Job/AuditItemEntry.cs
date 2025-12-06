@@ -8,7 +8,7 @@ namespace BMTP3.Core2.BackupNew.Job;
 /// <summary>
 /// Represents a single audit entry for a backup job.
 /// </summary>
-public class AuditEntry
+public class AuditItemEntry
 {
 	/// <summary>
 	/// Stage of the job when this entry was recorded (e.g., Copy, Verify).

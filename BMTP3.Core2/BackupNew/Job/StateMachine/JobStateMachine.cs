@@ -33,7 +33,7 @@ public sealed class JobStateMachine : IStateMachine<JobState>
 
 		job.State = to;
 
-		job.AuditTrail.Add(new AuditEntry
+		job.AuditTrail.Add(new AuditItemEntry
 		{
 			Stage = $"Job:{to}",
 			AttemptCount = (uint)(job.AuditTrail.Count + 1),

@@ -39,6 +39,6 @@ public class ErrorEntry
 
 	public override string ToString()
 	{
-		return $"[{Timestamp:HH:mm:ss}] {StageName}: Error in {StepName}: {Message} {(Exception != null ? $"({Exception.Message})" : "")}";
+		return $"[{Timestamp:HH:mm:ss}] Stage={StageName}, Step={StepName}: {Message} {(Exception != null ? $"({Exception.Message})" : "")}";
 	}
 }
