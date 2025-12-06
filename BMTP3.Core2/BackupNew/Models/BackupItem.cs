@@ -17,9 +17,13 @@ public class BackupItem : IBackupItem
 	/// </summary>
 	public BackupMetadata Metadata { get; private set; }
 
-	public LifecycleState LifecycleState { get; private set; }
-	public ResultState ResultState { get; private set; }
-	public ErrorInfo? ErrorInfo { get; private set; }
+	public LifecycleState LifecycleState { get; set; }
+	public ResultState ResultState { get; set; }
+	public ErrorLog? Errors { get; private set; }
+
+	public List<AuditEntry> AuditTrail { get; private set; } = new List<AuditEntry>();
+
+	public uint AttemptCount { get; set; }
 
 	private BackupItem(ISourceContent content, BackupMetadata metadata)
 	{
@@ -31,7 +35,7 @@ public class BackupItem : IBackupItem
 
 		LifecycleState = LifecycleState.New;
 		ResultState = ResultState.Pending;
-		ErrorInfo = null;
+		Errors = null;
 	}
 
 	public static BackupItem Create(ISourceContent content, string originalFileName, string? relativePath = null)
@@ -55,9 +59,28 @@ public class BackupItem : IBackupItem
 	{
 		ResultState = ResultState.Failed;
 		LifecycleState = LifecycleState.Processed;
+		AttemptCount++;
 
-		ErrorInfo = new ErrorInfo();
-		// ErrorInfo.AddError(stepName, message, DateTime.UtcNow, ex);
+		Errors.AddError(new ErrorEntry
+		{
+			StageName = stepName,
+			StepName = stepName,
+			Message = message,
+			Timestamp = DateTime.UtcNow,
+			Exception = ex,
+			ExceptionType = ex?.GetType().Name,
+			StackTrace = ex?.StackTrace
+		});
+
+		AuditTrail.Add(new AuditEntry
+		{
+			Stage = stepName,
+			AttemptCount = AttemptCount,
+			ResultState = ResultState,
+			LifecycleState = LifecycleState,
+			Timestamp = DateTime.UtcNow,
+			ErrorSummary = message
+		});
 	}
 
 	public void ReplaceContent(ISourceContent newContent)

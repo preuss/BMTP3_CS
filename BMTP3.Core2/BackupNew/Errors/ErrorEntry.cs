@@ -3,7 +3,7 @@ namespace BMTP3.Core2.BackupNew.Models;
 /// <summary>
 /// Represents a single error that occurred during a backup operation.
 /// </summary>
-public class BackupError
+public class ErrorEntry
 {
 	public required string StageName { get; init; }
 
@@ -20,7 +20,7 @@ public class BackupError
 	/// <summary>
 	/// Timestamp when the error was recorded.
 	/// </summary>
-	public DateTime Timestamp { get; init; } = DateTime.Now;
+	public DateTime Timestamp { get; init; } = DateTime.UtcNow;
 
 	/// <summary>
 	/// The exception that caused the error, if applicable.

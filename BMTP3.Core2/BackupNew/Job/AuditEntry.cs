@@ -13,22 +13,32 @@ public class AuditEntry
 	/// <summary>
 	/// Stage of the job when this entry was recorded (e.g., Copy, Verify).
 	/// </summary>
-	public string Stage { get; set; }
-
-	/// <summary>
-	/// Error message if the stage failed, otherwise null.
-	/// </summary>
-	public string? Error { get; set; }
+	public required string Stage { get; init; }
 
 	/// <summary>
 	/// Number of attempts made at this stage.
 	/// </summary>
-	public uint AttemptCount { get; set; }
+	public uint AttemptCount { get; init; }
+
+	/// <summary>
+	/// The current lifecycle state of the item.
+	/// </summary>
+	public required LifecycleState LifecycleState { get; init; }
+
+	/// <summary>
+	/// The current result state of the item.
+	/// </summary>
+	public required ResultState ResultState { get; init; }
 
 	/// <summary>
 	/// Timestamp of when this entry was recorded.
 	/// </summary>
-	public DateTime Timestamp { get; set; }
+	public required DateTime Timestamp { get; init; }
+
+	/// <summary>
+	/// Summary of any errors that occurred during this stage.
+	/// </summary>
+	public string? ErrorSummary { get; set; }
 
 	// TODO: Additional fields like Duration, ItemCount, etc. can be added as needed.
 	// TODO: We can expand later example with: WorkerId, Duration, ResultState.

@@ -76,7 +76,7 @@ public class BackupJobResult
 	/// List of file-specific errors encountered during the job.
 	/// </summary>
 	public List<string> FileErrors { get; set; } = new(); // Adding a specific list for file errors for granularity
-	public List<ErrorInfo?> FailedItems { get; internal set; } = new();
+	public List<ErrorLog?> FailedItems { get; internal set; } = new();
 	public string GlobalError { get; internal set; }
 	public BackupProgress FinalProgress { get; internal set; }
 }
