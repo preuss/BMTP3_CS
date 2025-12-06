@@ -35,12 +35,12 @@ public interface IBackupItem
 	/// Error information for this specific item if an error occurred during processing.
 	/// Null if no error has occurred.
 	/// </summary>
-	ErrorLog? Errors { get; }
+	ErrorLog Errors { get; }
 
 	/// <summary>
 	/// The audit trail of the item, containing logs of all significant events.
 	/// </summary>
-	List<AuditEntry> AuditTrail { get; }
+	IReadOnlyList<AuditEntry> AuditTrail { get; }
 
 	/// <summary>
 	/// The number of attempts made to process the item.

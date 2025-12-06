@@ -8,16 +8,16 @@ using System.Threading.Tasks;
 namespace BMTP3.Core2.BackupNew.Job.StateMachine;
 /// <summary>
 /// Validates transitions for item lifecycle and result states.
-/// Writes audit entries directly to the item.
+/// Writes audit entries directly to the item via internal helpers.
 /// </summary>
 public sealed class ItemStateMachine
 {
 	private static readonly Dictionary<LifecycleState, LifecycleState[]> LifecycleTransitions =
 		new()
 		{
-				{ LifecycleState.New, new[] { LifecycleState.Queued } },
-				{ LifecycleState.Queued, new[] { LifecycleState.Active } },
-				{ LifecycleState.Active, new[] { LifecycleState.Processed } },
+				{ LifecycleState.New,       new[] { LifecycleState.Queued } },
+				{ LifecycleState.Queued,    new[] { LifecycleState.Active } },
+				{ LifecycleState.Active,    new[] { LifecycleState.Processed } },
 				{ LifecycleState.Processed, Array.Empty<LifecycleState>() }
 		};
 
@@ -26,7 +26,7 @@ public sealed class ItemStateMachine
 		{
 				{ ResultState.Pending, new[] { ResultState.Success, ResultState.Failed, ResultState.Skipped } },
 				{ ResultState.Success, Array.Empty<ResultState>() },
-				{ ResultState.Failed, Array.Empty<ResultState>() },
+				{ ResultState.Failed,  Array.Empty<ResultState>() },
 				{ ResultState.Skipped, Array.Empty<ResultState>() }
 		};
 
@@ -52,17 +52,7 @@ public sealed class ItemStateMachine
 		if(!CanTransitionLifecycle(item.LifecycleState, LifecycleState.Queued))
 			throw new InvalidOperationException($"Invalid lifecycle transition: {item.LifecycleState} -> Queued");
 
-		item.LifecycleState = LifecycleState.Queued;
-		item.ResultState = ResultState.Pending;
-
-		item.AuditTrail.Add(new AuditEntry
-		{
-			Stage = "Queue",
-			AttemptCount = item.AttemptCount,
-			LifecycleState = item.LifecycleState,
-			ResultState = item.ResultState,
-			Timestamp = DateTime.UtcNow
-		});
+		item.SetQueued();
 	}
 
 	/// <summary>
@@ -73,17 +63,7 @@ public sealed class ItemStateMachine
 		if(!CanTransitionLifecycle(item.LifecycleState, LifecycleState.Active))
 			throw new InvalidOperationException($"Invalid lifecycle transition: {item.LifecycleState} -> Active");
 
-		item.LifecycleState = LifecycleState.Active;
-		item.AttemptCount++;
-
-		item.AuditTrail.Add(new AuditEntry
-		{
-			Stage = "Activate",
-			AttemptCount = item.AttemptCount,
-			LifecycleState = item.LifecycleState,
-			ResultState = item.ResultState,
-			Timestamp = DateTime.UtcNow
-		});
+		item.SetActive();
 	}
 
 	/// <summary>
@@ -94,23 +74,11 @@ public sealed class ItemStateMachine
 		if(!CanTransitionResult(item.ResultState, to))
 			throw new InvalidOperationException($"Invalid result transition: {item.ResultState} -> {to}");
 
-		item.ResultState = to;
+		item.SetResult(to, errorSummary);
 
-		// Move lifecycle to Processed after any terminal result.
-		if(item.LifecycleState == LifecycleState.Active &&
-			CanTransitionLifecycle(item.LifecycleState, LifecycleState.Processed))
+		if(to == ResultState.Failed && !string.IsNullOrWhiteSpace(errorSummary))
 		{
-			item.LifecycleState = LifecycleState.Processed;
+			item.Errors.AddError("Result", errorSummary, DateTime.UtcNow);
 		}
-
-		item.AuditTrail.Add(new AuditEntry
-		{
-			Stage = "Result",
-			AttemptCount = item.AttemptCount,
-			LifecycleState = item.LifecycleState,
-			ResultState = item.ResultState,
-			Timestamp = DateTime.UtcNow,
-			ErrorSummary = errorSummary
-		});
 	}
 }

@@ -17,13 +17,14 @@ public class BackupItem : IBackupItem
 	/// </summary>
 	public BackupMetadata Metadata { get; private set; }
 
-	public LifecycleState LifecycleState { get; set; }
-	public ResultState ResultState { get; set; }
-	public ErrorLog? Errors { get; private set; }
+	public LifecycleState LifecycleState { get; private set; }
+	public ResultState ResultState { get; private set; }
+	public ErrorLog Errors { get; } = new ErrorLog();
 
-	public List<AuditEntry> AuditTrail { get; private set; } = new List<AuditEntry>();
+	private readonly List<AuditEntry> _auditTrail;
+	public IReadOnlyList<AuditEntry> AuditTrail => _auditTrail.AsReadOnly();
 
-	public uint AttemptCount { get; set; }
+	public uint AttemptCount { get; private set; }
 
 	private BackupItem(ISourceContent content, BackupMetadata metadata)
 	{
@@ -35,7 +36,8 @@ public class BackupItem : IBackupItem
 
 		LifecycleState = LifecycleState.New;
 		ResultState = ResultState.Pending;
-		Errors = null;
+		_auditTrail = new List<AuditEntry>();
+		AttemptCount = 0;
 	}
 
 	public static BackupItem Create(ISourceContent content, string originalFileName, string? relativePath = null)
@@ -61,18 +63,9 @@ public class BackupItem : IBackupItem
 		LifecycleState = LifecycleState.Processed;
 		AttemptCount++;
 
-		Errors.AddError(new ErrorEntry
-		{
-			StageName = stepName,
-			StepName = stepName,
-			Message = message,
-			Timestamp = DateTime.UtcNow,
-			Exception = ex,
-			ExceptionType = ex?.GetType().Name,
-			StackTrace = ex?.StackTrace
-		});
+		Errors.AddError(stepName, message, DateTime.UtcNow, ex);
 
-		AuditTrail.Add(new AuditEntry
+		_auditTrail.Add(new AuditEntry
 		{
 			Stage = stepName,
 			AttemptCount = AttemptCount,
@@ -86,5 +79,55 @@ public class BackupItem : IBackupItem
 	public void ReplaceContent(ISourceContent newContent)
 	{
 		Content = newContent ?? throw new ArgumentNullException(nameof(newContent));
+	}
+
+	// Internal helpers used by the state machine to keep mutations in one place:
+
+	internal void SetQueued()
+	{
+		LifecycleState = LifecycleState.Queued;
+		ResultState = ResultState.Pending;
+
+		_auditTrail.Add(new AuditEntry
+		{
+			Stage = "Queue",
+			AttemptCount = AttemptCount,
+			LifecycleState = LifecycleState,
+			ResultState = ResultState,
+			Timestamp = DateTime.UtcNow
+		});
+	}
+
+	internal void SetActive()
+	{
+		LifecycleState = LifecycleState.Active;
+		AttemptCount++;
+
+		_auditTrail.Add(new AuditEntry
+		{
+			Stage = "Activate",
+			AttemptCount = AttemptCount,
+			LifecycleState = LifecycleState,
+			ResultState = ResultState,
+			Timestamp = DateTime.UtcNow
+		});
+	}
+
+	internal void SetResult(ResultState to, string? errorSummary = null)
+	{
+		ResultState = to;
+
+		if(LifecycleState == LifecycleState.Active)
+			LifecycleState = LifecycleState.Processed;
+
+		_auditTrail.Add(new AuditEntry
+		{
+			Stage = "Result",
+			AttemptCount = AttemptCount,
+			LifecycleState = LifecycleState,
+			ResultState = ResultState,
+			Timestamp = DateTime.UtcNow,
+			ErrorSummary = errorSummary
+		});
 	}
 }

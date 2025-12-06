@@ -11,15 +11,18 @@ namespace BMTP3.Core2.BackupNew.Job;
 /// </summary>
 public class BackupJob
 {
-	public JobState State { get; set; }
+	/// <summary>
+	/// Current lifecycle state of the job.
+	/// </summary>
+	public JobState State { get; set; } = JobState.Ready;
 
 	/// <summary>
 	/// Collection of items included in this job.
 	/// </summary>
-	public List<BackupItem> Items { get; set; } = new();
+	public List<BackupItem> Items { get; } = new();
 
 	/// <summary>
-	/// Audit history of the job, recording errors, attempts, and stages.
+	/// Audit trail of the job, recording state transitions and attempts.
 	/// </summary>
-	public List<AuditEntry> Audit { get; set; } = new();
+	public List<AuditEntry> AuditTrail { get; } = new();
 }
