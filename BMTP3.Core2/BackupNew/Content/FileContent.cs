@@ -2,15 +2,15 @@
 /// <summary>
 /// ISourceContent implementation that reads from a regular file on disk.
 /// </summary>
-public sealed class FileSourceContent : ISourceContent, IMoveableSourceContent
+public sealed class FileContent : IContent, IMoveableContent
 {
 	private readonly FileInfo _fileInfo;
 	private bool _disposed;
 
-	public FileSourceContent(string filePath) : this(new FileInfo(filePath))
+	public FileContent(string filePath) : this(new FileInfo(filePath))
 	{
 	}
-	public FileSourceContent(FileInfo fileInfo)
+	public FileContent(FileInfo fileInfo)
 	{
 		_fileInfo = fileInfo ?? throw new ArgumentNullException(nameof(fileInfo));
 		if(!_fileInfo.Exists)
@@ -44,9 +44,9 @@ public sealed class FileSourceContent : ISourceContent, IMoveableSourceContent
 	/// <summary>
 	/// Moves the underlying file to a new location atomically.
 	/// </summary>
-	public ISourceContent MoveTo(string destinationPath)
+	public IContent MoveTo(string destinationPath)
 	{
-		if(_disposed) throw new ObjectDisposedException(nameof(FileSourceContent));
+		if(_disposed) throw new ObjectDisposedException(nameof(FileContent));
 
 		// Make sure the destination directory exists
 		var destDir = Path.GetDirectoryName(destinationPath);
@@ -61,6 +61,6 @@ public sealed class FileSourceContent : ISourceContent, IMoveableSourceContent
 
 		// Return a new instance pointing to the new path
 		// The old instance (this) is now "empty" or invalid, but we return the new truth.
-		return new FileSourceContent(destinationPath);
+		return new FileContent(destinationPath);
 	}
 }

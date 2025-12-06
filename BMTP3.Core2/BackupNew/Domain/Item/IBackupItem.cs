@@ -13,7 +13,7 @@ public interface IBackupItem
 	/// The physical content source (file system file, MTP object, etc.).
 	/// May change from an MTP stream to a local temp file during processing.
 	/// </summary>
-	ISourceContent Content { get; }
+	IContent Content { get; }
 
 	/// <summary>
 	/// Dynamic metadata container enriched throughout the pipeline.
@@ -56,5 +56,5 @@ public interface IBackupItem
 	/// <summary>
 	/// Replaces the current content source (e.g., when copying from MTP to local temp).
 	/// </summary>
-	void ReplaceContent(ISourceContent newContent);
+	void ReplaceContent(IContent newContent);
 }

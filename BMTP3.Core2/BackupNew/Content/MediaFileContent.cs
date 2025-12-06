@@ -7,12 +7,12 @@ namespace BMTP3.Core2.BackupNew.Content;
 /// Wraps a MediaFileInfo from the MediaDevices library.
 /// </summary>
 [SupportedOSPlatform("windows7.0")]
-public sealed class MediaFileSourceContent : ISourceContent
+public sealed class MediaFileContent : IContent
 {
 	private readonly MediaFileInfo _mediaFileInfo;
 	private bool _disposed;
 
-	public MediaFileSourceContent(MediaFileInfo mediaFileInfo)
+	public MediaFileContent(MediaFileInfo mediaFileInfo)
 	{
 		_mediaFileInfo = mediaFileInfo ?? throw new ArgumentNullException(nameof(mediaFileInfo));
 	}
@@ -28,7 +28,7 @@ public sealed class MediaFileSourceContent : ISourceContent
 	/// </summary>
 	public Stream OpenRead()
 	{
-		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileSourceContent));
+		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileContent));
 
 		return _mediaFileInfo.OpenRead();
 	}

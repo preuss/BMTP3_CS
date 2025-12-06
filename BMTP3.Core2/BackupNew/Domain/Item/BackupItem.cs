@@ -10,7 +10,7 @@ namespace BMTP3.Core2.BackupNew.Domain.Item;
 /// </summary>
 public class BackupItem : IBackupItem
 {
-	public ISourceContent Content { get; private set; }
+	public IContent Content { get; private set; }
 
 	/// <summary>
 	/// Flexible property bag enriched throughout the pipeline.
@@ -26,7 +26,7 @@ public class BackupItem : IBackupItem
 
 	public uint AttemptCount { get; private set; }
 
-	private BackupItem(ISourceContent content, BackupMetadata metadata)
+	private BackupItem(IContent content, BackupMetadata metadata)
 	{
 		ArgumentNullException.ThrowIfNull(content);
 		ArgumentNullException.ThrowIfNull(metadata);
@@ -40,7 +40,7 @@ public class BackupItem : IBackupItem
 		AttemptCount = 0;
 	}
 
-	public static BackupItem Create(ISourceContent content, string originalFileName, string? relativePath = null)
+	public static BackupItem Create(IContent content, string originalFileName, string? relativePath = null)
 	{
 		ArgumentNullException.ThrowIfNull(content);
 		ArgumentException.ThrowIfNullOrWhiteSpace(originalFileName);
@@ -76,7 +76,7 @@ public class BackupItem : IBackupItem
 		});
 	}
 
-	public void ReplaceContent(ISourceContent newContent)
+	public void ReplaceContent(IContent newContent)
 	{
 		Content = newContent ?? throw new ArgumentNullException(nameof(newContent));
 	}
