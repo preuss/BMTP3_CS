@@ -1,5 +1,5 @@
-using BMTP3.Core2.BackupNew.Models;
-using BMTP3.Core2.BackupNew.Models.Configuration;
+using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Domain.Item;
 
 namespace BMTP3.Core2.BackupNew.Engine;
 
@@ -13,5 +13,5 @@ public interface IBackupScanner
 	/// <summary>
 	/// Scans the source defined in the job and yields items found.
 	/// </summary>
-	IAsyncEnumerable<IBackupItem> ScanAsync(BackupJob job, CancellationToken ct);
+	IAsyncEnumerable<IBackupItem> ScanAsync(BackupPlan job, CancellationToken ct);
 }

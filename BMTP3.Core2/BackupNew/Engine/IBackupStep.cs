@@ -1,5 +1,5 @@
-﻿using BMTP3.Core2.BackupNew.Models;
-using BMTP3.Core2.BackupNew.Models.Configuration;
+﻿using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Domain.Item;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -21,5 +21,5 @@ public interface IBackupStep
     /// Executes an operation on a single item.
     /// The method must update the item's State or Metadata.
     /// </summary>
-    Task ExecuteAsync(IBackupItem item, BackupJob jobConfig, CancellationToken ct);
+    Task ExecuteAsync(IBackupItem item, BackupPlan jobConfig, CancellationToken ct);
 }

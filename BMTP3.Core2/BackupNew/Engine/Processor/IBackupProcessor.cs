@@ -1,4 +1,4 @@
-﻿using BMTP3.Core2.BackupNew.Models.Configuration;
+﻿using BMTP3.Core2.BackupNew.Api;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,5 +12,5 @@ public interface IBackupProcessor
 	/// Executes a backup job from start to finish.
 	/// This is the entry point to the entire system.
 	/// </summary>
-	Task ProcessJobAsync(BackupJob job, IProgress<BackupProgress> progress, CancellationToken ct);
+	Task ProcessJobAsync(BackupPlan job, IProgress<BackupProgress> progress, CancellationToken ct);
 }
