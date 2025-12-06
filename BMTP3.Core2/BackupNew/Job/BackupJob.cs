@@ -24,11 +24,16 @@ public class BackupJob
 	/// </summary>
 	public List<BackupItem> Items { get; }
 
-	private readonly List<AuditJobEntry> _auditTrail = new();
+	private readonly List<AuditJobEntry> _auditTrail;
 	/// <summary>
 	/// Audit trail of job state transitions (job-level only).
 	/// </summary>
 	public IReadOnlyList<AuditJobEntry> AuditTrail => _auditTrail;
+
+	/// <summary>
+	/// Number of times the job has been attempted/resumed.
+	/// </summary>
+	public uint AttemptCount { get; private set; }
 
 	/// <summary>
 	/// Creates a new backup job with an initial state and optional items.
@@ -39,24 +44,34 @@ public class BackupJob
 		Name = name ?? JobId.ToString("b");
 
 		State = JobState.Ready;
-		Items = new();
+		Items = items?.ToList() ?? new();
 		_auditTrail = new();
-
-		if(items != null)
-		{
-			Items.AddRange(items);
-		}
 
 		AddAudit(JobState.Ready, "Job created");
 	}
-	internal void AddAudit(JobState state, string summary)
+	internal void TransitionTo(JobState newState, string summary)
+	{
+		if(newState == State)
+		{
+			throw new Exception("Job is already in the specified state.");
+		}
+		State = newState;
+		if(newState == JobState.Running)
+		{
+			AttemptCount++;
+		}
+
+		AddAudit(newState, summary);
+	}
+	private void AddAudit(JobState state, string summary)
 	{
 		_auditTrail.Add(new AuditJobEntry
 		{
 			State = state,
 			Timestamp = DateTime.UtcNow,
 			Summary = summary,
-			ItemCount = Items.Count
+			ItemCount = Items.Count,
+			AttemptCount = AttemptCount
 		});
 	}
 }

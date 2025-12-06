@@ -10,16 +10,28 @@ namespace BMTP3.Core2.BackupNew.Job;
 /// </summary>
 public class AuditJobEntry
 {
-	public JobState State { get; set; }
-	public DateTime Timestamp { get; set; } = DateTime.UtcNow;
+	/// <summary>
+	/// JobState of the job when this entry was recorded (e.g., Ready, Running...).
+	/// </summary>
+	public required JobState State { get; init; }
+
+	/// <summary>
+	/// Timestamp of when this entry was recorded.
+	/// </summary>
+	public required DateTime Timestamp { get; init; }
 
 	/// <summary>
 	/// Optional summary (e.g., "Job started", "Job completed with errors").
 	/// </summary>
-	public string? Summary { get; set; }
+	public string? Summary { get; init; }
 
 	/// <summary>
 	/// Number of items in the job at this point.
 	/// </summary>
 	public int ItemCount { get; set; }
+
+	/// <summary>
+	/// Number of times the job has been attempted/resumed.
+	/// </summary>
+	public uint AttemptCount { get; init; }
 }
