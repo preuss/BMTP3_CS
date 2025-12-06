@@ -2,7 +2,7 @@
 /// <summary>
 /// ISourceContent implementation that reads from a regular file on disk.
 /// </summary>
-public sealed class FileSourceContent : IMoveableSourceContent, ISourceContent
+public sealed class FileSourceContent : ISourceContent, IMoveableSourceContent
 {
 	private readonly FileInfo _fileInfo;
 	private bool _disposed;
