@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Models.Configuration.Enums;
+namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 /// <summary>
 /// Defines the type of source location.

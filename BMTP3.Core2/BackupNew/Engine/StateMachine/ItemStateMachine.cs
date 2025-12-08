@@ -12,22 +12,22 @@ namespace BMTP3.Core2.BackupNew.Engine.StateMachine;
 /// </summary>
 public sealed class ItemStateMachine
 {
-	private static readonly Dictionary<LifecycleState, LifecycleState[]> LifecycleTransitions =
+	private static readonly Dictionary<ItemLifecycleState, ItemLifecycleState[]> LifecycleTransitions =
 		new()
 		{
-				{ LifecycleState.New,       new[] { LifecycleState.Queued } },
-				{ LifecycleState.Queued,    new[] { LifecycleState.Active } },
-				{ LifecycleState.Active,    new[] { LifecycleState.Processed } },
-				{ LifecycleState.Processed, Array.Empty<LifecycleState>() }
+				{ ItemLifecycleState.New,       new[] { ItemLifecycleState.Queued } },
+				{ ItemLifecycleState.Queued,    new[] { ItemLifecycleState.Active } },
+				{ ItemLifecycleState.Active,    new[] { ItemLifecycleState.Processed } },
+				{ ItemLifecycleState.Processed, Array.Empty<ItemLifecycleState>() }
 		};
 
-	private static readonly Dictionary<ResultState, ResultState[]> ResultTransitions =
+	private static readonly Dictionary<ItemResultState, ItemResultState[]> ResultTransitions =
 		new()
 		{
-				{ ResultState.Pending, new[] { ResultState.Success, ResultState.Failed, ResultState.Skipped } },
-				{ ResultState.Success, Array.Empty<ResultState>() },
-				{ ResultState.Failed,  Array.Empty<ResultState>() },
-				{ ResultState.Skipped, Array.Empty<ResultState>() }
+				{ ItemResultState.Pending, new[] { ItemResultState.Success, ItemResultState.Failed, ItemResultState.Skipped } },
+				{ ItemResultState.Success, Array.Empty<ItemResultState>() },
+				{ ItemResultState.Failed,  Array.Empty<ItemResultState>() },
+				{ ItemResultState.Skipped, Array.Empty<ItemResultState>() }
 		};
 
 	private static bool Contains<T>(T[] array, T value) => Array.IndexOf(array, value) >= 0;
@@ -35,13 +35,13 @@ public sealed class ItemStateMachine
 	/// <summary>
 	/// Returns true if the lifecycle transition is allowed.
 	/// </summary>
-	public bool CanTransitionLifecycle(LifecycleState from, LifecycleState to) =>
+	public bool CanTransitionLifecycle(ItemLifecycleState from, ItemLifecycleState to) =>
 		LifecycleTransitions.TryGetValue(from, out var allowed) && Contains(allowed, to);
 
 	/// <summary>
 	/// Returns true if the result transition is allowed.
 	/// </summary>
-	public bool CanTransitionResult(ResultState from, ResultState to) =>
+	public bool CanTransitionResult(ItemResultState from, ItemResultState to) =>
 		ResultTransitions.TryGetValue(from, out var allowed) && Contains(allowed, to);
 
 	/// <summary>
@@ -49,7 +49,7 @@ public sealed class ItemStateMachine
 	/// </summary>
 	public void Queue(BackupItem item)
 	{
-		if(!CanTransitionLifecycle(item.LifecycleState, LifecycleState.Queued))
+		if(!CanTransitionLifecycle(item.LifecycleState, ItemLifecycleState.Queued))
 			throw new InvalidOperationException($"Invalid lifecycle transition: {item.LifecycleState} -> Queued");
 
 		item.SetQueued();
@@ -60,7 +60,7 @@ public sealed class ItemStateMachine
 	/// </summary>
 	public void Activate(BackupItem item)
 	{
-		if(!CanTransitionLifecycle(item.LifecycleState, LifecycleState.Active))
+		if(!CanTransitionLifecycle(item.LifecycleState, ItemLifecycleState.Active))
 			throw new InvalidOperationException($"Invalid lifecycle transition: {item.LifecycleState} -> Active");
 
 		item.SetActive();
@@ -69,14 +69,14 @@ public sealed class ItemStateMachine
 	/// <summary>
 	/// Applies a result transition to the item and updates lifecycle if needed.
 	/// </summary>
-	public void ApplyResult(BackupItem item, ResultState to, string? errorSummary = null)
+	public void ApplyResult(BackupItem item, ItemResultState to, string? errorSummary = null)
 	{
 		if(!CanTransitionResult(item.ResultState, to))
 			throw new InvalidOperationException($"Invalid result transition: {item.ResultState} -> {to}");
 
 		item.SetResult(to, errorSummary);
 
-		if(to == ResultState.Failed && !string.IsNullOrWhiteSpace(errorSummary))
+		if(to == ItemResultState.Failed && !string.IsNullOrWhiteSpace(errorSummary))
 		{
 			item.Errors.AddError("Result", errorSummary, DateTime.UtcNow);
 		}

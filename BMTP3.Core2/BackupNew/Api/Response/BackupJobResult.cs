@@ -1,7 +1,7 @@
+using BMTP3.Core2.BackupNew.Api.Response.Enums;
 using BMTP3.Core2.BackupNew.Domain.Errors;
-using BMTP3.Core2.BackupNew.Models;
 
-namespace BMTP3.Core2.BackupNew.Engine;
+namespace BMTP3.Core2.BackupNew.Api.Response;
 
 /// <summary>
 /// Represents the summary and outcome of a completed backup job.

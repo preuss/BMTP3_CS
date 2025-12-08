@@ -1,7 +1,7 @@
 ﻿using BMTP3.Core2.NetBackupFlow.Extensions;
 using System.Collections.Concurrent;
 
-namespace BMTP3.Core2.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Domain.Item;
 /// <summary>
 /// Flexible thread-safe property bag for all metadata associated with a backup item.
 /// Designed to be enriched by each stage in the pipeline.

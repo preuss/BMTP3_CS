@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Domain.Item;
-public enum LifecycleState
+public enum ItemLifecycleState
 {
 	/// <summary>
 	/// Item has been created in the system.

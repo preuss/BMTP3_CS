@@ -1,4 +1,5 @@
 ﻿using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Request;
 using System;
 using System.Collections.Generic;
 using System.Linq;

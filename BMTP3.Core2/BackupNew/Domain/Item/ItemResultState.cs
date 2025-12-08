@@ -8,7 +8,7 @@ namespace BMTP3.Core2.BackupNew.Domain.Item;
 /// <summary>
 /// Represents the final outcome of a backup attempt for a single item.
 /// </summary>
-public enum ResultState
+public enum ItemResultState
 {
 	/// <summary>
 	/// Item is registered and waiting to be processed.

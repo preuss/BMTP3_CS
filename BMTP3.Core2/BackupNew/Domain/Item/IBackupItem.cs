@@ -1,6 +1,5 @@
 ﻿using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Errors;
-using BMTP3.Core2.BackupNew.Models;
 
 namespace BMTP3.Core2.BackupNew.Domain.Item;
 /// <summary>
@@ -24,12 +23,12 @@ public interface IBackupItem
 	/// <summary>
 	/// The current lifecycle state of the item (e.g., New, Queued, Active, Processed).
 	/// </summary>
-	LifecycleState LifecycleState { get; }
+	ItemLifecycleState LifecycleState { get; }
 
 	/// <summary>
 	/// The final outcome of the backup attempt (e.g., Pending, Success, Failed, Skipped).
 	/// </summary>
-	ResultState ResultState { get; }
+	ItemResultState ResultState { get; }
 
 	/// <summary>
 	/// Error information for this specific item if an error occurred during processing.

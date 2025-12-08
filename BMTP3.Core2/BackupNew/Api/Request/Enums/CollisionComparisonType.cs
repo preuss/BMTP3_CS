@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Models.Configuration.Enums;
+namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 /// <summary>Defines how the existing file in the destination is compared to the source file before CollisionResolutionTypes is applied.</summary>
 public enum CollisionComparisonType

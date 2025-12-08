@@ -23,12 +23,12 @@ public class AuditItemEntry
 	/// <summary>
 	/// The current lifecycle state of the item.
 	/// </summary>
-	public required LifecycleState LifecycleState { get; init; }
+	public required ItemLifecycleState LifecycleState { get; init; }
 
 	/// <summary>
 	/// The current result state of the item.
 	/// </summary>
-	public required ResultState ResultState { get; init; }
+	public required ItemResultState ResultState { get; init; }
 
 	/// <summary>
 	/// Timestamp of when this entry was recorded.

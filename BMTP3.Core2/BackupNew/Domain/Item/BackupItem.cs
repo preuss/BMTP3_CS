@@ -1,6 +1,5 @@
 ﻿using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Errors;
-using BMTP3.Core2.BackupNew.Models;
 
 namespace BMTP3.Core2.BackupNew.Domain.Item;
 
@@ -17,8 +16,8 @@ public class BackupItem : IBackupItem
 	/// </summary>
 	public BackupMetadata Metadata { get; private set; }
 
-	public LifecycleState LifecycleState { get; private set; }
-	public ResultState ResultState { get; private set; }
+	public ItemLifecycleState LifecycleState { get; private set; }
+	public ItemResultState ResultState { get; private set; }
 	public ErrorLog Errors { get; } = new ErrorLog();
 
 	private readonly List<AuditItemEntry> _auditTrail;
@@ -34,8 +33,8 @@ public class BackupItem : IBackupItem
 		Content = content;
 		Metadata = metadata;
 
-		LifecycleState = LifecycleState.New;
-		ResultState = ResultState.Pending;
+		LifecycleState = ItemLifecycleState.New;
+		ResultState = ItemResultState.Pending;
 		_auditTrail = new List<AuditItemEntry>();
 		AttemptCount = 0;
 	}
@@ -59,8 +58,8 @@ public class BackupItem : IBackupItem
 
 	public void Fail(string message, string stepName, Exception? ex = null)
 	{
-		ResultState = ResultState.Failed;
-		LifecycleState = LifecycleState.Processed;
+		ResultState = ItemResultState.Failed;
+		LifecycleState = ItemLifecycleState.Processed;
 		AttemptCount++;
 
 		Errors.AddError(stepName, message, DateTime.UtcNow, ex);
@@ -85,8 +84,8 @@ public class BackupItem : IBackupItem
 
 	internal void SetQueued()
 	{
-		LifecycleState = LifecycleState.Queued;
-		ResultState = ResultState.Pending;
+		LifecycleState = ItemLifecycleState.Queued;
+		ResultState = ItemResultState.Pending;
 
 		_auditTrail.Add(new AuditItemEntry
 		{
@@ -100,7 +99,7 @@ public class BackupItem : IBackupItem
 
 	internal void SetActive()
 	{
-		LifecycleState = LifecycleState.Active;
+		LifecycleState = ItemLifecycleState.Active;
 		AttemptCount++;
 
 		_auditTrail.Add(new AuditItemEntry
@@ -113,12 +112,12 @@ public class BackupItem : IBackupItem
 		});
 	}
 
-	internal void SetResult(ResultState to, string? errorSummary = null)
+	internal void SetResult(ItemResultState to, string? errorSummary = null)
 	{
 		ResultState = to;
 
-		if(LifecycleState == LifecycleState.Active)
-			LifecycleState = LifecycleState.Processed;
+		if(LifecycleState == ItemLifecycleState.Active)
+			LifecycleState = ItemLifecycleState.Processed;
 
 		_auditTrail.Add(new AuditItemEntry
 		{

@@ -1,6 +1,6 @@
-using BMTP3.Core2.BackupNew.Models.Configuration.Enums;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 
-namespace BMTP3.Core2.BackupNew.Api;
+namespace BMTP3.Core2.BackupNew.Api.Request;
 
 /// <summary>
 /// Represents a single, fully configured backup job to be executed by the BackupEngine.

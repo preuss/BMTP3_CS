@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Engine;
+namespace BMTP3.Core2.BackupNew.Api;
 
 /// <summary>
 /// Represents the current progress of an ongoing backup job.

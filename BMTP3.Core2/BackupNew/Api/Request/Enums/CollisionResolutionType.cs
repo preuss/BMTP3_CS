@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Models.Configuration.Enums;
+namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 /// <summary>Defines the type of resolution method to be applied when a file collision is detected.</summary>
 public enum CollisionResolutionType

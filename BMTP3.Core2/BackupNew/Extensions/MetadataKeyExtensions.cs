@@ -1,4 +1,5 @@
-using BMTP3.Core2.BackupNew.Models;
+using BMTP3.Core2.BackupNew.Domain.Item;
+using BMTP3.Core2.BackupNew.Utilities;
 using System.Reflection;
 
 namespace BMTP3.Core2.NetBackupFlow.Extensions

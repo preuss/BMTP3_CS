@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Api.Response.Enums;
 
 /// <summary>
 /// Defines the overall status of a backup job after execution.

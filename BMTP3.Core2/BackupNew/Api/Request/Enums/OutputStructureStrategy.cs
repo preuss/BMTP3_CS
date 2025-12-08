@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Models.Configuration.Enums;
+namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 /// <summary>Defines the strategy for creating the destination folder structure.</summary>
 public enum OutputStructureStrategy

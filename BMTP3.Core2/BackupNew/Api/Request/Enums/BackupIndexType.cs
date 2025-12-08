@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Models.Configuration.Enums;
+namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 /// <summary>Defines the centralized catalog or index structure for the entire backup set.</summary>
 public enum BackupIndexType

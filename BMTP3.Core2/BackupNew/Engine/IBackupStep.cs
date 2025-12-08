@@ -1,4 +1,4 @@
-﻿using BMTP3.Core2.BackupNew.Api;
+﻿using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using System;
 using System.Collections.Generic;

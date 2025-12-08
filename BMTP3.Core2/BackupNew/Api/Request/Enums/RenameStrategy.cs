@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Models.Configuration.Enums;
+namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 /// <summary>Defines the strategy for renaming a file when CollisionResolutionTypes is 'Rename'.</summary>
 public enum RenameStrategy

@@ -1,6 +1,6 @@
-using BMTP3.Core2.BackupNew.Models;
+using BMTP3.Core2.BackupNew.Utilities;
 
-namespace BMTP3.Core2.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Domain.Item;
 /// <summary>
 /// All known metadata keys.
 /// Using enum + attribute provides both type safety and the ability to serialize to readable strings.

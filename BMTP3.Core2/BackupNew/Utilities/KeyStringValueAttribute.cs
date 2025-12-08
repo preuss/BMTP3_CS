@@ -1,4 +1,4 @@
-namespace BMTP3.Core2.BackupNew.Models;
+namespace BMTP3.Core2.BackupNew.Utilities;
 /// <summary>
 /// Attribute to specify the string representation of a key
 /// Attribute that makes it possible to map the enum value to a readable string during serialization.
