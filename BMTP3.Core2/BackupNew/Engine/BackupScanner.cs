@@ -6,6 +6,7 @@ using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 using MediaDevices;
 using System;
+using System.Linq;
 
 namespace BMTP3.Core2.BackupNew.Engine;
 
@@ -62,7 +63,7 @@ public class BackupScanner : IBackupScanner
 			item.Metadata.Set(MetadataKey.Length, fileInfo.Length);
 
 			item.Metadata.Set(MetadataKey.DeviceName, Environment.MachineName);
-			// Use file:// URI for device file url to make it explicit and portable
+			// Use file:// URI for device file url "file://server/share/file.jpg" or "file:///C:/folder/file.jpg" for local to make it explicit and portable
 			item.Metadata.Set(MetadataKey.DeviceFileUrl, new Uri(fileInfo.FullName).AbsoluteUri);
 			item.Metadata.Set(MetadataKey.DeviceUniqueId, Environment.MachineName);
 
@@ -109,7 +110,8 @@ public class BackupScanner : IBackupScanner
 				item.Metadata.Set(MetadataKey.DeviceName, device.FriendlyName);
 				// Normalize media device path to a scheme-based URI (mtp://deviceId/escaped-path)
 				string mtpPath = mediaFileInfo.FullName.TrimStart('\\', '/').Replace('\\', '/');
-				string mtpUrl = $"mtp://{Uri.EscapeDataString(device.DeviceId)}/{Uri.EscapeUriString(mtpPath)}";
+				IEnumerable<string> segments = mtpPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(s => Uri.EscapeDataString(s));
+				string mtpUrl = $"mtp://{Uri.EscapeDataString(device.DeviceId)}/{string.Join('/', segments)}";
 				item.Metadata.Set(MetadataKey.DeviceFileUrl, mtpUrl);
 				item.Metadata.Set(MetadataKey.DeviceUniqueId, device.DeviceId);
 
