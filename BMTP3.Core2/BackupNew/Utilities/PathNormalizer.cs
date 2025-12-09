@@ -1,6 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Collections.Generic;
 
 namespace BMTP3.Core2.BackupNew.Utilities;
 
@@ -12,8 +14,9 @@ public static class PathNormalizer
 	/// <summary>
 	/// Normalize a local filesystem path into a file:// URI string.
 	/// Examples: "file:///C:/folder/file.jpg" or "file://server/share/file.jpg".
+	/// Returns empty string on null/empty input.
 	/// </summary>
-	public static string NormalizeFileUrl(string path)
+	public static string NormalizeFileUri(string path)
 	{
 		if(string.IsNullOrEmpty(path))
 		{
@@ -22,40 +25,60 @@ public static class PathNormalizer
 
 		try
 		{
+			// Canonicalize and let Uri handle UNC vs drive letters and escaping
 			string full = Path.GetFullPath(path);
-			return new Uri(full).AbsoluteUri; // e.g. "file:///C:/folder/file.jpg" or "file://server/share/file.jpg"
-		} catch
-		{
-			// Fallback: attempt to create a file:// URI from the original path
-			Uri uri = new Uri(path, UriKind.RelativeOrAbsolute);
-			return uri.IsAbsoluteUri ? uri.AbsoluteUri : new Uri(Path.GetFullPath(path)).AbsoluteUri;
-		}
+			Uri uri = new Uri(full, UriKind.Absolute);
+			return uri.AbsoluteUri; // e.g. "file:///C:/folder/file.jpg" or "file://server/share/file.jpg"
+		} catch(ArgumentException) { return string.Empty; } catch(NotSupportedException) { return string.Empty; } catch(PathTooLongException) { return string.Empty; } catch(IOException) { return string.Empty; } catch(System.Security.SecurityException) { return string.Empty; }
 	}
 
 	/// <summary>
 	/// Normalize a device (MTP) path into an mtp:// URI string using the provided deviceId as authority.
 	/// Example: "mtp://deviceId/DCIM/100APPLE/IMG_0001.JPG".
 	/// </summary>
-	public static string NormalizeDeviceFileUrl(string path, string deviceId)
+	public static string NormalizeMtpUri(string path, string deviceId)
 	{
 		if(string.IsNullOrEmpty(deviceId))
 		{
 			throw new ArgumentNullException(nameof(deviceId));
 		}
 
+		string escapedDevice = Uri.EscapeDataString(deviceId);
+
 		if(string.IsNullOrEmpty(path))
 		{
-			return $"mtp://{Uri.EscapeDataString(deviceId)}/";
+			return $"mtp://{escapedDevice}/";
 		}
 
-		string mtpPath = path.TrimStart('\\', '/').Replace('\\', '/');
-		IEnumerable<string> segments = mtpPath
-			.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries)
-			.Select(s => Uri.EscapeDataString(s));
+		// Normalize separators and trim leading slashes
+		string mtpPath = path.Replace('\\', '/').TrimStart('/');
 
-		string escapedDevice = Uri.EscapeDataString(deviceId);
-		return segments.Any()
-			? $"mtp://{escapedDevice}/{string.Join('/', segments)}"
+		// Split into segments, resolve dot segments ('.' and '..') and normalize unicode
+		string[] rawSegments = mtpPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
+		List<string> stack = new List<string>(rawSegments.Length);
+		foreach(string seg in rawSegments)
+		{
+			if(seg == ".")
+			{
+				continue;
+			}
+			if(seg == "..")
+			{
+				if(stack.Count > 0)
+				{
+					stack.RemoveAt(stack.Count - 1);
+				}
+				continue;
+			}
+
+			// Normalize unicode to NFC for stable representation
+			string normalized = seg.Normalize(NormalizationForm.FormC);
+			stack.Add(normalized);
+		}
+
+		IEnumerable<string> escapedSegments = stack.Select(s => Uri.EscapeDataString(s));
+		return escapedSegments.Any()
+			? $"mtp://{escapedDevice}/{string.Join('/', escapedSegments)}"
 			: $"mtp://{escapedDevice}/";
 	}
 }
