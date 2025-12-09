@@ -21,5 +21,5 @@ public interface IBackupStep
     /// Executes an operation on a single item.
     /// The method must update the item's State or Metadata.
     /// </summary>
-    Task ExecuteAsync(IBackupItem item, BackupPlan jobConfig, CancellationToken ct);
+    Task ExecuteAsync(IBackupItem item, BackupPlan job, CancellationToken ct);
 }

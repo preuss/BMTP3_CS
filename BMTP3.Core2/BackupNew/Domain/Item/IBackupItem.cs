@@ -56,4 +56,10 @@ public interface IBackupItem
 	/// Replaces the current content source (e.g., when copying from MTP to local temp).
 	/// </summary>
 	void ReplaceContent(IContent newContent);
+
+	/// <summary>
+	/// Sets the result state of the item (Success, Skipped, etc.).
+	/// </summary>
+	void SetResult(ItemResultState to, string? errorSummary = null);
+
 }

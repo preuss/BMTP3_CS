@@ -18,7 +18,7 @@ public class BackupItem : IBackupItem
 
 	public ItemLifecycleState LifecycleState { get; private set; }
 	public ItemResultState ResultState { get; private set; }
-	public ErrorLog Errors { get; } = new ErrorLog();
+	public ErrorLog Errors { get; }
 
 	private readonly List<AuditItemEntry> _auditTrail;
 	public IReadOnlyList<AuditItemEntry> AuditTrail => _auditTrail.AsReadOnly();
@@ -35,6 +35,9 @@ public class BackupItem : IBackupItem
 
 		LifecycleState = ItemLifecycleState.New;
 		ResultState = ItemResultState.Pending;
+
+		Errors = new ErrorLog();
+
 		_auditTrail = new List<AuditItemEntry>();
 		AttemptCount = 0;
 	}
@@ -112,7 +115,7 @@ public class BackupItem : IBackupItem
 		});
 	}
 
-	internal void SetResult(ItemResultState to, string? errorSummary = null)
+	public void SetResult(ItemResultState to, string? errorSummary = null)
 	{
 		ResultState = to;
 

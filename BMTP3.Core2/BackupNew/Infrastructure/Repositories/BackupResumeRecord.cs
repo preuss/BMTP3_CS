@@ -4,6 +4,7 @@ namespace BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 
 /// <summary>
 /// Persistent record used for resume: identifies a source file and whether it's already saved.
+/// </summary>
 public class BackupResumeRecord
 {
 	/// <summary>
