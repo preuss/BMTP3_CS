@@ -1,4 +1,5 @@
 ﻿using BMTP3.Core2.NetBackupFlow.Extensions;
+using System;
 using System.Collections.Concurrent;
 
 namespace BMTP3.Core2.BackupNew.Domain.Item;
@@ -9,6 +10,36 @@ namespace BMTP3.Core2.BackupNew.Domain.Item;
 public class BackupMetadata
 {
 	private readonly ConcurrentDictionary<MetadataKey, object?> _data = new();
+
+	public DateTime? AuthoredDateTime
+	{
+		get { return Get<DateTime?>(MetadataKey.AuthoredDateTime); }
+		set { Set(MetadataKey.AuthoredDateTime, value); }
+	}
+
+	public DateTime? CreatedDateTime
+	{
+		get { return Get<DateTime?>(MetadataKey.CreatedDateTime); }
+		set { Set(MetadataKey.CreatedDateTime, value); }
+	}
+
+	public DateTime? ModifiedDateTime
+	{
+		get { return Get<DateTime?>(MetadataKey.ModifiedDateTime); }
+		set { Set(MetadataKey.ModifiedDateTime, value); }
+	}
+
+	public DateTime? AccessedDateTime
+	{
+		get { return Get<DateTime?>(MetadataKey.AccessedDateTime); }
+		set { Set(MetadataKey.AccessedDateTime, value); }
+	}
+
+	public DateTime? MetadataChangedDatetime
+	{
+		get { return Get<DateTime?>(MetadataKey.MetadataChangedDateTime); }
+		set { Set(MetadataKey.MetadataChangedDateTime, value); }
+	}
 
 	/// <summary>
 	/// Sets a value. Overwrites existing key. Removes the key if value is null.
