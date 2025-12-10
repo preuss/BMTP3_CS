@@ -127,6 +127,16 @@ public class BackupPlan
 	/// </summary>
 	public BackupIndexType BackupIndexType { get; set; } = BackupIndexType.Json; // UPDATED DEFAULT
 
+	public ISet<HashType> HashTypes { get; set; } = new HashSet<HashType> {
+		HashType.SHA3_512_KECCAK,
+		HashType.SHA3_512_FIPS202,
+		HashType.SHA2_512,
+		HashType.SHA2_256,
+		HashType.MD5_128,
+		HashType.BLAKE3_256,
+		HashType.BLAKE3_512
+	}; // UPDATED DEFAULT
+
 	// --------------------------------------------------
 	// 8. EXECUTION CONTROL
 	// --------------------------------------------------
