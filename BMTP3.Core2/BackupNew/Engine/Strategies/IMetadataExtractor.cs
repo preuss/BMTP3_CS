@@ -1,4 +1,5 @@
 using BMTP3.Core2.BackupNew.Domain.Item;
+using BMTP3.Core2.BackupNew.Engine.HashGenerator;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
@@ -17,5 +18,5 @@ public interface IMetadataExtractor
     /// Calculates or retrieves the hash of the item. 
     /// Should only be called if collision detection requires it.
     /// </summary>
-    Task<string> ComputeHashAsync(IBackupItem item, CancellationToken ct);
+    Task<Dictionary<HashType, string>> ComputeHashAsync(IBackupItem item, IEnumerable<HashType> algorithms, CancellationToken ct);
 }

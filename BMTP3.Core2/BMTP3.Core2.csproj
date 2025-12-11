@@ -20,11 +20,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.0" />
+    <PackageReference Include="Blake3" Version="2.0.0" />
+    <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageReference Include="SharpHash" Version="1.2.0" />
+    <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.1" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\BMTP3.Common\BMTP3.Common.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="BackupNew\Engine\Steps\" />
   </ItemGroup>
 
 </Project>

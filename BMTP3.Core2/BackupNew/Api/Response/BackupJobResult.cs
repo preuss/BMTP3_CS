@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api.Response.Enums;
+using BMTP3.Core2.BackupNew.Domain.Job;
 using BMTP3.Core2.BackupNew.Domain.Errors;
 
 namespace BMTP3.Core2.BackupNew.Api.Response;
@@ -63,9 +63,9 @@ public class BackupJobResult
 	// --- Status & Errors ---
 
 	/// <summary>
-	/// The overall status of the job execution (Success, SuccessWithWarnings, Failed).
+	/// The overall lifecycle state of the job execution (Ready, Running, Completed, Failed, Cancelled).
 	/// </summary>
-	public JobStatus Status { get; set; }
+	public JobState Status { get; set; }
 
 	/// <summary>
 	/// List of critical errors that affected the entire job (e.g., source disconnected, destination full).

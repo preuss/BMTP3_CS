@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
+namespace BMTP3.Core2.BackupNew.Engine.HashGenerator;
 
 public enum HashType
 {

@@ -1,6 +1,8 @@
 using System.Security.Cryptography;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Content;
+using System.Collections.Generic;
+using BMTP3.Core2.BackupNew.Engine.HashGenerator;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
@@ -40,21 +42,63 @@ public class MetadataExtractor : IMetadataExtractor
         return Task.CompletedTask;
     }
 
-    public async Task<string> ComputeHashAsync(IBackupItem item, CancellationToken ct)
+    /// <summary>
+    /// Computes SHA-256 hash for the item and stores it in metadata under the "hashes" dictionary.
+    /// Returns hex-encoded lowercase string of the SHA-256 hash.
+    /// </summary>
+    public async Task<Dictionary<HashType, string>> ComputeHashAsync(IBackupItem item, IEnumerable<HashType> algorithms, CancellationToken ct)
     {
-        if (item.Metadata.Has(MetadataKey.HashSha256))
+        if (item is null) throw new ArgumentNullException(nameof(item));
+
+        var requested = (algorithms ?? Enumerable.Empty<HashType>()).Distinct().ToArray();
+        if (requested.Length == 0)
+            requested = new[] { HashType.SHA2_256 };
+
+        // read existing hashes from metadata (stored as Dictionary<string,string>)
+        var stored = item.Metadata.Get<Dictionary<string, string>>(MetadataKey.Hashes) ?? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        var result = new Dictionary<HashType, string>();
+
+        // Determine which algorithms we need to compute
+        var missing = requested.Where(a => !stored.TryGetValue(a.ToString(), out var v) || string.IsNullOrEmpty(v)).Distinct().ToArray();
+
+        if (missing.Length > 0)
         {
-            return item.Metadata.Get<string>(MetadataKey.HashSha256)!;
+            // Currently only SHA2_256 is implemented
+            if (missing.Any(a => a != HashType.SHA2_256))
+            {
+                throw new NotSupportedException("Only SHA2_256 is supported by this MetadataExtractor implementation.");
+            }
+
+            // Compute SHA256 once
+            using var sha256 = SHA256.Create();
+            using var stream = item.Content.OpenRead();
+            byte[] hashBytes = await sha256.ComputeHashAsync(stream, ct);
+            string hashString = Convert.ToHexString(hashBytes).ToLowerInvariant();
+
+            stored[HashType.SHA2_256.ToString()] = hashString;
         }
 
-        using var sha256 = SHA256.Create();
-        using var stream = item.Content.OpenRead();
-        
-        byte[] hashBytes = await sha256.ComputeHashAsync(stream, ct);
-        string hashString = BitConverter.ToString(hashBytes).Replace("-", "").ToLowerInvariant();
+        // Persist updated hashes dictionary back to metadata
+        if (missing.Length > 0)
+        {
+            item.Metadata.Set(MetadataKey.Hashes, stored);
+        }
 
-        item.Metadata.Set(MetadataKey.HashSha256, hashString);
+        // Build result map from stored values
+        foreach (var algo in requested)
+        {
+            if (stored.TryGetValue(algo.ToString(), out var val) && !string.IsNullOrEmpty(val))
+            {
+                result[algo] = val;
+            }
+            else
+            {
+                // Should not happen because we computed missing above, but guard anyway
+                throw new InvalidOperationException($"Requested hash {algo} is not available after computation.");
+            }
+        }
 
-        return hashString;
+        return result;
     }
 }

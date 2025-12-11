@@ -1,4 +1,4 @@
-﻿using BMTP3.Core2.BackupNew.Api.Request;
+using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using System;
 using System.Collections.Generic;
@@ -10,7 +10,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps;
 /// <summary>
 /// Represents a single step in the sequential backup pipeline.
 /// </summary>
-public interface IBackupStep
+public interface IBackupStep<TInput, TOutput>
 {
     /// <summary>
     /// The name of the step (e.g., "Hashing", "Copying", "Decision").
@@ -21,5 +21,5 @@ public interface IBackupStep
     /// Executes an operation on a single item.
     /// The method must update the item's State or Metadata.
     /// </summary>
-    Task ExecuteAsync(IBackupItem item, BackupPlan job, CancellationToken ct);
+    Task<TOutput> ExecuteAsync(TInput input, IBackupItem item, BackupPlan job, CancellationToken ct);
 }

@@ -1,4 +1,5 @@
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
+using BMTP3.Core2.BackupNew.Engine.HashGenerator;
 
 namespace BMTP3.Core2.BackupNew.Api.Request;
 
