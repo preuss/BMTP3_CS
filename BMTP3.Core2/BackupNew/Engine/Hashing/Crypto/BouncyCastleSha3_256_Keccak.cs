@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Handlers.Crypto;
+namespace BMTP3.Core2.Engine.Hashing.Crypto;
 internal sealed class BouncyCastleSha3_256_Keccak : HashAlgorithm
 {
 	private readonly KeccakDigest _digest = new(256);

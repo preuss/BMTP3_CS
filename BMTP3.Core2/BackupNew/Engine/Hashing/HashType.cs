@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core2.BackupNew.Engine.HashGenerator;
+namespace BMTP3.Core2.BackupNew.Engine.Hashing;
 
 public enum HashType
 {

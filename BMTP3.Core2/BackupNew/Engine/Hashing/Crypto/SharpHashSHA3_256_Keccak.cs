@@ -1,5 +1,4 @@
-﻿using SharpHash;
-using SharpHash.Base;
+﻿using SharpHash.Base;
 using SharpHash.Interfaces;
 using System;
 using System.Collections.Generic;
@@ -8,14 +7,14 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Handlers.Crypto;
-public class SharpHashSHA3_512 : HashAlgorithm
+namespace BMTP3.Core2.Engine.Hashing.Crypto;
+public class SharpHashSHA3_256_Keccak : HashAlgorithm
 {
 	private readonly IHash _hash;
 
-	public SharpHashSHA3_512()
+	public SharpHashSHA3_256_Keccak()
 	{
-		_hash = HashFactory.Crypto.CreateSHA3_512();
+		_hash = HashFactory.Crypto.CreateKeccak_256(); // SharpHash SHA3-256
 		HashSizeValue = _hash.HashSize;
 		Initialize();
 	}

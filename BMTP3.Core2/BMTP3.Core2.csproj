@@ -22,8 +22,10 @@
   <ItemGroup>
     <PackageReference Include="Blake3" Version="2.0.0" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.1" />
     <PackageReference Include="SharpHash" Version="1.2.0" />
     <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.1" />
+    <PackageReference Include="ZLogger" Version="2.5.10" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,7 +33,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="BackupNew\Engine\Steps\" />
+    <Folder Include="BackupNew\Engine\Processor\" />
   </ItemGroup>
 
 </Project>

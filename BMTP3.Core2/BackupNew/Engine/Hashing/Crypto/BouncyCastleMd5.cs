@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Handlers.Crypto;
+namespace BMTP3.Core2.Engine.Hashing.Crypto;
 /// <summary>
 /// Wrapper that adapts the BouncyCastle MD5Digest to the HashAlgorithm API.
 /// Used where HashCalculator expects a HashAlgorithm.

@@ -1,7 +1,9 @@
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
+using System.Threading;
+using System.Collections.Generic;
 
-namespace BMTP3.Core2.BackupNew.Engine;
+namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 
 /// <summary>
 /// Responsible for discovering files in the source (FileSystem or MTP) 
@@ -10,8 +12,8 @@ namespace BMTP3.Core2.BackupNew.Engine;
 /// </summary>
 public interface IBackupScanner
 {
-	/// <summary>
-	/// Scans the source defined in the job and yields items found.
-	/// </summary>
-	IAsyncEnumerable<IBackupItem> ScanAsync(BackupPlan job, CancellationToken ct);
+    /// <summary>
+    /// Scans the source defined in the job and yields items found.
+    /// </summary>
+    IAsyncEnumerable<IBackupItem> ScanAsync(BackupPlan job, CancellationToken ct);
 }

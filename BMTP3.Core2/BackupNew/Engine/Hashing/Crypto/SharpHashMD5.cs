@@ -8,7 +8,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BMTP3.Core.Handlers.Crypto;
+namespace BMTP3.Core2.Engine.Hashing.Crypto;
 public class SharpHashMD5 : HashAlgorithm
 {
 	private readonly IHash _hash;
