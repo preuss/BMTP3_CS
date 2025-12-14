@@ -8,8 +8,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="BackupNew\Engine\Processor\**" />
     <Compile Remove="BackupNew\Reader\**" />
+    <EmbeddedResource Remove="BackupNew\Engine\Processor\**" />
     <EmbeddedResource Remove="BackupNew\Reader\**" />
+    <None Remove="BackupNew\Engine\Processor\**" />
     <None Remove="BackupNew\Reader\**" />
   </ItemGroup>
 
@@ -30,10 +33,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\BMTP3.Common\BMTP3.Common.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="BackupNew\Engine\Processor\" />
   </ItemGroup>
 
 </Project>

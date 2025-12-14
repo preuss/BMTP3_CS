@@ -62,4 +62,8 @@ public interface IBackupItem
 	/// </summary>
 	void SetResult(ItemResultState to, string? errorSummary = null);
 
+	/// <summary>
+	/// Adds a generic log entry to the item's audit trail.
+	/// </summary>
+	void AddLog(string message, string stage = "General");
 }

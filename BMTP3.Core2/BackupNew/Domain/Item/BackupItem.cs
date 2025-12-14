@@ -132,4 +132,17 @@ public class BackupItem : IBackupItem
 			ErrorSummary = errorSummary
 		});
 	}
+
+	public void AddLog(string message, string stage = "General")
+	{
+		_auditTrail.Add(new AuditItemEntry
+		{
+			Stage = stage,
+			AttemptCount = AttemptCount,
+			LifecycleState = LifecycleState,
+			ResultState = ResultState,
+			Timestamp = DateTime.UtcNow,
+			ErrorSummary = message
+		});
+	}
 }

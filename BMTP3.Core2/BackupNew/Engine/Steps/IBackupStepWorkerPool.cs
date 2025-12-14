@@ -9,5 +9,8 @@ using System.Threading.Tasks;
 namespace BMTP3.Core2.BackupNew.Engine.Steps;
 public interface IBackupStepWorkerPool<TContext, TResult>
 {
-	public Task RunAsync(TContext context, IBackupItemStep<TContext, TResult> step, ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, int parallelism, CancellationToken ct);
+	int Parallelism { get; }
+	TContext Context { get; }
+	IBackupItemStep<TContext, TResult> ItemStep { get; }
+	public Task RunAsync(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct);
 }

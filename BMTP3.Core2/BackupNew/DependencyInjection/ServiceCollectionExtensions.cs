@@ -1,22 +1,24 @@
-using Microsoft.Extensions.DependencyInjection;
-using BMTP3.Core2.BackupNew.Engine.Orchestration;
-using BMTP3.Core2.BackupNew.Engine.Traversal;
-using BMTP3.Core2.BackupNew.Engine.Staging;
-using BMTP3.Core2.BackupNew.Engine.Hashing;
-using BMTP3.Core2.BackupNew.Engine.Resilience;
-using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
-using BMTP3.Core2.BackupNew.Engine.Strategies;
-using Microsoft.Extensions.Logging;
-using BMTP3.Core2.BackupNew.Engine.Transfers;
-using BMTP3.Core2.BackupNew.Engine;
 using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Engine;
+using BMTP3.Core2.BackupNew.Engine.Hashing;
+using BMTP3.Core2.BackupNew.Engine.Orchestration;
+using BMTP3.Core2.BackupNew.Engine.Resilience;
+using BMTP3.Core2.BackupNew.Engine.Staging;
+using BMTP3.Core2.BackupNew.Engine.Strategies;
+using BMTP3.Core2.BackupNew.Engine.Transfers;
+using BMTP3.Core2.BackupNew.Engine.Traversal;
+using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace BMTP3.Core2.BackupNew.DependencyInjection;
+
 public static class ServiceCollectionExtensions
 {
 	public static IServiceCollection AddBMTP3Core2(this IServiceCollection services)
 	{
-		// Register engine defaults. Host can override any of these registrations.
+		// Engine defaults
 		services.AddSingleton<IDeviceScanner, NoopDeviceScanner>();
 		services.AddTransient<IMediaToBackupItemConverter, MediaToBackupItemConverter>();
 		services.AddTransient<IStagingDownloader, StagingDownloader>();
@@ -24,28 +26,22 @@ public static class ServiceCollectionExtensions
 		services.AddTransient<IFileTransfer, LocalFileTransfer>();
 		services.AddSingleton<IBackupRepository, FileBackupRepository>();
 
-		// Strategy defaults
+		// Strategies
 		services.AddTransient<IPathGenerator, PathGenerator>();
 		services.AddTransient<ICollisionResolver, CollisionResolver>();
 		services.AddTransient<IMetadataExtractor, MetadataExtractor>();
+		services.AddTransient<ISidecarGenerator, JsonSidecarGenerator>();
 
-		// Resilience: Retry policy
-		services.AddTransient<IRetryPolicy>(sp =>
+		// Resilience
+		services.AddTransient<IRetryPolicy, ExponentialBackoffRetryPolicy>();
+
+		// Options
+		services.Configure<BackupEngineOptions>(o =>
 		{
-			var logger = sp.GetService<ILogger<ExponentialBackoffRetryPolicy>>();
-			return new ExponentialBackoffRetryPolicy(maxAttempts: 3, baseBackoffMs: 200, logger);
+			o.DegreeOfParallelism = 0; // 0 == Auto-detect
 		});
 
-		// Orchestration: Worker pool processor
-		//services.AddTransient<BackupItemProcessor>();
-
-		// Register configurable options with sane defaults
-		services.Configure<BmtpOptions>(o =>
-		{
-			o.DegreeOfParallelism = 0; // Auto-detect
-		});
-
-		// Engine itself
+		// Engine
 		services.AddTransient<IBackupEngine, BackupEngine>();
 
 		return services;

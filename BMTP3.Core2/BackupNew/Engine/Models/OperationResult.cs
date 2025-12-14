@@ -7,5 +7,6 @@ namespace BMTP3.Core2.BackupNew.Engine.Models
         public string? Message { get; set; }
         public static OperationResult Ok() => new OperationResult { Success = true };
         public static OperationResult Fail(string message) => new OperationResult { Success = false, Message = message };
+        public static OperationResult Skipped(string reason) => new OperationResult { Success = true, Message = "Skipped: " + reason };
     }
 }

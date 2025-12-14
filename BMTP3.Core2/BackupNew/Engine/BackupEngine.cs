@@ -7,7 +7,6 @@ using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Domain.Job;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
-using BMTP3.Core2.BackupNew.Engine.Steps;
 using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
@@ -18,6 +17,16 @@ using BMTP3.Core2.BackupNew.Engine.Hashing;
 using BMTP3.Core2.BackupNew.Engine.Transfers;
 using System.Threading.Channels;
 using MediaDevices;
+using BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
+using BMTP3.Core2.BackupNew.Engine.Orchestration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.MetadataExtractionStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
+using BMTP3.Core2.BackupNew.Engine.Steps;
 
 namespace BMTP3.Core2.BackupNew.Engine;
 /// <summary>
@@ -34,6 +43,9 @@ public class BackupEngine : IBackupEngine
 	private readonly ICollisionResolver _collisionResolver;
 	private readonly IFileTransfer _fileTransfer;
 	private readonly IBackupRepository _repository;
+	private readonly ISidecarGenerator _sidecarGenerator;
+	private readonly IOptions<BackupEngineOptions> _options;
+	private readonly ILoggerFactory _loggerFactory;
 
 	public BackupEngine(
 		IDeviceScanner deviceScanner,
@@ -44,7 +56,11 @@ public class BackupEngine : IBackupEngine
 		IPathGenerator pathGenerator,
 		ICollisionResolver collisionResolver,
 		IFileTransfer fileTransfer,
-		IBackupRepository repository)
+		IBackupRepository repository,
+		ISidecarGenerator sidecarGenerator,
+		IOptions<BackupEngineOptions> options,
+		ILoggerFactory loggerFactory
+	)
 	{
 		_deviceScanner = deviceScanner ?? throw new ArgumentNullException(nameof(deviceScanner));
 		_converter = converter ?? throw new ArgumentNullException(nameof(converter));
@@ -55,6 +71,9 @@ public class BackupEngine : IBackupEngine
 		_collisionResolver = collisionResolver ?? throw new ArgumentNullException(nameof(collisionResolver));
 		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
 		_repository = repository ?? throw new ArgumentNullException(nameof(repository));
+		_sidecarGenerator = sidecarGenerator ?? throw new ArgumentNullException(nameof(sidecarGenerator));
+		_options = options ?? throw new ArgumentNullException(nameof(options));
+		_loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
 	}
 
 	public async Task<BackupJobResult> RunAsync(BackupPlan plan, IProgress<BackupProgress> progress, CancellationToken ct)
@@ -80,21 +99,54 @@ public class BackupEngine : IBackupEngine
 
 		progress.Report(new BackupProgress { CurrentActivity = "Initializing" });
 
-		// Channels (use IBackupItem for processing pipeline so worker pools can interoperate)
-		var scanChannel = Channel.CreateBounded<MediaFileInfo>(new BoundedChannelOptions(128) { SingleWriter = true, SingleReader = false });
-		var convertChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(128) { SingleWriter = false, SingleReader = true });
-		var stagingToProcessingChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(128) { SingleWriter = false, SingleReader = true });
+		// Configure Options
+		var opts = _options.Value;
+		int degreeOfParallelism = opts.DegreeOfParallelism > 0
+			? opts.DegreeOfParallelism
+			: Math.Max(1, Environment.ProcessorCount / 2);
 
-		// Chain of three hash stages for demonstration
-		var postHash1 = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(128) { SingleWriter = false, SingleReader = true });
-		var postHash2 = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(128) { SingleWriter = false, SingleReader = true });
-		var postHash3 = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(128) { SingleWriter = false, SingleReader = true });
+		// 1. Define Channels
+		var scanChannel = Channel.CreateBounded<MediaFileInfo>(new BoundedChannelOptions(opts.ScanChannelCapacity) { SingleWriter = true, SingleReader = false });
+		var convertChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ConvertChannelCapacity) { SingleWriter = false, SingleReader = true });
+		var bufferingChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.StagingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		var metadataChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		var timestampChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		var hashChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		var transferChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		var sidecarChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		var persistenceChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true }); // Final output
 
 		result.Status = Domain.Job.JobState.Running;
 		progress.Report(new BackupProgress { CurrentActivity = "Running" });
 
-		// Producer: scan device (single-threaded device access)
-		var producer = Task.Run(async () =>
+		// 2. Instantiate Steps
+		var bufferingStep = new ContentBufferingItemStep(_stagingDownloader, progress);
+		var metadataStep = new MetadataExtractionItemStep(_metadataExtractor, plan);
+		var timestampStep = new TimestampCorrectionItemStep(plan);
+		var hashStepContext = new HashStepContext()
+		{
+			BackupPlan = plan,
+			HashTypes = new List<HashType> { HashType.BLAKE3_512 },
+			ForceRecompute = false
+		};
+		var hashStep = new HashItemStep(hashStepContext);
+		var transferStep = new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer);
+		var sidecarStep = new SidecarGenerationItemStep(plan, _sidecarGenerator);
+
+		// 3. Instantiate Worker Pools
+		// We use GenericItemStepWorkerPool because the steps update the item state internally.
+//		var bufferingPool = new GenericItemStepWorkerPool<bool>(_loggerFactory.CreateLogger<GenericItemStepWorkerPool<bool>>());
+//		var metadataPool = new GenericItemStepWorkerPool<bool>(_loggerFactory.CreateLogger<GenericItemStepWorkerPool<bool>>());
+//		var timestampPool = new GenericItemStepWorkerPool<bool>(_loggerFactory.CreateLogger<GenericItemStepWorkerPool<bool>>());
+		var hashPool = new HashStepWorkerPool(_loggerFactory.CreateLogger<HashStepWorkerPool>(), degreeOfParallelism, hashStep.Context, hashStep);
+//		var transferPool = new GenericItemStepWorkerPool<OperationResult>(_loggerFactory.CreateLogger<GenericItemStepWorkerPool<OperationResult>>());
+//		var sidecarPool = new GenericItemStepWorkerPool<bool>(_loggerFactory.CreateLogger<GenericItemStepWorkerPool<bool>>());
+
+
+		// 4. Start Pipeline Tasks
+
+		// [A] Producer: Scan device
+		var producerTask = Task.Run(async () =>
 		{
 			try
 			{
@@ -110,7 +162,7 @@ public class BackupEngine : IBackupEngine
 			}
 		}, ct);
 
-		// Converter: MediaFileInfo -> IBackupItem
+		// [B] Converter: MediaFileInfo -> IBackupItem
 		var converterTask = Task.Run(async () =>
 		{
 			try
@@ -120,7 +172,7 @@ public class BackupEngine : IBackupEngine
 					ct.ThrowIfCancellationRequested();
 					var item = _converter.Convert(mediaInfo);
 					await convertChannel.Writer.WriteAsync(item, ct);
-					progress.Report(new BackupProgress { CurrentActivity = "Converting" });
+					// progress.Report(new BackupProgress { CurrentActivity = "Converting" }); // Optional verbose update
 				}
 			} catch(OperationCanceledException) { } finally
 			{
@@ -128,56 +180,72 @@ public class BackupEngine : IBackupEngine
 			}
 		}, ct);
 
-		// Staging: download to local temp file (single-threaded)
-		var stagingRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "bmtp3_staging", Guid.NewGuid().ToString("n"));
-		var stagingTask = Task.Run(async () =>
+		// [C] Pipeline Worker Pools
+		// Buffering: Convert -> Buffering
+		//		var bufferingTask = Task.Run(() => bufferingPool.RunAsync(plan, bufferingStep, convertChannel.Reader, bufferingChannel.Writer, degreeOfParallelism, ct), ct);
+
+		// Metadata: Buffering -> Metadata
+		//		var metadataTask = Task.Run(() => metadataPool.RunAsync(plan, metadataStep, bufferingChannel.Reader, metadataChannel.Writer, degreeOfParallelism, ct), ct);
+
+		// Timestamp: Metadata -> Timestamp
+		//var timestampTask = Task.Run(() => timestampPool.RunAsync(plan, timestampStep, metadataChannel.Reader, timestampChannel.Writer, degreeOfParallelism, ct), ct);
+
+		// Hashing: Timestamp -> Hash
+		var hashTask = Task.Run(() => hashPool.RunAsync(timestampChannel.Reader, hashChannel.Writer, ct), ct);
+
+		// Transfer: Hash -> Transfer
+		//var transferTask = Task.Run(() => transferPool.RunAsync(plan, transferStep, hashChannel.Reader, transferChannel.Writer, degreeOfParallelism, ct), ct);
+
+		// Sidecar: Transfer -> Sidecar
+		//var sidecarTask = Task.Run(() => sidecarPool.RunAsync(plan, sidecarStep, transferChannel.Reader, sidecarChannel.Writer, degreeOfParallelism, ct), ct);
+
+		// [D] Final Consumer: Aggregate results from Persistence Channel
+		var completionTask = Task.Run(async () =>
 		{
+			var processedCount = 0;
+			var failedCount = 0;
 			try
 			{
-				await foreach(IBackupItem item in convertChannel.Reader.ReadAllAsync(ct))
+				await foreach(var item in persistenceChannel.Reader.ReadAllAsync(ct))
 				{
 					ct.ThrowIfCancellationRequested();
-					await _stagingDownloader.DownloadToStagingAsync(item, stagingRoot, progress, ct);
-					await stagingToProcessingChannel.Writer.WriteAsync(item, ct);
-					progress.Report(new BackupProgress { CurrentActivity = "Staged" });
-				}
-			} catch(OperationCanceledException) { } finally
-			{
-				stagingToProcessingChannel.Writer.Complete();
-			}
-		}, ct);
+					processedCount++;
 
-		// Prepare hash step implementation (noop adapter for demo)
-		HashItemStep hashStep = new();
+					if(item.ResultState == ItemResultState.Failed)
+					{
+						failedCount++;
+					}
 
-		// Start three HashStepWorkerPool instances chained: stagingToProcessing -> postHash1 -> postHash2 -> postHash3
-		HashStepWorkerPool hashPool1 = new();
-		HashStepWorkerPool hashPool2 = new();
-		HashStepWorkerPool hashPool3 = new();
-
-		int degreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
-
-		Task hashPoolTask1 = Task.Run(() => hashPool1.RunAsync(plan, hashStep, stagingToProcessingChannel.Reader, postHash1.Writer, degreeOfParallelism, ct), ct);
-		Task hashPoolTask2 = Task.Run(() => hashPool2.RunAsync(plan, hashStep, postHash1.Reader, postHash2.Writer, degreeOfParallelism, ct), ct);
-		Task hashPoolTask3 = Task.Run(() => hashPool3.RunAsync(plan, hashStep, postHash2.Reader, postHash3.Writer, degreeOfParallelism, ct), ct);
-
-		// Final processing: read items after the third hash stage and update progress/counters.
-		Task processingTask = Task.Run(async () =>
-		{
-			var processed = 0;
-			try
-			{
-				await foreach(var staged in postHash3.Reader.ReadAllAsync(ct))
-				{
-					ct.ThrowIfCancellationRequested();
-					processed++;
-					progress.Report(new BackupProgress { CurrentActivity = "ProcessedAfterHashChain", ProcessedFiles = processed });
+					// Update aggregate progress
+					progress.Report(new BackupProgress
+					{
+						CurrentActivity = "Processing",
+						ProcessedFiles = processedCount,
+						ItemsFailed = failedCount
+					});
 				}
 			} catch(OperationCanceledException) { }
+
+			// Store final stats in result
+			result.TotalFilesScanned = processedCount; // Should track scanned separately if possible
+			result.FilesFailed = failedCount;
+			result.FilesCopied = processedCount - failedCount; // Rough estimate
 		}, ct);
 
+		// 5. Await Completion
+
 		// Await pipeline completion
-		await Task.WhenAll(producer, converterTask, stagingTask, hashPoolTask1, hashPoolTask2, hashPoolTask3, processingTask).ConfigureAwait(false);
+		await Task.WhenAll(
+			producerTask,
+			converterTask,
+			//bufferingTask,
+			//metadataTask,
+			//timestampTask,
+			hashTask,
+			//transferTask,
+			//sidecarTask,
+			completionTask
+		).ConfigureAwait(false);
 
 		// Finalize result
 		result.EndTime = DateTime.UtcNow;

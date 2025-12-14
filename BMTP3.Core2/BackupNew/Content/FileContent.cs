@@ -19,6 +19,7 @@ public sealed class FileContent : IContent, IMoveableContent
 		}
 	}
 
+	public FileInfo FileInfo => _fileInfo;
 	public ulong Length => (ulong)_fileInfo.Length;
 
 	public Stream OpenRead()

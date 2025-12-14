@@ -14,9 +14,11 @@ public interface IBackupItemStep<TContext, TResult>
     /// </summary>
     string Name { get; }
 
-    /// <summary>
-    /// Executes an operation on a single item.
-    /// The method must update the item's State or Metadata.
-    /// </summary>
-    Task<TResult> ExecuteAsync(TContext input, IBackupItem item, CancellationToken ct);
+	TContext Context { get; }
+
+	/// <summary>
+	/// Executes an operation on a single item.
+	/// The method must update the item's State or Metadata.
+	/// </summary>
+	Task<TResult> ExecuteAsync(IBackupItem item, CancellationToken ct);
 }
