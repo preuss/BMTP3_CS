@@ -1,5 +1,7 @@
 ﻿using MediaDevices;
 using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Content;
 /// <summary>
@@ -31,6 +33,18 @@ public sealed class MediaFileContent : IContent
 		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileContent));
 
 		return _mediaFileInfo.OpenRead();
+	}
+
+	/// <summary>
+	/// Opens a readable stream to the file content on the device asynchronously.
+	/// The caller is responsible for disposing the returned stream.
+	/// </summary>
+	public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
+	{
+		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileContent));
+		// The MediaDevices library's OpenRead() is blocking, so we wrap it in Task.Run.
+		// There's no native async API for MTP devices in MediaDevices currently.
+		return Task.Run(() => _mediaFileInfo.OpenRead(), ct);
 	}
 
 	public void Dispose()

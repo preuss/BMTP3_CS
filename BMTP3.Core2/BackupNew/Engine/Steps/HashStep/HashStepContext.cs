@@ -1,6 +1,5 @@
-using BMTP3.Core2.BackupNew.Api; // For BackupPlan reference
-using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Engine.Hashing; // For HashType
+using System.Collections.Generic;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 
@@ -10,11 +9,6 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 /// </summary>
 public class HashStepContext
 {
-    /// <summary>
-    /// The global backup plan.
-    /// </summary>
-    public required BackupPlan BackupPlan { get; init; }
-
     /// <summary>
     /// The specific hash types to compute for the item.
     /// </summary>

@@ -12,18 +12,17 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.MetadataExtractionStep;
 /// </summary>
 public class MetadataExtractionItemStep : IBackupItemStep<BackupPlan, bool>
 {
-    private readonly IMetadataExtractor _extractor;
-
-    public string Name => "Metadata Extraction";
-
-    public BackupPlan Context { get; private set; }
-
-    public MetadataExtractionItemStep(IMetadataExtractor extractor, BackupPlan context)
-    {
-        _extractor = extractor ?? throw new ArgumentNullException(nameof(extractor));
-        Context = context ?? throw new ArgumentNullException(nameof(context));
-    }
-
+    	private readonly IMetadataReader _extractor;
+    
+    	public string Name => "Metadata Extraction";
+    
+    	public BackupPlan Context { get; private set; }
+    
+    	public MetadataExtractionItemStep(IMetadataReader extractor, BackupPlan context)
+    	{
+    		_extractor = extractor ?? throw new ArgumentNullException(nameof(extractor));
+    		Context = context ?? throw new ArgumentNullException(nameof(context));
+    	}
     public async Task<bool> ExecuteAsync(IBackupItem item, CancellationToken ct)
     {
         await _extractor.EnrichMetadataAsync(item, ct);

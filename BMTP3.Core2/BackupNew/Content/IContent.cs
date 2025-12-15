@@ -1,4 +1,7 @@
 namespace BMTP3.Core2.BackupNew.Content;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 
 /// <summary>
 /// Abstraction for accessing the content of a source file, regardless of whether it is 
@@ -16,4 +19,10 @@ public interface IContent : IDisposable
 	/// The caller is responsible for disposing the returned stream.
 	/// </summary>
 	Stream OpenRead();
+
+	/// <summary>
+	/// Opens a new readable stream to the content asynchronously.
+	/// The caller is responsible for disposing the returned stream.
+	/// </summary>
+	Task<Stream> OpenReadStreamAsync(CancellationToken ct);
 }

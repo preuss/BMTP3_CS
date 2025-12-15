@@ -1,5 +1,6 @@
 ﻿using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Errors;
+using System; // Added for Guid
 
 namespace BMTP3.Core2.BackupNew.Domain.Item;
 
@@ -9,6 +10,9 @@ namespace BMTP3.Core2.BackupNew.Domain.Item;
 /// </summary>
 public class BackupItem : IBackupItem
 {
+	public string Id { get; }
+	public string SourcePath { get; }
+
 	public IContent Content { get; private set; }
 
 	/// <summary>
@@ -25,11 +29,15 @@ public class BackupItem : IBackupItem
 
 	public uint AttemptCount { get; private set; }
 
-	private BackupItem(IContent content, BackupMetadata metadata)
+	private BackupItem(string id, string sourcePath, IContent content, BackupMetadata metadata)
 	{
+		ArgumentNullException.ThrowIfNull(id);
+		ArgumentNullException.ThrowIfNull(sourcePath);
 		ArgumentNullException.ThrowIfNull(content);
 		ArgumentNullException.ThrowIfNull(metadata);
 
+		Id = id;
+		SourcePath = sourcePath;
 		Content = content;
 		Metadata = metadata;
 
@@ -51,12 +59,14 @@ public class BackupItem : IBackupItem
 		metadata.Set(MetadataKey.SourceFileName, originalFileName);
 		metadata.Set(MetadataKey.Length, content.Length);
 
+		string sourcePath = originalFileName;
 		if(!string.IsNullOrWhiteSpace(relativePath))
 		{
 			metadata.Set(MetadataKey.SourceRelativePath, relativePath);
+			sourcePath = System.IO.Path.Combine(relativePath, originalFileName);
 		}
 
-		return new BackupItem(content, metadata);
+		return new BackupItem(Guid.NewGuid().ToString(), sourcePath, content, metadata);
 	}
 
 	public void Fail(string message, string stepName, Exception? ex = null)

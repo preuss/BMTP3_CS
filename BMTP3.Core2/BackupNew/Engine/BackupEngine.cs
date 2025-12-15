@@ -37,8 +37,8 @@ public class BackupEngine : IBackupEngine
 	private readonly IDeviceScanner _deviceScanner;
 	private readonly IMediaToBackupItemConverter _converter;
 	private readonly IStagingDownloader _stagingDownloader;
-	private readonly IMetadataExtractor _metadataExtractor;
-	private readonly IHashGenerator _hashGenerator;
+	private readonly IMetadataReader _metadataReader; // Changed from IMetadataExtractor
+	private readonly IItemHasher _itemHasher; // Added IItemHasher
 	private readonly IPathGenerator _pathGenerator;
 	private readonly ICollisionResolver _collisionResolver;
 	private readonly IFileTransfer _fileTransfer;
@@ -51,8 +51,8 @@ public class BackupEngine : IBackupEngine
 		IDeviceScanner deviceScanner,
 		IMediaToBackupItemConverter converter,
 		IStagingDownloader stagingDownloader,
-		IMetadataExtractor metadataExtractor,
-		IHashGenerator hashGenerator,
+		IMetadataReader metadataReader, // Changed from IMetadataExtractor
+		IItemHasher itemHasher, // Added IItemHasher
 		IPathGenerator pathGenerator,
 		ICollisionResolver collisionResolver,
 		IFileTransfer fileTransfer,
@@ -65,8 +65,8 @@ public class BackupEngine : IBackupEngine
 		_deviceScanner = deviceScanner ?? throw new ArgumentNullException(nameof(deviceScanner));
 		_converter = converter ?? throw new ArgumentNullException(nameof(converter));
 		_stagingDownloader = stagingDownloader ?? throw new ArgumentNullException(nameof(stagingDownloader));
-		_metadataExtractor = metadataExtractor ?? throw new ArgumentNullException(nameof(metadataExtractor));
-		_hashGenerator = hashGenerator ?? throw new ArgumentNullException(nameof(hashGenerator));
+		_metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader)); // Changed from _metadataExtractor
+		_itemHasher = itemHasher ?? throw new ArgumentNullException(nameof(itemHasher)); // Added _itemHasher
 		_pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
 		_collisionResolver = collisionResolver ?? throw new ArgumentNullException(nameof(collisionResolver));
 		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
@@ -121,15 +121,14 @@ public class BackupEngine : IBackupEngine
 
 		// 2. Instantiate Steps
 		var bufferingStep = new ContentBufferingItemStep(_stagingDownloader, progress);
-		var metadataStep = new MetadataExtractionItemStep(_metadataExtractor, plan);
+		var metadataStep = new MetadataExtractionItemStep(_metadataReader, plan); // Changed from _metadataExtractor
 		var timestampStep = new TimestampCorrectionItemStep(plan);
 		var hashStepContext = new HashStepContext()
 		{
-			BackupPlan = plan,
 			HashTypes = new List<HashType> { HashType.BLAKE3_512 },
 			ForceRecompute = false
 		};
-		var hashStep = new HashItemStep(hashStepContext);
+		var hashStep = new HashItemStep(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>()); // Added _itemHasher and ILogger
 		var transferStep = new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer);
 		var sidecarStep = new SidecarGenerationItemStep(plan, _sidecarGenerator);
 

@@ -9,6 +9,16 @@ namespace BMTP3.Core2.BackupNew.Domain.Item;
 public interface IBackupItem
 {
 	/// <summary>
+	/// Unique identifier for the backup item.
+	/// </summary>
+	string Id { get; }
+
+	/// <summary>
+	/// The original full source path of the item.
+	/// </summary>
+	string SourcePath { get; }
+
+	/// <summary>
 	/// The physical content source (file system file, MTP object, etc.).
 	/// May change from an MTP stream to a local temp file during processing.
 	/// </summary>

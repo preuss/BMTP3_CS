@@ -1,4 +1,8 @@
 ﻿namespace BMTP3.Core2.BackupNew.Content;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
+
 /// <summary>
 /// ISourceContent implementation that reads from a regular file on disk.
 /// </summary>
@@ -31,6 +35,17 @@ public sealed class FileContent : IContent, IMoveableContent
 			FileMode.Open,
 			FileAccess.Read,
 			FileShare.Read);
+	}
+
+	public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
+	{
+		// For FileStream, synchronous and asynchronous open are practically the same for now,
+		// but we wrap it in a Task to conform to the async interface.
+		return Task.FromResult<Stream>(new FileStream(
+			_fileInfo.FullName,
+			FileMode.Open,
+			FileAccess.Read,
+			FileShare.Read));
 	}
 
 	public void Dispose()

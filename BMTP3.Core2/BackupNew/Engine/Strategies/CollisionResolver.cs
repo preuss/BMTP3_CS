@@ -14,11 +14,11 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 /// </summary>
 public class CollisionResolver : ICollisionResolver
 {
-	private readonly IMetadataExtractor _metadataExtractor;
+	private readonly IMetadataReader _metadataReader;
 
-	public CollisionResolver(IMetadataExtractor metadataExtractor)
+	public CollisionResolver(IMetadataReader metadataReader)
 	{
-		_metadataExtractor = metadataExtractor ?? throw new ArgumentNullException(nameof(metadataExtractor));
+		_metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
 	}
 
 	public async Task<CollisionResult> ResolveAsync(IBackupItem item, string proposedFullPath, BackupPlan plan, CancellationToken ct)
@@ -86,7 +86,7 @@ public class CollisionResolver : ICollisionResolver
 
 	private async Task<bool> CompareHashesAsync(IBackupItem source, string destPath, CancellationToken ct)
 	{
-		// Priority order — explicit type and best->worst
+		// Priority order ï¿½ explicit type and best->worst
 		HashType[] priority = new HashType[]
 		{
 			HashType.BLAKE3_512,

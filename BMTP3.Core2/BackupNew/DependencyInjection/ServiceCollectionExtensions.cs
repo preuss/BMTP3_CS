@@ -22,14 +22,17 @@ public static class ServiceCollectionExtensions
 		services.AddSingleton<IDeviceScanner, NoopDeviceScanner>();
 		services.AddTransient<IMediaToBackupItemConverter, MediaToBackupItemConverter>();
 		services.AddTransient<IStagingDownloader, StagingDownloader>();
-		services.AddTransient<IHashGenerator, NoopHashGenerator>();
+		// IHashGenerator is now consumed by IItemHasher, but can still be registered for direct use if needed
+		services.AddTransient<IHashGenerator, NoopHashGenerator>(); 
+
 		services.AddTransient<IFileTransfer, LocalFileTransfer>();
 		services.AddSingleton<IBackupRepository, FileBackupRepository>();
 
 		// Strategies
 		services.AddTransient<IPathGenerator, PathGenerator>();
 		services.AddTransient<ICollisionResolver, CollisionResolver>();
-		services.AddTransient<IMetadataExtractor, MetadataExtractor>();
+		services.AddTransient<IMetadataReader, MetadataReader>(); // Changed from IMetadataExtractor
+		services.AddTransient<IItemHasher, ItemHasher>(); // Added IItemHasher
 		services.AddTransient<ISidecarGenerator, JsonSidecarGenerator>();
 
 		// Resilience
