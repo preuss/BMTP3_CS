@@ -37,6 +37,13 @@ public sealed class FileContent : IContent, IMoveableContent
 			FileShare.Read);
 	}
 
+	/// <summary>
+	/// Opens a readable stream to the file content asynchronously.
+	/// <para>
+	/// This implementation returns a <see cref="FileStream"/> wrapped in a Task.
+	/// The opening process itself is synchronous, but the returned stream supports asynchronous read operations.
+	/// </para>
+	/// </summary>
 	public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
 	{
 		// For FileStream, synchronous and asynchronous open are practically the same for now,

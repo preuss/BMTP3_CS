@@ -37,6 +37,12 @@ public sealed class MediaFileContent : IContent
 
 	/// <summary>
 	/// Opens a readable stream to the file content on the device asynchronously.
+	/// <para>
+	/// <strong>Warning:</strong> This method uses "Sync-over-Async". The underlying MTP operation is synchronous and blocking.
+	/// This method wraps the blocking call in <see cref="Task.Run(Action)"/> to offload it to a ThreadPool thread.
+	/// While this unblocks the calling thread, it consumes a ThreadPool thread for the duration of the operation.
+	/// High parallelism with this method may lead to ThreadPool starvation.
+	/// </para>
 	/// The caller is responsible for disposing the returned stream.
 	/// </summary>
 	public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
