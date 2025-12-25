@@ -15,6 +15,10 @@ public class ApplicationServiceSetup : IServiceSetup
 
 		services.AddTransient<ConsoleApplication>();
 
+		// Use the Core2 extension method to register all backup engine services
+		services.AddBMTP3Core2();
+
+		// Override specific services if needed for the console app (e.g. Logging if not handled by generic host)
 		// services.AddTransient<IMyLogic, MyLogic>();
 	}
 }
