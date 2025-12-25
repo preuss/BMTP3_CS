@@ -36,7 +36,10 @@ public class MediaToBackupItemConverter : IMediaToBackupItemConverter
 
         // 5. Seed datetime metadata
         if (mediaInfo.DateAuthored.HasValue)
+        {
+            item.Metadata.Set(MetadataKey.RawMtpAuthoredDate, mediaInfo.DateAuthored.Value);
             item.Metadata.AuthoredDateTime = mediaInfo.DateAuthored.Value;
+        }
         if (mediaInfo.CreationTime.HasValue)
             item.Metadata.CreatedDateTime = mediaInfo.CreationTime.Value;
         if (mediaInfo.LastWriteTime.HasValue)

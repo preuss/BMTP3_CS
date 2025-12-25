@@ -13,6 +13,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
 public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 {
 	public string Name => "Sidecar Generation";
+    public FilePhase Phase => FilePhase.Metadata;
 
 	private readonly BackupPlan _context;
 	public BackupPlan Context => _context;

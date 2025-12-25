@@ -1,7 +1,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.Domain.Item;
-using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Progress;
 
 namespace BMTP3.Core2.BackupNew.Engine.Staging;
 

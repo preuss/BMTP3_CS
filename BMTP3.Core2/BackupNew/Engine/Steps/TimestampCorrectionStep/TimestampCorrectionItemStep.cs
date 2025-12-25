@@ -15,6 +15,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
 public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 {
 	public string Name => "Timestamp Correction";
+    public FilePhase Phase => FilePhase.Metadata;
 
 	private readonly BackupPlan _context;
 	public BackupPlan Context => _context;

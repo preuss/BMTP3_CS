@@ -1,5 +1,6 @@
 using BMTP3.Core2.BackupNew.Domain.Job;
 using BMTP3.Core2.BackupNew.Domain.Errors;
+using BMTP3.Core2.BackupNew.Api.Progress;
 
 namespace BMTP3.Core2.BackupNew.Api.Response;
 

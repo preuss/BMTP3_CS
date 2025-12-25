@@ -35,6 +35,13 @@ public enum MetadataKey
 	// Normalized timestamps
 	[KeyStringValue("datetime_authored")]
 	AuthoredDateTime,         // Primary date (EXIF 'Date Taken', MTP 'Authored Date')
+
+	// Raw source timestamps (for waterfall logic auditing)
+	[KeyStringValue("datetime_raw_exif")]
+	RawExifDateTaken,         // Raw EXIF Date/Time Original
+	[KeyStringValue("datetime_raw_mtp")]
+	RawMtpAuthoredDate,       // Raw MTP Authored Date property
+
 	[KeyStringValue("datetime_created")]
 	CreatedDateTime,          // File created on filesystem (CreationTime / btime)
 	[KeyStringValue("datetime_modified")]

@@ -13,6 +13,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 /// </summary>
 public class PathGenerator : IPathGenerator
 {
+    // Regex matches tokens like ${YYYY}, ${Model}, etc.
     private static readonly Regex TokenRegex = new(@"\$\{?([a-zA-Z0-9_]+)\}?", RegexOptions.Compiled);
 
     public string GenerateRelativePath(IBackupItem item, BackupPlan plan)
@@ -28,7 +29,7 @@ public class PathGenerator : IPathGenerator
             case OutputStructureStrategy.PreserveSourceTree:
                 var relPath = item.Metadata.Get<string>(MetadataKey.SourceRelativePath);
                 
-                if (string.IsNullOrWhiteSpace(relPath))
+                if (string.IsNullOrWhiteSpace(relPath) || relPath.Trim(Path.DirectorySeparatorChar) == "")
                 {
                     return fileName;
                 }
@@ -52,45 +53,91 @@ public class PathGenerator : IPathGenerator
         return TokenRegex.Replace(pattern, match =>
         {
             string key = match.Groups[1].Value;
-            return GetTokenValue(key, item, originalFileName);
+            return GetTokenValueStrict(key, item, originalFileName);
         });
     }
 
-    private string GetTokenValue(string key, IBackupItem item, string originalFileName)
+    private string GetTokenValueStrict(string key, IBackupItem item, string originalFileName)
     {
         DateTime date = GetBestDate(item);
 
         switch (key)
         {
-            case "yyyy": return date.ToString("yyyy");
-            case "MM": return date.ToString("MM");
-            case "dd": return date.ToString("dd");
-            case "HH": return date.ToString("HH");
-            case "mm": return date.ToString("mm");
-            case "ss": return date.ToString("ss");
+            // --- Date & Time ---
+            case "YYYY": return date.ToString("yyyy"); // Spec: 2025
+            case "MM":   return date.ToString("MM");   // Spec: 01-12
+            case "DD":   return date.ToString("dd");   // Spec: 01-31
+            case "hh":   return date.ToString("HH");   // Spec: 00-23 (Important: C# 'hh' is 12h, 'HH' is 24h)
+            case "mm":   return date.ToString("mm");   // Spec: 00-59
+            case "ss":   return date.ToString("ss");   // Spec: 00-59
+
+            case "SSS": 
+            case "fff": 
+                return date.ToString("fff");           // Spec: Milliseconds (3 digits)
             
+            case "ffffff":    return date.ToString("ffffff");    // Spec: Microseconds
+            case "fffffffff": return date.ToString("fffffff00");   // Spec: Nanoseconds
+
+            // --- Metadata ---
+            case "deviceName":
+                return item.Metadata.Get<string>(MetadataKey.DeviceName) ?? "UnknownDevice";
+
+            case "OriginalFileName": 
             case "originalName": 
             case "filename":
                 return Path.GetFileNameWithoutExtension(originalFileName);
+
+            case "originalFullName":
+                return originalFileName;
+
             case "ext":
             case "extension":
                 return Path.GetExtension(originalFileName).TrimStart('.');
-            case "originalFullName":
-                return originalFileName;
 
             case "relativePath":
             case "sourceRelativePath":
                 return item.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? "";
 
-            case "deviceName":
             case "sourceId":
-                return item.Metadata.Get<string>(MetadataKey.SourceId) ?? "unknown_source";
+                return item.Metadata.Get<string>(MetadataKey.SourceId) ?? "UnknownSource"; // Mapping SourceId
+
+            case "count":
+                // Count is usually handled by CollisionResolver, but if requested in path, return placeholder or 1.
+                // Since this is generation *before* collision check, this might be ambiguous.
+                // However, spec lists it. Returning "1" as default for initial generation.
+                // TODO: Should throw exception if no count, or count should start as 0 for first without count, and the first collision should be 1 ???
+                return item.Metadata.Get<string>(MetadataKey.CollisionIndex) ?? "1";
+
+            // --- Hashes ---
+            case "hashShort":  return GetHash(item, 6);
+            case "hashMedium": return GetHash(item, 12);
+            case "hashLong":   return GetHash(item, 0);
 
             default:
-                return "";
+                // We throw an exception to fail the path generation for this item.
+                throw new ArgumentException($"Invalid template variable '${key}'. Variable names are case-sensitive (e.g., use ${{YYYY}}, not ${{yyyy}}).");
         }
     }
 
+    private string GetHash(IBackupItem item, int length)
+    {
+        if (!item.Metadata.Has(MetadataKey.Hashes)) return "nohash";
+
+        var hashes = item.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.Hashes);
+        if (hashes == null || hashes.Count == 0) return "nohash";
+
+        // Prefer strong hashes
+        string hash = "";
+        if (hashes.ContainsKey(HashType.BLAKE3_512)) hash = hashes[HashType.BLAKE3_512];
+        else if (hashes.ContainsKey(HashType.SHA2_256)) hash = hashes[HashType.SHA2_256];
+        else if (hashes.ContainsKey(HashType.MD5_128)) hash = hashes[HashType.MD5_128];
+        else hash = hashes.Values.FirstOrDefault() ?? "nohash";
+
+        if (length > 0 && hash.Length > length)
+            return hash.Substring(0, length);
+        
+        return hash;
+    }
     private DateTime GetBestDate(IBackupItem item)
     {
         if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
@@ -102,6 +149,6 @@ public class PathGenerator : IPathGenerator
         if (item.Metadata.Has(MetadataKey.ModifiedDateTime))
             return item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
 
-        return DateTime.Now;
+        return DateTime.UtcNow;
     }
 }

@@ -19,6 +19,7 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
     private readonly IFileTransfer _fileTransfer;
 
     public string Name => "Transfer";
+    public FilePhase Phase => FilePhase.Transferring;
 
 	private readonly BackupPlan _context;
 	public BackupPlan Context { get; }
@@ -59,7 +60,7 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 
         // 4. Transfer
         // Ensure we have a local file to transfer
-        if (item.Content is not BMTP3.Core2.BackupNew.Content.FileContent fileContent)
+        if (item.Content is not FileContent fileContent)
         {
              string msg = $"Content is not a local file (found {item.Content?.GetType().Name}). Staging step might have failed.";
              item.Fail(msg, Name);

@@ -15,6 +15,7 @@ public class MetadataExtractionItemStep : IBackupItemStep<BackupPlan, bool>
     	private readonly IMetadataReader _extractor;
     
     	public string Name => "Metadata Extraction";
+        public FilePhase Phase => FilePhase.Metadata;
     
     	public BackupPlan Context { get; private set; }
     

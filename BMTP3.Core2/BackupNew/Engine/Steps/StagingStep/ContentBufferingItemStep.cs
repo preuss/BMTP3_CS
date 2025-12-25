@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Staging;
@@ -19,6 +19,7 @@ public class ContentBufferingItemStep : IBackupItemStep<BackupPlan, bool>
     private readonly string _stagingRoot;
 
     public string Name => "Content Buffering";
+    public FilePhase Phase => FilePhase.Staging;
 
     public BackupPlan Context { get; private set; }
 

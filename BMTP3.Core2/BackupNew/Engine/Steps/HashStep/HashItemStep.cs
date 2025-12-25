@@ -12,6 +12,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 public class HashItemStep : IBackupItemStep<HashStepContext, HashStepResult>
 {
 	public string Name => "Hashing";
+    public FilePhase Phase => FilePhase.Hashing; 
 
 	private readonly HashStepContext _context;
 	private readonly IItemHasher _itemHasher; // Injected IItemHasher

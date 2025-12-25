@@ -30,7 +30,7 @@ public class ItemHasher : IItemHasher
 		if (requested.Length == 0)
 			requested = new[] { HashType.SHA2_256 }; // Default to SHA2_256 if none specified
 
-		_logger.LogTrace("Computing hashes for item {itemId} from {itemPath} with types: {hashTypes}", item.Id, item.SourcePath, string.Join(", ", requested));
+		_logger.LogTrace("Computing hashes for item {itemId} from {itemPath} with types: {hashTypes}", item.Id, item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown", string.Join(", ", requested));
 
 		try
 		{
@@ -42,7 +42,7 @@ public class ItemHasher : IItemHasher
 		}
 		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Failed to compute hashes for item {itemId} from {itemPath}", item.Id, item.SourcePath);
+			_logger.LogError(ex, "Failed to compute hashes for item {itemId} from {itemPath}", item.Id, item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown");
 			throw;
 		}
 	}

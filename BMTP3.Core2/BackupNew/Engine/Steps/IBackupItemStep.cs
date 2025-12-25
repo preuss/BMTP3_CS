@@ -14,6 +14,12 @@ public interface IBackupItemStep<TContext, TResult>
     /// </summary>
     string Name { get; }
 
+    /// <summary>
+    /// The progress phase that this step represents.
+    /// Used for reporting active file status.
+    /// </summary>
+    FilePhase Phase { get; }
+
 	TContext Context { get; }
 
 	/// <summary>

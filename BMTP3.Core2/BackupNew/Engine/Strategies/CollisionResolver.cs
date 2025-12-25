@@ -15,6 +15,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 public class CollisionResolver : ICollisionResolver
 {
 	private readonly IMetadataReader _metadataReader;
+    private readonly ILogger<CollisionResolver> _logger; // Added Logger if available, but staying consistent with constructor signature if possible. 
 
 	public CollisionResolver(IMetadataReader metadataReader)
 	{
@@ -270,19 +271,50 @@ public class CollisionResolver : ICollisionResolver
 		} while (true);
 	}
 
-	private Task<string> GenerateUniquePathAsync(string originalPath, RenameStrategy strategy, CancellationToken ct)
+	private Task<string> GenerateUniquePathAsync(IBackupItem item, string originalPath, RenameStrategy strategy, CancellationToken ct)
 	{
 		string directory = Path.GetDirectoryName(originalPath) ?? "";
 		string fileNameWithoutExt = Path.GetFileNameWithoutExtension(originalPath);
 		string extension = Path.GetExtension(originalPath);
+        string newPath;
 
+        // Try primary strategy first (e.g. Timestamp or Hash)
+        string suffix = "";
+        
+        if (strategy == RenameStrategy.Timestamp)
+        {
+            if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
+            {
+                var dt = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
+                suffix = "_" + dt.ToString("yyyyMMdd_HHmmss");
+            }
+        }
+        else if (strategy == RenameStrategy.Hash)
+        {
+            var hashes = item.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.Hashes);
+            if (hashes != null && hashes.Count > 0)
+            {
+                // Use first available hash, take 6 chars
+                string h = hashes.Values.First();
+                suffix = "_" + (h.Length > 6 ? h.Substring(0, 6) : h);
+            }
+        }
+
+        if (!string.IsNullOrEmpty(suffix))
+        {
+            // Try Strategy Suffix
+            newPath = Path.Combine(directory, $"{fileNameWithoutExt}{suffix}{extension}");
+            if (!File.Exists(newPath)) return Task.FromResult(newPath);
+
+            // Strategy Suffix Collision? Fallback to Increment on top of Suffix
+            fileNameWithoutExt = $"{fileNameWithoutExt}{suffix}";
+        }
+
+        // Fallback: Increment Loop (covers RenameStrategy.Increment and Strategy Failures)
 		int counter = 1;
-		string newPath;
-
 		do
 		{
 			ct.ThrowIfCancellationRequested();
-
 			string newFileName = $"{fileNameWithoutExt}_{counter}{extension}";
 			newPath = Path.Combine(directory, newFileName);
 			counter++;

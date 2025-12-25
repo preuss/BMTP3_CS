@@ -1,3 +1,4 @@
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Response;
 
@@ -15,5 +16,5 @@ public interface IBackupEngine
 	/// <param name="progress">An object to report progress updates during the job execution.</param>
 	/// <param name="ct">A CancellationToken to observe for cancellation requests.</param>
 	/// <returns>A BackupJobResult object summarizing the outcome of the job.</returns>
-	Task<BackupJobResult> RunAsync(BackupPlan job, IProgress<BackupProgress> progress, CancellationToken ct);
+	Task<BackupJobResult> RunAsync(BackupPlan job, IProgress<IBackupProgress> progress, CancellationToken ct);
 }
