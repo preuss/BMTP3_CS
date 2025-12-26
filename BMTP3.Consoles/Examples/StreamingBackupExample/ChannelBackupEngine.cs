@@ -1,8 +1,14 @@
-using System.Threading.Channels;
-using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api;
-using BMTP3.Core2.BackupNew.Api.Response;
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
+using BMTP3.Core2.BackupNew.Api.Response;
+using BMTP3.Core2.BackupNew.Domain.Job;
+using BMTP3.Core2.BackupNew.Api.Enums;
+using System.Threading.Channels;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace BMTP3.Consoles.Examples.StreamingBackupExample;
 
@@ -29,17 +35,28 @@ public class ChannelBackupEngine : IBackupEngine
 		for (int i = 0; i < 100; i++)
 		{
 			ct.ThrowIfCancellationRequested();
+
+			int failed = i % 7 == 0 ? 1 : 0;
+			int skipped = i % 13 == 0 ? 1 : 0;
+			int processed = i;
+			int succeeded = Math.Max(0, processed - failed - skipped);
+
 			var snapshot = new BackupProgress
 			{
-				TotalFiles = 100,
-				ProcessedFiles = i,
-				CurrentFileName = $"file_{i}.jpg",
-				CurrentActivity = "Processing",
-				TotalItemsDiscovered = i + 10,
-				ItemsFailed = i % 7 == 0 ? 1 : 0,
-				ItemsProcessed = i,
-				BytesProcessed = i * 1024,
-				ItemsSkipped = i % 13 == 0 ? 1 : 0
+				Phase = BackupPhase.Starting,
+				DirectoriesTraversed = i + 10,
+				FilesDiscovered = 100,
+				BytesTotal = 100 * 1024L,
+
+				FilesProcessed = processed,
+				FilesSucceeded = succeeded,
+				FilesSkipped = skipped,
+				FilesFailed = failed,
+
+				BytesProcessed = processed * 1024L,
+
+				// Required member on BackupProgress: make a reasonable empty/default active-files list for the example
+				ActiveFiles = new List<FileProgress>()
 			};
 
 			// Try write to channel without awaiting to avoid blocking producer
@@ -52,7 +69,7 @@ public class ChannelBackupEngine : IBackupEngine
 		}
 
 		_channel.Writer.Complete();
-		return new BackupJobResult { Success = true };
+		return new BackupJobResult { Status = JobState.Completed };
 	}
 
 	public IAsyncEnumerable<BackupProgress> StreamAsync(CancellationToken ct)

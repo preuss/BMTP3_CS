@@ -14,9 +14,9 @@ using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 
-public class HashStepWorkerPool : AbstractBackupStepWorkerPool<HashStepContext, HashStepResult> // Correct base class
+public class HashPipelineStageForAbstract : AbstractPipelineStage<HashStepContext, HashStepResult> // Correct base class
 {
-	public HashStepWorkerPool(ILogger logger, int parallelism, HashStepContext context, IBackupItemStep<HashStepContext, HashStepResult> step, ProgressTracker tracker)
+	public HashPipelineStageForAbstract(ILogger logger, int parallelism, HashStepContext context, IBackupItemStep<HashStepContext, HashStepResult> step, ProgressTracker tracker)
 		: base(logger, parallelism, context, step, tracker)
 	{
 	}

@@ -146,13 +146,13 @@ public class BackupEngine : IBackupEngine
 
 		// Source Reading MUST be serial (1 thread) to prevent MTP timeouts and IO thrashing.
 		// We ignore degreeOfParallelism for this specific step.
-		var bufferingPool = new ContentBufferingWorkerPool(_loggerFactory.CreateLogger<ContentBufferingWorkerPool>(), 1, plan, bufferingStep, tracker);
+		var bufferingPool = new ContentBufferingPipelineStage(_loggerFactory.CreateLogger<ContentBufferingPipelineStage>(), 1, plan, bufferingStep, tracker);
 		
-		var metadataPool = new MetadataExtractionWorkerPool(_loggerFactory.CreateLogger<MetadataExtractionWorkerPool>(), degreeOfParallelism, plan, metadataStep, tracker);
-		var timestampPool = new TimestampCorrectionWorkerPool(_loggerFactory.CreateLogger<TimestampCorrectionWorkerPool>(), degreeOfParallelism, plan, timestampStep, tracker);
-		var hashPool = new HashStepWorkerPool(_loggerFactory.CreateLogger<HashStepWorkerPool>(), degreeOfParallelism, hashStep.Context, hashStep, tracker);
-		var transferPool = new TransferWorkerPool(_loggerFactory.CreateLogger<TransferWorkerPool>(), degreeOfParallelism, plan, transferStep, tracker);
-		var sidecarPool = new SidecarGenerationWorkerPool(_loggerFactory.CreateLogger<SidecarGenerationWorkerPool>(), degreeOfParallelism, plan, sidecarStep, tracker);
+		var metadataPool = new MetadataExtractionPipelineStage(_loggerFactory.CreateLogger<MetadataExtractionPipelineStage>(), degreeOfParallelism, plan, metadataStep, tracker);
+		var timestampPool = new TimestampCorrectionPipelineStage(_loggerFactory.CreateLogger<TimestampCorrectionPipelineStage>(), degreeOfParallelism, plan, timestampStep, tracker);
+		var hashPool = new HashPipelineStage(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism, hashStep.Context, hashStep, tracker);
+		var transferPool = new TransferPipelineStage(_loggerFactory.CreateLogger<TransferPipelineStage>(), degreeOfParallelism, plan, transferStep, tracker);
+		var sidecarPool = new SidecarGenerationPipelineStage(_loggerFactory.CreateLogger<SidecarGenerationPipelineStage>(), degreeOfParallelism, plan, sidecarStep, tracker);
 
 
 		// Start Pipeline Tasks
@@ -238,7 +238,7 @@ public class BackupEngine : IBackupEngine
         result.FilesCopied = snap.FilesSucceeded;
         result.FilesFailed = snap.FilesFailed;
         result.FilesSkipped = snap.FilesSkipped;
-        result.TotalFilesScanned = snap.FilesTotal;
+        result.TotalFilesScanned = snap.FilesDiscovered;
         result.TotalBytesCopied = snap.BytesProcessed;
 
 		return result;

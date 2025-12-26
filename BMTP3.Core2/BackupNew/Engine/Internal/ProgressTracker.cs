@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Domain.Item; // For ItemResultState
 
 namespace BMTP3.Core2.BackupNew.Engine.Internal;
@@ -14,7 +15,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Internal;
 public class ProgressTracker
 {
     // --- Global Phase ---
-    private volatile int _currentPhase = (int)BackupPhase.Starting;
+    private volatile BackupPhase _currentPhase = BackupPhase.Starting;
 
     // --- Discovery Counters (Interlocked) ---
     private int _directoriesTraversed;
@@ -35,7 +36,7 @@ public class ProgressTracker
 
     public void SetPhase(BackupPhase phase)
     {
-        _currentPhase = (int)phase;
+        _currentPhase = phase;
     }
 
     // --- Discovery Reporting ---
@@ -141,16 +142,16 @@ public class ProgressTracker
 
         return new BackupProgress
         {
-            Phase = (BackupPhase)_currentPhase,
+            Phase = _currentPhase,
             
             DirectoriesTraversed = _directoriesTraversed,
-            FilesTotal = _filesTotal,
+            FilesDiscovered = _filesTotal,
             BytesTotal = _bytesTotal,
 
             FilesProcessed = processed,
             FilesSucceeded = _filesSucceeded,
-            FilesFailed = _filesFailed,
-            FilesSkipped = _filesSkipped,
+			FilesSkipped = _filesSkipped,
+			FilesFailed = _filesFailed,
             
             BytesProcessed = _bytesProcessed,
 

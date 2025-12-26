@@ -5,6 +5,7 @@ using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Hashing;
+using Microsoft.Extensions.Logging;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
@@ -15,11 +16,12 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 public class CollisionResolver : ICollisionResolver
 {
 	private readonly IMetadataReader _metadataReader;
-    private readonly ILogger<CollisionResolver> _logger; // Added Logger if available, but staying consistent with constructor signature if possible. 
+    private readonly ILogger<CollisionResolver> _logger;
 
-	public CollisionResolver(IMetadataReader metadataReader)
+	public CollisionResolver(IMetadataReader metadataReader, ILogger<CollisionResolver> logger)
 	{
 		_metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
+		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
 	public async Task<CollisionResult> ResolveAsync(IBackupItem item, string proposedFullPath, BackupPlan plan, CancellationToken ct)
@@ -48,7 +50,7 @@ public class CollisionResolver : ICollisionResolver
 				return new CollisionResult(BackupActionType.Skip, proposedFullPath, "Collision detected (Skip policy)");
 
 			case CollisionResolutionType.Rename:
-				string newPath = await GenerateUniquePathAsync(proposedFullPath, plan.RenameStrategy, ct);
+				string newPath = await GenerateUniquePathAsync(item, proposedFullPath, plan.RenameStrategy, ct);
 				return new CollisionResult(BackupActionType.Rename, newPath, "Collision detected (Renamed)");
 
 			case CollisionResolutionType.Error:

@@ -1,7 +1,8 @@
-﻿using BMTP3.Core2.BackupNew.Api.Request;
+using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Hashing;
+using BMTP3.Core2.BackupNew.Engine.Internal;
 using Microsoft.Extensions.Logging;
 using Org.BouncyCastle.Tls;
 using System;
@@ -13,10 +14,10 @@ using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 
-public class HashStepWorkerPool : BackupStepWorkerPoolBase<HashStepContext, HashStepResult>
+public class HashPipelineStage : AbstractPipelineStage<HashStepContext, HashStepResult>
 {
-	public HashStepWorkerPool(ILogger logger, int parallelism, HashStepContext context, IBackupItemStep<HashStepContext, HashStepResult> step)
-		: base(logger, parallelism, context, step)
+	public HashPipelineStage(ILogger logger, int parallelism, HashStepContext context, IBackupItemStep<HashStepContext, HashStepResult> step, ProgressTracker tracker)
+		: base(logger, parallelism, context, step, tracker)
 	{
 	}
 

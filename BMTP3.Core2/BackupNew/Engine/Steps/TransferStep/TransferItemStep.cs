@@ -9,6 +9,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using BMTP3.Core2.BackupNew.Content;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
 

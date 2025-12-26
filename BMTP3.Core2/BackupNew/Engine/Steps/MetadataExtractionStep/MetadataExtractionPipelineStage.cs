@@ -4,11 +4,11 @@ using BMTP3.Core2.BackupNew.Engine.Internal;
 using Microsoft.Extensions.Logging;
 using BMTP3.Core2.BackupNew.Api.Enums; // For BackupPhase
 
-namespace BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
+namespace BMTP3.Core2.BackupNew.Engine.Steps.MetadataExtractionStep;
 
-public class ContentBufferingWorkerPool : AbstractBackupStepWorkerPool<BackupPlan, bool>
+public class MetadataExtractionPipelineStage : AbstractPipelineStage<BackupPlan, bool>
 {
-    public ContentBufferingWorkerPool(
+    public MetadataExtractionPipelineStage(
         ILogger logger, 
         int parallelism, 
         BackupPlan context, 

@@ -39,6 +39,26 @@ See [CLA.md](CLA.md) for details.
 - Use XML documentation for public methods and classes.
 - Avoid magic numbers and hardcoded paths.
 
+## Project-specific conventions: Pipeline stages
+
+To avoid ambiguity and compile-time conflicts (for example `CS0263`), the project standardizes pipeline-stage implementations as follows:
+
+- Use `AbstractPipelineStage<TContext, TResult>` as the single canonical base class for pipeline stages. This base:
+  - Implements `IPipelineStage<TContext, TResult>`.
+  - Requires a `ProgressTracker` and updates progress inside the worker loop.
+  - Provides the protected constructor:
+    ```text
+    protected AbstractPipelineStage(ILogger logger, int parallelism, TContext context, IBackupItemStep<TContext,TResult> step, ProgressTracker tracker)
+    ```
+- Concrete pipeline stage rules:
+  - Inherit from `AbstractPipelineStage<TContext,TResult>`.
+  - Accept `ProgressTracker tracker` as a constructor argument and pass it to `base(...)`.
+  - Do not declare multiple partials with different base classes.
+- When migrating existing code:
+  - Update concrete stages that currently inherit `PipelineStageBase` to inherit `AbstractPipelineStage` and add the `ProgressTracker` parameter.
+  - Update all construction sites to pass a `ProgressTracker` instance.
+  - Remove or consolidate duplicate pipeline-stage class files to ensure one declaration per concrete class.
+
 ## Testing Guidelines
 
 - Write unit tests for new features and bug fixes.

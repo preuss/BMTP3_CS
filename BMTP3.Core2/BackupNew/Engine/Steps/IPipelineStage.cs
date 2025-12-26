@@ -7,7 +7,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps;
-public interface IBackupStepWorkerPool<TContext, TResult>
+public interface IPipelineStage<TContext, TResult>
 {
 	int Parallelism { get; }
 	TContext Context { get; }

@@ -1,4 +1,5 @@
-﻿using BMTP3.Core2.BackupNew.Domain.Item;
+using BMTP3.Core2.BackupNew.Domain.Item; // For MetadataKey, IBackupItem
+using BMTP3.Core2.BackupNew.Engine.Internal;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
@@ -8,22 +9,28 @@ using System.Threading.Tasks;
 namespace BMTP3.Core2.BackupNew.Engine.Steps;
 
 /// <summary>
-/// Base worker-pool that runs a given IBackupItemStep for incoming IBackupItem instances.
+/// Abstract base class for worker-pools that run a given IBackupItemStep for incoming IBackupItem instances.
 /// The base implements the reading/forwarding loop and error handling; subclasses may
 /// override OnResultAsync to react to the step result.
 /// </summary>
-public abstract class BackupStepWorkerPoolBase<TContext, TResult> : IBackupStepWorkerPool<TContext, TResult>
+public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<TContext, TResult>
 {
 	private readonly ILogger _logger;
 	private readonly int _parallelism;
-	private readonly TContext _context; // Context is now fixed for this pool instance
-	private readonly IBackupItemStep<TContext, TResult> _step; // Step is now fixed for this pool instance
+	private readonly TContext _context;
+	private readonly IBackupItemStep<TContext, TResult> _step;
+    private readonly ProgressTracker _tracker;
 
 	public int Parallelism => _parallelism;
 	public TContext Context => _context;
 	public IBackupItemStep<TContext, TResult> ItemStep => _step;
 
-	protected BackupStepWorkerPoolBase(ILogger logger, int parallelism, TContext context, IBackupItemStep<TContext, TResult> step)
+	protected AbstractPipelineStage(
+        ILogger logger, 
+        int parallelism, 
+        TContext context, 
+        IBackupItemStep<TContext, TResult> step,
+        ProgressTracker tracker)
 	{
 		ArgumentNullException.ThrowIfNull(logger);
 		ArgumentNullException.ThrowIfNull(parallelism);
@@ -31,11 +38,13 @@ public abstract class BackupStepWorkerPoolBase<TContext, TResult> : IBackupStepW
 		if(parallelism == 0) parallelism = Math.Max(Environment.ProcessorCount / 2, 1);
 		ArgumentNullException.ThrowIfNull(context);
 		ArgumentNullException.ThrowIfNull(step);
+        ArgumentNullException.ThrowIfNull(tracker);
 
 		_parallelism = parallelism;
 		_logger = logger;
 		_context = context;
 		_step = step;
+        _tracker = tracker;
 	}
 
 	public async Task RunAsync(
@@ -51,20 +60,26 @@ public abstract class BackupStepWorkerPoolBase<TContext, TResult> : IBackupStepW
 		{
 			workers.Add(Task.Run(async () =>
 			{
-				// Use ReadAllAsync to await incoming items without busy-waiting.
 				await foreach(IBackupItem? item in reader.ReadAllAsync(ct).ConfigureAwait(false))
 				{
 					// Not null, because TryRead succeeded.
 					IBackupItem forward = item;
 					try
 					{
-						_logger.LogDebug("Executing step {StepName} for item {SourceFileName}", ItemStep.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+                        string sourcePath = forward.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown";
+                        string fileName = forward.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
+                        string relativePath = forward.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? fileName;
+                        long size = forward.Metadata.Get<long>(MetadataKey.Length);
+
+                        _tracker.UpdateItemPhase(sourcePath, fileName, relativePath, ItemStep.Phase, size);
+
+						_logger.LogDebug("Executing step {StepName} for item {SourceFileName}", ItemStep.Name, fileName);
 
 						// Execute step and allow subclass to handle the result.
 						TResult? result = await ItemStep.ExecuteAsync(forward, ct).ConfigureAwait(false);
 						await OnResultAsync(forward, result, ct).ConfigureAwait(false);
 
-						_logger.LogDebug("ItemStep {StepName} completed for item {SourceFileName}", ItemStep.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+						_logger.LogDebug("ItemStep {StepName} completed for item {SourceFileName}", ItemStep.Name, fileName);
 					} catch(OperationCanceledException) when(ct.IsCancellationRequested)
 					{
 						_logger.LogWarning("ItemStep {StepName} for item {SourceFileName} was cancelled.", ItemStep.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName));
@@ -80,7 +95,6 @@ public abstract class BackupStepWorkerPoolBase<TContext, TResult> : IBackupStepW
 						}
 					}
 
-					// Forward the (possibly updated) item to the next stage.
 					try
 					{
 						await writer.WriteAsync(forward, ct).ConfigureAwait(false);
@@ -90,7 +104,6 @@ public abstract class BackupStepWorkerPoolBase<TContext, TResult> : IBackupStepW
 						throw;
 					} catch(Exception ex)
 					{
-						// Writer failed (likely completed). Terminate this worker.
 						_logger.LogError(ex, "Failed to write item {SourceFileName} to next channel from step {StepName}. Terminating worker.", forward.Metadata.Get<string>(MetadataKey.SourceFileName), ItemStep.Name);
 						return;
 					}

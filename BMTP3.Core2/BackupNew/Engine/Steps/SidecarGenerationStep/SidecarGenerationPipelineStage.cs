@@ -4,11 +4,11 @@ using BMTP3.Core2.BackupNew.Engine.Internal;
 using Microsoft.Extensions.Logging;
 using BMTP3.Core2.BackupNew.Api.Enums; // For BackupPhase
 
-namespace BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
+namespace BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
 
-public class TimestampCorrectionWorkerPool : AbstractBackupStepWorkerPool<BackupPlan, bool>
+public class SidecarGenerationPipelineStage : AbstractPipelineStage<BackupPlan, bool>
 {
-    public TimestampCorrectionWorkerPool(
+    public SidecarGenerationPipelineStage(
         ILogger logger, 
         int parallelism, 
         BackupPlan context, 

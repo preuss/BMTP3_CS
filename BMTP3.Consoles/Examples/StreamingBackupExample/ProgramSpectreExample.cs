@@ -32,10 +32,15 @@ public static class ProgramSpectreExample
 		var table = new Table();
 		table.AddColumn("Metric");
 		table.AddColumn("Value");
-		table.AddRow("Processed", $"{p.ProcessedFiles}/{p.TotalFiles}");
+		table.AddRow("Processed", $"{p.FilesProcessed}/{p.FilesDiscovered}");
 		table.AddRow("Percent", $"{p.PercentageComplete:0.0}%");
-		table.AddRow("Activity", p.CurrentActivity);
-		table.AddRow("File", p.CurrentFileName);
+		foreach(var file in p.ActiveFiles)
+		{
+			table.AddRow("Active File", $"{file.FileName} ({file.BytesProcessed}/{file.BytesTotal} bytes)");
+			table.AddRow("File Phase", file.Phase.ToString());
+			table.AddRow("Source Path", file.SourcePath);
+			table.AddRow("Relative Path", file.RelativePath);
+		}
 		AnsiConsole.Write(table);
 	}
 }

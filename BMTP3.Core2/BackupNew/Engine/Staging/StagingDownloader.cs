@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
@@ -41,6 +42,6 @@ public class StagingDownloader : IStagingDownloader
         // 4. Update metadata to reflect staging
         item.Metadata.Set(MetadataKey.LocalTempPath, stagingPath);
 
-        progress?.Report(new BackupProgress { CurrentActivity = $"Staged {originalFileName}" });
+		progress?.Report(new BackupProgress { Phase = BackupPhase.Transferring, ActiveFiles = new() });
     }
 }
