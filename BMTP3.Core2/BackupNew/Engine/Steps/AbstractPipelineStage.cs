@@ -94,8 +94,18 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 					_logger.LogWarning("Item {SourceFileName} is marked as Failed. Skipping remaining steps in pipeline stage.", forward.Metadata.Get<string>(MetadataKey.SourceFileName));
 					break;
 				}
-				TResult? stepResult = await ExecuteStepAsync(forward, step, writer, ct).ConfigureAwait(false);
-				if(stepResult is null) throw new InvalidOperationException($"Step {step.Name} returned null result for item {forward.Metadata.Get<string>(MetadataKey.SourceFileName)}.");
+				TResult? stepResult = await ExecuteStepAsync(forward, step, ct).ConfigureAwait(false);
+
+				if(forward.ResultState == ItemResultState.Failed)
+				{
+					// Current step failed, stop processing further steps for this item.
+					break;
+				}
+
+				if(stepResult is null)
+				{
+					throw new InvalidOperationException($"Step {step.Name} returned null result for item {forward.Metadata.Get<string>(MetadataKey.SourceFileName)}.");
+				}
 			}
 			// Forward to next stage ONCE, after all steps are done (or if failed).
 			if(!ct.IsCancellationRequested)
@@ -118,7 +128,6 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 	private async Task<TResult?> ExecuteStepAsync(
 		IBackupItem forward,
 		IBackupItemStep<TContext, TResult> step,
-		ChannelWriter<IBackupItem> writer,
 		CancellationToken ct
 	)
 	{
