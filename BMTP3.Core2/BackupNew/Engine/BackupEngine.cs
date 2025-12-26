@@ -29,6 +29,7 @@ using BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
 using BMTP3.Core2.BackupNew.Engine.Steps;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Engine.Internal;
+using BMTP3.Core2.BackupNew.Engine.Models;
 
 namespace BMTP3.Core2.BackupNew.Engine;
 /// <summary>
@@ -84,10 +85,10 @@ public class BackupEngine : IBackupEngine
 		progress ??= new Progress<IBackupProgress>();
 
 		// Prepare result
-		var tracker = new ProgressTracker();
+		ProgressTracker tracker = new();
 		tracker.SetPhase(BackupPhase.Starting);
 
-		var result = new BackupJobResult
+		BackupJobResult result = new()
 		{
 			JobName = plan.Name,
 			StartTime = DateTime.UtcNow,
@@ -102,7 +103,7 @@ public class BackupEngine : IBackupEngine
 			return result;
 		}
 
-		var reportingTask = Task.Run(async () =>
+		Task reportingTask = Task.Run(async () =>
 		{
 			while(!ct.IsCancellationRequested)
 			{
@@ -112,7 +113,7 @@ public class BackupEngine : IBackupEngine
 		}, ct);
 
 		// Configure Options
-		var opts = _options.Value;
+		BackupEngineOptions opts = _options.Value;
 		int degreeOfParallelism = opts.DegreeOfParallelism > 0
 			? opts.DegreeOfParallelism
 			: Math.Max(1, Environment.ProcessorCount / 2);
@@ -132,27 +133,27 @@ public class BackupEngine : IBackupEngine
 		tracker.SetPhase(BackupPhase.Traversing);
 
 		// Instantiate Steps
-		var bufferingStep = new ContentBufferingItemStep(_stagingDownloader, progress);
-		var metadataStep = new MetadataExtractionItemStep(_metadataReader, plan);
-		var timestampStep = new TimestampCorrectionItemStep(plan);
-		var hashStepContext = new HashStepContext()
+		List<IBackupItemStep<BackupPlan, bool>> bufferingSteps = new() { new ContentBufferingItemStep(_stagingDownloader, progress) };
+		List<IBackupItemStep<BackupPlan, bool>> metadataSteps = new() { new MetadataExtractionItemStep(_metadataReader, plan) };
+		List<IBackupItemStep<BackupPlan, bool>> timestampSteps = new() { new TimestampCorrectionItemStep(plan) };
+		HashStepContext hashStepContext = new()
 		{
 			HashTypes = new List<HashType> { HashType.BLAKE3_512 },
 			ForceRecompute = false
 		};
-		var hashStep = new HashItemStep(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>());
-		var transferStep = new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer);
-		var sidecarStep = new SidecarGenerationItemStep(plan, _sidecarGenerator);
+		List<IBackupItemStep<HashStepContext, HashStepResult>> hashSteps = new() { new HashItemStep(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>()) };
+		List<IBackupItemStep<BackupPlan, OperationResult>> transferSteps = new() { new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer) };
+		List<IBackupItemStep<BackupPlan, bool>> sidecarSteps = new() { new SidecarGenerationItemStep(plan, _sidecarGenerator) };
 
 		// Source Reading MUST be serial (1 thread) to prevent MTP timeouts and IO thrashing.
 		// We ignore degreeOfParallelism for this specific step.
-		var bufferingPool = new ContentBufferingPipelineStage(_loggerFactory.CreateLogger<ContentBufferingPipelineStage>(), 1, plan, bufferingStep, tracker);
-		
-		var metadataPool = new MetadataExtractionPipelineStage(_loggerFactory.CreateLogger<MetadataExtractionPipelineStage>(), degreeOfParallelism, plan, metadataStep, tracker);
-		var timestampPool = new TimestampCorrectionPipelineStage(_loggerFactory.CreateLogger<TimestampCorrectionPipelineStage>(), degreeOfParallelism, plan, timestampStep, tracker);
-		var hashPool = new HashPipelineStage(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism, hashStep.Context, hashStep, tracker);
-		var transferPool = new TransferPipelineStage(_loggerFactory.CreateLogger<TransferPipelineStage>(), degreeOfParallelism, plan, transferStep, tracker);
-		var sidecarPool = new SidecarGenerationPipelineStage(_loggerFactory.CreateLogger<SidecarGenerationPipelineStage>(), degreeOfParallelism, plan, sidecarStep, tracker);
+		ContentBufferingPipelineStage bufferingPool = new(_loggerFactory.CreateLogger<ContentBufferingPipelineStage>(), 1, plan, bufferingSteps, tracker);
+
+		MetadataExtractionPipelineStage metadataPool = new(_loggerFactory.CreateLogger<MetadataExtractionPipelineStage>(), degreeOfParallelism, plan, metadataSteps, tracker);
+		TimestampCorrectionPipelineStage timestampPool = new(_loggerFactory.CreateLogger<TimestampCorrectionPipelineStage>(), degreeOfParallelism, plan, timestampSteps, tracker);
+		HashPipelineStage hashPool = new(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism, hashStepContext, hashSteps, tracker);
+		TransferPipelineStage transferPool = new(_loggerFactory.CreateLogger<TransferPipelineStage>(), degreeOfParallelism, plan, transferSteps, tracker);
+		SidecarGenerationPipelineStage sidecarPool = new(_loggerFactory.CreateLogger<SidecarGenerationPipelineStage>(), degreeOfParallelism, plan, sidecarSteps, tracker);
 
 
 		// Start Pipeline Tasks
@@ -163,7 +164,7 @@ public class BackupEngine : IBackupEngine
 				await foreach(var mediaInfo in _deviceScanner.ScanAsync(plan.SourceId, plan.SourcePath, plan.Recursive, ct))
 				{
 					ct.ThrowIfCancellationRequested();
-                    tracker.AddDiscovery(false, (long)mediaInfo.Length); 
+					tracker.AddDiscovery(false, (long)mediaInfo.Length);
 					await scanChannel.Writer.WriteAsync(mediaInfo, ct);
 				}
 			} catch(OperationCanceledException) { } finally
@@ -193,24 +194,24 @@ public class BackupEngine : IBackupEngine
 		var timestampTask = Task.Run(() => timestampPool.RunAsync(metadataChannel.Reader, timestampChannel.Writer, ct), ct);
 		var hashTask = Task.Run(() => hashPool.RunAsync(timestampChannel.Reader, hashChannel.Writer, ct), ct);
 		var transferTask = Task.Run(() => transferPool.RunAsync(hashChannel.Reader, transferChannel.Writer, ct), ct);
-		var sidecarTask = Task.Run(() => sidecarPool.RunAsync(transferChannel.Reader, persistenceChannel.Writer, ct), ct); 
+		var sidecarTask = Task.Run(() => sidecarPool.RunAsync(transferChannel.Reader, persistenceChannel.Writer, ct), ct);
 
 		var completionTask = Task.Run(async () =>
 		{
-            tracker.SetPhase(BackupPhase.Transferring); 
+			tracker.SetPhase(BackupPhase.Transferring);
 
 			try
 			{
 				await foreach(var item in persistenceChannel.Reader.ReadAllAsync(ct))
 				{
 					ct.ThrowIfCancellationRequested();
-                    
-                    long size = item.Metadata.Get<long>(MetadataKey.Length);
-                    tracker.CompleteItem(
-                        item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown",
-                        item.ResultState,
-                        size
-                    );
+
+					long size = item.Metadata.Get<long>(MetadataKey.Length);
+					tracker.CompleteItem(
+						item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown",
+						item.ResultState,
+						size
+					);
 				}
 			} catch(OperationCanceledException) { }
 
@@ -229,17 +230,17 @@ public class BackupEngine : IBackupEngine
 		).ConfigureAwait(false);
 
 		result.EndTime = DateTime.UtcNow;
-		result.Status = ct.IsCancellationRequested ? JobState.Cancelled : JobState.Completed; 
-        
-        tracker.SetPhase(ct.IsCancellationRequested ? BackupPhase.Cancelled : BackupPhase.Completed);
-        progress.Report(tracker.GetSnapshot());
+		result.Status = ct.IsCancellationRequested ? JobState.Cancelled : JobState.Completed;
 
-        var snap = tracker.GetSnapshot();
-        result.FilesCopied = snap.FilesSucceeded;
-        result.FilesFailed = snap.FilesFailed;
-        result.FilesSkipped = snap.FilesSkipped;
-        result.TotalFilesScanned = snap.FilesDiscovered;
-        result.TotalBytesCopied = snap.BytesProcessed;
+		tracker.SetPhase(ct.IsCancellationRequested ? BackupPhase.Cancelled : BackupPhase.Completed);
+		progress.Report(tracker.GetSnapshot());
+
+		BackupProgress snap = tracker.GetSnapshot();
+		result.FilesCopied = snap.FilesSucceeded;
+		result.FilesFailed = snap.FilesFailed;
+		result.FilesSkipped = snap.FilesSkipped;
+		result.TotalFilesScanned = snap.FilesDiscovered;
+		result.TotalBytesCopied = snap.BytesProcessed;
 
 		return result;
 	}

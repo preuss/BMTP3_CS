@@ -12,9 +12,9 @@ public class MetadataExtractionPipelineStage : AbstractPipelineStage<BackupPlan,
         ILogger logger, 
         int parallelism, 
         BackupPlan context, 
-        IBackupItemStep<BackupPlan, bool> step, 
+        List<IBackupItemStep<BackupPlan, bool>> steps, 
         ProgressTracker tracker)
-        : base(logger, parallelism, context, step, tracker)
+        : base(logger, parallelism, context, steps, tracker)
     {
     }
 }

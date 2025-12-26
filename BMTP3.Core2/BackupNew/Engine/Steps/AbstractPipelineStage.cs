@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Domain.Item; // For MetadataKey, IBackupItem
+using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Internal;
 using Microsoft.Extensions.Logging;
 using System;
@@ -18,33 +18,38 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 	private readonly ILogger _logger;
 	private readonly int _parallelism;
 	private readonly TContext _context;
-	private readonly IBackupItemStep<TContext, TResult> _step;
-    private readonly ProgressTracker _tracker;
+	private readonly List<IBackupItemStep<TContext, TResult>> _steps;
+	private readonly ProgressTracker _tracker;
 
 	public int Parallelism => _parallelism;
 	public TContext Context => _context;
-	public IBackupItemStep<TContext, TResult> ItemStep => _step;
+	public IReadOnlyList<IBackupItemStep<TContext, TResult>> Steps => _steps;
 
 	protected AbstractPipelineStage(
-        ILogger logger, 
-        int parallelism, 
-        TContext context, 
-        IBackupItemStep<TContext, TResult> step,
-        ProgressTracker tracker)
+		ILogger logger,
+		int parallelism,
+		TContext context,
+		IEnumerable<IBackupItemStep<TContext, TResult>> steps,
+		ProgressTracker tracker)
 	{
 		ArgumentNullException.ThrowIfNull(logger);
 		ArgumentNullException.ThrowIfNull(parallelism);
 		if(parallelism < 0) throw new ArgumentOutOfRangeException(nameof(parallelism));
 		if(parallelism == 0) parallelism = Math.Max(Environment.ProcessorCount / 2, 1);
 		ArgumentNullException.ThrowIfNull(context);
-		ArgumentNullException.ThrowIfNull(step);
-        ArgumentNullException.ThrowIfNull(tracker);
+		ArgumentNullException.ThrowIfNull(steps);
+		ArgumentNullException.ThrowIfNull(tracker);
 
 		_parallelism = parallelism;
 		_logger = logger;
 		_context = context;
-		_step = step;
-        _tracker = tracker;
+		_steps = steps.ToList();
+		_tracker = tracker;
+
+		if(_steps.Count == 0)
+		{
+			_logger.LogWarning("AbstractPipelineStage created with 0 steps. It will be a pass-through.");
+		}
 	}
 
 	public async Task RunAsync(
@@ -58,62 +63,108 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 		List<Task> workers = new List<Task>(Parallelism);
 		for(int i = 0; i < Parallelism; i++)
 		{
-			workers.Add(Task.Run(async () =>
-			{
-				await foreach(IBackupItem? item in reader.ReadAllAsync(ct).ConfigureAwait(false))
-				{
-					// Not null, because TryRead succeeded.
-					IBackupItem forward = item;
-					try
-					{
-                        string sourcePath = forward.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown";
-                        string fileName = forward.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
-                        string relativePath = forward.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? fileName;
-                        long size = forward.Metadata.Get<long>(MetadataKey.Length);
-
-                        _tracker.UpdateItemPhase(sourcePath, fileName, relativePath, ItemStep.Phase, size);
-
-						_logger.LogDebug("Executing step {StepName} for item {SourceFileName}", ItemStep.Name, fileName);
-
-						// Execute step and allow subclass to handle the result.
-						TResult? result = await ItemStep.ExecuteAsync(forward, ct).ConfigureAwait(false);
-						await OnResultAsync(forward, result, ct).ConfigureAwait(false);
-
-						_logger.LogDebug("ItemStep {StepName} completed for item {SourceFileName}", ItemStep.Name, fileName);
-					} catch(OperationCanceledException) when(ct.IsCancellationRequested)
-					{
-						_logger.LogWarning("ItemStep {StepName} for item {SourceFileName} was cancelled.", ItemStep.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName));
-						throw;
-					} catch(Exception ex)
-					{
-						_logger.LogError(ex, "ItemStep '{StepName}' failed for item '{SourceFileName}': {ErrorMessage}", ItemStep.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName), ex.Message);
-						// Mark the item as failed but continue processing other items.
-						try { forward.Fail($"ItemStep '{ItemStep.Name}' failed: {ex.Message}", ItemStep.Name, ex); } catch
-						{
-							/* swallow */
-							_logger.LogError(ex, "Failed to mark item as failed after step error.");
-						}
-					}
-
-					try
-					{
-						await writer.WriteAsync(forward, ct).ConfigureAwait(false);
-					} catch(OperationCanceledException) when(ct.IsCancellationRequested)
-					{
-						_logger.LogWarning("Forwarding cancelled for item {SourceFileName} from step {StepName}.", forward.Metadata.Get<string>(MetadataKey.SourceFileName), ItemStep.Name);
-						throw;
-					} catch(Exception ex)
-					{
-						_logger.LogError(ex, "Failed to write item {SourceFileName} to next channel from step {StepName}. Terminating worker.", forward.Metadata.Get<string>(MetadataKey.SourceFileName), ItemStep.Name);
-						return;
-					}
-				}
-			}, ct));
+			workers.Add(Task.Run(async () => await WorkerLoop(reader, writer, ct), ct));
 		}
+
 		// Wait for all workers to finish before completing output channel.
 		await Task.WhenAll(workers).ConfigureAwait(false);
-		_logger.LogDebug("All workers for step {StepName} completed.", ItemStep.Name);
+
+		_logger.LogDebug("All workers for Stage completed.");
 		writer.Complete();
+	}
+
+	private async Task WorkerLoop(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct)
+	{
+		await foreach(IBackupItem? item in reader.ReadAllAsync(ct).ConfigureAwait(false))
+		{
+			// Not null, because TryRead succeeded.
+			IBackupItem forward = item;
+
+			// Execute all steps in sequence for the item.
+			foreach(var step in Steps)
+			{
+				if(ct.IsCancellationRequested)
+				{
+					_logger.LogWarning("Cancellation requested. Worker loop exiting before executing step {StepName} for item {SourceFileName}.", step.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+					ct.ThrowIfCancellationRequested();
+				}
+				if(forward.ResultState == ItemResultState.Failed)
+				{
+					// Previous step failed it
+					_logger.LogWarning("Item {SourceFileName} is marked as Failed. Skipping remaining steps in pipeline stage.", forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+					break;
+				}
+				TResult? stepResult = await ExecuteStepAsync(forward, step, writer, ct).ConfigureAwait(false);
+				if(stepResult is null) throw new InvalidOperationException($"Step {step.Name} returned null result for item {forward.Metadata.Get<string>(MetadataKey.SourceFileName)}.");
+			}
+		}
+	}
+
+	private async Task<TResult?> ExecuteStepAsync(
+		IBackupItem forward,
+		IBackupItemStep<TContext, TResult> step,
+		ChannelWriter<IBackupItem> writer,
+		CancellationToken ct
+	)
+	{
+		TResult? result = default;
+
+		try
+		{
+			// Update progress tracker (Thread-safety depends on ProgressTracker implementation)
+			string sourcePath = forward.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown";
+			string fileName = forward.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
+			string relativePath = forward.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? fileName;
+			long size = forward.Metadata.Get<long>(MetadataKey.Length);
+
+			_tracker.UpdateItemPhase(sourcePath, fileName, relativePath, step.Phase, size);
+
+			_logger.LogDebug("Executing step {StepName} for item {SourceFileName}", step.Name, fileName);
+
+			// --- EXECUTE STEP ---
+			// We get the result back, even though the Item is also mutated.
+			// Execute step and allow subclass to handle the result.
+			result = await step.ExecuteAsync(forward, ct).ConfigureAwait(false);
+
+			// Allow subclass/hook to react to the result (e.g. specialized logging)
+			await OnResultAsync(forward, result, ct).ConfigureAwait(false);
+
+			_logger.LogDebug("ItemStep {StepName} completed for item {SourceFileName}", step.Name, fileName);
+		} catch(OperationCanceledException) when(ct.IsCancellationRequested)
+		{
+			_logger.LogWarning("ItemStep {StepName} for item {SourceFileName} was cancelled.", step.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+			throw;
+		} catch(Exception ex)
+		{
+			_logger.LogError(ex, "ItemStep '{StepName}' failed for item '{SourceFileName}': {ErrorMessage}", step.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName), ex.Message);
+			// Mark the item as failed but continue processing other items.
+			try
+			{
+				forward.Fail($"ItemStep '{step.Name}' failed: {ex.Message}", step.Name, ex);
+			} catch
+			{
+				/* swallow fail-safety */
+				_logger.LogError(ex, "Failed to mark item as failed after step error.");
+			}
+		}
+
+		// Forward to next stage (even if failed, so it can be audited/logged at the end)
+		if(!ct.IsCancellationRequested)
+		{
+			try
+			{
+				await writer.WriteAsync(forward, ct).ConfigureAwait(false);
+			} catch(OperationCanceledException) when(ct.IsCancellationRequested)
+			{
+				_logger.LogWarning("Forwarding cancelled for item {SourceFileName} from step {StepName}.", forward.Metadata.Get<string>(MetadataKey.SourceFileName), step.Name);
+				throw;
+			} catch(Exception ex)
+			{
+				_logger.LogError(ex, "Failed to write item {SourceFileName} to next channel from step {StepName}. Terminating worker.", forward.Metadata.Get<string>(MetadataKey.SourceFileName), step.Name);
+				return result;
+			}
+		}
+		return result;
 	}
 
 	/// <summary>

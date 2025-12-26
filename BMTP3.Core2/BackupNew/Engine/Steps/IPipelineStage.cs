@@ -11,6 +11,6 @@ public interface IPipelineStage<TContext, TResult>
 {
 	int Parallelism { get; }
 	TContext Context { get; }
-	IBackupItemStep<TContext, TResult> ItemStep { get; }
+	IReadOnlyList<IBackupItemStep<TContext, TResult>> Steps { get; }
 	public Task RunAsync(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct);
 }

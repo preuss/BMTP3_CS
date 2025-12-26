@@ -13,9 +13,9 @@ public class TransferPipelineStage : AbstractPipelineStage<BackupPlan, Operation
         ILogger logger, 
         int parallelism, 
         BackupPlan context, 
-        IBackupItemStep<BackupPlan, OperationResult> step, 
+        List<IBackupItemStep<BackupPlan, OperationResult>> steps, 
         ProgressTracker tracker)
-        : base(logger, parallelism, context, step, tracker)
+        : base(logger, parallelism, context, steps, tracker)
     {
     }
 }

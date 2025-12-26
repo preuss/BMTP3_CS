@@ -16,8 +16,8 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 
 public class HashPipelineStage : AbstractPipelineStage<HashStepContext, HashStepResult>
 {
-	public HashPipelineStage(ILogger logger, int parallelism, HashStepContext context, IBackupItemStep<HashStepContext, HashStepResult> step, ProgressTracker tracker)
-		: base(logger, parallelism, context, step, tracker)
+	public HashPipelineStage(ILogger logger, int parallelism, HashStepContext context, List<IBackupItemStep<HashStepContext, HashStepResult>> steps, ProgressTracker tracker)
+		: base(logger, parallelism, context, steps, tracker)
 	{
 	}
 
