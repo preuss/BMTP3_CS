@@ -25,7 +25,7 @@ public class HashPipelineStage : AbstractPipelineStage<HashStepContext, HashStep
 	/// Hook for subclasses to process the TResult returned by the step.
 	/// Default implementation is a no-op.
 	/// </summary>
-	protected override Task OnResultAsync(IBackupItem item, HashStepResult result, CancellationToken ct)
+	protected override Task OnStepResultAsync(IBackupItem item, IBackupItemStep<HashStepContext, HashStepResult> step, HashStepResult result, CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}

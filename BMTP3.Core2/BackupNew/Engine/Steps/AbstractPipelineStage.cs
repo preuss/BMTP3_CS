@@ -9,9 +9,9 @@ using System.Threading.Tasks;
 namespace BMTP3.Core2.BackupNew.Engine.Steps;
 
 /// <summary>
-/// Abstract base class for worker-pools that run a given IBackupItemStep for incoming IBackupItem instances.
+/// Abstract base class for worker-pools that run a sequence of IBackupItemStep for incoming IBackupItem instances.
 /// The base implements the reading/forwarding loop and error handling; subclasses may
-/// override OnResultAsync to react to the step result.
+/// override OnStepResultAsync to react to individual step results.
 /// </summary>
 public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<TContext, TResult>
 {
@@ -97,6 +97,21 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 				TResult? stepResult = await ExecuteStepAsync(forward, step, writer, ct).ConfigureAwait(false);
 				if(stepResult is null) throw new InvalidOperationException($"Step {step.Name} returned null result for item {forward.Metadata.Get<string>(MetadataKey.SourceFileName)}.");
 			}
+			// Forward to next stage ONCE, after all steps are done (or if failed).
+			if(!ct.IsCancellationRequested)
+			{
+				try
+				{
+					await writer.WriteAsync(forward, ct).ConfigureAwait(false);
+				} catch(OperationCanceledException)
+				{
+					// Graceful shutdown
+				} catch(Exception ex)
+				{
+					_logger.LogError(ex, "Failed to write item {SourceFileName} to next channel. Worker terminating.", forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+					return;
+				}
+			}
 		}
 	}
 
@@ -127,7 +142,7 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 			result = await step.ExecuteAsync(forward, ct).ConfigureAwait(false);
 
 			// Allow subclass/hook to react to the result (e.g. specialized logging)
-			await OnResultAsync(forward, result, ct).ConfigureAwait(false);
+			await OnStepResultAsync(forward, step, result, ct).ConfigureAwait(false);
 
 			_logger.LogDebug("ItemStep {StepName} completed for item {SourceFileName}", step.Name, fileName);
 		} catch(OperationCanceledException) when(ct.IsCancellationRequested)
@@ -147,31 +162,14 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 				_logger.LogError(ex, "Failed to mark item as failed after step error.");
 			}
 		}
-
-		// Forward to next stage (even if failed, so it can be audited/logged at the end)
-		if(!ct.IsCancellationRequested)
-		{
-			try
-			{
-				await writer.WriteAsync(forward, ct).ConfigureAwait(false);
-			} catch(OperationCanceledException) when(ct.IsCancellationRequested)
-			{
-				_logger.LogWarning("Forwarding cancelled for item {SourceFileName} from step {StepName}.", forward.Metadata.Get<string>(MetadataKey.SourceFileName), step.Name);
-				throw;
-			} catch(Exception ex)
-			{
-				_logger.LogError(ex, "Failed to write item {SourceFileName} to next channel from step {StepName}. Terminating worker.", forward.Metadata.Get<string>(MetadataKey.SourceFileName), step.Name);
-				return result;
-			}
-		}
 		return result;
 	}
 
 	/// <summary>
-	/// Hook for subclasses to process the TResult returned by the step.
+	/// Hook for subclasses to process the TResult returned by a specific step.
 	/// Default implementation is a no-op.
 	/// </summary>
-	protected virtual Task OnResultAsync(IBackupItem item, TResult result, CancellationToken ct)
+	protected virtual Task OnStepResultAsync(IBackupItem item, IBackupItemStep<TContext, TResult> step, TResult result, CancellationToken ct)
 	{
 		return Task.CompletedTask;
 	}

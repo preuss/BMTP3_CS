@@ -15,78 +15,77 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
 
 public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 {
-    private readonly IPathGenerator _pathGenerator;
-    private readonly ICollisionResolver _collisionResolver;
-    private readonly IFileTransfer _fileTransfer;
+	private readonly IPathGenerator _pathGenerator;
+	private readonly ICollisionResolver _collisionResolver;
+	private readonly IFileTransfer _fileTransfer;
 
-    public string Name => "Transfer";
-    public FilePhase Phase => FilePhase.Transferring;
+	public string Name => "Transfer";
+	public FilePhase Phase => FilePhase.Transferring;
 
 	private readonly BackupPlan _context;
 	public BackupPlan Context { get; }
 	public TransferItemStep(
 		BackupPlan context,
-		IPathGenerator pathGenerator, 
-        ICollisionResolver collisionResolver, 
-        IFileTransfer fileTransfer)
-    {
+		IPathGenerator pathGenerator,
+		ICollisionResolver collisionResolver,
+		IFileTransfer fileTransfer)
+	{
 		_context = context ?? throw new ArgumentNullException(nameof(context));
 		_pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
-        _collisionResolver = collisionResolver ?? throw new ArgumentNullException(nameof(collisionResolver));
-        _fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
-    }
+		_collisionResolver = collisionResolver ?? throw new ArgumentNullException(nameof(collisionResolver));
+		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
+	}
 
-    public async Task<OperationResult> ExecuteAsync(IBackupItem item, CancellationToken ct)
-    {
-        // 1. Determine relative path
-        string relativePath = _pathGenerator.GenerateRelativePath(item, _context);
-        string destinationPath = Path.Combine(_context.OutputPath, relativePath);
+	public async Task<OperationResult> ExecuteAsync(IBackupItem item, CancellationToken ct)
+	{
+		// 1. Determine relative path
+		string relativePath = _pathGenerator.GenerateRelativePath(item, _context);
+		string destinationPath = Path.Combine(_context.OutputPath, relativePath);
 
-        // 2. Resolve collisions
-        CollisionResult collision = await _collisionResolver.ResolveAsync(item, destinationPath, _context, ct);
+		// 2. Resolve collisions
+		CollisionResult collision = await _collisionResolver.ResolveAsync(item, destinationPath, _context, ct);
 
-        // 3. Act based on collision result
-        if (collision.Action == BackupActionType.Skip)
-        {
-            item.SetResult(ItemResultState.Skipped, collision.Reason);
-            item.AddLog($"Skipped: {collision.Reason}", Name);
-            return OperationResult.Skipped(collision.Reason);
-        }
+		// 3. Act based on collision result
+		if(collision.Action == BackupActionType.Skip)
+		{
+			item.SetResult(ItemResultState.Skipped, collision.Reason);
+			item.AddLog($"Skipped: {collision.Reason}", Name);
+			return OperationResult.Skipped(collision.Reason);
+		}
 
-        if (collision.Action == BackupActionType.Rename)
-        {
-            destinationPath = collision.TargetPath; // Use the new unique path
-            item.AddLog($"Renamed to: {Path.GetFileName(destinationPath)}", Name);
-        }
+		if(collision.Action == BackupActionType.Rename)
+		{
+			destinationPath = collision.TargetPath; // Use the new unique path
+			item.AddLog($"Renamed to: {Path.GetFileName(destinationPath)}", Name);
+		}
 
-        // 4. Transfer
-        // Ensure we have a local file to transfer
-        if (item.Content is not FileContent fileContent)
-        {
-             string msg = $"Content is not a local file (found {item.Content?.GetType().Name}). Staging step might have failed.";
-             item.Fail(msg, Name);
-             return OperationResult.Fail(msg);
-        }
+		// 4. Transfer
+		// Ensure we have a local file to transfer
+		if(item.Content is not FileContent fileContent)
+		{
+			string msg = $"Content is not a local file (found {item.Content?.GetType().Name}). Staging step might have failed.";
+			item.Fail(msg, Name);
+			return OperationResult.Fail(msg);
+		}
 
-        // Ensure directory exists
-        string? destDir = Path.GetDirectoryName(destinationPath);
-        if (!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir) && !_context.DryRun)
-        {
-            Directory.CreateDirectory(destDir);
-        }
+		// Ensure directory exists
+		string? destDir = Path.GetDirectoryName(destinationPath);
+		if(!string.IsNullOrEmpty(destDir) && !Directory.Exists(destDir) && !_context.DryRun)
+		{
+			Directory.CreateDirectory(destDir);
+		}
 
-        OperationResult result = await _fileTransfer.TransferAsync(fileContent.FileInfo.FullName, destinationPath, _context.DryRun, ct);
+		OperationResult result = await _fileTransfer.TransferAsync(fileContent.FileInfo.FullName, destinationPath, _context.DryRun, ct);
 
-        if (result.Success)
-        {
-            item.SetResult(ItemResultState.Success);
-            item.Metadata.Set(MetadataKey.FinalTargetPath, destinationPath);
-        }
-        else
-        {
-            item.Fail("Transfer failed: " + result.Message, Name);
-        }
+		if(result.Success)
+		{
+			item.SetResult(ItemResultState.Success);
+			item.Metadata.Set(MetadataKey.FinalTargetPath, destinationPath);
+		} else
+		{
+			item.Fail("Transfer failed: " + result.Message, Name);
+		}
 
-        return result;
-    }
+		return result;
+	}
 }

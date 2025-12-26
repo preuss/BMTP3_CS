@@ -13,28 +13,21 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.MetadataExtractionStep;
 /// </summary>
 public class MetadataExtractionItemStep : IBackupItemStep<BackupPlan, bool>
 {
-    	private readonly IMetadataReader _extractor;
-    
-    	public string Name => "Metadata Extraction";
-        public FilePhase Phase => FilePhase.Metadata;
-    
-    	public BackupPlan Context { get; private set; }
-    
-    	public MetadataExtractionItemStep(IMetadataReader extractor, BackupPlan context)
-    	{
-    		_extractor = extractor ?? throw new ArgumentNullException(nameof(extractor));
-    		Context = context ?? throw new ArgumentNullException(nameof(context));
-    	}
-    public async Task<bool> ExecuteAsync(IBackupItem item, CancellationToken ct)
-    {
-        await _extractor.EnrichMetadataAsync(item, ct);
-        return true;
-    }
+	private readonly IMetadataReader _extractor;
 
-    public async Task<bool> ExecuteAsync(BackupPlan plan, IBackupItem item, CancellationToken ct)
-    {
-        Context = plan ?? throw new ArgumentNullException(nameof(plan));
-        await _extractor.EnrichMetadataAsync(item, ct);
-        return true;
-    }
+	public string Name => "Metadata Extraction";
+	public FilePhase Phase => FilePhase.Metadata;
+
+	public BackupPlan Context { get; }
+
+	public MetadataExtractionItemStep(IMetadataReader extractor, BackupPlan context)
+	{
+		_extractor = extractor ?? throw new ArgumentNullException(nameof(extractor));
+		Context = context ?? throw new ArgumentNullException(nameof(context));
+	}
+	public async Task<bool> ExecuteAsync(IBackupItem item, CancellationToken ct)
+	{
+		await _extractor.EnrichMetadataAsync(item, ct);
+		return true;
+	}
 }
