@@ -38,7 +38,7 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 	/// <param name="item">The backup item.</param>
 	/// <param name="ct">Cancellation token.</param>
 	/// <returns>True if a sidecar was generated; otherwise false.</returns>
-	public async Task<bool> ExecuteAsync(IBackupItem item, CancellationToken ct)
+	public async Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
 		ArgumentNullException.ThrowIfNull(item);
 

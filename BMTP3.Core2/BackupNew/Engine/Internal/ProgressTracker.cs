@@ -29,7 +29,7 @@ public class ProgressTracker
     private long _bytesProcessed;
 
     // --- Active Files (Thread-Safe Dictionary) ---
-    // Key: SourceFullPath (unique ID per running file)
+    // Key: ItemId (unique GUID string per running file)
     private readonly ConcurrentDictionary<string, FileProgress> _activeFiles = new();
 
     // --- Phase Management ---
@@ -59,9 +59,9 @@ public class ProgressTracker
     /// <summary>
     /// Starts tracking a file or updates its phase.
     /// </summary>
-    public void UpdateItemPhase(string sourcePath, string fileName, string relativePath, FilePhase phase, long totalBytes)
+    public void UpdateItemPhase(string itemId, string sourcePath, string fileName, string relativePath, FilePhase phase, ulong totalBytes)
     {
-        _activeFiles.AddOrUpdate(sourcePath,
+        _activeFiles.AddOrUpdate(itemId,
             // Add new
             key => new FileProgress
             {
@@ -85,9 +85,9 @@ public class ProgressTracker
     /// <summary>
     /// Updates the byte progress of an active file.
     /// </summary>
-    public void UpdateItemBytes(string sourcePath, long bytesProcessed)
+    public void UpdateItemBytes(string itemId, ulong bytesProcessed)
     {
-        if (_activeFiles.TryGetValue(sourcePath, out var progress))
+        if (_activeFiles.TryGetValue(itemId, out var progress))
         {
             progress.BytesProcessed = bytesProcessed;
         }
@@ -96,10 +96,10 @@ public class ProgressTracker
     /// <summary>
     /// Completes an item: Removes from active list and updates global stats.
     /// </summary>
-    public void CompleteItem(string sourcePath, ItemResultState result, long totalBytes)
+    public void CompleteItem(string itemId, ItemResultState result, long totalBytes)
     {
         // 1. Remove from Active
-        _activeFiles.TryRemove(sourcePath, out _);
+        _activeFiles.TryRemove(itemId, out _);
 
         // 2. Update Globals
         switch (result)

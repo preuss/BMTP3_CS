@@ -133,27 +133,29 @@ public class BackupEngine : IBackupEngine
 		tracker.SetPhase(BackupPhase.Traversing);
 
 		// Instantiate Steps
-		List<IBackupItemStep<BackupPlan, bool>> bufferingSteps = new() { new ContentBufferingItemStep(_stagingDownloader, progress) };
-		List<IBackupItemStep<BackupPlan, bool>> metadataSteps = new() { new MetadataExtractionItemStep(_metadataReader, plan) };
-		List<IBackupItemStep<BackupPlan, bool>> timestampSteps = new() { new TimestampCorrectionItemStep(plan) };
+		var bufferingStep = new ContentBufferingItemStep(_stagingDownloader, progress);
+		var metadataStep = new MetadataExtractionItemStep(_metadataReader, plan);
+		var timestampStep = new TimestampCorrectionItemStep(plan);
+		
 		HashStepContext hashStepContext = new()
 		{
 			HashTypes = new List<HashType> { HashType.BLAKE3_512 },
 			ForceRecompute = false
 		};
-		List<IBackupItemStep<HashStepContext, HashStepResult>> hashSteps = new() { new HashItemStep(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>()) };
-		List<IBackupItemStep<BackupPlan, OperationResult>> transferSteps = new() { new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer) };
-		List<IBackupItemStep<BackupPlan, bool>> sidecarSteps = new() { new SidecarGenerationItemStep(plan, _sidecarGenerator) };
+		var hashStep = new HashItemStep(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>());
+		
+		var transferStep = new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer);
+		var sidecarStep = new SidecarGenerationItemStep(plan, _sidecarGenerator);
 
 		// Source Reading MUST be serial (1 thread) to prevent MTP timeouts and IO thrashing.
 		// We ignore degreeOfParallelism for this specific step.
-		ContentBufferingPipelineStage bufferingPool = new(_loggerFactory.CreateLogger<ContentBufferingPipelineStage>(), 1, plan, bufferingSteps, tracker);
+		ContentBufferingPipelineStage bufferingPool = new(_loggerFactory.CreateLogger<ContentBufferingPipelineStage>(), 1, plan, tracker, bufferingStep);
 
-		MetadataExtractionPipelineStage metadataPool = new(_loggerFactory.CreateLogger<MetadataExtractionPipelineStage>(), degreeOfParallelism, plan, metadataSteps, tracker);
-		TimestampCorrectionPipelineStage timestampPool = new(_loggerFactory.CreateLogger<TimestampCorrectionPipelineStage>(), degreeOfParallelism, plan, timestampSteps, tracker);
-		HashPipelineStage hashPool = new(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism, hashStepContext, hashSteps, tracker);
-		TransferPipelineStage transferPool = new(_loggerFactory.CreateLogger<TransferPipelineStage>(), degreeOfParallelism, plan, transferSteps, tracker);
-		SidecarGenerationPipelineStage sidecarPool = new(_loggerFactory.CreateLogger<SidecarGenerationPipelineStage>(), degreeOfParallelism, plan, sidecarSteps, tracker);
+		MetadataExtractionPipelineStage metadataPool = new(_loggerFactory.CreateLogger<MetadataExtractionPipelineStage>(), degreeOfParallelism, plan, tracker, metadataStep);
+		TimestampCorrectionPipelineStage timestampPool = new(_loggerFactory.CreateLogger<TimestampCorrectionPipelineStage>(), degreeOfParallelism, plan, tracker, timestampStep);
+		HashPipelineStage hashPool = new(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism, hashStepContext, tracker, hashStep);
+		TransferPipelineStage transferPool = new(_loggerFactory.CreateLogger<TransferPipelineStage>(), degreeOfParallelism, plan, tracker, transferStep);
+		SidecarGenerationPipelineStage sidecarPool = new(_loggerFactory.CreateLogger<SidecarGenerationPipelineStage>(), degreeOfParallelism, plan, tracker, sidecarStep);
 
 
 		// Start Pipeline Tasks
@@ -208,7 +210,7 @@ public class BackupEngine : IBackupEngine
 
 					long size = item.Metadata.Get<long>(MetadataKey.Length);
 					tracker.CompleteItem(
-						item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown",
+						item.Id,
 						item.ResultState,
 						size
 					);

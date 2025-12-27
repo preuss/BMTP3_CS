@@ -31,10 +31,10 @@ public class FileProgress
     /// <summary>
     /// The total size of the file in bytes.
     /// </summary>
-    public long BytesTotal { get; set; }
+    public ulong BytesTotal { get; set; }
 
     /// <summary>
     /// The number of bytes processed so far for the current operation.
     /// </summary>
-    public long BytesProcessed { get; set; }
+    public ulong BytesProcessed { get; set; }
 }

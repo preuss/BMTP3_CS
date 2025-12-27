@@ -1,10 +1,11 @@
 using BMTP3.Core2.BackupNew.Api.Enums;
-using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps;
+
 /// <summary>
 /// Represents a single atomic unit of work (step) within a Pipeline Stage.
 /// </summary>
@@ -23,12 +24,15 @@ public interface IBackupItemStep<TContext, TResult>
     /// </summary>
     FilePhase Phase { get; }
 
-	TContext Context { get; }
+    TContext Context { get; }
 
-	/// <summary>
+    /// <summary>
     /// Executes the operation on a single item.
     /// The step MUST modify the item's state or metadata directly (Blackboard pattern).
     /// It ALSO returns a result for immediate logging or flow control within the stage.
-	/// </summary>
-	Task<TResult> ExecuteAsync(IBackupItem item, CancellationToken ct);
+    /// </summary>
+    /// <param name="item">The backup item to process.</param>
+    /// <param name="progress">A reporter for bytes processed within this step.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<TResult> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct);
 }

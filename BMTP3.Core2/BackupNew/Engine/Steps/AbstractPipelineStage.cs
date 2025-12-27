@@ -12,24 +12,24 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps;
 /// Abstract base class for worker-pools that run a sequence of IBackupItemStep for incoming IBackupItem instances.
 /// The base implements the reading/forwarding loop and error handling; subclasses may
 /// override OnStepResultAsync to react to individual step results.
+/// Abstract base class for worker-pools (Stages).
+/// Manages the worker threads, channel consumption, and error reporting.
+/// Subclasses must implement ProcessItemAsync to define the logic (Steps) for this stage.
 /// </summary>
-public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<TContext, TResult>
+public abstract class AbstractPipelineStage<TContext> : IPipelineStage<TContext>
 {
 	private readonly ILogger _logger;
 	private readonly int _parallelism;
 	private readonly TContext _context;
-	private readonly List<IBackupItemStep<TContext, TResult>> _steps;
-	private readonly ProgressTracker _tracker;
+    protected readonly ProgressTracker _tracker;
 
 	public int Parallelism => _parallelism;
 	public TContext Context => _context;
-	public IReadOnlyList<IBackupItemStep<TContext, TResult>> Steps => _steps;
 
 	protected AbstractPipelineStage(
 		ILogger logger,
 		int parallelism,
 		TContext context,
-		IEnumerable<IBackupItemStep<TContext, TResult>> steps,
 		ProgressTracker tracker)
 	{
 		ArgumentNullException.ThrowIfNull(logger);
@@ -37,19 +37,12 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 		if(parallelism < 0) throw new ArgumentOutOfRangeException(nameof(parallelism));
 		if(parallelism == 0) parallelism = Math.Max(Environment.ProcessorCount / 2, 1);
 		ArgumentNullException.ThrowIfNull(context);
-		ArgumentNullException.ThrowIfNull(steps);
 		ArgumentNullException.ThrowIfNull(tracker);
 
 		_parallelism = parallelism;
 		_logger = logger;
 		_context = context;
-		_steps = steps.ToList();
 		_tracker = tracker;
-
-		if(_steps.Count == 0)
-		{
-			_logger.LogWarning("AbstractPipelineStage created with 0 steps. It will be a pass-through.");
-		}
 	}
 
 	public async Task RunAsync(
@@ -73,113 +66,98 @@ public abstract class AbstractPipelineStage<TContext, TResult> : IPipelineStage<
 		writer.Complete();
 	}
 
-	private async Task WorkerLoop(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct)
-	{
-		await foreach(IBackupItem? item in reader.ReadAllAsync(ct).ConfigureAwait(false))
-		{
-			// Not null, because TryRead succeeded.
-			IBackupItem forward = item;
+   private async Task WorkerLoop(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct)
+    {
+        await foreach (IBackupItem? item in reader.ReadAllAsync(ct).ConfigureAwait(false))
+        {
+            IBackupItem forward = item;
 
-			// Execute all steps in sequence for the item.
-			foreach(var step in Steps)
-			{
-				if(ct.IsCancellationRequested)
-				{
-					_logger.LogWarning("Cancellation requested. Worker loop exiting before executing step {StepName} for item {SourceFileName}.", step.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName));
-					ct.ThrowIfCancellationRequested();
-				}
-				if(forward.ResultState == ItemResultState.Failed)
-				{
-					// Previous step failed it
-					_logger.LogWarning("Item {SourceFileName} is marked as Failed. Skipping remaining steps in pipeline stage.", forward.Metadata.Get<string>(MetadataKey.SourceFileName));
-					break;
-				}
-				TResult? stepResult = await ExecuteStepAsync(forward, step, ct).ConfigureAwait(false);
+            if (forward.ResultState == ItemResultState.Failed)
+            {
+                // Item failed in a previous stage. Forward it directly without processing.
+                try
+                {
+                    await writer.WriteAsync(forward, ct).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to forward FAILED item {SourceFileName}. Worker terminating.", forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+                    return;
+                }
+                continue;
+            }
 
-				if(forward.ResultState == ItemResultState.Failed)
-				{
-					// Current step failed, stop processing further steps for this item.
-					break;
-				}
+            try
+            {
+                // --- TEMPLATE METHOD CALL ---
+                await ProcessItemAsync(forward, ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogWarning("Processing cancelled for item {SourceFileName}.", forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Stage failed processing item {SourceFileName}: {Message}", forward.Metadata.Get<string>(MetadataKey.SourceFileName), ex.Message);
+                try
+                {
+                    forward.Fail($"Stage failed: {ex.Message}", "PipelineStage", ex);
+                }
+                catch { /* swallow fail-safety */ }
+            }
 
-				if(stepResult is null)
-				{
-					throw new InvalidOperationException($"Step {step.Name} returned null result for item {forward.Metadata.Get<string>(MetadataKey.SourceFileName)}.");
-				}
-			}
-			// Forward to next stage ONCE, after all steps are done (or if failed).
-			if(!ct.IsCancellationRequested)
-			{
-				try
-				{
-					await writer.WriteAsync(forward, ct).ConfigureAwait(false);
-				} catch(OperationCanceledException)
-				{
-					// Graceful shutdown
-				} catch(Exception ex)
-				{
-					_logger.LogError(ex, "Failed to write item {SourceFileName} to next channel. Worker terminating.", forward.Metadata.Get<string>(MetadataKey.SourceFileName));
-					return;
-				}
-			}
-		}
-	}
+            // Forward to next stage
+            if (!ct.IsCancellationRequested)
+            {
+                try
+                {
+                    await writer.WriteAsync(forward, ct).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Graceful shutdown
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to write item {SourceFileName} to next channel. Worker terminating.", forward.Metadata.Get<string>(MetadataKey.SourceFileName));
+                    return;
+                }
+            }
+        }
+    }
 
-	private async Task<TResult?> ExecuteStepAsync(
-		IBackupItem forward,
-		IBackupItemStep<TContext, TResult> step,
-		CancellationToken ct
-	)
-	{
-		TResult? result = default;
+    /// <summary>
+    /// Executes the business logic for this stage.
+    /// This is where the concrete class calls its Step(s).
+    /// </summary>
+    protected abstract Task ProcessItemAsync(IBackupItem item, CancellationToken ct);
 
-		try
-		{
-			// Update progress tracker (Thread-safety depends on ProgressTracker implementation)
-			string sourcePath = forward.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown";
-			string fileName = forward.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
-			string relativePath = forward.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? fileName;
-			long size = forward.Metadata.Get<long>(MetadataKey.Length);
+    /// <summary>
+    /// Helper method to create a progress reporter for a specific item.
+    /// Concrete stages should call this to get an IProgress reporter to pass to steps.
+    /// </summary>
+    protected IProgress<ulong> CreateProgressReporter(IBackupItem item)
+    {
+        string itemId = item.Id;
+        return new Progress<ulong>(bytesProcessed => 
+        {
+            _tracker.UpdateItemBytes(itemId, bytesProcessed);
+        });
+    }
 
-			_tracker.UpdateItemPhase(sourcePath, fileName, relativePath, step.Phase, size);
+    /// <summary>
+    /// Helper method to update the phase for an item.
+    /// Concrete stages should call this before executing a step.
+    /// </summary>
+    protected void UpdatePhase(IBackupItem item, Api.Enums.FilePhase phase)
+    {
+        string itemId = item.Id;
+        string sourcePath = item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown";
+        string fileName = item.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
+        string relativePath = item.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? fileName;
+        ulong size = item.Metadata.Get<ulong>(MetadataKey.Length);
 
-			_logger.LogDebug("Executing step {StepName} for item {SourceFileName}", step.Name, fileName);
-
-			// --- EXECUTE STEP ---
-			// We get the result back, even though the Item is also mutated.
-			// Execute step and allow subclass to handle the result.
-			result = await step.ExecuteAsync(forward, ct).ConfigureAwait(false);
-
-			// Allow subclass/hook to react to the result (e.g. specialized logging)
-			await OnStepResultAsync(forward, step, result, ct).ConfigureAwait(false);
-
-			_logger.LogDebug("ItemStep {StepName} completed for item {SourceFileName}", step.Name, fileName);
-		} catch(OperationCanceledException) when(ct.IsCancellationRequested)
-		{
-			_logger.LogWarning("ItemStep {StepName} for item {SourceFileName} was cancelled.", step.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName));
-			throw;
-		} catch(Exception ex)
-		{
-			_logger.LogError(ex, "ItemStep '{StepName}' failed for item '{SourceFileName}': {ErrorMessage}", step.Name, forward.Metadata.Get<string>(MetadataKey.SourceFileName), ex.Message);
-			// Mark the item as failed but continue processing other items.
-			try
-			{
-				forward.Fail($"ItemStep '{step.Name}' failed: {ex.Message}", step.Name, ex);
-			} catch
-			{
-				/* swallow fail-safety */
-				_logger.LogError(ex, "Failed to mark item as failed after step error.");
-			}
-		}
-		return result;
-	}
-
-	/// <summary>
-	/// Hook for subclasses to process the TResult returned by a specific step.
-	/// Default implementation is a no-op.
-	/// </summary>
-	protected virtual Task OnStepResultAsync(IBackupItem item, IBackupItemStep<TContext, TResult> step, TResult result, CancellationToken ct)
-	{
-		return Task.CompletedTask;
-	}
+        _tracker.UpdateItemPhase(itemId, sourcePath, fileName, relativePath, phase, size);
+    }
 }

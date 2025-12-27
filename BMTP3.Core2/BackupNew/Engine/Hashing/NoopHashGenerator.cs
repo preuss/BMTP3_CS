@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -8,9 +9,13 @@ namespace BMTP3.Core2.BackupNew.Engine.Hashing;
 // Minimal hash generator that returns an empty result set (placeholder).
 public class NoopHashGenerator : IHashGenerator
 {
-	public Task<IReadOnlyDictionary<HashType, string>> ComputeHashesAsync(Stream dataStream, IEnumerable<HashType> hashTypes, CancellationToken ct)
+	public Task<Dictionary<HashType, string>> ComputeHashesAsync(
+        Stream dataStream, 
+        IEnumerable<HashType> hashTypes, 
+        IProgress<ulong> progress,
+        CancellationToken ct)
 	{
-		var empty = new ReadOnlyDictionary<HashType, string>(new Dictionary<HashType, string>());
-		return Task.FromResult<IReadOnlyDictionary<HashType, string>>(empty);
+		var empty = new Dictionary<HashType, string>();
+		return Task.FromResult(empty);
 	}
 }

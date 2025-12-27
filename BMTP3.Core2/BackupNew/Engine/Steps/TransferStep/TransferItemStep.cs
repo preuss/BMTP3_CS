@@ -36,7 +36,7 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
 	}
 
-	public async Task<OperationResult> ExecuteAsync(IBackupItem item, CancellationToken ct)
+	public async Task<OperationResult> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
 		// 1. Determine relative path
 		string relativePath = _pathGenerator.GenerateRelativePath(item, _context);

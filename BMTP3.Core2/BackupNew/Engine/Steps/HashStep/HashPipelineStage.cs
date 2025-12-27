@@ -14,19 +14,30 @@ using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 
-public class HashPipelineStage : AbstractPipelineStage<HashStepContext, HashStepResult>
+public class HashPipelineStage : AbstractPipelineStage<HashStepContext>
 {
-	public HashPipelineStage(ILogger logger, int parallelism, HashStepContext context, List<IBackupItemStep<HashStepContext, HashStepResult>> steps, ProgressTracker tracker)
-		: base(logger, parallelism, context, steps, tracker)
-	{
-	}
+    private readonly HashItemStep _hashStep;
 
-	/// <summary>
-	/// Hook for subclasses to process the TResult returned by the step.
-	/// Default implementation is a no-op.
-	/// </summary>
-	protected override Task OnStepResultAsync(IBackupItem item, IBackupItemStep<HashStepContext, HashStepResult> step, HashStepResult result, CancellationToken ct)
-	{
-		return Task.CompletedTask;
-	}
+    public HashPipelineStage(
+        ILogger logger, 
+        int parallelism, 
+        HashStepContext context, 
+        ProgressTracker tracker,
+        HashItemStep hashStep)
+        : base(logger, parallelism, context, tracker)
+    {
+        _hashStep = hashStep ?? throw new ArgumentNullException(nameof(hashStep));
+    }
+
+    protected override async Task ProcessItemAsync(IBackupItem item, CancellationToken ct)
+    {
+        // 1. Tell tracker we are Hashing
+        UpdatePhase(item, _hashStep.Phase);
+
+        // 2. Create reporter for bytes
+        var progress = CreateProgressReporter(item);
+
+        // 3. Execute step with progress
+        await _hashStep.ExecuteAsync(item, progress, ct).ConfigureAwait(false);
+    }
 }

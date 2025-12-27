@@ -21,21 +21,26 @@ public class ItemHasher : IItemHasher
 		_hashGenerator = hashGenerator ?? throw new ArgumentNullException(nameof(hashGenerator));
 	}
 
-	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, IEnumerable<HashType> hashTypes, CancellationToken ct)
+	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(
+        IBackupItem item, 
+        List<HashType> hashTypes, 
+        IProgress<ulong> progress,
+        CancellationToken ct)
 	{
 		ArgumentNullException.ThrowIfNull(item);
 		ArgumentNullException.ThrowIfNull(item.Content);
 
-		var requested = (hashTypes ?? Enumerable.Empty<HashType>()).Distinct().ToArray();
-		if (requested.Length == 0)
-			requested = new[] { HashType.SHA2_256 }; // Default to SHA2_256 if none specified
+		var requested = (hashTypes ?? Enumerable.Empty<HashType>()).Distinct().ToList();
+		if (requested.Count == 0)
+			requested.Add(HashType.SHA2_256); // Default to SHA2_256 if none specified
 
 		_logger.LogTrace("Computing hashes for item {itemId} from {itemPath} with types: {hashTypes}", item.Id, item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown", string.Join(", ", requested));
 
 		try
 		{
 			await using var stream = await item.Content.OpenReadStreamAsync(ct);
-			var hashes = (await _hashGenerator.ComputeHashesAsync(stream, requested, ct)).ToDictionary(x => x.Key, x => x.Value);
+            // Pass progress to the generator
+			var hashes = (await _hashGenerator.ComputeHashesAsync(stream, requested, progress, ct)).ToDictionary(x => x.Key, x => x.Value);
 
 			_logger.LogDebug("Hashes computed for item {itemId}", item.Id);
 			return hashes;

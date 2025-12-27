@@ -38,7 +38,7 @@ public class ContentBufferingItemStep : IBackupItemStep<BackupPlan, bool>
     /// <param name="item">The backup item to buffer.</param>
     /// <param name="ct">Cancellation token.</param>
     /// <returns>True if buffering was successful, otherwise false (or throws exception).</returns>
-    public async Task<bool> ExecuteAsync(IBackupItem item, CancellationToken ct)
+    public async Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
     {
         if (Context == null)
         {

@@ -1,16 +1,22 @@
-﻿using BMTP3.Core2.BackupNew.Domain.Item;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using BMTP3.Core2.BackupNew.Domain.Item;
+using System.Threading;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps;
-public interface IPipelineStage<TContext, TResult>
+
+/// <summary>
+/// Represents a parallel processing stage in the backup pipeline.
+/// A stage consumes items from a reader, processes them, and writes them to a writer.
+/// </summary>
+/// <typeparam name="TContext">The context for this stage.</typeparam>
+public interface IPipelineStage<TContext>
 {
-	int Parallelism { get; }
-	TContext Context { get; }
-	IReadOnlyList<IBackupItemStep<TContext, TResult>> Steps { get; }
-	public Task RunAsync(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct);
+    int Parallelism { get; }
+    TContext Context { get; }
+
+    /// <summary>
+    /// Starts the worker pool for this stage.
+    /// </summary>
+    Task RunAsync(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct);
 }

@@ -25,7 +25,7 @@ public class MetadataExtractionItemStep : IBackupItemStep<BackupPlan, bool>
 		_extractor = extractor ?? throw new ArgumentNullException(nameof(extractor));
 		Context = context ?? throw new ArgumentNullException(nameof(context));
 	}
-	public async Task<bool> ExecuteAsync(IBackupItem item, CancellationToken ct)
+	public async Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
 		await _extractor.EnrichMetadataAsync(item, ct);
 		return true;

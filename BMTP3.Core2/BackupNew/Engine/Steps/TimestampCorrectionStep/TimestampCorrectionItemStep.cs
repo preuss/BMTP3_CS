@@ -30,7 +30,7 @@ public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 		_context = context ?? throw new ArgumentNullException(nameof(context));
 	}
 
-	public Task<bool> ExecuteAsync(IBackupItem item, CancellationToken ct)
+	public Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
 		DateTime? timestamp = null;
 
