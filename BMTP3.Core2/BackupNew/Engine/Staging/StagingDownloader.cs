@@ -9,11 +9,20 @@ using BMTP3.Core2.BackupNew.Domain.Item;
 
 namespace BMTP3.Core2.BackupNew.Engine.Staging;
 
+using BMTP3.Core2.BackupNew.Engine.Resilience;
+
 /// <summary>
 /// Downloads BackupItem content to a staging/temp file and replaces the item's IContent with a FileContent wrapper.
 /// </summary>
 public class StagingDownloader : IStagingDownloader
 {
+    private readonly IRetryPolicy _retryPolicy;
+
+    public StagingDownloader(IRetryPolicy retryPolicy)
+    {
+        _retryPolicy = retryPolicy ?? throw new ArgumentNullException(nameof(retryPolicy));
+    }
+
     public async Task DownloadToStagingAsync(IBackupItem item, string stagingRoot, IProgress<BackupProgress>? progress, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(item);
@@ -28,12 +37,16 @@ public class StagingDownloader : IStagingDownloader
 
         Directory.CreateDirectory(stagingRoot);
 
-        // 2. Stream content from source to staging file
-        using (var sourceStream = item.Content.OpenRead())
-        using (var destStream = File.Create(stagingPath))
+        // 2. Stream content from source to staging file with Retry Logic
+        await _retryPolicy.ExecuteAsync(async () => 
         {
-            await sourceStream.CopyToAsync(destStream, ct);
-        }
+            using (var sourceStream = item.Content.OpenRead())
+            using (var destStream = File.Create(stagingPath))
+            {
+                await sourceStream.CopyToAsync(destStream, ct);
+            }
+            return true;
+        }, ct);
 
         // 3. Replace item.Content with FileContent pointing to staged file
         var stagedContent = new FileContent(new FileInfo(stagingPath));

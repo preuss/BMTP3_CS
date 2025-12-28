@@ -18,4 +18,12 @@ public interface IPathGenerator
     /// <param name="plan">The backup configuration.</param>
     /// <returns>A relative path string (e.g., "2025/12/Photo.jpg").</returns>
     string GenerateRelativePath(IBackupItem item, BackupPlan plan);
+
+    /// <summary>
+    /// Applies a custom template pattern (e.g. "${YYYY}/${Model}/${OriginalFileName}") to an item.
+    /// </summary>
+    /// <param name="pattern">The raw pattern string.</param>
+    /// <param name="item">The backup item for metadata lookup.</param>
+    /// <returns>The formatted string.</returns>
+    string ApplyPattern(string pattern, IBackupItem item);
 }

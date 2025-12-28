@@ -47,6 +47,7 @@ public class BackupEngine : IBackupEngine
 	private readonly IFileTransfer _fileTransfer;
 	private readonly IBackupRepository _repository;
 	private readonly ISidecarGenerator _sidecarGenerator;
+    private readonly IJobValidator _validator;
 	private readonly IOptions<BackupEngineOptions> _options;
 	private readonly ILoggerFactory _loggerFactory;
 
@@ -61,6 +62,7 @@ public class BackupEngine : IBackupEngine
 		IFileTransfer fileTransfer,
 		IBackupRepository repository,
 		ISidecarGenerator sidecarGenerator,
+        IJobValidator validator,
 		IOptions<BackupEngineOptions> options,
 		ILoggerFactory loggerFactory
 	)
@@ -75,6 +77,7 @@ public class BackupEngine : IBackupEngine
 		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
 		_repository = repository ?? throw new ArgumentNullException(nameof(repository));
 		_sidecarGenerator = sidecarGenerator ?? throw new ArgumentNullException(nameof(sidecarGenerator));
+        _validator = validator ?? throw new ArgumentNullException(nameof(validator));
 		_options = options ?? throw new ArgumentNullException(nameof(options));
 		_loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
 	}
@@ -83,6 +86,9 @@ public class BackupEngine : IBackupEngine
 	{
 		ArgumentNullException.ThrowIfNull(plan);
 		progress ??= new Progress<IBackupProgress>();
+
+        // 0. Pre-flight Validation
+        await _validator.ValidateAsync(plan, ct);
 
 		// Prepare result
 		ProgressTracker tracker = new();
@@ -144,7 +150,7 @@ public class BackupEngine : IBackupEngine
 		};
 		var hashStep = new HashItemStep(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>());
 		
-		var transferStep = new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer);
+		var transferStep = new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer, _itemHasher);
 		var sidecarStep = new SidecarGenerationItemStep(plan, _sidecarGenerator);
 
 		// Source Reading MUST be serial (1 thread) to prevent MTP timeouts and IO thrashing.

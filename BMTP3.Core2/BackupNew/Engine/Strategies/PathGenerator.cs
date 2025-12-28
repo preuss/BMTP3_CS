@@ -42,15 +42,18 @@ public class PathGenerator : IPathGenerator
                 {
                     return fileName;
                 }
-                return FormatPattern(plan.CustomOutputPathPattern, item, fileName);
+                return ApplyPattern(plan.CustomOutputPathPattern, item);
 
             default:
                 return fileName;
         }
     }
 
-    private string FormatPattern(string pattern, IBackupItem item, string originalFileName)
+    public string ApplyPattern(string pattern, IBackupItem item)
     {
+        if (string.IsNullOrWhiteSpace(pattern)) return string.Empty;
+
+        string originalFileName = item.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
         return TokenRegex.Replace(pattern, match =>
         {
             string key = match.Groups[1].Value;
@@ -80,7 +83,14 @@ public class PathGenerator : IPathGenerator
             case "fffffffff": return date.ToString("fffffff00");   // Spec: Nanoseconds
 
             // --- Metadata ---
+            case "Model":
+            case "model":
+                return item.Metadata.Get<string>(MetadataKey.Model) 
+                       ?? item.Metadata.Get<string>(MetadataKey.DeviceName) 
+                       ?? "UnknownModel";
+
             case "deviceName":
+            case "devicename":
                 return item.Metadata.Get<string>(MetadataKey.DeviceName) ?? "UnknownDevice";
 
             case "OriginalFileName": 
@@ -95,8 +105,12 @@ public class PathGenerator : IPathGenerator
             case "extension":
                 return Path.GetExtension(originalFileName).TrimStart('.');
 
-            case "relativePath":
+            case "SourceRelativePath":
             case "sourceRelativePath":
+            case "relativePath":
+
+
+
                 return item.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? "";
 
             case "sourceId":

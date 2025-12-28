@@ -3,6 +3,7 @@ using System.IO;
 using MediaDevices;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
+using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 
 namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 
@@ -12,12 +13,19 @@ namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 /// </summary>
 public class MediaToBackupItemConverter : IMediaToBackupItemConverter
 {
+    private readonly IMtpGatekeeper _gatekeeper;
+
+    public MediaToBackupItemConverter(IMtpGatekeeper gatekeeper)
+    {
+        _gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
+    }
+
     public BackupItem Convert(MediaFileInfo mediaInfo)
     {
         ArgumentNullException.ThrowIfNull(mediaInfo);
 
-        // 1. Wrap MediaFileInfo in MediaFileContent (IContent)
-        var content = new MediaFileContent(mediaInfo);
+        // 1. Wrap MediaFileInfo in MediaFileContent (IContent) with Gatekeeper
+        var content = new MediaFileContent(mediaInfo, _gatekeeper);
 
         // 2. Extract file name and relative path
         string fileName = mediaInfo.Name;
@@ -38,12 +46,12 @@ public class MediaToBackupItemConverter : IMediaToBackupItemConverter
         if (mediaInfo.DateAuthored.HasValue)
         {
             item.Metadata.Set(MetadataKey.RawMtpAuthoredDate, mediaInfo.DateAuthored.Value);
-            item.Metadata.AuthoredDateTime = mediaInfo.DateAuthored.Value;
+            item.Metadata.Set(MetadataKey.AuthoredDateTime, mediaInfo.DateAuthored.Value);
         }
         if (mediaInfo.CreationTime.HasValue)
-            item.Metadata.CreatedDateTime = mediaInfo.CreationTime.Value;
+            item.Metadata.Set(MetadataKey.CreatedDateTime, mediaInfo.CreationTime.Value);
         if (mediaInfo.LastWriteTime.HasValue)
-            item.Metadata.ModifiedDateTime = mediaInfo.LastWriteTime.Value;
+            item.Metadata.Set(MetadataKey.ModifiedDateTime, mediaInfo.LastWriteTime.Value);
 
         return item;
     }

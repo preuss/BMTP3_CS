@@ -99,6 +99,18 @@ public class MetadataReader : IMetadataReader
                     _logger.LogDebug("Found EXIF Date for {ItemId}: {Date}", item.Id, exifDate.Value);
                 }
 
+                // D. Try to extract Model
+                string? model = null;
+                if (ifd0Directory != null)
+                {
+                    model = ifd0Directory.GetString(ExifDirectoryBase.TagModel);
+                }
+
+                if (!string.IsNullOrWhiteSpace(model))
+                {
+                    item.Metadata.Set(MetadataKey.Model, model.Trim());
+                }
+
             }, ct);
         }
         catch (Exception ex)
@@ -116,17 +128,19 @@ public class MetadataReader : IMetadataReader
         if (item.Metadata.Has(MetadataKey.RawExifDateTaken))
         {
             var exifDate = item.Metadata.Get<DateTime>(MetadataKey.RawExifDateTaken);
-            item.Metadata.AuthoredDateTime = exifDate;
+            item.Metadata.Set(MetadataKey.AuthoredDateTime, exifDate);
+            item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Exif);
             item.AddLog($"Timestamp set from EXIF: {exifDate}", "TimestampCorrection");
             return;
         }
 
-        // 2. MTP (Medium Priority) - Already set by Converter, but let's confirm/log
+        // 2. MTP (Medium Priority)
         if (item.Metadata.Has(MetadataKey.RawMtpAuthoredDate))
         {
             var mtpDate = item.Metadata.Get<DateTime>(MetadataKey.RawMtpAuthoredDate);
-            item.Metadata.AuthoredDateTime = mtpDate; // Re-affirm just in case
-            // item.AddLog($"Timestamp set from MTP: {mtpDate}", "TimestampCorrection");
+            item.Metadata.Set(MetadataKey.AuthoredDateTime, mtpDate);
+            item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Mtp);
+            item.AddLog($"Timestamp set from MTP: {mtpDate}", "TimestampCorrection");
             return;
         }
 
@@ -134,8 +148,9 @@ public class MetadataReader : IMetadataReader
         if (item.Metadata.Has(MetadataKey.CreatedDateTime))
         {
             var created = item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime);
-            item.Metadata.AuthoredDateTime = created;
-             // item.AddLog($"Timestamp set from FS Created: {created}", "TimestampCorrection");
+            item.Metadata.Set(MetadataKey.AuthoredDateTime, created);
+            item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.FileSystem);
+            item.AddLog($"Timestamp set from FS Created: {created}", "TimestampCorrection");
             return;
         }
 
@@ -143,12 +158,16 @@ public class MetadataReader : IMetadataReader
         if (item.Metadata.Has(MetadataKey.ModifiedDateTime))
         {
              var mod = item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
-             item.Metadata.AuthoredDateTime = mod;
+             item.Metadata.Set(MetadataKey.AuthoredDateTime, mod);
+             item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.LastModified);
+             item.AddLog($"Timestamp set from FS Modified: {mod}", "TimestampCorrection");
              return;
         }
 
         // 5. Fallback
-        item.Metadata.AuthoredDateTime = DateTime.UtcNow;
+        var now = DateTime.UtcNow;
+        item.Metadata.Set(MetadataKey.AuthoredDateTime, now);
+        item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Unknown);
         item.AddLog("Timestamp fallback to UTC Now", "TimestampCorrection");
     }
 }

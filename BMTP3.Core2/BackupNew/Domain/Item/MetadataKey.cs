@@ -32,6 +32,9 @@ public enum MetadataKey
 	[KeyStringValue("device_unique_id")]
 	DeviceUniqueId,
 
+    [KeyStringValue("device_model")]
+    Model,                    // Camera or Phone model (from EXIF or Device)
+
 	// Normalized timestamps
 	[KeyStringValue("datetime_authored")]
 	AuthoredDateTime,         // Primary date (EXIF 'Date Taken', MTP 'Authored Date')
@@ -50,6 +53,9 @@ public enum MetadataKey
 	AccessedDateTime,       // File last read (LastAccessTime / atime)
 	[KeyStringValue("datetime_metadata_changed")]
 	MetadataChangedDateTime,   // Metadata last changed (ctime)
+
+    [KeyStringValue("datetime_source")]
+    TimestampSource,          // Origin of the primary date (Enum TimestampSource)
 
 	// Target handling
 	[KeyStringValue("collision_index")]

@@ -16,11 +16,13 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 public class CollisionResolver : ICollisionResolver
 {
 	private readonly IMetadataReader _metadataReader;
+    private readonly IPathGenerator _pathGenerator;
     private readonly ILogger<CollisionResolver> _logger;
 
-	public CollisionResolver(IMetadataReader metadataReader, ILogger<CollisionResolver> logger)
+	public CollisionResolver(IMetadataReader metadataReader, IPathGenerator pathGenerator, ILogger<CollisionResolver> logger)
 	{
 		_metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
+        _pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
@@ -50,7 +52,7 @@ public class CollisionResolver : ICollisionResolver
 				return new CollisionResult(BackupActionType.Skip, proposedFullPath, "Collision detected (Skip policy)");
 
 			case CollisionResolutionType.Rename:
-				string newPath = await GenerateUniquePathAsync(item, proposedFullPath, plan.RenameStrategy, ct);
+				string newPath = await GenerateUniquePathAsync(item, proposedFullPath, plan, ct);
 				return new CollisionResult(BackupActionType.Rename, newPath, "Collision detected (Renamed)");
 
 			case CollisionResolutionType.Error:
@@ -186,32 +188,48 @@ public class CollisionResolver : ICollisionResolver
 
 				if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
 				{
-					// try hashes object
-					if (root.TryGetProperty("hashes", out System.Text.Json.JsonElement hashesEl) && hashesEl.ValueKind == System.Text.Json.JsonValueKind.Object)
+					// try hashes object (Case-Insensitive search)
+                    System.Text.Json.JsonElement hashesEl = default;
+                    bool foundHashes = false;
+                    foreach (var prop in root.EnumerateObject())
+                    {
+                        if (string.Equals(prop.Name, "hashes", StringComparison.OrdinalIgnoreCase))
+                        {
+                            hashesEl = prop.Value;
+                            foundHashes = true;
+                            break;
+                        }
+                    }
+
+					if (foundHashes && hashesEl.ValueKind == System.Text.Json.JsonValueKind.Object)
 					{
-						// try algorithm name key
-						if (hashesEl.TryGetProperty(algorithm.ToString(), out System.Text.Json.JsonElement algoEl) && algoEl.ValueKind == System.Text.Json.JsonValueKind.String)
-						{
-							return algoEl.GetString();
-						}
+						// try algorithm name key (Case-Insensitive)
+                        foreach(var prop in hashesEl.EnumerateObject())
+                        {
+                            if (string.Equals(prop.Name, algorithm.ToString(), StringComparison.OrdinalIgnoreCase))
+                                return prop.Value.GetString();
+                        }
 
 						// legacy SHA256 key for SHA2_256
-						if (algorithm == HashType.SHA2_256 && hashesEl.TryGetProperty("SHA256", out System.Text.Json.JsonElement shaEl) && shaEl.ValueKind == System.Text.Json.JsonValueKind.String)
-						{
-							return shaEl.GetString();
-						}
+						if (algorithm == HashType.SHA2_256)
+                        {
+                            foreach(var prop in hashesEl.EnumerateObject())
+                            {
+                                if (string.Equals(prop.Name, "SHA256", StringComparison.OrdinalIgnoreCase))
+                                    return prop.Value.GetString();
+                            }
+                        }
 					}
 
-					// direct key fallback
-					if (root.TryGetProperty(algorithm.ToString(), out System.Text.Json.JsonElement directEnum) && directEnum.ValueKind == System.Text.Json.JsonValueKind.String)
-					{
-						return directEnum.GetString();
-					}
-
-					if (algorithm == HashType.SHA2_256 && root.TryGetProperty("SHA256", out System.Text.Json.JsonElement direct) && direct.ValueKind == System.Text.Json.JsonValueKind.String)
-					{
-						return direct.GetString();
-					}
+					// direct key fallback (Case-Insensitive)
+                    foreach (var prop in root.EnumerateObject())
+                    {
+                        if (string.Equals(prop.Name, algorithm.ToString(), StringComparison.OrdinalIgnoreCase))
+                            return prop.Value.GetString();
+                        
+                        if (algorithm == HashType.SHA2_256 && string.Equals(prop.Name, "SHA256", StringComparison.OrdinalIgnoreCase))
+                            return prop.Value.GetString();
+                    }
 				}
 			}
 			catch
@@ -273,14 +291,30 @@ public class CollisionResolver : ICollisionResolver
 		} while (true);
 	}
 
-	private Task<string> GenerateUniquePathAsync(IBackupItem item, string originalPath, RenameStrategy strategy, CancellationToken ct)
+	private async Task<string> GenerateUniquePathAsync(IBackupItem item, string originalPath, BackupPlan plan, CancellationToken ct)
 	{
 		string directory = Path.GetDirectoryName(originalPath) ?? "";
 		string fileNameWithoutExt = Path.GetFileNameWithoutExtension(originalPath);
 		string extension = Path.GetExtension(originalPath);
         string newPath;
+        var strategy = plan.RenameStrategy;
 
-        // Try primary strategy first (e.g. Timestamp or Hash)
+        // 1. Try Custom Pattern first if specified
+        if (strategy == RenameStrategy.CustomCollisionPathPattern && !string.IsNullOrWhiteSpace(plan.CustomCollisionPathPattern))
+        {
+            string formattedRelative = _pathGenerator.ApplyPattern(plan.CustomCollisionPathPattern, item);
+            newPath = Path.Combine(directory, formattedRelative);
+            // Ensure we include extension if not in pattern
+            if (!newPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                newPath += extension;
+            
+            if (!File.Exists(newPath)) return newPath;
+            
+            // If custom pattern also exists, fallback to increment
+            fileNameWithoutExt = Path.GetFileNameWithoutExtension(newPath);
+        }
+
+        // 2. Try secondary strategies (Timestamp or Hash)
         string suffix = "";
         
         if (strategy == RenameStrategy.Timestamp)
@@ -306,7 +340,7 @@ public class CollisionResolver : ICollisionResolver
         {
             // Try Strategy Suffix
             newPath = Path.Combine(directory, $"{fileNameWithoutExt}{suffix}{extension}");
-            if (!File.Exists(newPath)) return Task.FromResult(newPath);
+            if (!File.Exists(newPath)) return newPath;
 
             // Strategy Suffix Collision? Fallback to Increment on top of Suffix
             fileNameWithoutExt = $"{fileNameWithoutExt}{suffix}";
@@ -323,6 +357,6 @@ public class CollisionResolver : ICollisionResolver
 
 		} while (File.Exists(newPath));
 
-		return Task.FromResult(newPath);
+		return newPath;
 	}
 }

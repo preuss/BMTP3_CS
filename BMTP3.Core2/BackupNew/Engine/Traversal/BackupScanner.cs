@@ -89,10 +89,14 @@ public class BackupScanner : IBackupScanner
             throw new DirectoryNotFoundException($"Media device '{plan.SourceId}' not found. Available: {string.Join(", ", devices.Select(d => d.FriendlyName))}");
         }
 
-            device.Connect();
+        // You must provide an IMtpGatekeeper instance here.
+        // Replace 'YourGatekeeperInstance' with an actual IMtpGatekeeper implementation.
+        IMtpGatekeeper gatekeeper = GetGatekeeperForDevice(device); // <-- You must implement this method or provide the instance
+
+        device.Connect();
         try
         {
-            var scanner = new MediaDeviceScanner(device);
+            var scanner = new MediaDeviceScanner(device, gatekeeper);
             string rootPath = plan.SourcePath;
 
             await foreach (MediaFileInfo mediaFileInfo in scanner.ScanAsync(rootPath, plan.Recursive, null, ct))
@@ -102,7 +106,7 @@ public class BackupScanner : IBackupScanner
                 string dirName = Path.GetDirectoryName(mediaFileInfo.FullName) ?? rootPath;
                 string relativePath = GetRelativePath(rootPath, dirName);
 
-                MediaFileContent content = new(mediaFileInfo);
+                MediaFileContent content = new(mediaFileInfo, gatekeeper);
                 BackupItem item = BackupItem.Create(content, mediaFileInfo.Name, relativePath);
 
                 item.Metadata.Set(MetadataKey.SourceId, mediaFileInfo.PersistentUniqueId);
@@ -144,5 +148,11 @@ public class BackupScanner : IBackupScanner
 
         string rel = fullDirectory.Substring(root.Length).TrimStart('\\', '/');
         return rel;
+    }
+
+    // Helper method stub (you must implement or inject this appropriately)
+    private IMtpGatekeeper GetGatekeeperForDevice(MediaDevice device)
+    {
+        throw new NotImplementedException("Provide an IMtpGatekeeper instance appropriate for the device.");
     }
 }

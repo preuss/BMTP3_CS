@@ -47,12 +47,13 @@ public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 			{
 				try
 				{
-					File.SetLastWriteTimeUtc(fileContent.FileInfo.FullName, timestamp.Value.ToUniversalTime());
-					File.SetCreationTimeUtc(fileContent.FileInfo.FullName, timestamp.Value.ToUniversalTime());
+					var utcTime = timestamp.Value.ToUniversalTime();
+					File.SetLastWriteTimeUtc(fileContent.FileInfo.FullName, utcTime);
+					File.SetCreationTimeUtc(fileContent.FileInfo.FullName, utcTime);
 				}
-				catch (Exception)
+				catch (Exception ex)
 				{
-					// Logging or error handling can be added here if needed.
+                    item.AddLog($"Failed to apply timestamp: {ex.Message}", Name);
 				}
 			}
 		}

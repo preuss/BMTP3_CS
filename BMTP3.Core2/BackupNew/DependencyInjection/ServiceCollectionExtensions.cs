@@ -8,6 +8,7 @@ using BMTP3.Core2.BackupNew.Engine.Strategies;
 using BMTP3.Core2.BackupNew.Engine.Transfers;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
 using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
+using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -20,6 +21,7 @@ public static class ServiceCollectionExtensions
 	{
 		// Engine defaults
 		services.AddSingleton<IDeviceScanner, NoopDeviceScanner>();
+        services.AddSingleton<IMtpGatekeeper, MtpGatekeeper>();
 		services.AddTransient<IMediaToBackupItemConverter, MediaToBackupItemConverter>();
 		services.AddTransient<IStagingDownloader, StagingDownloader>();
 		// IHashGenerator is now consumed by IItemHasher, but can still be registered for direct use if needed
@@ -36,7 +38,8 @@ public static class ServiceCollectionExtensions
 		services.AddTransient<ISidecarGenerator, JsonSidecarGenerator>();
 
 		// Resilience
-		services.AddTransient<IRetryPolicy, ExponentialBackoffRetryPolicy>();
+		services.AddTransient<IRetryPolicy>(sp => 
+			new ExponentialBackoffRetryPolicy(3, 500, sp.GetService<ILogger<ExponentialBackoffRetryPolicy>>()));
 
 		// Options
 		services.Configure<BackupEngineOptions>(o =>
@@ -45,6 +48,7 @@ public static class ServiceCollectionExtensions
 		});
 
 		// Engine
+        services.AddTransient<IJobValidator, JobValidator>();
 		services.AddTransient<IBackupEngine, BackupEngine>();
 
 		return services;
