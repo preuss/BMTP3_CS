@@ -37,8 +37,7 @@ namespace BMTP3.Core2.BackupNew.Engine;
 /// </summary>
 public class BackupEngine : IBackupEngine
 {
-	private readonly IDeviceScanner _deviceScanner;
-	private readonly IMediaToBackupItemConverter _converter;
+	private readonly IBackupScanner _backupScanner;
 	private readonly IStagingDownloader _stagingDownloader;
 	private readonly IMetadataReader _metadataReader;
 	private readonly IItemHasher _itemHasher;
@@ -52,8 +51,7 @@ public class BackupEngine : IBackupEngine
 	private readonly ILoggerFactory _loggerFactory;
 
 	public BackupEngine(
-		IDeviceScanner deviceScanner,
-		IMediaToBackupItemConverter converter,
+		IBackupScanner backupScanner,
 		IStagingDownloader stagingDownloader,
 		IMetadataReader metadataReader,
 		IItemHasher itemHasher,
@@ -62,13 +60,12 @@ public class BackupEngine : IBackupEngine
 		IFileTransfer fileTransfer,
 		IBackupRepository repository,
 		ISidecarGenerator sidecarGenerator,
-        IJobValidator validator,
+		IJobValidator validator,
 		IOptions<BackupEngineOptions> options,
 		ILoggerFactory loggerFactory
 	)
 	{
-		_deviceScanner = deviceScanner ?? throw new ArgumentNullException(nameof(deviceScanner));
-		_converter = converter ?? throw new ArgumentNullException(nameof(converter));
+		_backupScanner = backupScanner ?? throw new ArgumentNullException(nameof(backupScanner));
 		_stagingDownloader = stagingDownloader ?? throw new ArgumentNullException(nameof(stagingDownloader));
 		_metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
 		_itemHasher = itemHasher ?? throw new ArgumentNullException(nameof(itemHasher));
@@ -125,8 +122,8 @@ public class BackupEngine : IBackupEngine
 			: Math.Max(1, Environment.ProcessorCount / 2);
 
 		// Define Channels
-		var scanChannel = Channel.CreateBounded<MediaFileInfo>(new BoundedChannelOptions(opts.ScanChannelCapacity) { SingleWriter = true, SingleReader = false });
-		var convertChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ConvertChannelCapacity) { SingleWriter = false, SingleReader = true });
+		var scanChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ScanChannelCapacity) { SingleWriter = false, SingleReader = true });
+		//var convertChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ConvertChannelCapacity) { SingleWriter = false, SingleReader = true });
 		var bufferingChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.StagingChannelCapacity) { SingleWriter = false, SingleReader = true });
 		var metadataChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
 		var timestampChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
@@ -169,11 +166,17 @@ public class BackupEngine : IBackupEngine
 		{
 			try
 			{
-				await foreach(var mediaInfo in _deviceScanner.ScanAsync(plan.SourceId, plan.SourcePath, plan.Recursive, ct))
+				await foreach(var item in _backupScanner.ScanAsync(plan, ct))
 				{
 					ct.ThrowIfCancellationRequested();
-					tracker.AddDiscovery(false, (long)mediaInfo.Length);
-					await scanChannel.Writer.WriteAsync(mediaInfo, ct);
+
+					ulong length = 0;
+					if(item.Metadata.Has(MetadataKey.Length))
+					{
+						length = item.Metadata.Get<ulong>(MetadataKey.Length);
+					}
+					tracker.AddDiscovery(false, (long)length);
+					await scanChannel.Writer.WriteAsync(item, ct);
 				}
 			} catch(OperationCanceledException) { } finally
 			{
@@ -181,23 +184,7 @@ public class BackupEngine : IBackupEngine
 			}
 		}, ct);
 
-		var converterTask = Task.Run(async () =>
-		{
-			try
-			{
-				await foreach(var mediaInfo in scanChannel.Reader.ReadAllAsync(ct))
-				{
-					ct.ThrowIfCancellationRequested();
-					var item = _converter.Convert(mediaInfo);
-					await convertChannel.Writer.WriteAsync(item, ct);
-				}
-			} catch(OperationCanceledException) { } finally
-			{
-				convertChannel.Writer.Complete();
-			}
-		}, ct);
-
-		var bufferingTask = Task.Run(() => bufferingPool.RunAsync(convertChannel.Reader, bufferingChannel.Writer, ct), ct);
+		var bufferingTask = Task.Run(() => bufferingPool.RunAsync(scanChannel.Reader, bufferingChannel.Writer, ct), ct);
 		var metadataTask = Task.Run(() => metadataPool.RunAsync(bufferingChannel.Reader, metadataChannel.Writer, ct), ct);
 		var timestampTask = Task.Run(() => timestampPool.RunAsync(metadataChannel.Reader, timestampChannel.Writer, ct), ct);
 		var hashTask = Task.Run(() => hashPool.RunAsync(timestampChannel.Reader, hashChannel.Writer, ct), ct);
@@ -227,7 +214,6 @@ public class BackupEngine : IBackupEngine
 
 		await Task.WhenAll(
 			producerTask,
-			converterTask,
 			bufferingTask,
 			metadataTask,
 			timestampTask,

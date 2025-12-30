@@ -10,35 +10,53 @@ using BMTP3.Core2.BackupNew.Engine.Traversal;
 using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System;
 
 namespace BMTP3.Core2.BackupNew.DependencyInjection;
-
+/// <summary>
+/// Extension helpers to register BMTP3.Core2 services into an <see cref="IServiceCollection"/>.
+/// </summary>
 public static class ServiceCollectionExtensions
 {
-	public static IServiceCollection AddBMTP3Core2(this IServiceCollection services)
+	/// <summary>
+	/// Registers BMTP3.Core2 services with sensible defaults.
+	/// Callers may provide <paramref name="preConfigure"/> to register replacements before defaults are applied.
+	/// Defaults are registered with TryAdd... so pre-registered services are preserved.
+	/// </summary>
+	/// <param name="services">The target service collection.</param>
+	/// <param name="preConfigure">Optional callback to register or override services before defaults are added.</param>
+	/// <returns>The original <paramref name="services"/> for chaining.</returns>
+	public static IServiceCollection AddBMTP3Core2(this IServiceCollection services, Action<IServiceCollection>? preConfigure = null)
 	{
-		// Engine defaults
-		services.AddSingleton<IDeviceScanner, NoopDeviceScanner>();
-        services.AddSingleton<IMtpGatekeeper, MtpGatekeeper>();
-		services.AddTransient<IMediaToBackupItemConverter, MediaToBackupItemConverter>();
-		services.AddTransient<IStagingDownloader, StagingDownloader>();
-		// IHashGenerator is now consumed by IItemHasher, but can still be registered for direct use if needed
-		services.AddTransient<IHashGenerator, NoopHashGenerator>(); 
+		ArgumentNullException.ThrowIfNull(services);
 
-		services.AddTransient<IFileTransfer, LocalFileTransfer>();
-		services.AddSingleton<IBackupRepository, FileBackupRepository>();
+		// Allow caller to register overrides before adding defaults.
+		preConfigure?.Invoke(services);
+
+		// Engine defaults (use TryAdd so callers can provide replacements via preConfigure)
+		services.TryAddSingleton<IMtpGatekeeper, MtpGatekeeper>();
+
+		// High-level scanner default (safe no-op). Callers can override with BackupScanner.
+		services.TryAddSingleton<IBackupScanner, NoopBackupScanner>();
+
+		services.TryAddTransient<IStagingDownloader, StagingDownloader>();
+		services.TryAddTransient<IHashGenerator, NoopHashGenerator>();
+
+		services.TryAddTransient<IFileTransfer, LocalFileTransfer>();
+		services.TryAddSingleton<IBackupRepository, FileBackupRepository>();
 
 		// Strategies
-		services.AddTransient<IPathGenerator, PathGenerator>();
-		services.AddTransient<ICollisionResolver, CollisionResolver>();
-		services.AddTransient<IMetadataReader, MetadataReader>(); // Changed from IMetadataExtractor
-		services.AddTransient<IItemHasher, ItemHasher>(); // Added IItemHasher
-		services.AddTransient<ISidecarGenerator, JsonSidecarGenerator>();
+		services.TryAddTransient<IPathGenerator, PathGenerator>();
+		services.TryAddTransient<ICollisionResolver, CollisionResolver>();
+		services.TryAddTransient<IMetadataReader, MetadataReader>();
+		services.TryAddTransient<IItemHasher, ItemHasher>();
+		services.TryAddTransient<ISidecarGenerator, JsonSidecarGenerator>();
 
 		// Resilience
-		services.AddTransient<IRetryPolicy>(sp => 
+		services.TryAddTransient<IRetryPolicy>(sp =>
 			new ExponentialBackoffRetryPolicy(3, 500, sp.GetService<ILogger<ExponentialBackoffRetryPolicy>>()));
 
 		// Options
@@ -48,8 +66,8 @@ public static class ServiceCollectionExtensions
 		});
 
 		// Engine
-        services.AddTransient<IJobValidator, JobValidator>();
-		services.AddTransient<IBackupEngine, BackupEngine>();
+		services.TryAddTransient<IJobValidator, JobValidator>();
+		services.TryAddTransient<IBackupEngine, BackupEngine>();
 
 		return services;
 	}
