@@ -223,18 +223,39 @@ public class BackupEngine : IBackupEngine
 			completionTask
 		).ConfigureAwait(false);
 
-		result.EndTime = DateTime.UtcNow;
-		result.Status = ct.IsCancellationRequested ? JobState.Cancelled : JobState.Completed;
+		// Decide final status based on cancellation and per-item failures collected by the tracker.
+		// Pipeline stages convert exceptions into per-item failures (they do not throw),
+		// so we must inspect the progress snapshot to determine overall job outcome.
+		BackupProgress finalSnap = tracker.GetSnapshot();
 
-		tracker.SetPhase(ct.IsCancellationRequested ? BackupPhase.Cancelled : BackupPhase.Completed);
+		result.EndTime = DateTime.UtcNow;
+
+		if (ct.IsCancellationRequested)
+		{
+			result.Status = JobState.Cancelled;
+			tracker.SetPhase(BackupPhase.Cancelled);
+		}
+		else if (finalSnap.FilesFailed > 0)
+		{
+			// Mark job as failed when any file failed. Include a short summary in GlobalErrors.
+			result.Status = JobState.Failed;
+			tracker.SetPhase(BackupPhase.Completed);
+			result.GlobalErrors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
+		}
+		else
+		{
+			result.Status = JobState.Completed;
+			tracker.SetPhase(BackupPhase.Completed);
+		}
+
 		progress.Report(tracker.GetSnapshot());
 
-		BackupProgress snap = tracker.GetSnapshot();
-		result.FilesCopied = snap.FilesSucceeded;
-		result.FilesFailed = snap.FilesFailed;
-		result.FilesSkipped = snap.FilesSkipped;
-		result.TotalFilesScanned = snap.FilesDiscovered;
-		result.TotalBytesCopied = snap.BytesProcessed;
+		// Populate summary fields from tracker snapshot
+		result.FilesCopied = finalSnap.FilesSucceeded;
+		result.FilesFailed = finalSnap.FilesFailed;
+		result.FilesSkipped = finalSnap.FilesSkipped;
+		result.TotalFilesScanned = finalSnap.FilesDiscovered;
+		result.TotalBytesCopied = finalSnap.BytesProcessed;
 
 		return result;
 	}
