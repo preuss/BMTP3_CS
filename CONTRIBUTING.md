@@ -24,6 +24,11 @@ See [CLA.md](CLA.md) for details.
 8. **Sign your commits** if required by project policy.
 9. **Be responsive to feedback**: Address review comments and suggestions promptly.
 
+## Language Policy
+
+- **Code, identifiers, and comments must be in English**.
+- **Team communication** (issues, PR discussions, and general collaboration) is **primarily in Danish**.
+
 ## Issue Reporting
 
 - Search for existing issues before creating a new one.
@@ -48,16 +53,38 @@ To avoid ambiguity and compile-time conflicts (for example `CS0263`), the projec
   - Requires a `ProgressTracker` and updates progress inside the worker loop.
   - Provides the protected constructor:
     ```text
-    protected AbstractPipelineStage(ILogger logger, int parallelism, TContext context, IBackupItemStep<TContext,TResult> step, ProgressTracker tracker)
+    protected AbstractPipelineStage(ILogger logger, int parallelism, TContext context, IBackupItemStep<TContext, TResult> step, ProgressTracker tracker)
     ```
 - Concrete pipeline stage rules:
-  - Inherit from `AbstractPipelineStage<TContext,TResult>`.
+  - Inherit from `AbstractPipelineStage<TContext, TResult>`.
   - Accept `ProgressTracker tracker` as a constructor argument and pass it to `base(...)`.
   - Do not declare multiple partials with different base classes.
 - When migrating existing code:
   - Update concrete stages that currently inherit `PipelineStageBase` to inherit `AbstractPipelineStage` and add the `ProgressTracker` parameter.
   - Update all construction sites to pass a `ProgressTracker` instance.
   - Remove or consolidate duplicate pipeline-stage class files to ensure one declaration per concrete class.
+
+## Project Standards and Preferences
+
+The following sections document project-wide preferences and guidelines contributors should follow. These are used by maintainers and automated tools.
+
+### EditorConfig and Formatting
+
+This repository includes an `.editorconfig` file at the repository root that defines indentation, newline, and C# analyzer preferences. Ensure your editor honors this configuration: in Visual Studio, confirm the __SettingName__ __Formatting > General__ is configured to respect `.editorconfig`.
+
+### Automated Checks
+
+Pull requests should pass CI checks including formatting, build, and unit tests. Fix any issues reported by the automated checks before requesting review.
+
+## AI / KI (Kunstig Intelligens)
+
+AI tools are allowed (code generation assistants, chat tools, automated refactoring).
+
+- **You are responsible for the changes you submit**. Verify correctness, security, and licensing.
+- Keep PRs focused and explain what was generated vs. what was hand-written when it helps review.
+- Ensure generated code follows the repository standards (including `.editorconfig`) and is consistent with existing style.
+- Do not paste proprietary or confidential code into external AI tools.
+- Prefer documenting any AI-specific workflow notes in the PR description.
 
 ## Testing Guidelines
 
@@ -82,8 +109,6 @@ Future: [NuGet Package](https://www.nuget.org/packages/MediaDevices/)
 
 ## Documentation
 
-<!-- Add contribution instructions, code style, and testing details here. -->
-
 See README.md for usage and API details.  
 Update this file if you add new contribution rules.
 
@@ -92,3 +117,7 @@ Update this file if you add new contribution rules.
 You are welcome to support this project.
 
 [![Donate](https://raw.githubusercontent.com/Bassman2/MediaDevices/master/.github/images/donate.gif)](https://www.paypal.me/GBassman)
+
+## Local testing
+
+- During local/manual testing it is acceptable to keep short-circuit flags (e.g., `showAllTags`) in console helpers to limit output.
