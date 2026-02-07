@@ -14,7 +14,7 @@ See [CLA.md](CLA.md) for details.
 
 ## How to Contribute
 
-1. **Fork the repository** and create your branch from `dev/develop_4_ai_refactor`.
+1. **Fork the repository** and create your branch from an appropriate `dev/*` branch.
 2. **Describe your changes clearly** in the pull request description. Reference related issues if relevant.
 3. **Keep pull requests focused**: Only address one feature, bugfix, or refactor per pull request.
 4. **Follow the existing coding style and project conventions** (see below).
@@ -23,6 +23,13 @@ See [CLA.md](CLA.md) for details.
 7. **Update documentation** (README.md, code comments, etc.) if your changes affect usage or APIs.
 8. **Sign your commits** if required by project policy.
 9. **Be responsive to feedback**: Address review comments and suggestions promptly.
+
+## Branching
+
+- All branches under `dev/*` are considered **development** branches.
+- Development branches follow the naming pattern: `dev/develop_n_description`
+  - `n` is a **version or revision number** (incremented so it is clear which branch is newest/highest).
+  - `description` is a **short description** so the purpose is visible directly in the branch name.
 
 ## Language Policy
 
@@ -96,8 +103,8 @@ AI tools are allowed (code generation assistants, chat tools, automated refactor
 
 1. Clone the repository:  
    `git clone https://github.com/preuss/BMTP3_CS.git`
-2. Switch to the development branch:  
-   `git checkout dev/develop_4_ai_refactor`
+2. Switch to a development branch (`dev/*`):  
+   `git checkout dev/develop_n_description`
 3. Build the project:  
    `dotnet build`
 4. Run tests:  
