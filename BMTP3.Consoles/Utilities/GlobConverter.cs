@@ -19,9 +19,7 @@ public static class GlobConverter
 			// Internal conversion without anchors, as the Lookahead will anchor the entire string.
 			string positiveRegex = ConvertCoreGlobToRegex(positivePattern, ignoreAnchors: true);
 			// Global negation logic: Match anything that is NOT the positive pattern.
-			return $"^(?!{positiveRegex}$){Regex.Escape(positivePattern).Replace(@"\*", ".*").Replace(@"\?", ".").Replace(".", "[^/\\]").Replace("*", ".*").Replace("?", ".").Replace("[^/\\\\]", @"[^/\\]")}$";
-			// The previous line was a placeholder and is corrected below for clarity and simplicity.
-			// Using a simpler full path matcher for the non-matched part:
+			// We use a negative lookahead anchored to the full string.
 			return $"^(?!{positiveRegex}$).*$";
 		}
 
