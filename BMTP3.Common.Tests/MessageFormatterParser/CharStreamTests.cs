@@ -8,8 +8,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void Next_WithSingleChar_ReturnsCorrectCharAndUpdatesPosition()
 		{
 			// Arrange
-			var input = "a";
-			var stream = new CharStream(input);
+			string input = "a";
+			CharStream stream = new(input);
 
 			// Act
 			char result = stream.Next();
@@ -28,13 +28,13 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void Next_WithEmptyStream_ThrowsException()
 		{
 			// Arrange
-			var stream = new CharStream("");
+			CharStream stream = new CharStream("");
 
 			// Act & Assert
 			int lineNumberExpected = 0;
 			int columnNumberExpected = 0;
 
-			var exception = Assert.Throws<CharStreamException>(() => stream.Next());
+			CharStreamException exception = Assert.Throws<CharStreamException>(() => stream.Next());
 			Assert.Equal($"End of stream at line {lineNumberExpected}, column {columnNumberExpected}", exception.Message);
 			Assert.Equal(lineNumberExpected, exception.LineNumber);
 			Assert.Equal(columnNumberExpected, exception.ColumnNumber);
@@ -44,10 +44,10 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void NextMultiple_WithMultipleChars_ReturnsCorrectListAndUpdatesPosition()
 		{
 			// Arrange
-			var input = "hello\r\nworld"; // Default new line is \n, but this stream is initialized with \r\n, so we'll pass it explicitly.
+			string input = "hello\r\nworld"; // Default new line is \n, but this stream is initialized with \r\n, so we'll pass it explicitly.
 										  // The CharStream constructor without new line sequences defaults to POSIX (\n).
 										  // We need to ensure the stream correctly identifies the Windows_DOS newline.
-			var stream = new CharStream(input, new[] { CharStream.WINDOWS_DOS });
+			CharStream stream = new(input, new[] { CharStream.WINDOWS_DOS });
 
 
 			// Act
@@ -75,14 +75,14 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void NextMultiple_WithTooManyChars_ThrowsException()
 		{
 			// Arrange
-			var input = "a\nb";
-			var stream = new CharStream(input);
+			string input = "a\nb";
+			CharStream stream = new(input);
 
 			// Act & Assert
 			int lineNumberExpected = 1;
 			int columnNumberExpected = 1;
 
-			var exception = Assert.Throws<CharStreamException>(() => stream.Next(4));
+			CharStreamException exception = Assert.Throws<CharStreamException>(() => stream.Next(4));
 
 			Assert.Equal($"End of stream at line {lineNumberExpected}, column {columnNumberExpected}", exception.Message);
 			Assert.Equal(lineNumberExpected, exception.LineNumber);
@@ -93,8 +93,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void Peek_WithSingleChar_ReturnsCharWithoutConsuming()
 		{
 			// Arrange
-			var input = "a";
-			var stream = new CharStream(input);
+			string input = "a";
+			CharStream stream = new(input);
 
 			// Act
 			char result1 = stream.Peek();
@@ -112,8 +112,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void PeekMultiple_WithMultipleChars_ReturnsCorrectListWithoutConsuming()
 		{
 			// Arrange
-			var input = "hello";
-			var stream = new CharStream(input);
+			string input = "hello";
+			CharStream stream = new(input);
 
 			// Act
 			List<char> result1 = stream.Peek(3);
@@ -131,14 +131,14 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void PeekMultiple_WithTooManyChars_ThrowsException()
 		{
 			// Arrange
-			var input = "ab";
-			var stream = new CharStream(input);
+			string input = "ab";
+			CharStream stream = new(input);
 
 			// Act & Assert
 			int lineNumberExpected = 0;
 			int columnNumberExpected = 0;
 
-			var exception = Assert.Throws<CharStreamException>(() => stream.Peek(3));
+			CharStreamException exception = Assert.Throws<CharStreamException>(() => stream.Peek(3));
 			Assert.Equal($"Not enough characters in stream (requested 3, found 2) at line {lineNumberExpected}, column {columnNumberExpected}", exception.Message);
 			Assert.Equal(lineNumberExpected, exception.LineNumber);
 			Assert.Equal(columnNumberExpected, exception.ColumnNumber);
@@ -148,8 +148,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void HasChars_WithEnoughChars_ReturnsTrue()
 		{
 			// Arrange
-			var input = "hello";
-			var stream = new CharStream(input);
+			string input = "hello";
+			CharStream stream = new(input);
 
 			// Act
 			bool result = stream.HasChars(3);
@@ -180,8 +180,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void EndOfStream_WithEmptyStream_ReturnsTrue()
 		{
 			// Arrange
-			var input = "";
-			var stream = new CharStream(input);
+			string input = "";
+			CharStream stream = new(input);
 
 			// Assert
 			Assert.True(stream.EndOfStream);
@@ -191,8 +191,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void EndOfStream_AfterReadingAllChars_ReturnsTrue()
 		{
 			// Arrange
-			var input = "ab";
-			var stream = new CharStream(input);
+			string input = "ab";
+			CharStream stream = new(input);
 
 			// Act
 			stream.Next(2);
@@ -209,11 +209,11 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void LineAndColumnTracking_WithVariousNewLines_UpdatesCorrectly(string input, string newLineSequence)
 		{
 			// Arrange
-			var stream = new CharStream(input, [newLineSequence]);
+			CharStream stream = new CharStream(input, [newLineSequence]);
 
-			var expectedLineAfterNewLine = 1;
-			var expectedColumnAfterNewLine = 0;
-			var expectedColumnAfterLastChar = 1;
+			int expectedLineAfterNewLine = 1;
+			int expectedColumnAfterNewLine = 0;
+			int expectedColumnAfterLastChar = 1;
 
 			// Act & Assert for char 1
 			char actualChar1 = stream.Next();
@@ -242,11 +242,11 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void Next_WithZeroCount_ReturnsEmptyListAndNoPositionChange()
 		{
 			// Arrange
-			var input = "abc";
-			var stream = new CharStream(input);
+			string input = "abc";
+			CharStream stream = new(input);
 
 			// Act
-			var result = stream.Next(0);
+			List<char> result = stream.Next(0);
 
 			// Assert
 			Assert.Empty(result);
@@ -259,12 +259,11 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void Peek_WithZeroCount_ReturnsEmptyListAndNoPositionChange()
 		{
 			// Arrange
-			var input = "abc";
-			var stream = new CharStream(input);
+			string input = "abc";
+			CharStream stream = new(input);
 
 			// Act
-			var result = stream.Peek(0);
-
+			List<char> result = stream.Peek(0);
 			// Assert
 			Assert.Empty(result);
 			Assert.Equal(0, stream.LineNumber);
@@ -282,8 +281,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		public void PositionTracking_MultipleReads_UpdatesCorrectly(string input, int charCount, int expectedLine, int expectedColumn)
 		{
 			// Arrange
-			var allNewLineSequences = new[] { CharStream.POSIX, CharStream.WINDOWS_DOS, CharStream.COMMODORE, CharStream.ACORN };
-			var stream = new CharStream(input, allNewLineSequences);
+			string[] allNewLineSequences = new[] { CharStream.POSIX, CharStream.WINDOWS_DOS, CharStream.COMMODORE, CharStream.ACORN };
+			CharStream stream = new(input, allNewLineSequences);
 
 			// Act
 			if(charCount > 0)

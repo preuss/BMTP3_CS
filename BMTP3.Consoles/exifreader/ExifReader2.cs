@@ -21,7 +21,7 @@ public class ExifReader2
 			result,
 			exif,
 			ExifDirectoryBase.TagDateTimeOriginal,
-			TimestampRole.Capture,
+			TimestampRole.Created,
 			"Exif:DateTimeOriginal"
 		);
 
@@ -39,7 +39,7 @@ public class ExifReader2
 			result,
 			exif,
 			ExifDirectoryBase.TagDateTime,
-			TimestampRole.Modification,
+			TimestampRole.Modified,
 			"Exif:DateTime"
 		);
 
@@ -53,8 +53,7 @@ public class ExifReader2
 		string sourceLabel
 	)
 	{
-		if(!exif.TryGetString(tag, out string? raw))
-			return;
+		string? raw = exif.SafeGetString(tag);
 
 		if(string.IsNullOrWhiteSpace(raw))
 			return;
@@ -75,8 +74,9 @@ public class ExifReader2
 			list.Add(new TimestampCandidate(
 				sourceType: TimestampSourceType.Exif,
 				role: role,
-				source: sources,
+				sources: sources,
 				date: null,
+				dateResolution: null,
 				time: null,
 				subSeconds: null,
 				offset: null
@@ -88,8 +88,9 @@ public class ExifReader2
 		list.Add(new TimestampCandidate(
 			sourceType: TimestampSourceType.Exif,
 			role: role,
-			source: sources,
+			sources: sources,
 			date: date,
+			dateResolution: ChronoDateResolution.FullDate,
 			time: time,
 			subSeconds: null,
 			offset: null

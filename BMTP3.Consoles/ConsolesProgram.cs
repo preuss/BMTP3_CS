@@ -53,7 +53,7 @@ public class ConsolesProgram
 			//exifReader.ReadExifData(file);
 		}
 		Console.WriteLine($"\n--- Reading EXIF data for file: {files[7]} ---");
-		exifReader.ReadExifData(files[7], false);
+		//exifReader.ReadExifData(files[7], false);
 
 		//string iso = "2026-01-04T12:56:12+04:00";
 		//string iso = "2026-01-04T12:56:12Z";
