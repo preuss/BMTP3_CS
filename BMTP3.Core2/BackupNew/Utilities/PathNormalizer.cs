@@ -18,7 +18,7 @@ public static class PathNormalizer
 	/// </summary>
 	public static string NormalizeFileUri(string path)
 	{
-		if(string.IsNullOrEmpty(path))
+		if(string.IsNullOrWhiteSpace(path))
 		{
 			return string.Empty;
 		}
@@ -27,9 +27,33 @@ public static class PathNormalizer
 		{
 			// Canonicalize and let Uri handle UNC vs drive letters and escaping
 			string full = Path.GetFullPath(path);
-			Uri uri = new Uri(full, UriKind.Absolute);
+			Uri uri = new(full);
+
+			// Defensive: only accept absolute file:// URIs (avoid accidentally persisting non-file schemes in metadata).
+			if(!uri.IsAbsoluteUri || !string.Equals(uri.Scheme, Uri.UriSchemeFile, StringComparison.OrdinalIgnoreCase))
+			{
+				return string.Empty;
+			}
 			return uri.AbsoluteUri; // e.g. "file:///C:/folder/file.jpg" or "file://server/share/file.jpg"
-		} catch(ArgumentException) { return string.Empty; } catch(NotSupportedException) { return string.Empty; } catch(PathTooLongException) { return string.Empty; } catch(IOException) { return string.Empty; } catch(System.Security.SecurityException) { return string.Empty; }
+		} catch(ArgumentException)
+		{
+			return string.Empty;
+		} catch(NotSupportedException)
+		{
+			return string.Empty;
+		} catch(PathTooLongException)
+		{
+			return string.Empty;
+		} catch(IOException)
+		{
+			return string.Empty;
+		} catch(System.Security.SecurityException)
+		{
+			return string.Empty;
+		} catch(UriFormatException)
+		{
+			return string.Empty;
+		}
 	}
 
 	/// <summary>
