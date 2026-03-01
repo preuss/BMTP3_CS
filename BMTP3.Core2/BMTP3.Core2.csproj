@@ -28,6 +28,7 @@
     <PackageReference Include="ExiftoolWrapper" Version="5.0.0" />
     <PackageReference Include="MetadataExtractor" Version="2.9.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.1" />
+    <PackageReference Include="SharpExifTool" Version="13.32.0.1" />
     <PackageReference Include="SharpHash" Version="1.2.0" />
     <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.1" />
     <PackageReference Include="ZLogger" Version="2.5.10" />

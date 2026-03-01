@@ -16,7 +16,7 @@ public class ConsoleApplication
 	{
 		_writer.WriteLine($"Programmet startede: {_clock.UtcNow}");
 		_writer.WriteLine("Argumenter modtaget:");
-		foreach(var arg in args)
+		foreach(string arg in args)
 		{
 			_writer.WriteLine(arg);
 		}

@@ -4,6 +4,7 @@ using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.DependencyInjection;
 using BMTP3.Core2.BackupNew.Domain.Job;
+using BMTP3.Core2.BackupNew.Engine.Orchestration;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -32,6 +33,8 @@ public class BackupEngine_FileSystemIntegrationTests
 
 		// Register BMTP3 with a preConfigure to ensure the high-level scanner is the real BackupScanner.
 		services.AddBMTP3Core2(s => s.AddSingleton<IBackupScanner, BackupScanner>());
+		// Enable single-threaded debug mode for deterministic debugging
+		services.Configure<BackupEngineOptions>(o => o.DebugSingleThreaded = true);
 
 		var sp = services.BuildServiceProvider();
 		var engine = sp.GetRequiredService<IBackupEngine>();

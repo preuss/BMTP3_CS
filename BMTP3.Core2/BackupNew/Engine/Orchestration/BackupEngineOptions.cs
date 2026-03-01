@@ -11,4 +11,6 @@ public class BackupEngineOptions
 	public int ConvertChannelCapacity { get; set; } = 128;
 	public int StagingChannelCapacity { get; set; } = 128;
 	public int ProcessingChannelCapacity { get; set; } = 128;
+
+	public bool DebugSingleThreaded { get; set; } = false;
 }

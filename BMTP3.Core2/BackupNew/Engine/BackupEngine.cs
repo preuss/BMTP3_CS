@@ -117,9 +117,17 @@ public class BackupEngine : IBackupEngine
 
 		// Configure Options
 		BackupEngineOptions opts = _options.Value;
-		int degreeOfParallelism = opts.DegreeOfParallelism > 0
-			? opts.DegreeOfParallelism
-			: Math.Max(1, Environment.ProcessorCount / 2);
+
+		// Allow single-threaded debug mode when:
+		// - BackupEngineOptions.DebugSingleThreaded == true OR
+		// - a debugger is attached (convenient during development)
+		bool debugSingleThread = (opts.DebugSingleThreaded) || System.Diagnostics.Debugger.IsAttached;
+
+		int degreeOfParallelism = debugSingleThread
+			? 1
+			: (opts.DegreeOfParallelism > 0
+				? opts.DegreeOfParallelism
+				: Math.Max(1, Environment.ProcessorCount / 2));
 
 		// Define Channels
 		var scanChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ScanChannelCapacity) { SingleWriter = false, SingleReader = true });

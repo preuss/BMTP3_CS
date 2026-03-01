@@ -1,0 +1,80 @@
+---- FILE: 32-lens_data.jpeg ---- 
+D:\Projects.Github\sample-meta-data-media\exif-samples\jpg\tests\32-lens_data.jpeg
+[EXIF]          Modify Date                     : 2014:11:19 18:08:04
+[EXIF]          Date/Time Original              : 2012:07:14 16:30:12
+[EXIF]          Create Date                     : 2012:07:14 16:30:12
+[XMP]           Date Time                       : 2012:07:14 16:30:12
+[XMP]           Date/Time Original              : 2012:07:14 16:30:12
+[XMP]           Date/Time Digitized             : 2012:07:14 16:30:12
+[Composite]     Create Date                     : 2012:07:14 16:30:12.68
+[Composite]     Date/Time Original              : 2012:07:14 16:30:12.68
+[Composite]     Modify Date                     : 2014:11:19 18:08:04.68
+---- FILE: canon_hdr_YES.jpg ---- 
+D:\Projects.Github\sample-meta-data-media\exif-samples\jpg\hdr\canon_hdr_YES.jpg
+[File]          File Modification Date/Time     : 2026:01:01 20:27:12+01:00
+[File]          File Access Date/Time           : 2026:01:04 17:21:47+01:00
+[File]          File Creation Date/Time         : 2026:01:01 20:27:12+01:00
+[MakerNotes]    Time Zone                       : +01:00
+[MakerNotes]    Time Zone City                  : (not set)
+---- FILE: image00971.jpg ---- 
+D:\Projects.Github\sample-meta-data-media\exif-samples\jpg\invalid\image00971.jpg
+[XMP]           Create Date                     : 2010:04:13 09:37:22+02:00
+[XMP]           Modify Date                     : 2012:08:27 15:36:36Z
+[XMP]           Metadata Date                   : 2012:08:27 12:47:25+02:00
+---- FILE: HMD_Nokia_8.3_5G.jpg ---- 
+D:\Projects.Github\sample-meta-data-media\exif-samples\jpg\mobile\HMD_Nokia_8.3_5G.jpg
+[EXIF]          Offset Time Digitized           : +03:00
+[EXIF]          Offset Time Original            : +03:00
+[EXIF]          Offset Time                     : +03:00
+[EXIF]          Date/Time Original              : 2022:08:14 14:12:31
+[Composite]     Date/Time Original              : 2022:08:14 14:12:31+03:00
+[Composite]     GPS Date/Time                   : 2022:08:14 11:12:32Z
+---- FILE: IMG_1034.heic ---- 
+D:\Projects.Github\sample-meta-data-media\metadata-extractor-images\heic\IMG_1034.heic
+[File]          File Modification Date/Time     : 2026:01:02 18:53:00+01:00
+[File]          File Access Date/Time           : 2026:01:04 18:47:31+01:00
+[File]          File Creation Date/Time         : 2026:01:02 18:52:56+01:00
+[EXIF]          Date/Time Original              : 2018:02:05 15:11:44
+[EXIF]          Create Date                     : 2018:02:05 15:11:44
+[EXIF]          Sub Sec Time Original           : 277
+[EXIF]          Sub Sec Time Digitized          : 277
+[ICC_Profile]   Profile Date Time               : 2017:07:07 13:22:32
+[Composite]     Create Date                     : 2018:02:05 15:11:44.277
+[Composite]     Date/Time Original              : 2018:02:05 15:11:44.277
+[Composite]     GPS Altitude                    : 42.8 m Above Sea Level
+[Composite]     GPS Date/Time                   : 2018:02:05 07:11:43.07Z
+---- FILE: IMG_2927.HEIC ---- 
+D:\Projects.Github\sample-meta-data-media\metadata-extractor-images\heic\IMG_2927.HEIC
+[EXIF]          Date/Time Original              : 2020:05:04 18:39:11
+[EXIF]          Create Date                     : 2020:05:04 18:39:11
+[EXIF]          Offset Time                     : -04:00
+[EXIF]          Offset Time Original            : -04:00
+[EXIF]          Offset Time Digitized           : -04:00
+[EXIF]          Sub Sec Time Original           : 644
+[EXIF]          Sub Sec Time Digitized          : 644
+[XMP]           Date Created                    : 2020:05:04 18:39:11.644
+[XMP]           Create Date                     : 2020:05:04 18:39:11.644
+[XMP]           Modify Date                     : 2020:05:04 18:39:11
+---- FILE: apple-livephoto-quicktime.mov ---- 
+D:\Projects.Github\sample-meta-data-media\metadata-extractor-images\mov\apple-livephoto-quicktime.mov
+[QuickTime]     Create Date                     : 2023:08:30 13:57:10
+[QuickTime]     Modify Date                     : 2023:08:30 13:57:11
+[QuickTime]     Media Create Date               : 2023:08:30 13:57:11
+[QuickTime]     Media Modify Date               : 2023:08:30 13:57:11
+[QuickTime]     Creation Date                   : 2023:08:30 09:56:22-04:00
+---- FILE: sampleWithExifData.png ---- 
+D:\Projects.Github\sample-meta-data-media\metadata-extractor-images\png\sampleWithExifData.png
+[PNG]           Datecreate                      : 2020-05-20T19:37:26+00:00
+---- FILE: Issue 316 (dotnet).png ---- 
+D:\Projects.Github\sample-meta-data-media\metadata-extractor-images\png\Issue 316 (dotnet).png
+[EXIF]          Date/Time Original              : 2012:08:23 17:42:23
+[EXIF]          Create Date                     : 2012:08:23 17:42:23
+[EXIF]          Sub Sec Time                    : 61
+[EXIF]          Sub Sec Time Original           : 61
+[EXIF]          Sub Sec Time Digitized          : 61
+[IPTC]          Date Created                    : 2022:03:16
+[IPTC]          Time Created                    : 08:48:38-08:48
+[ICC_Profile]   Profile Date Time               : 1998:02:09 06:49:00
+[XMP]           Time Stamp                      : 1647416932752112
+
+

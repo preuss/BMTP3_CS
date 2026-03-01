@@ -1,0 +1,98 @@
+﻿using BMTP3.Consoles.candidates;
+using MetadataExtractor.Formats.Exif;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace BMTP3.Consoles.exifreader;
+public class ExifReader2
+{
+	public IReadOnlyList<TimestampCandidate> Read(ExifDirectoryBase? exif)
+	{
+		if(exif is null)
+			return Array.Empty<TimestampCandidate>();
+
+		List<TimestampCandidate> result = new();
+
+		// ── Original capture time
+		AddExifDateTime(
+			result,
+			exif,
+			ExifDirectoryBase.TagDateTimeOriginal,
+			TimestampRole.Capture,
+			"Exif:DateTimeOriginal"
+		);
+
+		// ── Digitized time
+		AddExifDateTime(
+			result,
+			exif,
+			ExifDirectoryBase.TagDateTimeDigitized,
+			TimestampRole.Digitized,
+			"Exif:DateTimeDigitized"
+		);
+
+		// ── General DateTime (often last modified by camera)
+		AddExifDateTime(
+			result,
+			exif,
+			ExifDirectoryBase.TagDateTime,
+			TimestampRole.Modification,
+			"Exif:DateTime"
+		);
+
+		return result;
+	}
+	private static void AddExifDateTime(
+		List<TimestampCandidate> list,
+		ExifDirectoryBase exif,
+		int tag,
+		TimestampRole role,
+		string sourceLabel
+	)
+	{
+		if(!exif.TryGetString(tag, out string? raw))
+			return;
+
+		if(string.IsNullOrWhiteSpace(raw))
+			return;
+
+		// 1) Preserve raw exactly as delivered
+		TimestampSources sources = new TimestampSources
+		{
+			DateTime = raw.Trim()
+		};
+
+		// 2) Parse according to Exif rules
+		if(!ExifDateTimeParser.TryParse(
+			raw,
+			out DateOnly? date,
+			out TimeOnly? time))
+		{
+			// raw is kept, but parsing failed → still a candidate
+			list.Add(new TimestampCandidate(
+				sourceType: TimestampSourceType.Exif,
+				role: role,
+				source: sources,
+				date: null,
+				time: null,
+				subSeconds: null,
+				offset: null
+			));
+			return;
+		}
+
+		// 3) Successful parse
+		list.Add(new TimestampCandidate(
+			sourceType: TimestampSourceType.Exif,
+			role: role,
+			source: sources,
+			date: date,
+			time: time,
+			subSeconds: null,
+			offset: null
+		));
+	}
+}
