@@ -7,6 +7,7 @@ using MetadataExtractor.Formats.QuickTime;
 using MetadataExtractor.Formats.Xmp;
 using System.Globalization;
 using System.Text.RegularExpressions;
+using BMTP3.Core2.BackupNew.exifreader.Extensions;
 
 namespace BMTP3.Consoles.exifreader;
 
