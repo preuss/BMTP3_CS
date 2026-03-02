@@ -47,7 +47,7 @@ public class BackupScanner : IBackupScanner
 
 	private async IAsyncEnumerable<IBackupItem> ScanFileSystemAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
 	{
-		var scanner = new FileSystemScanner();
+		FileSystemScanner scanner = new();
 
 		string rootPath = plan.SourcePath;
 		if(!Path.IsPathRooted(rootPath) && !string.IsNullOrEmpty(plan.SourceId))
