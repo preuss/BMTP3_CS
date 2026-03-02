@@ -112,11 +112,11 @@ public class BackupPlan
 	/// </summary>
 	public string? CustomCollisionPathPattern { get; set; }
 
-    /// <summary>
-    /// Verification level after writing to destination.
-    /// Default is Hash for integrity.
-    /// </summary>
-    public PostWriteVerificationType PostWriteVerification { get; set; } = PostWriteVerificationType.Hash;
+	/// <summary>
+	/// Verification level after writing to destination.
+	/// Default is Hash for integrity.
+	/// </summary>
+	public PostWriteVerificationType PostWriteVerification { get; set; } = PostWriteVerificationType.Hash;
 
 	// --------------------------------------------------
 	// 7. METADATA & LOGGING

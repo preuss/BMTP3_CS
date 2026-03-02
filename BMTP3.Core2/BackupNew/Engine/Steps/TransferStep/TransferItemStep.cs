@@ -1,18 +1,11 @@
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
-using BMTP3.Core2.BackupNew.Api.Request.Enums;
+using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
+using BMTP3.Core2.BackupNew.Engine.Hashing;
+using BMTP3.Core2.BackupNew.Engine.Models;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
 using BMTP3.Core2.BackupNew.Engine.Transfers;
-using BMTP3.Core2.BackupNew.Engine.Models;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using BMTP3.Core2.BackupNew.Content;
-using BMTP3.Core2.BackupNew.Engine.Hashing;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
 
@@ -104,8 +97,7 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 
 			item.SetResult(ItemResultState.Success);
 			item.Metadata.Set(MetadataKey.FinalTargetPath, destinationPath);
-		}
-		else
+		} else
 		{
 			item.Fail("Transfer failed: " + result.Message, Name);
 		}
@@ -130,18 +122,17 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 			// ARCHITECTURAL FIX: Use ComputeHashesAsync (plural) and pass progress.
 			var computedHashes = await _itemHasher.ComputeHashesAsync(
 				BackupItem.Create(new FileContent(new FileInfo(destPath)), Path.GetFileName(destPath)), // Temporary wrapper for verification
-				new List<HashType> { algo }, 
-				progress, 
+				new List<HashType> { algo },
+				progress,
 				ct);
 
-			if (!computedHashes.TryGetValue(algo, out string? actualHash))
+			if(!computedHashes.TryGetValue(algo, out string? actualHash))
 			{
 				return false; // Should not happen if hasher works
 			}
 
 			return string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase);
-		}
-		else if(type == Api.Request.Enums.PostWriteVerificationType.Binary)
+		} else if(type == Api.Request.Enums.PostWriteVerificationType.Binary)
 		{
 			// TODO: Implement binary comparison if needed, but Hash is usually sufficient and cleaner to reuse components.
 			// For now, falling back to Hash if Binary requested, or implementing simple compare?

@@ -1,6 +1,4 @@
 ﻿using BMTP3.Core2.BackupNew.candidates;
-using System.Collections.Generic;
-using System.IO;
 
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
@@ -12,7 +10,7 @@ public class QuickTimeTimestampReader : ITimestampReader
 	public IReadOnlyList<TimestampCandidate> Read(FileInfo file)
 	{
 		List<TimestampCandidate> candidates = new();
-		
+
 		candidates.AddRange(_movieHeaderReader.Read(file));
 		candidates.AddRange(_metadataHeaderReader.Read(file));
 

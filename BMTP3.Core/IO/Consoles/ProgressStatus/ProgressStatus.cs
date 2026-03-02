@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Spectre.Console;
+﻿using Spectre.Console;
 
 namespace BMTP3.Core.IO.Consoles.ProgressStatus {
 	public class ProgressStatus {

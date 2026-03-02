@@ -1,6 +1,5 @@
 ﻿using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Errors;
-using System; // Added for Guid
 
 namespace BMTP3.Core2.BackupNew.Domain.Item;
 

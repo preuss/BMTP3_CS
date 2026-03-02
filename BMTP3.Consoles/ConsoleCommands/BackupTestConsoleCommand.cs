@@ -1,17 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.CommandLine;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
+﻿using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
-using BMTP3.Consoles.Services;
-using BMTP3.Core2.BackupNew.Api.Progress;
+using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 public class BackupTestConsoleCommand : BaseConsoleCommand
@@ -60,10 +53,9 @@ public class BackupTestConsoleCommand : BaseConsoleCommand
 		// Ensure output path is present (JobValidator will attempt create, but be explicit)
 		try
 		{
-			if (!string.IsNullOrWhiteSpace(plan.OutputPath) && !Directory.Exists(plan.OutputPath))
+			if(!string.IsNullOrWhiteSpace(plan.OutputPath) && !Directory.Exists(plan.OutputPath))
 				Directory.CreateDirectory(plan.OutputPath);
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			Console.WriteLine($"Failed to prepare output directory '{plan.OutputPath}': {ex.Message}");
 			return 1;
@@ -81,20 +73,18 @@ public class BackupTestConsoleCommand : BaseConsoleCommand
 
 			Console.WriteLine($"Job '{result.JobName}' finished: {result.Status}");
 			Console.WriteLine($"Scanned: {result.TotalFilesScanned} Copied: {result.FilesCopied} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.TotalBytesCopied}");
-			if (result.GlobalErrors?.Count > 0)
+			if(result.GlobalErrors?.Count > 0)
 			{
 				Console.WriteLine("Global errors:");
-				foreach (var e in result.GlobalErrors) Console.WriteLine($"  - {e}");
+				foreach(var e in result.GlobalErrors) Console.WriteLine($"  - {e}");
 			}
 
 			return result.Status == BMTP3.Core2.BackupNew.Domain.Job.JobState.Completed ? 0 : 1;
-		}
-		catch (OperationCanceledException)
+		} catch(OperationCanceledException)
 		{
 			Console.WriteLine("Backup cancelled.");
 			return 2;
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			Console.WriteLine($"Unhandled error running backup: {ex.Message}");
 			return 1;

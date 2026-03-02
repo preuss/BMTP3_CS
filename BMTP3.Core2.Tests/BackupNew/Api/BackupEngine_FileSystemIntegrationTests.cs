@@ -8,11 +8,6 @@ using BMTP3.Core2.BackupNew.Engine.Orchestration;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace BMTP3.Core2.Tests.BackupNew.Api;
@@ -45,7 +40,7 @@ public class BackupEngine_FileSystemIntegrationTests
 		Assert.True(Directory.Exists(dataRoot), $"TestData not found at {dataRoot}");
 
 		// Log alle filer for diagnostic
-		foreach (var f in Directory.EnumerateFiles(dataRoot, "*", SearchOption.AllDirectories))
+		foreach(var f in Directory.EnumerateFiles(dataRoot, "*", SearchOption.AllDirectories))
 		{
 			_output.WriteLine($"  {f}");
 		}
@@ -89,12 +84,12 @@ public class BackupEngine_FileSystemIntegrationTests
 	private static void CopyDirectory(string sourceDir, string targetDir)
 	{
 		Directory.CreateDirectory(targetDir);
-		foreach (var file in Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
+		foreach(var file in Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
 		{
 			var dest = Path.Combine(targetDir, Path.GetFileName(file));
 			File.Copy(file, dest, overwrite: true);
 		}
-		foreach (var dir in Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
+		foreach(var dir in Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
 		{
 			var destSub = Path.Combine(targetDir, Path.GetFileName(dir));
 			CopyDirectory(dir, destSub);

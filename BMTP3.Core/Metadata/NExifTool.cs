@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using NExifTool;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using NExifTool;
 
 namespace BMTP3.Core.Metadata {
 	internal class NExifTool : AbstractMetadataFileInfo {

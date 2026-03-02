@@ -8,7 +8,6 @@ using Microsoft.Extensions.Hosting;
 using System.CommandLine;
 using System.Globalization;
 using System.Text.RegularExpressions;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 using DGlob = DotNet.Globbing;
 
 namespace BMTP3.Consoles;

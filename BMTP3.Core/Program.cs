@@ -9,11 +9,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Diagnostics;
-using System.IO;
 using System.Runtime.Versioning;
-using System.Security.Cryptography;
 using System.Text;
-using XmpCore;
 using ZLogger;
 using SystemConsole = System.Console;
 

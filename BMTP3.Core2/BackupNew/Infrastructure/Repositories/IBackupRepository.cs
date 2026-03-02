@@ -1,6 +1,4 @@
 using BMTP3.Core2.BackupNew.Domain.Item;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 

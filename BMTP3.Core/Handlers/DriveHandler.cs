@@ -1,7 +1,6 @@
 ﻿using BMTP3.Core.BackupSource.Drives;
 using BMTP3.Core.Configs;
 using BMTP3.Core.Configuration;
-using Org.BouncyCastle.Math;
 using System.Text.RegularExpressions;
 
 namespace BMTP3.Core.Handlers {
@@ -22,7 +21,7 @@ namespace BMTP3.Core.Handlers {
 			if(enabledDriveSourceConfigs.Any(c => c is null)) {
 				throw new ArgumentException("The List contains null element(s).", nameof(enabledDriveSourceConfigs));
 			}
-			if(enabledDriveSourceConfigs.Any(config => !config.Enabled)){
+			if(enabledDriveSourceConfigs.Any(config => !config.Enabled)) {
 				throw new InvalidOperationException("GetConfiguredDrives should only be called with enabled DriveSourceConfigs.");
 			}
 
@@ -59,12 +58,12 @@ namespace BMTP3.Core.Handlers {
 				bool configNameHasDriveRoot = HasDriveRoot(configName);
 
 				if(configFolderSourceHasDriveRoot && !string.IsNullOrEmpty(configName)) {
-					if(driveRootRegex.Match(configName).Value 
+					if(driveRootRegex.Match(configName).Value
 						!= driveRootRegex.Match(configFolderSource).Value) {
 						throw new ArgumentOutOfRangeException(configName, $"DriveSourceConfig '{configTitle}' has mismatching drive roots in 'folder_source' and 'name'.");
 					}
 				}
-				if(!configFolderSourceHasDriveRoot && string.IsNullOrEmpty(configName) ) {
+				if(!configFolderSourceHasDriveRoot && string.IsNullOrEmpty(configName)) {
 					throw new ArgumentOutOfRangeException(configName, $"DriveSourceConfig '{configTitle}' must have either a drive root in 'folder_source' or a non-empty 'name'.");
 				}
 

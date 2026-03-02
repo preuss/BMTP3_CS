@@ -1,11 +1,6 @@
 ﻿using IniParser;
 using IniParser.Model;
 using Spectre.Console;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using static BMTP3.Core.Handlers.HashCalculator;
 
 namespace BMTP3.Core.Handlers {

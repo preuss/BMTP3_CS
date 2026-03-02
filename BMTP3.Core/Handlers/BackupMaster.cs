@@ -1,13 +1,10 @@
 ﻿using BMTP3.Core.BackupSource;
 using BMTP3.Core.BackupSource.Drives;
 using BMTP3.Core.BackupSource.PortableDevices;
-using BMTP3.Core.CompareFiles;
 using BMTP3.Core.Configs;
 using BMTP3.Core.Configuration;
 using BMTP3.Core.Exceptions;
-using BMTP3.Core.Services;
 using MediaDevices;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
 using System.Runtime.InteropServices;
@@ -202,7 +199,7 @@ namespace BMTP3.Core.Handlers {
 			cancellationToken.ThrowIfCancellationRequested();
 
 			foreach(DriveBackupJob driveJob in driveJobs) {
-				string driveName = driveJob.DriveInfo.Name; 
+				string driveName = driveJob.DriveInfo.Name;
 				if(cancellationToken.IsCancellationRequested) {
 					logger.ZLogTrace($"Cancellation requested – aborting drive backup loop before job {driveName}.");
 					Console.WriteLine($"Backup afbrudt (drev) lige før udførsel af job {driveName}.");

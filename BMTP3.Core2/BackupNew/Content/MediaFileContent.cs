@@ -1,8 +1,6 @@
-﻿using MediaDevices;
-using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
+﻿using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
+using MediaDevices;
 using System.Runtime.Versioning;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Content;
 /// <summary>
@@ -13,13 +11,13 @@ namespace BMTP3.Core2.BackupNew.Content;
 public sealed class MediaFileContent : IContent
 {
 	private readonly MediaFileInfo _mediaFileInfo;
-    private readonly IMtpGatekeeper _gatekeeper;
+	private readonly IMtpGatekeeper _gatekeeper;
 	private bool _disposed;
 
 	public MediaFileContent(MediaFileInfo mediaFileInfo, IMtpGatekeeper gatekeeper)
 	{
 		_mediaFileInfo = mediaFileInfo ?? throw new ArgumentNullException(nameof(mediaFileInfo));
-        _gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
+		_gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
 	}
 
 	/// <summary>
@@ -35,12 +33,12 @@ public sealed class MediaFileContent : IContent
 	{
 		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileContent));
 
-        // We open the raw stream, but wrap it so that every Read() call is gated.
-        // Opening the stream itself (sending the command) also needs protection?
-        // Usually OpenRead just returns a handle, but let's be safe.
-        Stream rawStream = _gatekeeper.ExecuteAsync(() => Task.FromResult(_mediaFileInfo.OpenRead()), CancellationToken.None).GetAwaiter().GetResult();
-		
-        return new GatekeptStream(rawStream, _gatekeeper);
+		// We open the raw stream, but wrap it so that every Read() call is gated.
+		// Opening the stream itself (sending the command) also needs protection?
+		// Usually OpenRead just returns a handle, but let's be safe.
+		Stream rawStream = _gatekeeper.ExecuteAsync(() => Task.FromResult(_mediaFileInfo.OpenRead()), CancellationToken.None).GetAwaiter().GetResult();
+
+		return new GatekeptStream(rawStream, _gatekeeper);
 	}
 
 	/// <summary>

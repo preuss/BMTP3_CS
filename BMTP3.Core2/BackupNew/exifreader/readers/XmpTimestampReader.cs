@@ -1,12 +1,8 @@
 ﻿using BMTP3.Core2.BackupNew.candidates;
 using BMTP3.Core2.BackupNew.exifreader.definitions;
 using BMTP3.Core2.BackupNew.exifreader.parsers;
-using BMTP3.Core2.BackupNew.candidates;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Xmp;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
@@ -26,8 +22,7 @@ public class XmpTimestampReader : ITimestampReader
 		try
 		{
 			directories = ImageMetadataReader.ReadMetadata(file.FullName);
-		}
-		catch
+		} catch
 		{
 			return Array.Empty<TimestampCandidate>();
 		}
@@ -68,8 +63,7 @@ public class XmpTimestampReader : ITimestampReader
 		try
 		{
 			return xmpDir.XmpMeta.GetPropertyString(ns, propertyName);
-		}
-		catch
+		} catch
 		{
 			return null;
 		}

@@ -1,7 +1,6 @@
 ﻿using BMTP3.Core2.BackupNew.candidates;
 using BMTP3.Core2.BackupNew.exifreader.definitions;
 using MetadataExtractor.Formats.QuickTime;
-using System.Collections.Generic;
 
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 

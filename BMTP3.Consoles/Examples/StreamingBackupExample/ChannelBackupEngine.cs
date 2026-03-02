@@ -1,14 +1,10 @@
 using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Response;
 using BMTP3.Core2.BackupNew.Domain.Job;
-using BMTP3.Core2.BackupNew.Api.Enums;
 using System.Threading.Channels;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace BMTP3.Consoles.Examples.StreamingBackupExample;
 
@@ -32,7 +28,7 @@ public class ChannelBackupEngine : IBackupEngine
 	public async Task<BackupJobResult> RunAsync(BackupPlan job, IProgress<IBackupProgress> progress, CancellationToken ct)
 	{
 		// Example implementation that writes into the channel while still supporting IProgress for backwards compatibility
-		for (int i = 0; i < 100; i++)
+		for(int i = 0; i < 100; i++)
 		{
 			ct.ThrowIfCancellationRequested();
 

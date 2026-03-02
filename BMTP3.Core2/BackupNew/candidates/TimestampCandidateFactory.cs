@@ -1,13 +1,4 @@
-﻿using BMTP3.Core2.BackupNew.exifreader.definitions;
-using BMTP3.Core2.BackupNew.exifreader.parsers;
-using BMTP3.Core2.BackupNew.candidates;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Runtime.ConstrainedExecution;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BMTP3.Core2.BackupNew.exifreader.parsers;
 
 namespace BMTP3.Core2.BackupNew.candidates;
 public static class TimestampCandidateFactory
@@ -123,8 +114,8 @@ public static class TimestampCandidateFactory
 	}
 
 	public static DateTimeOffset ConvertTimestampUtcToDateTimeOffset(
-		long timestampUtc, 
-		EpochType epoch, 
+		long timestampUtc,
+		EpochType epoch,
 		TimestampResolution resolution
 	)
 	{
@@ -538,7 +529,8 @@ public static class TimestampCandidateFactory
 		string? rawSubSec,
 		DateTimeOffset dateTimeOffset,
 		long? subSec
-	) {
+	)
+	{
 		TimestampSources sources = new()
 		{
 			DateTimeOffset = rawDateTimeOffset,
@@ -554,11 +546,11 @@ public static class TimestampCandidateFactory
 		}
 
 		TimeSpan? offset = OffsetToTimeSpan(dateTimeOffset);
-		
+
 		long? nanosecondFractionsFromDTO = TrimToNanoseconds(dateTimeOffset);
-		
+
 		long? finalNanosecondFractions = subSec ?? nanosecondFractionsFromDTO;
-		
+
 		TimeOnly time = new(dateTimeOffset.Hour, dateTimeOffset.Minute, dateTimeOffset.Second);
 
 		return new TimestampCandidate(

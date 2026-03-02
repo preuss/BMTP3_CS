@@ -1,14 +1,9 @@
-using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 using MediaDevices;
-using System;
-using System.Linq;
-using System.IO;
-using System.Threading;
 
 namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 
@@ -22,13 +17,13 @@ public class BackupScanner : IBackupScanner
 	{
 		if(plan.SourceType == SourceType.FileSystem)
 		{
-			await foreach(var item in ScanFileSystemAsync(plan, ct))
+			await foreach(IBackupItem item in ScanFileSystemAsync(plan, ct))
 			{
 				yield return item;
 			}
 		} else if(plan.SourceType == SourceType.MediaDevice)
 		{
-			await foreach(var item in ScanMediaDeviceAsync(plan, ct))
+			await foreach(IBackupItem item in ScanMediaDeviceAsync(plan, ct))
 			{
 				yield return item;
 			}
@@ -40,7 +35,7 @@ public class BackupScanner : IBackupScanner
 
 	private async IAsyncEnumerable<IBackupItem> ScanFileSystemAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
 	{
-		var scanner = new FileSystemScanner();
+		FileSystemScanner scanner = new();
 
 		string rootPath = plan.SourcePath;
 		if(!Path.IsPathRooted(rootPath) && !string.IsNullOrEmpty(plan.SourceId))
@@ -79,8 +74,8 @@ public class BackupScanner : IBackupScanner
 
 	private async IAsyncEnumerable<IBackupItem> ScanMediaDeviceAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
 	{
-		var devices = MediaDevice.GetDevices();
-		var device = devices.FirstOrDefault(d => d.FriendlyName.Equals(plan.SourceId, StringComparison.OrdinalIgnoreCase));
+		IEnumerable<MediaDevice> devices = MediaDevice.GetDevices();
+		MediaDevice? device = devices.FirstOrDefault(d => d.FriendlyName.Equals(plan.SourceId, StringComparison.OrdinalIgnoreCase));
 
 		if(device == null)
 		{
@@ -94,7 +89,7 @@ public class BackupScanner : IBackupScanner
 		device.Connect();
 		try
 		{
-			var scanner = new MediaDeviceScanner(device, gatekeeper);
+			MediaDeviceScanner scanner = new(device, gatekeeper);
 			string rootPath = plan.SourcePath;
 
 			await foreach(MediaFileInfo mediaFileInfo in scanner.ScanAsync(rootPath, plan.Recursive, null, ct))

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.candidates;
+﻿namespace BMTP3.Core2.BackupNew.candidates;
 /// <summary>
 /// Enum for selecting timestamp output format.
 /// All formats are designed to be round-trip safe within .NET limits (max 7 fractional digits).

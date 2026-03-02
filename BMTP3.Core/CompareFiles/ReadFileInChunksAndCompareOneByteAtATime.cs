@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.CompareFiles {
+﻿namespace BMTP3.Core.CompareFiles {
 	public class ReadFileInChunksAndCompareOneByteAtATime : ReadFileInChunks {
 		public ReadFileInChunksAndCompareOneByteAtATime(int chunkSize)
 			: base(chunkSize) {

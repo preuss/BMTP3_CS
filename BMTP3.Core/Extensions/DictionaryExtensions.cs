@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.Extensions {
+﻿namespace BMTP3.Core.Extensions {
 	public static class DictionaryExtensions {
 		public static bool DictionaryEqual<TKey, TValue>(this IDictionary<TKey, TValue> dict1, IDictionary<TKey, TValue> dict2, IEqualityComparer<TValue>? equalityComparer = null) {
 			if(dict1 == dict2) {

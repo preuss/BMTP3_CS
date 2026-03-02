@@ -45,8 +45,8 @@ namespace BMTP3.Common.Tests.MessageFormatterParser
 		{
 			// Arrange
 			string input = "hello\r\nworld"; // Default new line is \n, but this stream is initialized with \r\n, so we'll pass it explicitly.
-										  // The CharStream constructor without new line sequences defaults to POSIX (\n).
-										  // We need to ensure the stream correctly identifies the Windows_DOS newline.
+											 // The CharStream constructor without new line sequences defaults to POSIX (\n).
+											 // We need to ensure the stream correctly identifies the Windows_DOS newline.
 			CharStream stream = new(input, new[] { CharStream.WINDOWS_DOS });
 
 

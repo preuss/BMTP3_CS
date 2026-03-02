@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.Configs {
+﻿namespace BMTP3.Core.Configs {
 	public class DefaultSourceConfig {
 		public bool Disabled { get; set; } = true;
 		public bool CompareByBinary { get; set; } = true;

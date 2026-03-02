@@ -1,7 +1,5 @@
 using BMTP3.Core2.BackupNew.Domain.Item;
-using System.Threading;
 using System.Threading.Channels;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps;
 
@@ -12,11 +10,11 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps;
 /// <typeparam name="TContext">The context for this stage.</typeparam>
 public interface IPipelineStage<TContext>
 {
-    int Parallelism { get; }
-    TContext Context { get; }
+	int Parallelism { get; }
+	TContext Context { get; }
 
-    /// <summary>
-    /// Starts the worker pool for this stage.
-    /// </summary>
-    Task RunAsync(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct);
+	/// <summary>
+	/// Starts the worker pool for this stage.
+	/// </summary>
+	Task RunAsync(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct);
 }

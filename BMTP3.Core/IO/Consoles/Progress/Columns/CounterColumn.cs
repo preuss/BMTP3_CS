@@ -1,11 +1,6 @@
-﻿using Spectre.Console;
+﻿using BMTP3.Core.Extensions;
+using Spectre.Console;
 using Spectre.Console.Rendering;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BMTP3.Core.Extensions;
 
 namespace BMTP3.Core.IO.Consoles.Progress.Columns {
 	public class CounterColumn : ProgressColumn {

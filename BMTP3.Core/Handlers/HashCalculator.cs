@@ -1,16 +1,8 @@
 using Blake3;
 using BMTP3.Core.Handlers.Crypto;
-using Newtonsoft.Json.Linq;
-using Org.BouncyCastle.Crypto.Digests;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml;
 
 namespace BMTP3.Core.Handlers {
 	public class HashCalculator {
@@ -119,12 +111,12 @@ namespace BMTP3.Core.Handlers {
 					// SequentialScan hint, improves performance with big sequential reads.
 					//using(FileStream stream = File.OpenRead(filePath)) {
 					using(FileStream stream = new FileStream(
-						      filePath,
-						      FileMode.Open,
-						      FileAccess.Read,
-						      FileShare.Read,
-						      bufferSize,
-						      FileOptions.SequentialScan)
+							  filePath,
+							  FileMode.Open,
+							  FileAccess.Read,
+							  FileShare.Read,
+							  bufferSize,
+							  FileOptions.SequentialScan)
 					) {
 						byte[] buffer = new byte[bufferSize];
 						int bytesRead;

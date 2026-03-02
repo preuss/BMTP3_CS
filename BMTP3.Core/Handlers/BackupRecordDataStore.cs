@@ -1,14 +1,6 @@
-﻿using BMTP3.Core.BackupSource;
-using BMTP3.Core.Configs;
-using MediaDevices;
+﻿using BMTP3.Core.Configs;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using System;
-using System.Collections.Frozen;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
 	/// <summary>
@@ -51,8 +43,8 @@ namespace BMTP3.Core.Handlers {
 			return new BackupRecordDataStore(recordData.SourceConfig, recordData.Records);
 		}
 		public static BackupRecordDataStore LoadDataOrCreateDataStore(ISourceConfig sourceConfig, IList<BackupRecordInfo> backupRecords) {
-			return HasDataStore(sourceConfig) 
-				? LoadDataStore(sourceConfig) 
+			return HasDataStore(sourceConfig)
+				? LoadDataStore(sourceConfig)
 				: new BackupRecordDataStore(sourceConfig, backupRecords);
 		}
 		internal static bool HasDataStore(ISourceConfig sourceConfig) {

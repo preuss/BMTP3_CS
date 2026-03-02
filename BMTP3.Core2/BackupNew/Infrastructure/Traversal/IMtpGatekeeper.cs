@@ -1,7 +1,3 @@
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-
 namespace BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 
 /// <summary>
@@ -10,13 +6,13 @@ namespace BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 /// </summary>
 public interface IMtpGatekeeper
 {
-    /// <summary>
-    /// Executes an async action exclusively on the MTP device.
-    /// </summary>
-    Task<T> ExecuteAsync<T>(Func<Task<T>> action, CancellationToken ct);
+	/// <summary>
+	/// Executes an async action exclusively on the MTP device.
+	/// </summary>
+	Task<T> ExecuteAsync<T>(Func<Task<T>> action, CancellationToken ct);
 
-    /// <summary>
-    /// Executes an async action exclusively on the MTP device.
-    /// </summary>
-    Task ExecuteAsync(Func<Task> action, CancellationToken ct);
+	/// <summary>
+	/// Executes an async action exclusively on the MTP device.
+	/// </summary>
+	Task ExecuteAsync(Func<Task> action, CancellationToken ct);
 }

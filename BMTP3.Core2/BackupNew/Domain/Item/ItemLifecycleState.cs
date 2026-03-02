@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.Domain.Item;
+﻿namespace BMTP3.Core2.BackupNew.Domain.Item;
 public enum ItemLifecycleState
 {
 	/// <summary>

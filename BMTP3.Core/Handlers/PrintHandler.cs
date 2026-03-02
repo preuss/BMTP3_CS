@@ -6,12 +6,7 @@ using BMTP3.Core.Configuration;
 using Fclp.Internals.Extensions;
 using MediaDevices;
 using Spectre.Console;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Versioning;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
 	[SupportedOSPlatform("windows10.0")]

@@ -1,35 +1,27 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.Api;
-using BMTP3.Core2.BackupNew.Domain.Job;
-using BMTP3.Core2.BackupNew.Domain.Item;
-using BMTP3.Core2.BackupNew.Engine.Strategies;
-using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 using BMTP3.Core2.BackupNew.Api.Enums;
-using BMTP3.Core2.BackupNew.Api.Response;
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
-using BMTP3.Core2.BackupNew.Engine.Traversal;
-using BMTP3.Core2.BackupNew.Engine.Staging;
+using BMTP3.Core2.BackupNew.Api.Response;
+using BMTP3.Core2.BackupNew.Domain.Item;
+using BMTP3.Core2.BackupNew.Domain.Job;
 using BMTP3.Core2.BackupNew.Engine.Hashing;
-using BMTP3.Core2.BackupNew.Engine.Transfers;
-using System.Threading.Channels;
-using MediaDevices;
-using BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
+using BMTP3.Core2.BackupNew.Engine.Internal;
 using BMTP3.Core2.BackupNew.Engine.Orchestration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
+using BMTP3.Core2.BackupNew.Engine.Staging;
+using BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 using BMTP3.Core2.BackupNew.Engine.Steps.MetadataExtractionStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
 using BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
 using BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
-using BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
-using BMTP3.Core2.BackupNew.Engine.Steps;
-using BMTP3.Core2.BackupNew.Api.Progress;
-using BMTP3.Core2.BackupNew.Engine.Internal;
-using BMTP3.Core2.BackupNew.Engine.Models;
+using BMTP3.Core2.BackupNew.Engine.Strategies;
+using BMTP3.Core2.BackupNew.Engine.Transfers;
+using BMTP3.Core2.BackupNew.Engine.Traversal;
+using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Threading.Channels;
 
 namespace BMTP3.Core2.BackupNew.Engine;
 /// <summary>
@@ -46,7 +38,7 @@ public class BackupEngine : IBackupEngine
 	private readonly IFileTransfer _fileTransfer;
 	private readonly IBackupRepository _repository;
 	private readonly ISidecarGenerator _sidecarGenerator;
-    private readonly IJobValidator _validator;
+	private readonly IJobValidator _validator;
 	private readonly IOptions<BackupEngineOptions> _options;
 	private readonly ILoggerFactory _loggerFactory;
 
@@ -74,7 +66,7 @@ public class BackupEngine : IBackupEngine
 		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
 		_repository = repository ?? throw new ArgumentNullException(nameof(repository));
 		_sidecarGenerator = sidecarGenerator ?? throw new ArgumentNullException(nameof(sidecarGenerator));
-        _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+		_validator = validator ?? throw new ArgumentNullException(nameof(validator));
 		_options = options ?? throw new ArgumentNullException(nameof(options));
 		_loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
 	}
@@ -84,8 +76,8 @@ public class BackupEngine : IBackupEngine
 		ArgumentNullException.ThrowIfNull(plan);
 		progress ??= new Progress<IBackupProgress>();
 
-        // 0. Pre-flight Validation
-        await _validator.ValidateAsync(plan, ct);
+		// 0. Pre-flight Validation
+		await _validator.ValidateAsync(plan, ct);
 
 		// Prepare result
 		ProgressTracker tracker = new();
@@ -130,33 +122,33 @@ public class BackupEngine : IBackupEngine
 				: Math.Max(1, Environment.ProcessorCount / 2));
 
 		// Define Channels
-		var scanChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ScanChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> scanChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ScanChannelCapacity) { SingleWriter = false, SingleReader = true });
 		//var convertChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ConvertChannelCapacity) { SingleWriter = false, SingleReader = true });
-		var bufferingChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.StagingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		var metadataChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		var timestampChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		var hashChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		var transferChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		var sidecarChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		var persistenceChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> bufferingChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.StagingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> metadataChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> timestampChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> hashChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> transferChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> sidecarChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> persistenceChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
 
 		result.Status = JobState.Running;
 		tracker.SetPhase(BackupPhase.Traversing);
 
 		// Instantiate Steps
-		var bufferingStep = new ContentBufferingItemStep(_stagingDownloader, progress);
-		var metadataStep = new MetadataExtractionItemStep(_metadataReader, plan);
-		var timestampStep = new TimestampCorrectionItemStep(plan);
-		
+		ContentBufferingItemStep bufferingStep = new(_stagingDownloader, progress);
+		MetadataExtractionItemStep metadataStep = new(_metadataReader, plan);
+		TimestampCorrectionItemStep timestampStep = new(plan);
+
 		HashStepContext hashStepContext = new()
 		{
 			HashTypes = new List<HashType> { HashType.BLAKE3_512 },
 			ForceRecompute = false
 		};
-		var hashStep = new HashItemStep(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>());
-		
-		var transferStep = new TransferItemStep(plan, _pathGenerator, _collisionResolver, _fileTransfer, _itemHasher);
-		var sidecarStep = new SidecarGenerationItemStep(plan, _sidecarGenerator);
+		HashItemStep hashStep = new(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>());
+
+		TransferItemStep transferStep = new(plan, _pathGenerator, _collisionResolver, _fileTransfer, _itemHasher);
+		SidecarGenerationItemStep sidecarStep = new(plan, _sidecarGenerator);
 
 		// Source Reading MUST be serial (1 thread) to prevent MTP timeouts and IO thrashing.
 		// We ignore degreeOfParallelism for this specific step.
@@ -170,11 +162,11 @@ public class BackupEngine : IBackupEngine
 
 
 		// Start Pipeline Tasks
-		var producerTask = Task.Run(async () =>
+		Task producerTask = Task.Run(async () =>
 		{
 			try
 			{
-				await foreach(var item in _backupScanner.ScanAsync(plan, ct))
+				await foreach(IBackupItem item in _backupScanner.ScanAsync(plan, ct))
 				{
 					ct.ThrowIfCancellationRequested();
 
@@ -192,20 +184,20 @@ public class BackupEngine : IBackupEngine
 			}
 		}, ct);
 
-		var bufferingTask = Task.Run(() => bufferingPool.RunAsync(scanChannel.Reader, bufferingChannel.Writer, ct), ct);
-		var metadataTask = Task.Run(() => metadataPool.RunAsync(bufferingChannel.Reader, metadataChannel.Writer, ct), ct);
-		var timestampTask = Task.Run(() => timestampPool.RunAsync(metadataChannel.Reader, timestampChannel.Writer, ct), ct);
-		var hashTask = Task.Run(() => hashPool.RunAsync(timestampChannel.Reader, hashChannel.Writer, ct), ct);
-		var transferTask = Task.Run(() => transferPool.RunAsync(hashChannel.Reader, transferChannel.Writer, ct), ct);
-		var sidecarTask = Task.Run(() => sidecarPool.RunAsync(transferChannel.Reader, persistenceChannel.Writer, ct), ct);
+		Task bufferingTask = Task.Run(() => bufferingPool.RunAsync(scanChannel.Reader, bufferingChannel.Writer, ct), ct);
+		Task metadataTask = Task.Run(() => metadataPool.RunAsync(bufferingChannel.Reader, metadataChannel.Writer, ct), ct);
+		Task timestampTask = Task.Run(() => timestampPool.RunAsync(metadataChannel.Reader, timestampChannel.Writer, ct), ct);
+		Task hashTask = Task.Run(() => hashPool.RunAsync(timestampChannel.Reader, hashChannel.Writer, ct), ct);
+		Task transferTask = Task.Run(() => transferPool.RunAsync(hashChannel.Reader, transferChannel.Writer, ct), ct);
+		Task sidecarTask = Task.Run(() => sidecarPool.RunAsync(transferChannel.Reader, persistenceChannel.Writer, ct), ct);
 
-		var completionTask = Task.Run(async () =>
+		Task completionTask = Task.Run(async () =>
 		{
 			tracker.SetPhase(BackupPhase.Transferring);
 
 			try
 			{
-				await foreach(var item in persistenceChannel.Reader.ReadAllAsync(ct))
+				await foreach(IBackupItem item in persistenceChannel.Reader.ReadAllAsync(ct))
 				{
 					ct.ThrowIfCancellationRequested();
 
@@ -238,19 +230,17 @@ public class BackupEngine : IBackupEngine
 
 		result.EndTime = DateTime.UtcNow;
 
-		if (ct.IsCancellationRequested)
+		if(ct.IsCancellationRequested)
 		{
 			result.Status = JobState.Cancelled;
 			tracker.SetPhase(BackupPhase.Cancelled);
-		}
-		else if (finalSnap.FilesFailed > 0)
+		} else if(finalSnap.FilesFailed > 0)
 		{
 			// Mark job as failed when any file failed. Include a short summary in GlobalErrors.
 			result.Status = JobState.Failed;
 			tracker.SetPhase(BackupPhase.Completed);
 			result.GlobalErrors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
-		}
-		else
+		} else
 		{
 			result.Status = JobState.Completed;
 			tracker.SetPhase(BackupPhase.Completed);

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.Configs {
+﻿namespace BMTP3.Core.Configs {
 	public interface IBackupSettings {
 		public FileInfo? BackupConfigFile { get; }
 		public FileInfo? VerifyConfigFile { get; }

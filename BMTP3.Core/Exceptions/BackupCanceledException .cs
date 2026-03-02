@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.Exceptions {
+﻿namespace BMTP3.Core.Exceptions {
 	internal class BackupCanceledException : OperationCanceledException {
 		public string Operation { get; }
 		public BackupCanceledException(string operation, CancellationToken token)

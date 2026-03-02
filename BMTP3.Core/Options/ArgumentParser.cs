@@ -1,11 +1,5 @@
 ﻿using Fclp;
 using Microsoft.Extensions.Configuration;
-using System;
-using System.Collections.Generic;
-using System.Formats.Tar;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core.Options {
 	internal class ArgumentParser {

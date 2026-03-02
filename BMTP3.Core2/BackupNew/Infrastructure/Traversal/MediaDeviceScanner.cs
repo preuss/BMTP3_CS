@@ -13,7 +13,7 @@ namespace BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 public sealed class MediaDeviceScanner : ITraversalScanner<MediaFileInfo>
 {
 	private readonly MediaDevice _device;
-    private readonly IMtpGatekeeper _gatekeeper;
+	private readonly IMtpGatekeeper _gatekeeper;
 
 	/// <summary>
 	/// Initializes a new scanner bound to a specific MediaDevice.
@@ -23,7 +23,7 @@ public sealed class MediaDeviceScanner : ITraversalScanner<MediaFileInfo>
 	{
 		ArgumentNullException.ThrowIfNull(device);
 		_device = device;
-        _gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
+		_gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
 	}
 
 	/// <summary>
@@ -100,8 +100,8 @@ public sealed class MediaDeviceScanner : ITraversalScanner<MediaFileInfo>
 
 	private async IAsyncEnumerable<MediaFileInfo> ScanInternalAsync(MediaDirectoryInfo dir, bool recursive, Action<MediaFileInfo> onFile, Action<MediaDirectoryInfo> onDirectory, [EnumeratorCancellation] CancellationToken cancellationToken)
 	{
-        // Wrap EnumerateFiles in Gatekeeper and materialize list to keep lock time short
-        var files = await _gatekeeper.ExecuteAsync(() => Task.FromResult(SafeEnumerateFiles(dir).ToList()), cancellationToken);
+		// Wrap EnumerateFiles in Gatekeeper and materialize list to keep lock time short
+		var files = await _gatekeeper.ExecuteAsync(() => Task.FromResult(SafeEnumerateFiles(dir).ToList()), cancellationToken);
 
 		foreach(var file in files)
 		{
@@ -116,8 +116,8 @@ public sealed class MediaDeviceScanner : ITraversalScanner<MediaFileInfo>
 
 		if(recursive)
 		{
-            // Wrap EnumerateDirectories in Gatekeeper
-            var subDirs = await _gatekeeper.ExecuteAsync(() => Task.FromResult(SafeEnumerateDirectories(dir).ToList()), cancellationToken);
+			// Wrap EnumerateDirectories in Gatekeeper
+			var subDirs = await _gatekeeper.ExecuteAsync(() => Task.FromResult(SafeEnumerateDirectories(dir).ToList()), cancellationToken);
 
 			foreach(var subDir in subDirs)
 			{

@@ -1,10 +1,5 @@
-﻿using System;
-using System.Buffers;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Buffers;
 using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core.CompareFiles {
 	public class ReadFileInChunksAndCompareVector : ReadFileInChunks {

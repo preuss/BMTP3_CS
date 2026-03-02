@@ -2,10 +2,6 @@ using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
 
@@ -16,7 +12,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
 public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 {
 	public string Name => "Timestamp Correction";
-    public FilePhase Phase => FilePhase.Metadata;
+	public FilePhase Phase => FilePhase.Metadata;
 
 	private readonly BackupPlan _context;
 	public BackupPlan Context => _context;
@@ -34,26 +30,25 @@ public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 	{
 		DateTime? timestamp = null;
 
-		if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
+		if(item.Metadata.Has(MetadataKey.AuthoredDateTime))
 			timestamp = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
-		else if (item.Metadata.Has(MetadataKey.CreatedDateTime))
+		else if(item.Metadata.Has(MetadataKey.CreatedDateTime))
 			timestamp = item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime);
-		else if (item.Metadata.Has(MetadataKey.ModifiedDateTime))
+		else if(item.Metadata.Has(MetadataKey.ModifiedDateTime))
 			timestamp = item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
 
-		if (timestamp.HasValue)
+		if(timestamp.HasValue)
 		{
-			if (item.Content is FileContent fileContent)
+			if(item.Content is FileContent fileContent)
 			{
 				try
 				{
 					var utcTime = timestamp.Value.ToUniversalTime();
 					File.SetLastWriteTimeUtc(fileContent.FileInfo.FullName, utcTime);
 					File.SetCreationTimeUtc(fileContent.FileInfo.FullName, utcTime);
-				}
-				catch (Exception ex)
+				} catch(Exception ex)
 				{
-                    item.AddLog($"Failed to apply timestamp: {ex.Message}", Name);
+					item.AddLog($"Failed to apply timestamp: {ex.Message}", Name);
 				}
 			}
 		}

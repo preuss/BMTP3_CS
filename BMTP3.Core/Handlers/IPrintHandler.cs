@@ -1,13 +1,8 @@
-﻿using BMTP3.Core.BackupSource.Drives;
+﻿using BMTP3.Core.BackupSource;
+using BMTP3.Core.BackupSource.Drives;
 using BMTP3.Core.BackupSource.PortableDevices;
-using BMTP3.Core.BackupSource;
 using BMTP3.Core.Configs;
 using MediaDevices;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers {
 	public interface IPrintHandler {

@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.Consoles {
+﻿namespace BMTP3.Core.Consoles {
 	internal static class ExitCodes {
 		public const int Success = 0;           // Normal completion
 		public const int UnknownCommand = -10;  // Argument parsing produced unknown

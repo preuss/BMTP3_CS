@@ -1,12 +1,6 @@
-﻿using IniParser.Model;
-using IniParser;
-using System;
-using System.Collections.Generic;
+﻿using BMTP3.Core.CompareFiles;
 using System.Diagnostics;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using BMTP3.Core.CompareFiles;
 
 namespace BMTP3.Core.Testing.Manual {
 	internal class Program2_TestCompare {

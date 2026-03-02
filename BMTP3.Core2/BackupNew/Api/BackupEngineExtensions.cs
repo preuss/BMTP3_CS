@@ -72,8 +72,7 @@ public static class BackupEngineExtensions
 				var result = await engine.RunAsync(job, progress, cts.Token);
 				channel.Writer.Complete();
 				return result;
-			}
-			catch (Exception ex)
+			} catch(Exception ex)
 			{
 				channel.Writer.Complete(ex);
 				throw;

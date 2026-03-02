@@ -2,7 +2,7 @@
 
 namespace BMTP3.Common.MessageFormatterParser;
 
-	public class Parser2
+public class Parser2
 {
 	private readonly Lexer2 _lexer;
 	private Token _currentToken;
@@ -22,15 +22,15 @@ namespace BMTP3.Common.MessageFormatterParser;
 		_currentToken = _lexer.NextToken();
 	}
 
-		public RootNode Parse()
+	public RootNode Parse()
+	{
+		var rootNode = new RootNode();
+		while(_currentToken.Type != TokenType.EOF)
 		{
-			var rootNode = new RootNode();
-			while(_currentToken.Type != TokenType.EOF)
+			if(_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen)
 			{
-				if(_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen)
-				{
-					rootNode.Children.Add(ParsePlaceholderExpression());
-				} else if(_currentToken.Type == TokenType.LiteralString)
+				rootNode.Children.Add(ParsePlaceholderExpression());
+			} else if(_currentToken.Type == TokenType.LiteralString)
 			{
 				rootNode.Children.Add(ParseLiteral());
 			} else
@@ -81,24 +81,22 @@ namespace BMTP3.Common.MessageFormatterParser;
 			pattern = ParsePattern();
 		}
 
-			// Eval/Condition (e.g. §if,...)
-			IfConditionNode? condition = null;
-			if(_currentToken.Type == TokenType.Section)
-			{
-				// Parse eval/if expression and attach to placeholder
-				condition = ParseEvalExpression() as IfConditionNode;
-			}
+		// Eval/Condition (e.g. §if,...)
+		IfConditionNode? condition = null;
+		if(_currentToken.Type == TokenType.Section)
+		{
+			// Parse eval/if expression and attach to placeholder
+			condition = ParseEvalExpression() as IfConditionNode;
+		}
 
 		// Be tolerant: some lexer/tokenization edge-cases may leave us at EOF instead of a BraceClose.
-		if (_currentToken.Type == TokenType.BraceClose)
+		if(_currentToken.Type == TokenType.BraceClose)
 		{
 			Eat(TokenType.BraceClose);
-		}
-		else if (_currentToken.Type == TokenType.EOF)
+		} else if(_currentToken.Type == TokenType.EOF)
 		{
 			// Recover: treat as if we had a closing brace and continue.
-		}
-		else
+		} else
 		{
 			Eat(TokenType.BraceClose); // will throw with proper message
 		}
@@ -151,12 +149,11 @@ namespace BMTP3.Common.MessageFormatterParser;
 		// We expect we are at Section token (consumed by caller); next tokens: Identifier (eval type), Comma, then pattern
 		Eat(TokenType.Section);
 		string evalType;
-		if (_currentToken.Type == TokenType.Identifier || _currentToken.Type == TokenType.LiteralString)
+		if(_currentToken.Type == TokenType.Identifier || _currentToken.Type == TokenType.LiteralString)
 		{
 			evalType = _currentToken.Value;
 			_currentToken = _lexer.NextToken();
-		}
-		else
+		} else
 		{
 			throw new InvalidOperationException($"Expected eval type identifier, but got {_currentToken.Type}");
 		}
@@ -175,42 +172,39 @@ namespace BMTP3.Common.MessageFormatterParser;
 	{
 		// Minimal implementation: parse an if expression into an IfConditionNode
 		// Expect current token to be the operator identifier
-		if (_currentToken.Type != TokenType.Identifier)
+		if(_currentToken.Type != TokenType.Identifier)
 		{
 			throw new InvalidOperationException($"Expected condition operator, got {_currentToken.Type}");
 		}
 
 		var condOpToken = _currentToken;
 		// condition operator may be provided as Identifier or as a combined token, accept both
-		if (_currentToken.Type == TokenType.Identifier)
+		if(_currentToken.Type == TokenType.Identifier)
 		{
 			Eat(TokenType.Identifier);
-		}
-		else if (_currentToken.Type == TokenType.LiteralString)
+		} else if(_currentToken.Type == TokenType.LiteralString)
 		{
 			// if the lexer returned the whole 'if,eq0' as LiteralString earlier, split it
-			var parts = _currentToken.Value.Split(new[]{','}, 2);
-			if (parts.Length > 1)
+			var parts = _currentToken.Value.Split(new[] { ',' }, 2);
+			if(parts.Length > 1)
 			{
 				// advance token stream manually: treat the remainder as upcoming tokens by injecting via lexer is complex,
 				// so we will create condOpToken from the split and continue; parser will rely on subsequent scanning for branches.
 				condOpToken = new Token(TokenType.Identifier, parts[0], _currentToken.Position, _currentToken.Line, _currentToken.Column);
 				// mutate current token to be the remainder so subsequent parsing sees it as LiteralString
 				_currentToken = new Token(TokenType.LiteralString, parts[1], _currentToken.Position + parts[0].Length + 1, _currentToken.Line, _currentToken.Column + parts[0].Length + 1);
-			}
-			else
+			} else
 			{
 				Eat(TokenType.LiteralString);
 			}
-		}
-		else
+		} else
 		{
 			throw new InvalidOperationException($"Expected condition operator, got {_currentToken.Type}");
 		}
 
 		var condParams = new List<AstNode>();
 		// optional integer parameter(s)
-		while (_currentToken.Type == TokenType.LiteralInteger)
+		while(_currentToken.Type == TokenType.LiteralInteger)
 		{
 			condParams.Add(ParseLiteral());
 		}
@@ -219,41 +213,38 @@ namespace BMTP3.Common.MessageFormatterParser;
 		Eat(TokenType.QuestionMark);
 
 		var trueParts = new List<AstNode>();
-		while (_currentToken.Type != TokenType.Colon && _currentToken.Type != TokenType.BraceClose && _currentToken.Type != TokenType.EOF)
+		while(_currentToken.Type != TokenType.Colon && _currentToken.Type != TokenType.BraceClose && _currentToken.Type != TokenType.EOF)
 		{
-			if (_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger || _currentToken.Type == TokenType.Identifier)
+			if(_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger || _currentToken.Type == TokenType.Identifier)
 			{
 				// Consume a run of adjacent identifier/literal tokens and merge into a single TextNode to preserve spaces
 				var sb = new System.Text.StringBuilder();
 				bool first = true;
-				while (_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger || _currentToken.Type == TokenType.Identifier)
+				while(_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger || _currentToken.Type == TokenType.Identifier)
 				{
-					if (!first) sb.Append(' ');
+					if(!first) sb.Append(' ');
 					first = false;
-					if (_currentToken.Type == TokenType.Identifier || _currentToken.Type == TokenType.LiteralString)
+					if(_currentToken.Type == TokenType.Identifier || _currentToken.Type == TokenType.LiteralString)
 					{
 						sb.Append(_currentToken.Value);
 						_currentToken = _lexer.NextToken();
-					}
-					else
+					} else
 					{
 						sb.Append(_currentToken.Value);
 						_currentToken = _lexer.NextToken();
 					}
 				}
-                var textVal = sb.ToString();
-                // If previous element is a placeholder and this text doesn't start with whitespace, insert a space
-                if (trueParts.Count > 0 && trueParts[^1] is PlaceholderNode && textVal.Length > 0 && !char.IsWhiteSpace(textVal[0]))
-                {
-                    textVal = " " + textVal;
-                }
-                trueParts.Add(new TextNode(textVal));
-			}
-			else if (_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen)
+				var textVal = sb.ToString();
+				// If previous element is a placeholder and this text doesn't start with whitespace, insert a space
+				if(trueParts.Count > 0 && trueParts[^1] is PlaceholderNode && textVal.Length > 0 && !char.IsWhiteSpace(textVal[0]))
+				{
+					textVal = " " + textVal;
+				}
+				trueParts.Add(new TextNode(textVal));
+			} else if(_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen)
 			{
 				trueParts.Add(ParsePlaceholderExpression());
-			}
-			else
+			} else
 			{
 				break;
 			}
@@ -262,32 +253,30 @@ namespace BMTP3.Common.MessageFormatterParser;
 		Eat(TokenType.Colon);
 
 		var falseParts = new List<AstNode>();
-		while (_currentToken.Type != TokenType.BraceClose && _currentToken.Type != TokenType.EOF)
+		while(_currentToken.Type != TokenType.BraceClose && _currentToken.Type != TokenType.EOF)
 		{
-			if (_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger || _currentToken.Type == TokenType.Identifier)
+			if(_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger || _currentToken.Type == TokenType.Identifier)
 			{
 				// Merge adjacent tokens into one text node
 				var sb = new System.Text.StringBuilder();
 				bool first = true;
-				while (_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger || _currentToken.Type == TokenType.Identifier)
+				while(_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger || _currentToken.Type == TokenType.Identifier)
 				{
-					if (!first) sb.Append(' ');
+					if(!first) sb.Append(' ');
 					first = false;
 					sb.Append(_currentToken.Value);
 					_currentToken = _lexer.NextToken();
 				}
-                var textValF = sb.ToString();
-                if (falseParts.Count > 0 && falseParts[^1] is PlaceholderNode && textValF.Length > 0 && !char.IsWhiteSpace(textValF[0]))
-                {
-                    textValF = " " + textValF;
-                }
-                falseParts.Add(new TextNode(textValF));
-			}
-			else if (_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen)
+				var textValF = sb.ToString();
+				if(falseParts.Count > 0 && falseParts[^1] is PlaceholderNode && textValF.Length > 0 && !char.IsWhiteSpace(textValF[0]))
+				{
+					textValF = " " + textValF;
+				}
+				falseParts.Add(new TextNode(textValF));
+			} else if(_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen)
 			{
 				falseParts.Add(ParsePlaceholderExpression());
-			}
-			else
+			} else
 			{
 				break;
 			}
@@ -297,23 +286,21 @@ namespace BMTP3.Common.MessageFormatterParser;
 		return new IfConditionNode(condOpNode, condParams, trueParts, falseParts);
 	}
 
-    // Parse a sequence of literal and placeholder nodes until a colon or closing brace.
-    // This can be reused for eval/string branches that allow nested placeholders.
-    private AstNode ParseEvalString()
+	// Parse a sequence of literal and placeholder nodes until a colon or closing brace.
+	// This can be reused for eval/string branches that allow nested placeholders.
+	private AstNode ParseEvalString()
 	{
 		// Parse a sequence of literal and placeholder nodes until a colon or closing brace
 		var root = new RootNode();
-		while (_currentToken.Type != TokenType.Colon && _currentToken.Type != TokenType.BraceClose && _currentToken.Type != TokenType.EOF)
+		while(_currentToken.Type != TokenType.Colon && _currentToken.Type != TokenType.BraceClose && _currentToken.Type != TokenType.EOF)
 		{
-			if (_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger)
+			if(_currentToken.Type == TokenType.LiteralString || _currentToken.Type == TokenType.LiteralInteger)
 			{
 				root.Children.Add(ParseLiteral());
-			}
-			else if (_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen)
+			} else if(_currentToken.Type == TokenType.DollarBraceOpen || _currentToken.Type == TokenType.HashBraceOpen)
 			{
 				root.Children.Add(ParsePlaceholderExpression());
-			}
-			else
+			} else
 			{
 				throw new InvalidOperationException($"Unexpected token in eval string: {_currentToken.Type}");
 			}

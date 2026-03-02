@@ -1,7 +1,4 @@
 ﻿using BMTP3.Core2.BackupNew.candidates;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
@@ -30,17 +27,16 @@ public class CompositeTimestampReader : ITimestampReader
 	{
 		List<TimestampCandidate> allCandidates = new();
 
-		foreach (ITimestampReader reader in _readers)
+		foreach(ITimestampReader reader in _readers)
 		{
 			try
 			{
 				IReadOnlyList<TimestampCandidate> candidates = reader.Read(file);
-				if (candidates != null)
+				if(candidates != null)
 				{
 					allCandidates.AddRange(candidates);
 				}
-			}
-			catch
+			} catch
 			{
 				// Keep going if a reader throws unexpectedly
 			}

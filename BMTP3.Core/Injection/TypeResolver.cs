@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Spectre.Console.Cli;
-
-namespace BMTP3.Core.Injection {
+﻿namespace BMTP3.Core.Injection {
 	public sealed class TypeResolver : IMasterTypeResolver, IDisposable {
 		private readonly IServiceProvider _provider;
 		public TypeResolver(IServiceProvider provider) {

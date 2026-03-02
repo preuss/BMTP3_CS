@@ -18,7 +18,6 @@ using System.Collections.Frozen;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
-using System.Threading;
 using ZLogger;
 using static BMTP3.Core.Handlers.HashCalculator.HashType;
 

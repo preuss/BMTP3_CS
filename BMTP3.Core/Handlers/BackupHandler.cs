@@ -1,11 +1,15 @@
 ﻿using BMTP3.Core.BackupSource.PortableDevices;
 using BMTP3.Core.CompareFiles;
 using BMTP3.Core.Configs;
+using BMTP3.Core.Configuration;
+using BMTP3.Core.Exceptions;
+using BMTP3.Core.IO.Consoles.Progress;
 using BMTP3.Core.IO.Consoles.Progress.Columns;
 using BMTP3.Core.IO.Consoles.ProgressStatus;
-using BMTP3.Core.IO.Consoles.Progress;
 using BMTP3.Core.IO.Consoles.Spinner;
 using BMTP3.Core.Metadata;
+using BMTP3.Core.Metadata.SideCar;
+using BMTP3.Core.Metadata.SideCar.Writers;
 using BMTP3.Core.StringVariableSubstitution;
 using MediaDevices;
 using MediaDevices.Progress;
@@ -18,10 +22,6 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using ZLogger;
 using static BMTP3.Core.Handlers.HashCalculator.HashType;
-using BMTP3.Core.Configuration;
-using BMTP3.Core.Exceptions;
-using BMTP3.Core.Metadata.SideCar;
-using BMTP3.Core.Metadata.SideCar.Writers;
 
 namespace BMTP3.Core.Handlers {
 	[SupportedOSPlatform("windows10.0")]
@@ -828,9 +828,9 @@ namespace BMTP3.Core.Handlers {
 		FileInfo CreateSideCarFileInfo(DateTime backupStartDateTime, MediaDevice mediaDevice, FileInfo targetTempFileInfo, MediaFileInfo mediaFileInfo, string? relativeDirectoryPathRaw = null, string? relativeDirectoryPath = null) {
 			string fullName = targetTempFileInfo.FullName;
 			string name = targetTempFileInfo.Name;
-			
+
 			const string extension = ".ini";
-			
+
 			if(targetTempFileInfo.DirectoryName == null) throw new Exception("Something is wrong, I do not know why this directoryName is null: " + targetTempFileInfo.FullName);
 			string sideCarFullPath = Path.Combine(targetTempFileInfo.DirectoryName, name + extension);
 

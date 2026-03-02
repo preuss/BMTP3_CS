@@ -1,18 +1,13 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Xunit;
-using Xunit.Abstractions;
-using BMTP3.Core2.BackupNew.DependencyInjection;
 using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
-using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.DependencyInjection;
 using BMTP3.Core2.BackupNew.Domain.Job;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Xunit.Abstractions;
 
 public class BackupEngineTests
 {
@@ -62,14 +57,12 @@ public class BackupEngineTests
 			Assert.NotNull(result);
 			Assert.Equal(JobState.Completed, result.Status);
 			Assert.Equal(0, result.TotalFilesScanned);
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				Directory.Delete(tempOutput, true);
-			}
-			catch
+			} catch
 			{
 				// Best-effort cleanup for test artifacts
 			}
@@ -108,9 +101,8 @@ internal sealed class XunitTestOutputLoggerProvider : ILoggerProvider
 			try
 			{
 				_output.WriteLine($"[{logLevel}] {_category}: {formatter(state, exception)}");
-				if (exception != null) _output.WriteLine(exception.ToString());
-			}
-			catch { } // test output should not throw tests
+				if(exception != null) _output.WriteLine(exception.ToString());
+			} catch { } // test output should not throw tests
 		}
 
 		private class NullScope : IDisposable

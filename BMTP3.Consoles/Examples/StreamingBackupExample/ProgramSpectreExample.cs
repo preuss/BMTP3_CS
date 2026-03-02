@@ -1,6 +1,6 @@
-using System.Diagnostics;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using Spectre.Console;
+using System.Diagnostics;
 
 namespace BMTP3.Consoles.Examples.StreamingBackupExample;
 
@@ -13,12 +13,12 @@ public static class ProgramSpectreExample
 		var stopwatch = Stopwatch.StartNew();
 		BackupProgress? last = null;
 
-		await foreach (var p in stream.WithCancellation(ct))
+		await foreach(var p in stream.WithCancellation(ct))
 		{
 			// Keep the latest snapshot; channel is configured to DropOldest so producer won't block
 			last = p;
 
-			if (stopwatch.Elapsed >= renderInterval)
+			if(stopwatch.Elapsed >= renderInterval)
 			{
 				RenderSnapshot(last!);
 				stopwatch.Restart();

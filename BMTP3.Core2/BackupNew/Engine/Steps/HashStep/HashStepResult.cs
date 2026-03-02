@@ -7,11 +7,11 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 /// </summary>
 public class HashStepResult
 {
-    /// <summary>
-    /// A dictionary containing the computed hashes for various types.
-    /// Key: HashType, Value: Hash string.
-    /// </summary>
-    public required Dictionary<HashType, string> Hashes { get; init; }
-    
-    // Potentially add other result-specific information, like duration of hash computation, etc.
+	/// <summary>
+	/// A dictionary containing the computed hashes for various types.
+	/// Key: HashType, Value: Hash string.
+	/// </summary>
+	public required Dictionary<HashType, string> Hashes { get; init; }
+
+	// Potentially add other result-specific information, like duration of hash computation, etc.
 }

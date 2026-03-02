@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.Handlers.EventHandlers {
+﻿namespace BMTP3.Core.Handlers.EventHandlers {
 	public enum CtrlType {
 		CTRL_C_EVENT = 0,
 		CTRL_BREAK_EVENT = 1,

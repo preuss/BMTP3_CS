@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.exifreader.parsers;
+﻿namespace BMTP3.Core2.BackupNew.exifreader.parsers;
 /// <summary>
 /// Defines the time resolution / unit of a numeric timestamp value.
 /// </summary>

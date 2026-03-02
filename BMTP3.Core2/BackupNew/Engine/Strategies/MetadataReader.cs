@@ -1,16 +1,9 @@
-using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Content;
-using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
-using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
+using BMTP3.Core2.BackupNew.Domain.Item;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.QuickTime;
-using MetadataExtractor.Formats.Xmp;
+using Microsoft.Extensions.Logging;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 

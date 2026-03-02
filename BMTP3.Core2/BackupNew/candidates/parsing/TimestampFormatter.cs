@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 
 namespace BMTP3.Core2.BackupNew.candidates.parsing;
 public class TimestampFormatter : ITimestampFormatter
@@ -42,7 +38,8 @@ public class TimestampFormatter : ITimestampFormatter
 	}
 	private string? FormatTime(TimeOnly? timeOnly, long? subSeconds, TimeRepresentation timeRepresentation, TimeClockSeparator? clockSep, TimeClockFormatStyle? clockTrimStyle, DecimalFractionSeparator fractionSeparator)
 	{
-		if(timeOnly is null && subSeconds.HasValue){
+		if(timeOnly is null && subSeconds.HasValue)
+		{
 			throw new ArgumentOutOfRangeException(nameof(subSeconds), subSeconds, "SubSeconds can not be present when Time is missing.");
 		}
 		if(timeOnly is not TimeOnly time) return null;
@@ -66,8 +63,9 @@ public class TimestampFormatter : ITimestampFormatter
 
 	private string? FormatTimeAsClock(TimeOnly? timeOnly, long? subSeconds, TimeClockSeparator clockSep, TimeClockFormatStyle clockTrimStyle, DecimalFractionSeparator fractionSeparator)
 	{
-		if(timeOnly is null && subSeconds.HasValue){
-  			throw new ArgumentOutOfRangeException(nameof(subSeconds), subSeconds, "SubSeconds can not be present when Time is missing.");
+		if(timeOnly is null && subSeconds.HasValue)
+		{
+			throw new ArgumentOutOfRangeException(nameof(subSeconds), subSeconds, "SubSeconds can not be present when Time is missing.");
 		}
 		if(subSeconds < 0)
 		{

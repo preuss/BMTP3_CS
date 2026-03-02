@@ -1,12 +1,6 @@
 ﻿using BMTP3.Core2.BackupNew.candidates;
-using MetadataExtractor.Formats.Exif;
-using MetadataExtractor;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.exifreader.Extensions;
+using MetadataExtractor.Formats.Exif;
 
 namespace BMTP3.Consoles.exifreader;
 public class ExifReader2

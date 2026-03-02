@@ -1,10 +1,5 @@
 ﻿using Org.BouncyCastle.Crypto.Digests;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core.Handlers.Crypto {
 	internal sealed class BouncyCastleSha3_256_Keccak : HashAlgorithm {

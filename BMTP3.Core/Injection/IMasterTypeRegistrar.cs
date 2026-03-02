@@ -1,12 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
-using System.Diagnostics.Metrics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Microsoft.Extensions.DependencyInjection;
-using Spectre.Console.Cli;
+﻿using Spectre.Console.Cli;
 
 #pragma warning disable CS0108 // Member hides inherited member; missing new keyword
 namespace BMTP3.Core.Injection {

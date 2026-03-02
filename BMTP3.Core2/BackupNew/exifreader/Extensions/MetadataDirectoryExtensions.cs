@@ -1,4 +1,3 @@
-using System;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 
@@ -15,14 +14,13 @@ public static class MetadataDirectoryExtensions
 	/// </summary>
 	public static string? SafeGetString(this MetadataExtractor.Directory? dir, int tagType)
 	{
-		if (dir is null)
+		if(dir is null)
 			return null;
 
 		try
 		{
 			return dir.GetString(tagType);
-		}
-		catch (Exception)
+		} catch(Exception)
 		{
 			// Intentionally swallow exceptions coming from the metadata library and
 			// treat them as "no value". This mirrors previous behaviour but keeps
@@ -37,14 +35,13 @@ public static class MetadataDirectoryExtensions
 	public static bool SafeTryGetDateTime(this ExifDirectoryBase? dir, int tagType, out DateTime dt)
 	{
 		dt = default;
-		if (dir is null)
+		if(dir is null)
 			return false;
 
 		try
 		{
 			return dir.TryGetDateTime(tagType, out dt);
-		}
-		catch (Exception)
+		} catch(Exception)
 		{
 			// Treat any error as missing value.
 			return false;

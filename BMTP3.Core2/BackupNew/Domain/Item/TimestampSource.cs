@@ -6,11 +6,11 @@ namespace BMTP3.Core2.BackupNew.Domain.Item;
 /// </summary>
 public enum TimestampSource
 {
-    Unknown,
-    Exif,           // Internal metadata (Date Taken)
-    Xmp,            // Adobe/Standard metadata
-    Mtp,            // Device-level metadata (Authored Date)
-    FileSystem,     // File creation time (btime)
-    LastModified,   // Fallback: Last write time (mtime)
-    UserDefined     // Manual override
+	Unknown,
+	Exif,           // Internal metadata (Date Taken)
+	Xmp,            // Adobe/Standard metadata
+	Mtp,            // Device-level metadata (Authored Date)
+	FileSystem,     // File creation time (btime)
+	LastModified,   // Fallback: Last write time (mtime)
+	UserDefined     // Manual override
 }

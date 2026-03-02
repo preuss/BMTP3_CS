@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.Handlers.EventHandlers
-{
+﻿namespace BMTP3.Core.Handlers.EventHandlers {
 	/// <summary>
 	/// Specifies how an event should propagate after being handled.
 	/// </summary>

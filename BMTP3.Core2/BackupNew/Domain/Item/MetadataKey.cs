@@ -1,5 +1,3 @@
-using BMTP3.Core2.BackupNew.Utilities;
-
 namespace BMTP3.Core2.BackupNew.Domain.Item;
 /// <summary>
 /// All known metadata keys.
@@ -32,8 +30,8 @@ public enum MetadataKey
 	[KeyStringValue("device_unique_id")]
 	DeviceUniqueId,
 
-    [KeyStringValue("device_model")]
-    Model,                    // Camera or Phone model (from EXIF or Device)
+	[KeyStringValue("device_model")]
+	Model,                    // Camera or Phone model (from EXIF or Device)
 
 	// Normalized timestamps
 	[KeyStringValue("datetime_authored")]
@@ -54,8 +52,8 @@ public enum MetadataKey
 	[KeyStringValue("datetime_metadata_changed")]
 	MetadataChangedDateTime,   // Metadata last changed (ctime)
 
-    [KeyStringValue("datetime_source")]
-    TimestampSource,          // Origin of the primary date (Enum TimestampSource)
+	[KeyStringValue("datetime_source")]
+	TimestampSource,          // Origin of the primary date (Enum TimestampSource)
 
 	// Target handling
 	[KeyStringValue("collision_index")]

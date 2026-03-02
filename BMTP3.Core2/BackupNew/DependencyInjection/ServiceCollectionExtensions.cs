@@ -12,8 +12,6 @@ using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using System;
 
 namespace BMTP3.Core2.BackupNew.DependencyInjection;
 /// <summary>

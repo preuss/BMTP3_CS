@@ -1,5 +1,3 @@
-using System.Security.Cryptography;
-using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
@@ -16,20 +14,20 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 public class CollisionResolver : ICollisionResolver
 {
 	private readonly IMetadataReader _metadataReader;
-    private readonly IPathGenerator _pathGenerator;
-    private readonly ILogger<CollisionResolver> _logger;
+	private readonly IPathGenerator _pathGenerator;
+	private readonly ILogger<CollisionResolver> _logger;
 
 	public CollisionResolver(IMetadataReader metadataReader, IPathGenerator pathGenerator, ILogger<CollisionResolver> logger)
 	{
 		_metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
-        _pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
+		_pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
 	public async Task<CollisionResult> ResolveAsync(IBackupItem item, string proposedFullPath, BackupPlan plan, CancellationToken ct)
 	{
 		// 1. Check if destination exists
-		if (!File.Exists(proposedFullPath))
+		if(!File.Exists(proposedFullPath))
 		{
 			return new CollisionResult(BackupActionType.Copy, proposedFullPath, "New file");
 		}
@@ -37,13 +35,13 @@ public class CollisionResolver : ICollisionResolver
 		// 2. Collision detected! Decide if content is actually different.
 		bool isIdentical = await IsContentIdenticalAsync(item, proposedFullPath, plan.ComparisonType, ct);
 
-		if (isIdentical)
+		if(isIdentical)
 		{
 			return new CollisionResult(BackupActionType.Skip, proposedFullPath, "Identical file already exists");
 		}
 
 		// 3. Files are different (or comparison was skipped). Apply Resolution Strategy.
-		switch (plan.CollisionResolution)
+		switch(plan.CollisionResolution)
 		{
 			case CollisionResolutionType.Overwrite:
 				return new CollisionResult(BackupActionType.Copy, proposedFullPath, "Overwrite policy active");
@@ -63,25 +61,25 @@ public class CollisionResolver : ICollisionResolver
 
 	private async Task<bool> IsContentIdenticalAsync(IBackupItem source, string destPath, CollisionComparisonType type, CancellationToken ct)
 	{
-		if (type == CollisionComparisonType.None)
+		if(type == CollisionComparisonType.None)
 		{
 			return false;
 		}
 
 		long destLength = new FileInfo(destPath).Length;
 		ulong sourceLength = source.Metadata.Get<ulong>(MetadataKey.Length);
-		
-		if ((ulong)destLength != sourceLength)
+
+		if((ulong)destLength != sourceLength)
 		{
 			return false;
 		}
 
-		if (type == CollisionComparisonType.Hash)
+		if(type == CollisionComparisonType.Hash)
 		{
 			return await CompareHashesAsync(source, destPath, ct);
 		}
 
-		if (type == CollisionComparisonType.Binary)
+		if(type == CollisionComparisonType.Binary)
 		{
 			return await CompareBinaryAsync(source, destPath, ct);
 		}
@@ -107,33 +105,33 @@ public class CollisionResolver : ICollisionResolver
 
 		// Read stored hashes (must be keyed by HashType)
 		Dictionary<HashType, string>? stored = source.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.Hashes);
-		if (stored == null)
+		if(stored == null)
 		{
 			throw new InvalidOperationException("Source item metadata does not contain any hashes. Ensure hashing ran before collision resolution.");
 		}
 
 		// Find which requested algorithms are present (preserve priority order)
 		List<HashType> present = new List<HashType>();
-		foreach (HashType ht in priority)
+		foreach(HashType ht in priority)
 		{
-			if (stored.TryGetValue(ht, out string? val) && !string.IsNullOrWhiteSpace(val))
+			if(stored.TryGetValue(ht, out string? val) && !string.IsNullOrWhiteSpace(val))
 			{
 				present.Add(ht);
 			}
 		}
 
 		// If none present -> cannot compare by hash
-		if (present.Count == 0)
+		if(present.Count == 0)
 		{
 			throw new InvalidOperationException("No suitable hash found in item metadata. Cannot perform hash-based comparison.");
 		}
 
 		// For each present algorithm, compare source vs destination using the same algorithm.
 		// IMPORTANT: do NOT compute destination hash here. Only read sidecar/metadata.
-		foreach (HashType algo in present)
+		foreach(HashType algo in present)
 		{
 			// explicit retrieval
-			if (!stored.TryGetValue(algo, out string? sourceHash) || string.IsNullOrWhiteSpace(sourceHash))
+			if(!stored.TryGetValue(algo, out string? sourceHash) || string.IsNullOrWhiteSpace(sourceHash))
 			{
 				throw new InvalidOperationException($"Hash for {algo} is missing despite earlier detection. Metadata inconsistent.");
 			}
@@ -143,13 +141,13 @@ public class CollisionResolver : ICollisionResolver
 
 			// If destination hash is not found in sidecar / metadata, fail fast:
 			// orchestration must have prepared destination facts (sidecar or inspector) before calling resolver.
-			if (string.IsNullOrEmpty(destHash))
+			if(string.IsNullOrEmpty(destHash))
 			{
 				throw new InvalidOperationException($"Destination hash for {algo} not available for '{destPath}'. Ensure destination sidecar or inspector prepared hashes before collision resolution.");
 			}
 
 			// Compare normalized lowercase hex
-			if (!string.Equals(sourceHash, destHash, StringComparison.OrdinalIgnoreCase))
+			if(!string.Equals(sourceHash, destHash, StringComparison.OrdinalIgnoreCase))
 			{
 				// mismatch on one algorithm -> files are different
 				return false;
@@ -172,67 +170,66 @@ public class CollisionResolver : ICollisionResolver
 			Path.ChangeExtension(destPath, ".ini")
 		};
 
-		foreach (string sidecar in candidates)
+		foreach(string sidecar in candidates)
 		{
-			if (!File.Exists(sidecar)) continue;
+			if(!File.Exists(sidecar)) continue;
 
 			ct.ThrowIfCancellationRequested();
 
 			try
 			{
 				string text = await File.ReadAllTextAsync(sidecar, ct);
-				if (string.IsNullOrWhiteSpace(text)) continue;
+				if(string.IsNullOrWhiteSpace(text)) continue;
 
 				using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(text);
 				System.Text.Json.JsonElement root = doc.RootElement;
 
-				if (root.ValueKind == System.Text.Json.JsonValueKind.Object)
+				if(root.ValueKind == System.Text.Json.JsonValueKind.Object)
 				{
 					// try hashes object (Case-Insensitive search)
-                    System.Text.Json.JsonElement hashesEl = default;
-                    bool foundHashes = false;
-                    foreach (var prop in root.EnumerateObject())
-                    {
-                        if (string.Equals(prop.Name, "hashes", StringComparison.OrdinalIgnoreCase))
-                        {
-                            hashesEl = prop.Value;
-                            foundHashes = true;
-                            break;
-                        }
-                    }
+					System.Text.Json.JsonElement hashesEl = default;
+					bool foundHashes = false;
+					foreach(var prop in root.EnumerateObject())
+					{
+						if(string.Equals(prop.Name, "hashes", StringComparison.OrdinalIgnoreCase))
+						{
+							hashesEl = prop.Value;
+							foundHashes = true;
+							break;
+						}
+					}
 
-					if (foundHashes && hashesEl.ValueKind == System.Text.Json.JsonValueKind.Object)
+					if(foundHashes && hashesEl.ValueKind == System.Text.Json.JsonValueKind.Object)
 					{
 						// try algorithm name key (Case-Insensitive)
-                        foreach(var prop in hashesEl.EnumerateObject())
-                        {
-                            if (string.Equals(prop.Name, algorithm.ToString(), StringComparison.OrdinalIgnoreCase))
-                                return prop.Value.GetString();
-                        }
+						foreach(var prop in hashesEl.EnumerateObject())
+						{
+							if(string.Equals(prop.Name, algorithm.ToString(), StringComparison.OrdinalIgnoreCase))
+								return prop.Value.GetString();
+						}
 
 						// legacy SHA256 key for SHA2_256
-						if (algorithm == HashType.SHA2_256)
-                        {
-                            foreach(var prop in hashesEl.EnumerateObject())
-                            {
-                                if (string.Equals(prop.Name, "SHA256", StringComparison.OrdinalIgnoreCase))
-                                    return prop.Value.GetString();
-                            }
-                        }
+						if(algorithm == HashType.SHA2_256)
+						{
+							foreach(var prop in hashesEl.EnumerateObject())
+							{
+								if(string.Equals(prop.Name, "SHA256", StringComparison.OrdinalIgnoreCase))
+									return prop.Value.GetString();
+							}
+						}
 					}
 
 					// direct key fallback (Case-Insensitive)
-                    foreach (var prop in root.EnumerateObject())
-                    {
-                        if (string.Equals(prop.Name, algorithm.ToString(), StringComparison.OrdinalIgnoreCase))
-                            return prop.Value.GetString();
-                        
-                        if (algorithm == HashType.SHA2_256 && string.Equals(prop.Name, "SHA256", StringComparison.OrdinalIgnoreCase))
-                            return prop.Value.GetString();
-                    }
+					foreach(var prop in root.EnumerateObject())
+					{
+						if(string.Equals(prop.Name, algorithm.ToString(), StringComparison.OrdinalIgnoreCase))
+							return prop.Value.GetString();
+
+						if(algorithm == HashType.SHA2_256 && string.Equals(prop.Name, "SHA256", StringComparison.OrdinalIgnoreCase))
+							return prop.Value.GetString();
+					}
 				}
-			}
-			catch
+			} catch
 			{
 				// ignore and try next
 			}
@@ -240,21 +237,20 @@ public class CollisionResolver : ICollisionResolver
 			// try simple key=value lines
 			try
 			{
-				foreach (string line in File.ReadLines(sidecar))
+				foreach(string line in File.ReadLines(sidecar))
 				{
 					ct.ThrowIfCancellationRequested();
 
 					int idx = line.IndexOf('=');
-					if (idx <= 0) continue;
+					if(idx <= 0) continue;
 					string key = line.Substring(0, idx).Trim();
 					string val = line.Substring(idx + 1).Trim();
-					if (string.Equals(key, algorithm.ToString(), StringComparison.OrdinalIgnoreCase) || (algorithm == HashType.SHA2_256 && string.Equals(key, "SHA256", StringComparison.OrdinalIgnoreCase)))
+					if(string.Equals(key, algorithm.ToString(), StringComparison.OrdinalIgnoreCase) || (algorithm == HashType.SHA2_256 && string.Equals(key, "SHA256", StringComparison.OrdinalIgnoreCase)))
 					{
-						if (!string.IsNullOrWhiteSpace(val)) return val;
+						if(!string.IsNullOrWhiteSpace(val)) return val;
 					}
 				}
-			}
-			catch
+			} catch
 			{
 				// ignore
 			}
@@ -269,8 +265,8 @@ public class CollisionResolver : ICollisionResolver
 		byte[] buffer1 = new byte[bufferSize];
 		byte[] buffer2 = new byte[bufferSize];
 
-		using var sourceStream = source.Content.OpenRead();
-		using var destStream = new FileStream(destPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+		using Stream sourceStream = source.Content.OpenRead();
+		using FileStream destStream = new(destPath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
 		int bytesRead1, bytesRead2;
 		do
@@ -280,15 +276,15 @@ public class CollisionResolver : ICollisionResolver
 			bytesRead1 = await sourceStream.ReadAsync(buffer1, 0, bufferSize, ct);
 			bytesRead2 = await destStream.ReadAsync(buffer2, 0, bufferSize, ct);
 
-			if (bytesRead1 != bytesRead2) return false;
-			if (bytesRead1 == 0) return true;
+			if(bytesRead1 != bytesRead2) return false;
+			if(bytesRead1 == 0) return true;
 
-			for (int i = 0; i < bytesRead1; i++)
+			for(int i = 0; i < bytesRead1; i++)
 			{
-				if (buffer1[i] != buffer2[i]) return false;
+				if(buffer1[i] != buffer2[i]) return false;
 			}
 
-		} while (true);
+		} while(true);
 	}
 
 	private async Task<string> GenerateUniquePathAsync(IBackupItem item, string originalPath, BackupPlan plan, CancellationToken ct)
@@ -296,57 +292,56 @@ public class CollisionResolver : ICollisionResolver
 		string directory = Path.GetDirectoryName(originalPath) ?? "";
 		string fileNameWithoutExt = Path.GetFileNameWithoutExtension(originalPath);
 		string extension = Path.GetExtension(originalPath);
-        string newPath;
-        var strategy = plan.RenameStrategy;
+		string newPath;
+		RenameStrategy strategy = plan.RenameStrategy;
 
-        // 1. Try Custom Pattern first if specified
-        if (strategy == RenameStrategy.CustomCollisionPathPattern && !string.IsNullOrWhiteSpace(plan.CustomCollisionPathPattern))
-        {
-            string formattedRelative = _pathGenerator.ApplyPattern(plan.CustomCollisionPathPattern, item);
-            newPath = Path.Combine(directory, formattedRelative);
-            // Ensure we include extension if not in pattern
-            if (!newPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
-                newPath += extension;
-            
-            if (!File.Exists(newPath)) return newPath;
-            
-            // If custom pattern also exists, fallback to increment
-            fileNameWithoutExt = Path.GetFileNameWithoutExtension(newPath);
-        }
+		// 1. Try Custom Pattern first if specified
+		if(strategy == RenameStrategy.CustomCollisionPathPattern && !string.IsNullOrWhiteSpace(plan.CustomCollisionPathPattern))
+		{
+			string formattedRelative = _pathGenerator.ApplyPattern(plan.CustomCollisionPathPattern, item);
+			newPath = Path.Combine(directory, formattedRelative);
+			// Ensure we include extension if not in pattern
+			if(!newPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+				newPath += extension;
 
-        // 2. Try secondary strategies (Timestamp or Hash)
-        string suffix = "";
-        
-        if (strategy == RenameStrategy.Timestamp)
-        {
-            if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
-            {
-                var dt = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
-                suffix = "_" + dt.ToString("yyyyMMdd_HHmmss");
-            }
-        }
-        else if (strategy == RenameStrategy.Hash)
-        {
-            var hashes = item.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.Hashes);
-            if (hashes != null && hashes.Count > 0)
-            {
-                // Use first available hash, take 6 chars
-                string h = hashes.Values.First();
-                suffix = "_" + (h.Length > 6 ? h.Substring(0, 6) : h);
-            }
-        }
+			if(!File.Exists(newPath)) return newPath;
 
-        if (!string.IsNullOrEmpty(suffix))
-        {
-            // Try Strategy Suffix
-            newPath = Path.Combine(directory, $"{fileNameWithoutExt}{suffix}{extension}");
-            if (!File.Exists(newPath)) return newPath;
+			// If custom pattern also exists, fallback to increment
+			fileNameWithoutExt = Path.GetFileNameWithoutExtension(newPath);
+		}
 
-            // Strategy Suffix Collision? Fallback to Increment on top of Suffix
-            fileNameWithoutExt = $"{fileNameWithoutExt}{suffix}";
-        }
+		// 2. Try secondary strategies (Timestamp or Hash)
+		string suffix = "";
 
-        // Fallback: Increment Loop (covers RenameStrategy.Increment and Strategy Failures)
+		if(strategy == RenameStrategy.Timestamp)
+		{
+			if(item.Metadata.Has(MetadataKey.AuthoredDateTime))
+			{
+				DateTime dt = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
+				suffix = "_" + dt.ToString("yyyyMMdd_HHmmss");
+			}
+		} else if(strategy == RenameStrategy.Hash)
+		{
+			Dictionary<HashType, string>? hashes = item.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.Hashes);
+			if(hashes != null && hashes.Count > 0)
+			{
+				// Use first available hash, take 6 chars
+				string h = hashes.Values.First();
+				suffix = "_" + (h.Length > 6 ? h.Substring(0, 6) : h);
+			}
+		}
+
+		if(!string.IsNullOrEmpty(suffix))
+		{
+			// Try Strategy Suffix
+			newPath = Path.Combine(directory, $"{fileNameWithoutExt}{suffix}{extension}");
+			if(!File.Exists(newPath)) return newPath;
+
+			// Strategy Suffix Collision? Fallback to Increment on top of Suffix
+			fileNameWithoutExt = $"{fileNameWithoutExt}{suffix}";
+		}
+
+		// Fallback: Increment Loop (covers RenameStrategy.Increment and Strategy Failures)
 		int counter = 1;
 		do
 		{
@@ -355,7 +350,7 @@ public class CollisionResolver : ICollisionResolver
 			newPath = Path.Combine(directory, newFileName);
 			counter++;
 
-		} while (File.Exists(newPath));
+		} while(File.Exists(newPath));
 
 		return newPath;
 	}

@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-
-namespace BMTP3.Core.Metadata.SideCar {
+﻿namespace BMTP3.Core.Metadata.SideCar {
 	/// <summary>
 	/// Represents a complete SideCar document with sections and properties
 	/// </summary>
@@ -28,7 +24,7 @@ namespace BMTP3.Core.Metadata.SideCar {
 		/// <param name="section">The section to add</param>
 		public void AddSection(SideCarSection section) {
 			ArgumentNullException.ThrowIfNull(section);
-			
+
 			_sections[section.Name] = section;
 		}
 		/// <summary>

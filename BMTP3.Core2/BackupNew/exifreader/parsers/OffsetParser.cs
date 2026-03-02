@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.exifreader.parsers;
 
@@ -13,14 +7,14 @@ public class OffsetParser : ParserBase<TimeSpan>
 {
 	private static readonly string[] OffsetFormats =
 	{
-		"hh':'mm':'ss'.'FFFFFFF",	// ±HH:mm:ss.FFFFFFF
-		"hh':'mm':'ss','FFFFFFF",	// ±HH:mm:ss,FFFFFFF
-		"hh':'mm':'ss",				// ±HH:mm:ss
-        "hh':'mm",					// ±HH:mm
-		"hhmmss'.'FFFFFFF",			// ±HHMMSS.FFFFFFF
-		"hhmmss','FFFFFFF",			// ±HHMMSS,FFFFFFF
-		"hhmmss",					// ±HHMMSS
-		"hh",						// ±HH
+		"hh':'mm':'ss'.'FFFFFFF",    // ±HH:mm:ss.FFFFFFF
+		"hh':'mm':'ss','FFFFFFF",    // ±HH:mm:ss,FFFFFFF
+		"hh':'mm':'ss",              // ±HH:mm:ss
+		"hh':'mm",                   // ±HH:mm
+		"hhmmss'.'FFFFFFF",          // ±HHMMSS.FFFFFFF
+		"hhmmss','FFFFFFF",          // ±HHMMSS,FFFFFFF
+		"hhmmss",                    // ±HHMMSS
+		"hh",                        // ±HH
     };
 	public override bool TryParse(string? raw, [NotNullWhen(true)] out TimeSpan result)
 	{
@@ -41,7 +35,7 @@ public class OffsetParser : ParserBase<TimeSpan>
 		}
 
 		bool parsed = TimeSpan.TryParseExact(
-			raw, 
+			raw,
 			OffsetFormats,
 			CultureInfo.InvariantCulture,
 			TimeSpanStyles.None,
@@ -70,7 +64,8 @@ public class OffsetParser : ParserBase<TimeSpan>
 			TimeSpanStyles.None,
 			out result
 		);
-		if(parsed) { 
+		if(parsed)
+		{
 			result = -result;
 			return true;
 		}

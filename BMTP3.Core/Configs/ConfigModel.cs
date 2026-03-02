@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Serialization;
-using System.Text;
-using System.Threading.Tasks;
-using Tomlyn;
-using Tomlyn.Model;
+﻿using Tomlyn.Model;
 
 namespace BMTP3.Core.Configs {
 	public class ConfigModel : ITomlMetadataProvider {

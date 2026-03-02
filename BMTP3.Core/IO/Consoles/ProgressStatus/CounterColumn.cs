@@ -1,14 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Numerics;
-using System.Reflection.PortableExecutable;
-using System.Text;
-using System.Threading.Tasks;
-using Fclp.Internals.Extensions;
-using Spectre.Console;
-using Spectre.Console.Extensions;
+﻿using Spectre.Console;
 using Spectre.Console.Rendering;
+using System.Numerics;
 
 namespace BMTP3.Core.IO.Consoles.ProgressStatus {
 	public class CounterColumn<T> : ProgressColumn where T : struct, INumber<T> {

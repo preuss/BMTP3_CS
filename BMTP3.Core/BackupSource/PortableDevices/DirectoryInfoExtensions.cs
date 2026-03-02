@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.IO;
-
-namespace BMTP3.Core.BackupSource.PortableDevices {
+﻿namespace BMTP3.Core.BackupSource.PortableDevices {
 	/// <summary>
 	/// Provides extension methods for the DirectoryInfo class.
 	/// </summary>

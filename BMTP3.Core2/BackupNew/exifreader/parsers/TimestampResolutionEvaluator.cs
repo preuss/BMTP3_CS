@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace BMTP3.Core2.BackupNew.exifreader.parsers;
+﻿namespace BMTP3.Core2.BackupNew.exifreader.parsers;
 
 /// <summary>
 /// Evaluates the magnitude of a numeric timestamp against its expected resolution.

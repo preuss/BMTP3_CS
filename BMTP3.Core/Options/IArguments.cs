@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.Options {
+﻿namespace BMTP3.Core.Options {
 	public interface IArguments {
 		public string? DefaultConfigurationFile { get; }
 		public string? Backup { get; }

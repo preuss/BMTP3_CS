@@ -1,12 +1,7 @@
 ﻿using BMTP3.Core.BackupSource;
 using BMTP3.Core.Configs;
-using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 namespace BMTP3.Core.Handlers {
 	public class SourceConfigConverter : JsonConverter<ISourceConfig?> {

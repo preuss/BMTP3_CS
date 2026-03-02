@@ -1,14 +1,8 @@
 ﻿using BMTP3.Core2.BackupNew.candidates;
 using BMTP3.Core2.BackupNew.exifreader.definitions;
-using BMTP3.Core2.BackupNew.exifreader.parsers;
-using BMTP3.Core2.BackupNew.candidates;
-using MetadataExtractor;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.exifreader.Extensions;
+using BMTP3.Core2.BackupNew.exifreader.parsers;
+using MetadataExtractor;
 
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
@@ -35,8 +29,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		try
 		{
 			directories = ImageMetadataReader.ReadMetadata(file.FullName);
-		}
-		catch
+		} catch
 		{
 			return Array.Empty<TimestampCandidate>();
 		}
@@ -88,11 +81,11 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		);
 
 		return TimestampCandidateFactory.FromRawTimestamp(
-				SourceType, 
-				group.Role, 
-				rawTimestamp, 
-				timestampValue.Value, 
-				group.TimestampEpoch, 
+				SourceType,
+				group.Role,
+				rawTimestamp,
+				timestampValue.Value,
+				group.TimestampEpoch,
 				timestampResolution
 		);
 	}

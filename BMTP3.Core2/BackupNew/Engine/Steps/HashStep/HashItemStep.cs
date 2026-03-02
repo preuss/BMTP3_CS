@@ -3,18 +3,13 @@ using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Hashing;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 
 public class HashItemStep : IBackupItemStep<HashStepContext, HashStepResult>
 {
 	public string Name => "Hashing";
-    public FilePhase Phase => FilePhase.Hashing; 
+	public FilePhase Phase => FilePhase.Hashing;
 
 	private readonly HashStepContext _context;
 	private readonly IItemHasher _itemHasher;
@@ -43,19 +38,20 @@ public class HashItemStep : IBackupItemStep<HashStepContext, HashStepResult>
 
 			Dictionary<HashType, string> computedHashes = new();
 
-			if (hashesToCompute.Any())
+			if(hashesToCompute.Any())
 			{
 				_logger.LogDebug("Computing {count} new hashes for item {itemId}", hashesToCompute.Count, item.Id);
-                
-                // Pass progress reporter to the Hasher
+
+				// Pass progress reporter to the Hasher
 				computedHashes = await _itemHasher.ComputeHashesAsync(item, hashesToCompute, progress, ct);
-			} else {
+			} else
+			{
 				_logger.LogDebug("No new hashes to compute for item {itemId}. Reusing existing.", item.Id);
-                // Report 100% (all bytes) if skipped? Or 0? Usually 0 if no work done.
-                progress?.Report(item.Content.Length); 
+				// Report 100% (all bytes) if skipped? Or 0? Usually 0 if no work done.
+				progress?.Report(item.Content.Length);
 			}
 
-			foreach (var entry in computedHashes)
+			foreach(var entry in computedHashes)
 			{
 				existingHashes[entry.Key] = entry.Value;
 			}
@@ -64,8 +60,7 @@ public class HashItemStep : IBackupItemStep<HashStepContext, HashStepResult>
 
 			_logger.LogDebug("HashItemStep completed for item {itemId}", item.Id);
 			return new HashStepResult { Hashes = existingHashes };
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			item.Fail($"Hash calculation failed: {ex.Message}", Name, ex);
 			_logger.LogError(ex, "HashItemStep failed for item {itemId} from {itemPath}", item.Id, item.SourcePath);

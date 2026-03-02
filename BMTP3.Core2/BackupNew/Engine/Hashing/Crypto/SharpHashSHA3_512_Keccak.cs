@@ -1,12 +1,6 @@
-﻿using SharpHash;
-using SharpHash.Base;
+﻿using SharpHash.Base;
 using SharpHash.Interfaces;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.Engine.Hashing.Crypto;
 public class SharpHashSHA3_512_Keccak : HashAlgorithm

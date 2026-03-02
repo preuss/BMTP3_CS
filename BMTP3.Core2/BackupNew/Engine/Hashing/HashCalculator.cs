@@ -1,13 +1,8 @@
 ﻿using Blake3;
 using BMTP3.Core2.Engine.Hashing.Crypto;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Hashing;
 public class HashCalculator

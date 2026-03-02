@@ -3,9 +3,6 @@ using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Staging;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
 
@@ -23,7 +20,8 @@ public class ContentBufferingItemStep : IBackupItemStep<BackupPlan, bool>
 	public FilePhase Phase => FilePhase.Staging;
 
 	// Allow pipeline stages in the same assembly to set the context before execution.
-	public BackupPlan Context { get; internal set; }
+	// Interface requires non-nullable Context; use null-forgiving initializer to satisfy the compiler.
+	public BackupPlan Context { get; internal set; } = null!;
 
 	public ContentBufferingItemStep(IStagingDownloader downloader, IProgress<BackupProgress> progress)
 	{

@@ -1,15 +1,14 @@
 ﻿using BMTP3.Consoles.Services;
-using Microsoft.Extensions.DependencyInjection;
-using System.CommandLine;
 using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
-using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Response;
 using BMTP3.Core2.BackupNew.Domain.Job;
-using System.IO;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -43,7 +42,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	)
 	{
 		ConsolesPrinter? consolePrinter = ServiceProvider.GetService<ConsolesPrinter>();
- 		consolePrinter?.PrintOptionsModel(GlobalOptions, BackupOptions);
+		consolePrinter?.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		// Resolve logger from DI when available; fall back to a no-op logger so callers
 		// (including tests) can capture structured logs instead of relying on Console.
@@ -53,18 +52,18 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 
 		// Build BackupPlan from CLI options
 		BackupPlan plan = new BackupPlan
-        {
-            Name = BackupOptions.Config?.Name ?? "console-backup",
-            SourcePath = BackupOptions.SourceDirectory ?? ".",
-            OutputPath = BackupOptions.OutputDirectory?.FullName ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "BMTP3_Backups"),
-            Recursive = BackupOptions.Recursive
-        };
+		{
+			Name = BackupOptions.Config?.Name ?? "console-backup",
+			SourcePath = BackupOptions.SourceDirectory ?? ".",
+			OutputPath = BackupOptions.OutputDirectory?.FullName ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "BMTP3_Backups"),
+			Recursive = BackupOptions.Recursive
+		};
 
-        // Determine source type and source id: prefer explicit device when provided and no source-directory
-        bool explicitDeviceProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDevice);
-        bool explicitSourceDirProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDirectory);
-        plan.SourceType = (explicitDeviceProvided && !explicitSourceDirProvided) ? SourceType.MediaDevice : SourceType.FileSystem;
-        plan.SourceId = explicitDeviceProvided ? BackupOptions.SourceDevice! : Path.GetPathRoot(plan.SourcePath) ?? string.Empty;
+		// Determine source type and source id: prefer explicit device when provided and no source-directory
+		bool explicitDeviceProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDevice);
+		bool explicitSourceDirProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDirectory);
+		plan.SourceType = (explicitDeviceProvided && !explicitSourceDirProvided) ? SourceType.MediaDevice : SourceType.FileSystem;
+		plan.SourceId = explicitDeviceProvided ? BackupOptions.SourceDevice! : Path.GetPathRoot(plan.SourcePath) ?? string.Empty;
 
 		// Friendly user-facing message
 		consolePrinter?.PrintStatus($"Starting backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' OutputPath='{plan.OutputPath}'");
@@ -74,17 +73,16 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		// Ensure output path exists
 		try
 		{
-			if (!string.IsNullOrWhiteSpace(plan.OutputPath) && !Directory.Exists(plan.OutputPath))
+			if(!string.IsNullOrWhiteSpace(plan.OutputPath) && !Directory.Exists(plan.OutputPath))
 				Directory.CreateDirectory(plan.OutputPath);
+		} catch(Exception ex)
+		{
+			logger.LogError(ex, "Failed to prepare output directory '{OutputPath}'", plan.OutputPath);
+			return 1;
 		}
-			catch (Exception ex)
-			{
-				logger.LogError(ex, "Failed to prepare output directory '{OutputPath}'", plan.OutputPath);
-				return 1;
-			}
 
 		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
-		if (engine == null)
+		if(engine == null)
 		{
 			logger.LogError("Backup engine not configured in DI.");
 			return 1;
@@ -98,44 +96,41 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 
 		// Support Ctrl+C for interactive cancellation and link to provided token
 		using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-			ConsoleCancelEventHandler? cancelHandler = (s, e) =>
-			{
-				e.Cancel = true; // prevent process termination so we can cleanup
-				logger.LogInformation("Cancellation requested, stopping backup...");
-				linkedCts.Cancel();
-			};
-			Console.CancelKeyPress += cancelHandler;
+		ConsoleCancelEventHandler? cancelHandler = (s, e) =>
+		{
+			e.Cancel = true; // prevent process termination so we can cleanup
+			logger.LogInformation("Cancellation requested, stopping backup...");
+			linkedCts.Cancel();
+		};
+		Console.CancelKeyPress += cancelHandler;
 
-        try
-        {
+		try
+		{
 			BackupJobResult result = await engine.RunAsync(plan, progress, linkedCts.Token);
-				// Print friendly result for the user and log diagnostics
-				consolePrinter?.PrintResult(result);
-				logger.LogInformation("Job '{JobName}' finished: {Status}", result.JobName, result.Status);
-				logger.LogInformation("Scanned: {Scanned} Copied: {Copied} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}", result.TotalFilesScanned, result.FilesCopied, result.FilesFailed, result.FilesSkipped, result.TotalBytesCopied);
-				if (result.GlobalErrors?.Count > 0)
-				{
-					logger.LogWarning("Global errors:");
-					foreach (string e in result.GlobalErrors) logger.LogWarning(e);
-				}
+			// Print friendly result for the user and log diagnostics
+			consolePrinter?.PrintResult(result);
+			logger.LogInformation("Job '{JobName}' finished: {Status}", result.JobName, result.Status);
+			logger.LogInformation("Scanned: {Scanned} Copied: {Copied} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}", result.TotalFilesScanned, result.FilesCopied, result.FilesFailed, result.FilesSkipped, result.TotalBytesCopied);
+			if(result.GlobalErrors?.Count > 0)
+			{
+				logger.LogWarning("Global errors:");
+				foreach(string e in result.GlobalErrors) logger.LogWarning(e);
+			}
 
-            return result.Status == BMTP3.Core2.BackupNew.Domain.Job.JobState.Completed ? 0 : 1;
-        }
-		catch (OperationCanceledException)
+			return result.Status == BMTP3.Core2.BackupNew.Domain.Job.JobState.Completed ? 0 : 1;
+		} catch(OperationCanceledException)
 		{
 			consolePrinter?.PrintStatus("Backup cancelled.");
 			logger.LogInformation("Backup cancelled.");
 			return 2;
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			// Friendly message for the user about failure
 			consolePrinter?.PrintError($"Unhandled error running backup: {ex.Message}");
 			// Log full exception to aid diagnostics in automated tests / CI
 			logger.LogError(ex, "Unhandled error running backup");
 			return 1;
-		}
-		finally
+		} finally
 		{
 			Console.CancelKeyPress -= cancelHandler!;
 		}
@@ -158,10 +153,10 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		ILogger<BackupConsoleCommand2>? logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand2>>()
 			?? ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger<BackupConsoleCommand2>();
 
-		if (plan == null) throw new ArgumentNullException(nameof(plan));
+		if(plan == null) throw new ArgumentNullException(nameof(plan));
 
 		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
-		if (engine == null)
+		if(engine == null)
 		{
 			BackupJobResult fail = new BackupJobResult { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };
 			fail.GlobalErrors.Add("Backup engine not configured in DI.");
@@ -173,13 +168,11 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		{
 			BackupJobResult result = await engine.RunAsync(plan, progress ?? new Progress<IBackupProgress>(p => { }), ct);
 			return result ?? new BackupJobResult { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };
-		}
-		catch (OperationCanceledException)
+		} catch(OperationCanceledException)
 		{
 			logger?.LogInformation("Backup cancelled (TryRunAsync)");
 			return new BackupJobResult { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Cancelled };
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			logger?.LogError(ex, "Unhandled exception during TryRunAsync");
 			BackupJobResult r = new BackupJobResult { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };

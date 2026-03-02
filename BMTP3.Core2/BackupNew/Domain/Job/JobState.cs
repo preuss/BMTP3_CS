@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core2.BackupNew.Domain.Job;
+﻿namespace BMTP3.Core2.BackupNew.Domain.Job;
 /// <summary>
 /// Represents the overall lifecycle state of a backup job.
 /// </summary>

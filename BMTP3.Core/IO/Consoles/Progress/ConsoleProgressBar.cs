@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Tomlyn;
-
-namespace BMTP3.Core.IO.Consoles.Progress {
+﻿namespace BMTP3.Core.IO.Consoles.Progress {
 	/// <summary>
 	/// See https://stackoverflow.com/questions/24918768/progress-bar-in-console-application
 	/// // Example:

@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.Intrinsics.X86;
+﻿using System.Buffers;
 using System.Runtime.Intrinsics;
-using System.Text;
-using System.Threading.Tasks;
-using System.Buffers;
+using System.Runtime.Intrinsics.X86;
 
 namespace BMTP3.Core.CompareFiles {
 	/// <summary>

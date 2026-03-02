@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace BMTP3.Core.CompareFiles {
+﻿namespace BMTP3.Core.CompareFiles {
 	public class ReadWholeFileAtOnceAndCompareUsingLinq : FileComparer {
 		public ReadWholeFileAtOnceAndCompareUsingLinq() : base() {
 		}

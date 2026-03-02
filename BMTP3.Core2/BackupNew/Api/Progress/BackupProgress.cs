@@ -1,5 +1,4 @@
 using BMTP3.Core2.BackupNew.Api.Enums;
-using System.Collections.Generic;
 
 namespace BMTP3.Core2.BackupNew.Api.Progress;
 
