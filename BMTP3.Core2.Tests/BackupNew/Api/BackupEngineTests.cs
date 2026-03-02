@@ -1,13 +1,19 @@
-using BMTP3.Core2.BackupNew.Api;
-using BMTP3.Core2.BackupNew.Api.Progress;
-using BMTP3.Core2.BackupNew.Api.Request;
-using BMTP3.Core2.BackupNew.Api.Request.Enums;
-using BMTP3.Core2.BackupNew.DependencyInjection;
-using BMTP3.Core2.BackupNew.Domain.Job;
-using BMTP3.Core2.BackupNew.Engine.Traversal;
+using System;
+using System.IO;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Xunit;
 using Xunit.Abstractions;
+using BMTP3.Core2.BackupNew.DependencyInjection;
+using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Request;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Domain.Job;
+using BMTP3.Core2.BackupNew.Engine.Traversal;
+using BMTP3.Core2.BackupNew.Api.Response;
 
 public class BackupEngineTests
 {
@@ -21,7 +27,7 @@ public class BackupEngineTests
 	[Fact(Timeout = 60_000)]
 	public async Task RunAsync_WithNoopScanner_CompletesSuccessfully()
 	{
-		var services = new ServiceCollection();
+		ServiceCollection services = new();
 
 		// Route logs into xUnit output so you can see them in Test Explorer
 		services.AddLogging(lb => lb.AddProvider(new XunitTestOutputLoggerProvider(_output)));
@@ -30,29 +36,30 @@ public class BackupEngineTests
 		services.AddSingleton<IBackupScanner, NoopBackupScanner>();
 		services.AddBMTP3Core2();
 
-		var sp = services.BuildServiceProvider();
-		var engine = sp.GetRequiredService<IBackupEngine>();
+		ServiceProvider sp = services.BuildServiceProvider();
+		IBackupEngine engine = sp.GetRequiredService<IBackupEngine>();
 
 		// Create a temporary output folder so JobValidator has a valid OutputPath
-		var tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N"));
+		string tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N"));
 		Directory.CreateDirectory(tempOutput);
 
-		var plan = new BackupPlan
+		BackupPlan plan = new()
 		{
 			Name = "unit-test-no-files",
 			SourceType = SourceType.FileSystem,
 			SourcePath = "C:\\nonexistent-path-for-test",
-			SourceId = string.Empty,
+			// SourceId is required by JobValidator; use root of the provided path as a valid identifier
+			SourceId = System.IO.Path.GetPathRoot("C:\\nonexistent-path-for-test") ?? "C:",
 			Recursive = true,
 			OutputPath = tempOutput
 		};
 
-		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(10));
-		var progress = new Progress<IBackupProgress>(p => { /* optional: inspect progress */ });
+		using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
+		Progress<IBackupProgress> progress = new(p => { /* optional: inspect progress */ });
 
 		try
 		{
-			var result = await engine.RunAsync(plan, progress, cts.Token);
+			BackupJobResult result = await engine.RunAsync(plan, progress, cts.Token);
 
 			Assert.NotNull(result);
 			Assert.Equal(JobState.Completed, result.Status);
@@ -92,7 +99,7 @@ internal sealed class XunitTestOutputLoggerProvider : ILoggerProvider
 			_category = category;
 		}
 
-		public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+		public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
 		public bool IsEnabled(LogLevel logLevel) => true;
 

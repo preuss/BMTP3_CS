@@ -2,12 +2,18 @@
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
+using BMTP3.Core2.BackupNew.Api.Response;
 using BMTP3.Core2.BackupNew.DependencyInjection;
 using BMTP3.Core2.BackupNew.Domain.Job;
 using BMTP3.Core2.BackupNew.Engine.Orchestration;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
 using Xunit.Abstractions;
 
 namespace BMTP3.Core2.Tests.BackupNew.Api;
@@ -21,7 +27,7 @@ public class BackupEngine_FileSystemIntegrationTests
 	[Trait("Category", "Integration")]
 	public async Task RunAsync_WithRealBackupScanner_ProcessesFiles()
 	{
-		var services = new ServiceCollection();
+		ServiceCollection services = new();
 
 		// Route logs into xUnit output (reuse your provider)
 		services.AddLogging(lb => lb.AddProvider(new XunitTestOutputLoggerProvider(_output)));
@@ -31,8 +37,8 @@ public class BackupEngine_FileSystemIntegrationTests
 		// Enable single-threaded debug mode for deterministic debugging
 		services.Configure<BackupEngineOptions>(o => o.DebugSingleThreaded = true);
 
-		var sp = services.BuildServiceProvider();
-		var engine = sp.GetRequiredService<IBackupEngine>();
+		ServiceProvider sp = services.BuildServiceProvider();
+		IBackupEngine engine = sp.GetRequiredService<IBackupEngine>();
 
 		// Use TestData folder copied to test output as source template
 		string dataRoot = Path.Combine(AppContext.BaseDirectory, "TestData");
@@ -40,35 +46,36 @@ public class BackupEngine_FileSystemIntegrationTests
 		Assert.True(Directory.Exists(dataRoot), $"TestData not found at {dataRoot}");
 
 		// Log alle filer for diagnostic
-		foreach(var f in Directory.EnumerateFiles(dataRoot, "*", SearchOption.AllDirectories))
+		foreach(string f in Directory.EnumerateFiles(dataRoot, "*", SearchOption.AllDirectories))
 		{
 			_output.WriteLine($"  {f}");
 		}
 
 		// Copy full TestData folder to a temporary source directory that the engine will scan
-		var tempSource = Path.Combine(Path.GetTempPath(), "bmtp3-src", Guid.NewGuid().ToString("N"));
+		string tempSource = Path.Combine(Path.GetTempPath(), "bmtp3-src", Guid.NewGuid().ToString("N"));
 		CopyDirectory(dataRoot, tempSource);
 
 		// Create temporary output dir required by JobValidator
-		var tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-out", Guid.NewGuid().ToString("N"));
+		string tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-out", Guid.NewGuid().ToString("N"));
 		Directory.CreateDirectory(tempOutput);
 
-		var plan = new BackupPlan
+		BackupPlan plan = new()
 		{
 			Name = "fs-integration",
 			SourceType = SourceType.FileSystem,
 			SourcePath = tempSource,    // <- point the engine at the copied TestData folder
-			SourceId = string.Empty,
+										// SourceId required by JobValidator; use root path of the tempSource
+			SourceId = System.IO.Path.GetPathRoot(tempSource) ?? tempSource,
 			Recursive = true,
 			OutputPath = tempOutput
 		};
 
-		using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20));
-		var progress = new Progress<IBackupProgress>(p => { /* optional inspect */ });
+		using CancellationTokenSource cts = new(TimeSpan.FromSeconds(20));
+		Progress<IBackupProgress> progress = new(p => { /* optional inspect */ });
 
 		try
 		{
-			var result = await engine.RunAsync(plan, progress, cts.Token);
+			BackupJobResult result = await engine.RunAsync(plan, progress, cts.Token);
 
 			Assert.NotNull(result);
 			Assert.Equal(JobState.Completed, result.Status);
@@ -84,14 +91,14 @@ public class BackupEngine_FileSystemIntegrationTests
 	private static void CopyDirectory(string sourceDir, string targetDir)
 	{
 		Directory.CreateDirectory(targetDir);
-		foreach(var file in Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
+		foreach(string file in Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
 		{
-			var dest = Path.Combine(targetDir, Path.GetFileName(file));
+			string dest = Path.Combine(targetDir, Path.GetFileName(file));
 			File.Copy(file, dest, overwrite: true);
 		}
-		foreach(var dir in Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
+		foreach(string dir in Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
 		{
-			var destSub = Path.Combine(targetDir, Path.GetFileName(dir));
+			string destSub = Path.Combine(targetDir, Path.GetFileName(dir));
 			CopyDirectory(dir, destSub);
 		}
 	}
