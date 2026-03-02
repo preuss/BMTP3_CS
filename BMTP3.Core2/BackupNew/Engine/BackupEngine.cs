@@ -1,27 +1,35 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.Api;
-using BMTP3.Core2.BackupNew.Api.Enums;
-using BMTP3.Core2.BackupNew.Api.Progress;
-using BMTP3.Core2.BackupNew.Api.Request;
-using BMTP3.Core2.BackupNew.Api.Response;
-using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Domain.Job;
-using BMTP3.Core2.BackupNew.Engine.Hashing;
-using BMTP3.Core2.BackupNew.Engine.Internal;
-using BMTP3.Core2.BackupNew.Engine.Orchestration;
-using BMTP3.Core2.BackupNew.Engine.Staging;
-using BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
-using BMTP3.Core2.BackupNew.Engine.Steps.MetadataExtractionStep;
-using BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
-using BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
-using BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
-using BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
+using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
-using BMTP3.Core2.BackupNew.Engine.Transfers;
-using BMTP3.Core2.BackupNew.Engine.Traversal;
 using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
+using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Response;
+using BMTP3.Core2.BackupNew.Api.Request;
+using BMTP3.Core2.BackupNew.Engine.Traversal;
+using BMTP3.Core2.BackupNew.Engine.Staging;
+using BMTP3.Core2.BackupNew.Engine.Hashing;
+using BMTP3.Core2.BackupNew.Engine.Transfers;
+using System.Threading.Channels;
+using MediaDevices;
+using BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
+using BMTP3.Core2.BackupNew.Engine.Orchestration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Threading.Channels;
+using BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.MetadataExtractionStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
+using BMTP3.Core2.BackupNew.Engine.Steps;
+using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Engine.Internal;
+using BMTP3.Core2.BackupNew.Engine.Models;
 
 namespace BMTP3.Core2.BackupNew.Engine;
 /// <summary>
@@ -98,14 +106,19 @@ public class BackupEngine : IBackupEngine
 			return result;
 		}
 
+		// reportingTask should be cancellable independently so we can stop it when the pipeline completes
+		using CancellationTokenSource reportingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 		Task reportingTask = Task.Run(async () =>
 		{
-			while(!ct.IsCancellationRequested)
+			try
 			{
-				progress.Report(tracker.GetSnapshot());
-				await Task.Delay(250, ct);
-			}
-		}, ct);
+				while(!reportingCts.Token.IsCancellationRequested)
+				{
+					progress.Report(tracker.GetSnapshot());
+					await Task.Delay(250, reportingCts.Token).ConfigureAwait(false);
+				}
+			} catch(OperationCanceledException) { }
+		}, reportingCts.Token);
 
 		// Configure Options
 		BackupEngineOptions opts = _options.Value;
@@ -212,16 +225,47 @@ public class BackupEngine : IBackupEngine
 
 		}, ct);
 
-		await Task.WhenAll(
-			producerTask,
-			bufferingTask,
-			metadataTask,
-			timestampTask,
-			hashTask,
-			transferTask,
-			sidecarTask,
-			completionTask
-		).ConfigureAwait(false);
+		try
+		{
+			await Task.WhenAll(
+				producerTask,
+				bufferingTask,
+				metadataTask,
+				timestampTask,
+				hashTask,
+				transferTask,
+				sidecarTask,
+				completionTask
+			).ConfigureAwait(false);
+		} catch(OperationCanceledException)
+		{
+			// cancellation requested - mark as cancelled below
+		} catch(Exception ex)
+		{
+			// Convert unexpected pipeline exceptions into a failed BackupJobResult
+			tracker.SetPhase(BackupPhase.Completed);
+
+			result.EndTime = DateTime.UtcNow;
+			result.Status = JobState.Failed;
+			result.GlobalErrors.Add($"Pipeline crashed: {ex.Message}");
+			result.GlobalErrors.Add(ex.ToString());
+
+			// Ensure reporting task is stopped and observed
+			try
+			{
+				reportingCts.Cancel();
+				await reportingTask.ConfigureAwait(false);
+			} catch { }
+
+			return result;
+		}
+
+		// Pipeline completed normally - stop the reporting task
+		try
+		{
+			reportingCts.Cancel();
+			await reportingTask.ConfigureAwait(false);
+		} catch { }
 
 		// Decide final status based on cancellation and per-item failures collected by the tracker.
 		// Pipeline stages convert exceptions into per-item failures (they do not throw),

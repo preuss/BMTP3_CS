@@ -1,6 +1,8 @@
-﻿using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
-using MediaDevices;
+﻿using MediaDevices;
+using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 using System.Runtime.Versioning;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Content;
 /// <summary>
@@ -56,7 +58,8 @@ public sealed class MediaFileContent : IContent
 		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileContent));
 		// The MediaDevices library's OpenRead() is blocking, so we wrap it in Task.Run.
 		// There's no native async API for MTP devices in MediaDevices currently.
-		return Task.Run(() => _mediaFileInfo.OpenRead(), ct);
+		// Ensure single-threaded access with the gatekeeper, and avoid Task.Run which doesn't protect device
+		return _gatekeeper.ExecuteAsync(() => Task.FromResult(_mediaFileInfo.OpenRead()), ct);
 	}
 
 	public void Dispose()

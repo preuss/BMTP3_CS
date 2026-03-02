@@ -1,9 +1,14 @@
+using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 using MediaDevices;
+using System;
+using System.Linq;
+using System.IO;
+using System.Threading;
 
 namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 
@@ -13,6 +18,13 @@ namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 /// </summary>
 public class BackupScanner : IBackupScanner
 {
+	private readonly IMtpGatekeeper? _gatekeeper;
+
+	public BackupScanner(IMtpGatekeeper? gatekeeper = null)
+	{
+		_gatekeeper = gatekeeper;
+	}
+
 	public async IAsyncEnumerable<IBackupItem> ScanAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
 	{
 		if(plan.SourceType == SourceType.FileSystem)
@@ -35,7 +47,7 @@ public class BackupScanner : IBackupScanner
 
 	private async IAsyncEnumerable<IBackupItem> ScanFileSystemAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
 	{
-		FileSystemScanner scanner = new();
+		var scanner = new FileSystemScanner();
 
 		string rootPath = plan.SourcePath;
 		if(!Path.IsPathRooted(rootPath) && !string.IsNullOrEmpty(plan.SourceId))
@@ -82,9 +94,16 @@ public class BackupScanner : IBackupScanner
 			throw new DirectoryNotFoundException($"Media device '{plan.SourceId}' not found. Available: {string.Join(", ", devices.Select(d => d.FriendlyName))}");
 		}
 
-		// You must provide an IMtpGatekeeper instance here.
-		// Replace 'YourGatekeeperInstance' with an actual IMtpGatekeeper implementation.
-		IMtpGatekeeper gatekeeper = GetGatekeeperForDevice(device); // <-- You must implement this method or provide the instance
+		// Use injected gatekeeper if available; otherwise fall back to the default MtpGatekeeper implementation.
+		IMtpGatekeeper gatekeeper;
+		if(_gatekeeper == null)
+		{
+			Console.WriteLine("Warning: No IMtpGatekeeper provided. Using default MtpGatekeeper implementation. Consider injecting an IMtpGatekeeper for better control and testability.");
+			gatekeeper = new MtpGatekeeper();
+		} else
+		{
+			gatekeeper = _gatekeeper;
+		}
 
 		device.Connect();
 		try
@@ -146,9 +165,5 @@ public class BackupScanner : IBackupScanner
 		return rel;
 	}
 
-	// Helper method stub (you must implement or inject this appropriately)
-	private IMtpGatekeeper GetGatekeeperForDevice(MediaDevice device)
-	{
-		throw new NotImplementedException("Provide an IMtpGatekeeper instance appropriate for the device.");
-	}
+	// No local GetGatekeeperForDevice helper needed when gatekeeper is injected via DI.
 }
