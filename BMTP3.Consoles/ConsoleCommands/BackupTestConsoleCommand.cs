@@ -13,7 +13,7 @@ public class BackupTestConsoleCommand : BaseConsoleCommand
 	private BackupOptionsModel BackupOptions { get; }
 	public required IServiceProvider ServiceProvider { get; init; }
 
-	public BackupTestConsoleCommand() : this("backupTest", "Perform backuptest", new GlobalOptionsModel(), new BackupOptionsModel())
+	public BackupTestConsoleCommand() : this("backupTest", "Perform test-backup", new GlobalOptionsModel(), new BackupOptionsModel())
 	{
 	}
 
