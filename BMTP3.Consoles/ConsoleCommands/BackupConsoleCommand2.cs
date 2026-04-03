@@ -187,7 +187,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
 		if(engine == null)
 		{
-			BackupJobResult fail = new BackupJobResult { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };
+			BackupJobResult fail = new() { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };
 			fail.GlobalErrors.Add("Backup engine not configured in DI.");
 			logger?.LogError("Backup engine not configured in DI.");
 			return fail;
@@ -196,15 +196,15 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		try
 		{
 			BackupJobResult result = await engine.RunAsync(plan, progress ?? new Progress<IBackupProgress>(p => { }), ct);
-			return result ?? new BackupJobResult { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };
+			return result ?? new() { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };
 		} catch(OperationCanceledException)
 		{
 			logger?.LogInformation("Backup cancelled (TryRunAsync)");
-			return new BackupJobResult { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Cancelled };
+			return new() { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Cancelled };
 		} catch(Exception ex)
 		{
 			logger?.LogError(ex, "Unhandled exception during TryRunAsync");
-			BackupJobResult r = new BackupJobResult { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };
+			BackupJobResult r = new() { JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed };
 			r.GlobalErrors.Add(ex.Message);
 			r.GlobalErrors.Add(ex.ToString());
 			return r;
