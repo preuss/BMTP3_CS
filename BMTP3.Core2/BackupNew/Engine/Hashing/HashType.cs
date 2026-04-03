@@ -1,4 +1,4 @@
-﻿namespace BMTP3.Core2.BackupNew.Engine.Hashing;
+namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 public enum HashType
 {

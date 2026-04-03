@@ -1,4 +1,5 @@
-﻿using Blake3;
+using Blake3;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.Engine.Hashing.Crypto;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;

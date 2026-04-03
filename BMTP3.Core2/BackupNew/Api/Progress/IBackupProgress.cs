@@ -61,5 +61,5 @@ public interface IBackupProgress
 	/// <summary>
 	/// A read-only list of files currently being processed (active in the pipeline).
 	/// </summary>
-	List<FileProgress> ActiveFiles { get; }
+	IReadOnlyList<FileProgress> ActiveFiles { get; }
 }

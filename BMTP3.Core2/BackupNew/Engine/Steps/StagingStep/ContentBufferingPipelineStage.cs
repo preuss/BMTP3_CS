@@ -22,9 +22,6 @@ public class ContentBufferingPipelineStage : AbstractPipelineStage<BackupPlan>
 
 	protected override async Task ProcessItemAsync(IBackupItem item, CancellationToken ct)
 	{
-		// Ensure the step has the pipeline context before executing.
-		_step.Context = Context;
-
 		UpdatePhase(item, _step.Phase);
 		IProgress<ulong> progress = CreateProgressReporter(item);
 		await _step.ExecuteAsync(item, progress, ct).ConfigureAwait(false);

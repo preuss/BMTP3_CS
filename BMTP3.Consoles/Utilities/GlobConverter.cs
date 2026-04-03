@@ -3,8 +3,9 @@
 namespace BMTP3.Consoles.Utilities;
 public static class GlobConverter
 {
-	// Regex pattern to match either forward slash (/) or backslash (\) as a path separator.
-	private const string SeparatorRegex = @"[/\\]";
+    // Regex pattern to match one or more path separators (forward slash or backslash).
+    // Using + here makes the regex tolerant to doubled separators like "\\\\" in some inputs.
+    private const string SeparatorRegex = @"[/\\]+";
 
 	/// <summary>
 	/// Converts a Glob pattern into a Regex pattern, supporting Standard Globs, 
@@ -12,6 +13,32 @@ public static class GlobConverter
 	/// </summary>
 	public static string GlobToRegex(string globPattern)
 	{
+        // Special-case: pattern starting with extglob alternation like @(a|b)rest
+        // Convert into a leading group that is then followed by the remainder converted normally.
+        if (globPattern.StartsWith("@(") && globPattern.Contains(")"))
+        {
+            int end = globPattern.IndexOf(')');
+            if (end > 2)
+            {
+                string inner = globPattern.Substring(2, end - 2);
+                string remainder = globPattern.Substring(end + 1);
+                // remainder may contain glob tokens; convert it without anchors and append.
+                string remRegex = ConvertCoreGlobToRegex(remainder, ignoreAnchors: true);
+                return $"^({inner}){remRegex}$";
+            }
+        }
+
+        // Special-case: leading recursive wildcard **/ should allow zero or more directories
+        // including the case where there is no separator (so file at root matches).
+        if ((globPattern.StartsWith("**/") || globPattern.StartsWith("**\\")))
+        {
+            string remainder = globPattern.Substring(3);
+            string remRegex = ConvertCoreGlobToRegex(remainder, ignoreAnchors: true);
+            // Use an explicit alternation for separators to avoid character-class escaping issues.
+            // (?:.*(?:/|\\))? allows zero or more directory segments and also matches the root file.
+            return "^(?:.*(?:/|\\\\))?" + remRegex + "$";
+        }
+
 		// 1. Handle Global Negation: !(*.jpg) (Priority for POSIX syntax)
 		if(globPattern.StartsWith("!(") && globPattern.EndsWith(")"))
 		{
@@ -53,8 +80,9 @@ public static class GlobConverter
 	/// </summary>
 	private static string ConvertCoreGlobToRegex(string globPattern, bool ignoreAnchors)
 	{
-		// Define the Regex pattern for path separators (forward or backslash).
-		const string SeparatorRegex = @"[/\\]";
+        // Define the Regex pattern for path separators (forward or backslash).
+        // Accept one or more separators so inputs with doubled backslashes also match.
+        const string SeparatorRegex = @"[/\\]+";
 
 		// 1. Escape all Regex special characters first.
 		string regexPattern = Regex.Escape(globPattern);
@@ -68,18 +96,20 @@ public static class GlobConverter
 		regexPattern = Regex.Replace(regexPattern, @"\[!(.+?)\]", @"[^$1]");
 
 		// --- Extglob Operator Conversion (Including *, @, +, ?) ---
+		// NOTE: Regex.Escape above has already escaped *, +, ?, @, (, ) to \*, \+, \?, \@, \(, \)
+		// so the patterns below must match the escaped forms.
 
-		// *(a|b) -> (a|b)*
-		regexPattern = Regex.Replace(regexPattern, @"\*\((.+?)\)", "($1)*");
+		// *(a|b) -> (a|b)*   [escaped form: \*\(...\)]
+		regexPattern = Regex.Replace(regexPattern, @"\\\*\\\((.+?)\\\)", "($1)*");
 
-		// @(a|b) -> (a|b)
-		regexPattern = Regex.Replace(regexPattern, @"\@\((.+?)\)", "($1)");
+		// @(a|b) -> (a|b)    [escaped form: \@\(...\)]
+		regexPattern = Regex.Replace(regexPattern, @"\\\@\\\((.+?)\\\)", "($1)");
 
-		// +(a|b) -> (a|b)+
-		regexPattern = Regex.Replace(regexPattern, @"\+\((.+?)\)", "($1)+");
+		// +(a|b) -> (a|b)+   [escaped form: \+\(...\)]
+		regexPattern = Regex.Replace(regexPattern, @"\\\+\\\((.+?)\\\)", "($1)+");
 
-		// ?(a|b) -> (a|b)?
-		regexPattern = Regex.Replace(regexPattern, @"\?\((.+?)\)", "($1)?");
+		// ?(a|b) -> (a|b)?   [escaped form: \?\(...\)]
+		regexPattern = Regex.Replace(regexPattern, @"\\\?\\\((.+?)\\\)", "($1)?");
 
 		// --- Separator and Recursive Wildcard Conversion ---
 

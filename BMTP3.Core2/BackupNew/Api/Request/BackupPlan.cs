@@ -1,5 +1,4 @@
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
-using BMTP3.Core2.BackupNew.Engine.Hashing;
 
 namespace BMTP3.Core2.BackupNew.Api.Request;
 
@@ -122,11 +121,11 @@ public class BackupPlan
 	// 7. METADATA & LOGGING
 	// --------------------------------------------------
 
-	/// <summary>
-	/// Format for per-file metadata sidecars.
-	/// Default is Ini for human-readable metadata.
-	/// </summary>
-	public SidecarFormat SidecarFormat { get; set; } = SidecarFormat.Ini; // UPDATED DEFAULT
+    /// <summary>
+    /// Format for per-file metadata sidecars.
+    /// Default is Ini for human-readable metadata.
+    /// </summary>
+    public SidecarFormat SidecarFormat { get; set; } = SidecarFormat.Ini; // UPDATED DEFAULT
 
 	/// <summary>
 	/// Format for centralized backup index/catalog.
@@ -148,10 +147,49 @@ public class BackupPlan
 	// 8. EXECUTION CONTROL
 	// --------------------------------------------------
 
+    /// <summary>
+    /// If true, calculates paths and decisions but performs no I/O (Write/Delete).
+    /// </summary>
+    public bool DryRun { get; set; } = false;
+
+    // --------------------------------------------------
+    // 9. VERIFICATION POLICIES
+    // --------------------------------------------------
+
+    /// <summary>
+    /// Number of attempts to perform post-write verification before giving up.
+    /// </summary>
+	public int VerificationRetryCount { get; set; } = 1;
+
+    /// <summary>
+    /// Delay in milliseconds between verification attempts.
+    /// </summary>
+    public int VerificationRetryDelayMs { get; set; } = 250;
+
+    /// <summary>
+    /// If true, delete destination file when verification ultimately fails.
+    /// </summary>
+    public bool VerificationDeleteOnFailure { get; set; } = false;
+
+    /// <summary>
+    /// Optional timeout in milliseconds for per-operation verification. 0 == no timeout.
+    /// </summary>
+	public int VerificationTimeoutMs { get; set; } = 0;
+
 	/// <summary>
-	/// If true, calculates paths and decisions but performs no I/O (Write/Delete).
+	/// Normalize and validate configuration values in the plan.
+	/// This will clamp verification-related fields to sensible defaults.
+	/// Call this during plan bootstrap to ensure downstream code can rely on values.
 	/// </summary>
-	public bool DryRun { get; set; } = false;
+	public void Normalize()
+	{
+		if(VerificationRetryCount <= 0) VerificationRetryCount = 1;
+		if(VerificationRetryDelayMs < 0) VerificationRetryDelayMs = 0;
+		if(VerificationTimeoutMs < 0) VerificationTimeoutMs = 0;
+		// Ensure PostWriteVerification has a sensible default
+		if(!Enum.IsDefined(typeof(PostWriteVerificationType), PostWriteVerification))
+			PostWriteVerification = PostWriteVerificationType.Hash;
+	}
 
 	/// <summary>
 	/// Artificial delay in ms between items (for throttling).

@@ -1,4 +1,4 @@
-﻿namespace BMTP3.Core2.BackupNew.Infrastructure.Traversal;
+﻿namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 
 /// <summary>
 /// Defines a generic contract for scanning a source and producing raw entries.

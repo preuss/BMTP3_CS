@@ -1,7 +1,6 @@
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Domain.Item;
-using BMTP3.Core2.BackupNew.Engine.Hashing;
 using System.Text.RegularExpressions;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
@@ -118,8 +117,10 @@ public class PathGenerator : IPathGenerator
 				// Count is usually handled by CollisionResolver, but if requested in path, return placeholder or 1.
 				// Since this is generation *before* collision check, this might be ambiguous.
 				// However, spec lists it. Returning "1" as default for initial generation.
-				// TODO: Should throw exception if no count, or count should start as 0 for first without count, and the first collision should be 1 ???
-				return item.Metadata.Get<string>(MetadataKey.CollisionIndex) ?? "1";
+                // If no collision index has been set yet, return "1" as a conservative default.
+                // This ensures templates containing ${count} produce a stable output before collision resolution.
+                // CollisionResolver will update the actual final name when resolving.
+                return item.Metadata.Get<string>(MetadataKey.CollisionIndex) ?? "1";
 
 			// --- Hashes ---
 			case "hashShort": return GetHash(item, 6);

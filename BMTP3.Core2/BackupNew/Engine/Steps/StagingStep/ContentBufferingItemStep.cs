@@ -13,20 +13,19 @@ namespace BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
 public class ContentBufferingItemStep : IBackupItemStep<BackupPlan, bool>
 {
 	private readonly IStagingDownloader _downloader;
-	private readonly IProgress<BackupProgress> _progress;
+	private readonly IProgress<BackupProgress>? _progress;
 	private readonly string _stagingRoot;
 
 	public string Name => "Content Buffering";
 	public FilePhase Phase => FilePhase.Staging;
 
-	// Allow pipeline stages in the same assembly to set the context before execution.
-	// Interface requires non-nullable Context; use null-forgiving initializer to satisfy the compiler.
-	public BackupPlan Context { get; internal set; } = null!;
+	public BackupPlan Context { get; }
 
-	public ContentBufferingItemStep(IStagingDownloader downloader, IProgress<BackupProgress> progress)
+	public ContentBufferingItemStep(IStagingDownloader downloader, IProgress<BackupProgress>? progress, BackupPlan context)
 	{
 		_downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
 		_progress = progress; // Can be null, will be handled by the downloader
+		Context = context ?? throw new ArgumentNullException(nameof(context));
 							  // Generate a unique staging root for each instance of the step
 		_stagingRoot = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "bmtp3_staging", Guid.NewGuid().ToString("n"));
 	}
@@ -39,11 +38,6 @@ public class ContentBufferingItemStep : IBackupItemStep<BackupPlan, bool>
 	/// <returns>True if buffering was successful, otherwise false (or throws exception).</returns>
 	public async Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
-		if(Context == null)
-		{
-			throw new InvalidOperationException("Context must be set before executing the step.");
-		}
-
 		await _downloader.DownloadToStagingAsync(item, _stagingRoot, _progress, ct);
 		return true;
 	}

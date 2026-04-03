@@ -4,8 +4,10 @@ using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
+using BMTP3.Core2.BackupNew.Utilities;
 using MediaDevices;
 using System;
+using Microsoft.Extensions.Logging;
 using System.Linq;
 using System.IO;
 using System.Threading;
@@ -13,49 +15,103 @@ using System.Threading;
 namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 
 /// <summary>
-/// Standard implementation of IBackupScanner.
-/// Supports both FileSystem and MTP devices based on the BackupPlan.
+/// Standard implementation of <see cref="IBackupScanner"/>.
+/// Supports both FileSystem and MTP device sources.
+///
+/// ## MTP device lifecycle
+///
+/// For MTP sources, device lifecycle (Connect/Disconnect) is controlled by
+/// <see cref="BackupEngine"/> via the <see cref="IMtpCapableScanner"/> interface:
+///
+/// 1. <see cref="BackupEngine"/> calls <see cref="OpenSession"/> to connect the device
+///    and obtain an <see cref="IMtpDeviceSession"/>.
+/// 2. <see cref="ScanAsync"/> uses that already-connected device instance (set by
+///    <see cref="OpenSession"/>). A fresh <see cref="ITraversalScanner{MediaFileInfo}"/>
+///    is created via <see cref="IMediaDeviceScannerFactory"/> bound to that device, so
+///    the scanner and BackupScanner always share the exact same object.
+/// 3. <see cref="BackupEngine"/> disposes the session only after
+///    <c>ContentBufferingPipelineStage</c> completes — guaranteeing the device stays
+///    connected for the full duration that <see cref="MediaFileContent.OpenRead"/> may
+///    be called.
 /// </summary>
-public class BackupScanner : IBackupScanner
+public class BackupScanner : IBackupScanner, IMtpCapableScanner
 {
-	private readonly IMtpGatekeeper? _gatekeeper;
+	private readonly ITraversalScanner<FileInfo> _fileSystemScanner;
+	private readonly IMediaDeviceScannerFactory _mediaDeviceScannerFactory;
+	private readonly IMtpGatekeeper _gatekeeper;
+	private readonly ILogger<BackupScanner>? _logger;
 
-	public BackupScanner(IMtpGatekeeper? gatekeeper = null)
+	// Set by OpenSession() before ScanAsync is called for MTP plans.
+	// Thread-safety: set once before the scan starts, read during scan.
+	private MediaDevice? _activeDevice;
+
+	public BackupScanner(
+		ITraversalScanner<FileInfo> fileSystemScanner,
+		IMediaDeviceScannerFactory mediaDeviceScannerFactory,
+		IMtpGatekeeper gatekeeper,
+		ILogger<BackupScanner>? logger = null)
 	{
-		_gatekeeper = gatekeeper;
+		_fileSystemScanner = fileSystemScanner ?? throw new ArgumentNullException(nameof(fileSystemScanner));
+		_mediaDeviceScannerFactory = mediaDeviceScannerFactory ?? throw new ArgumentNullException(nameof(mediaDeviceScannerFactory));
+		_gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
+		_logger = logger;
 	}
 
+	/// <inheritdoc />
+	/// <remarks>
+	/// For MTP plans, <see cref="OpenSession"/> must be called before <see cref="ScanAsync"/>
+	/// so that the device is already connected when scanning begins.
+	/// </remarks>
 	public async IAsyncEnumerable<IBackupItem> ScanAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
 	{
 		if(plan.SourceType == SourceType.FileSystem)
 		{
 			await foreach(IBackupItem item in ScanFileSystemAsync(plan, ct))
-			{
 				yield return item;
-			}
-		} else if(plan.SourceType == SourceType.MediaDevice)
+		}
+		else if(plan.SourceType == SourceType.MediaDevice)
 		{
 			await foreach(IBackupItem item in ScanMediaDeviceAsync(plan, ct))
-			{
 				yield return item;
-			}
-		} else
+		}
+		else
 		{
 			throw new NotSupportedException($"SourceType '{plan.SourceType}' is not supported.");
 		}
 	}
 
-	private async IAsyncEnumerable<IBackupItem> ScanFileSystemAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+	/// <inheritdoc />
+	public IMtpDeviceSession OpenSession(BackupPlan plan)
 	{
-		FileSystemScanner scanner = new();
+		ArgumentNullException.ThrowIfNull(plan);
 
-		string rootPath = plan.SourcePath;
-		if(!Path.IsPathRooted(rootPath) && !string.IsNullOrEmpty(plan.SourceId))
+		IEnumerable<MediaDevice> devices = MediaDevice.GetDevices();
+		MediaDevice? device = devices.FirstOrDefault(d =>
+			d.FriendlyName.Equals(plan.SourceId, StringComparison.OrdinalIgnoreCase));
+
+		if(device == null)
 		{
-			rootPath = Path.Combine(plan.SourceId, rootPath);
+			throw new DirectoryNotFoundException(
+				$"Media device '{plan.SourceId}' not found. " +
+				$"Available: {string.Join(", ", devices.Select(d => d.FriendlyName))}");
 		}
 
-		await foreach(FileInfo fileInfo in scanner.ScanAsync(rootPath, plan.Recursive, null, ct))
+		device.Connect();
+		_logger?.LogInformation("Connected to MTP device '{DeviceName}' (Id={DeviceId}).", device.FriendlyName, device.DeviceId);
+
+		// Store the connected device so ScanAsync can use it.
+		_activeDevice = device;
+
+		return new MtpDeviceSession(device, _logger);
+	}
+
+	private async IAsyncEnumerable<IBackupItem> ScanFileSystemAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+	{
+		string rootPath = plan.SourcePath;
+		if(!Path.IsPathRooted(rootPath) && !string.IsNullOrEmpty(plan.SourceId))
+			rootPath = Path.Combine(plan.SourceId, rootPath);
+
+		await foreach(FileInfo fileInfo in _fileSystemScanner.ScanAsync(rootPath, plan.Recursive, null, ct))
 		{
 			if(!IsIncluded(fileInfo.FullName, plan)) continue;
 
@@ -65,14 +121,13 @@ public class BackupScanner : IBackupScanner
 			FileContent content = new(fileInfo);
 			BackupItem item = BackupItem.Create(content, fileInfo.Name, relativePath);
 
-			item.Metadata.Set(MetadataKey.SourceId, fileInfo.FullName); // Using full path as SourceId for file system
+			item.Metadata.Set(MetadataKey.SourceId, fileInfo.FullName);
 			item.Metadata.Set(MetadataKey.SourceFullPath, fileInfo.FullName);
 			item.Metadata.Set(MetadataKey.SourceRelativePath, relativePath);
 			item.Metadata.Set(MetadataKey.SourceFileName, fileInfo.Name);
-			item.Metadata.Set(MetadataKey.Length, fileInfo.Length);
+			item.Metadata.Set(MetadataKey.Length, (ulong)fileInfo.Length);
 
 			item.Metadata.Set(MetadataKey.DeviceName, Environment.MachineName);
-			// Use file:// URI for device file url "file://server/share/file.jpg" or "file:///C:/folder/file.jpg" for local to make it explicit and portable
 			item.Metadata.Set(MetadataKey.DeviceFileUrl, new Uri(fileInfo.FullName).AbsoluteUri);
 			item.Metadata.Set(MetadataKey.DeviceUniqueId, Environment.MachineName);
 
@@ -86,84 +141,60 @@ public class BackupScanner : IBackupScanner
 
 	private async IAsyncEnumerable<IBackupItem> ScanMediaDeviceAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
 	{
-		IEnumerable<MediaDevice> devices = MediaDevice.GetDevices();
-		MediaDevice? device = devices.FirstOrDefault(d => d.FriendlyName.Equals(plan.SourceId, StringComparison.OrdinalIgnoreCase));
+		MediaDevice device = _activeDevice
+			?? throw new InvalidOperationException(
+				"OpenSession() must be called before ScanAsync() for MTP sources. " +
+				"BackupEngine is responsible for calling OpenSession and managing the device lifetime.");
 
-		if(device == null)
+		// Create a scanner bound to THIS connected device instance.
+		ITraversalScanner<MediaFileInfo> scanner = _mediaDeviceScannerFactory.Create(device);
+
+		string rootPath = plan.SourcePath;
+
+		await foreach(MediaFileInfo mediaFileInfo in scanner.ScanAsync(rootPath, plan.Recursive, null, ct))
 		{
-			throw new DirectoryNotFoundException($"Media device '{plan.SourceId}' not found. Available: {string.Join(", ", devices.Select(d => d.FriendlyName))}");
-		}
+			if(!IsIncluded(mediaFileInfo.FullName, plan)) continue;
 
-		// Use injected gatekeeper if available; otherwise fall back to the default MtpGatekeeper implementation.
-		IMtpGatekeeper gatekeeper;
-		if(_gatekeeper == null)
-		{
-			Console.WriteLine("Warning: No IMtpGatekeeper provided. Using default MtpGatekeeper implementation. Consider injecting an IMtpGatekeeper for better control and testability.");
-			gatekeeper = new MtpGatekeeper();
-		} else
-		{
-			gatekeeper = _gatekeeper;
-		}
+			string dirName = Path.GetDirectoryName(mediaFileInfo.FullName) ?? rootPath;
+			string relativePath = GetRelativePath(rootPath, dirName);
 
-		device.Connect();
-		try
-		{
-			MediaDeviceScanner scanner = new(device, gatekeeper);
-			string rootPath = plan.SourcePath;
+			// Device stays connected until BackupEngine disposes the IMtpDeviceSession,
+			// which happens only after ContentBufferingPipelineStage has finished.
+			MediaFileContent content = new(mediaFileInfo, _gatekeeper);
+			BackupItem item = BackupItem.Create(content, mediaFileInfo.Name, relativePath);
 
-			await foreach(MediaFileInfo mediaFileInfo in scanner.ScanAsync(rootPath, plan.Recursive, null, ct))
-			{
-				if(!IsIncluded(mediaFileInfo.FullName, plan)) continue;
+			item.Metadata.Set(MetadataKey.SourceId, mediaFileInfo.PersistentUniqueId);
+			item.Metadata.Set(MetadataKey.SourceFullPath, mediaFileInfo.FullName);
+			item.Metadata.Set(MetadataKey.SourceRelativePath, relativePath);
+			item.Metadata.Set(MetadataKey.SourceFileName, mediaFileInfo.Name);
+			item.Metadata.Set(MetadataKey.Length, content.Length);
 
-				string dirName = Path.GetDirectoryName(mediaFileInfo.FullName) ?? rootPath;
-				string relativePath = GetRelativePath(rootPath, dirName);
+			item.Metadata.Set(MetadataKey.DeviceName, device.FriendlyName);
+			string mtpPath = mediaFileInfo.FullName.TrimStart('\\', '/').Replace('\\', '/');
+			IEnumerable<string> segments = mtpPath.Split('/', StringSplitOptions.RemoveEmptyEntries)
+				.Select(s => Uri.EscapeDataString(s));
+			string mtpUrl = $"mtp://{Uri.EscapeDataString(device.DeviceId)}/{string.Join('/', segments)}";
+			item.Metadata.Set(MetadataKey.DeviceFileUrl, mtpUrl);
+			item.Metadata.Set(MetadataKey.DeviceUniqueId, device.DeviceId);
 
-				MediaFileContent content = new(mediaFileInfo, gatekeeper);
-				BackupItem item = BackupItem.Create(content, mediaFileInfo.Name, relativePath);
+			if(mediaFileInfo.DateAuthored.HasValue)
+				item.Metadata.Set(MetadataKey.RawMtpAuthoredDate, mediaFileInfo.DateAuthored.Value);
 
-				item.Metadata.Set(MetadataKey.SourceId, mediaFileInfo.PersistentUniqueId);
-				item.Metadata.Set(MetadataKey.SourceFullPath, mediaFileInfo.FullName);
-				item.Metadata.Set(MetadataKey.SourceRelativePath, relativePath);
-				item.Metadata.Set(MetadataKey.SourceFileName, mediaFileInfo.Name);
-				item.Metadata.Set(MetadataKey.Length, content.Length);
+			item.Metadata.AuthoredDateTime = mediaFileInfo.DateAuthored;
+			item.Metadata.CreatedDateTime = mediaFileInfo.CreationTime;
+			item.Metadata.ModifiedDateTime = mediaFileInfo.LastWriteTime;
 
-				item.Metadata.Set(MetadataKey.DeviceName, device.FriendlyName);
-				// Normalize media device path to a scheme-based URI (mtp://deviceId/escaped-path)
-				string mtpPath = mediaFileInfo.FullName.TrimStart('\\', '/').Replace('\\', '/');
-				IEnumerable<string> segments = mtpPath.Split('/', StringSplitOptions.RemoveEmptyEntries).Select(s => Uri.EscapeDataString(s));
-				string mtpUrl = $"mtp://{Uri.EscapeDataString(device.DeviceId)}/{string.Join('/', segments)}";
-				item.Metadata.Set(MetadataKey.DeviceFileUrl, mtpUrl);
-				item.Metadata.Set(MetadataKey.DeviceUniqueId, device.DeviceId);
-
-				if(mediaFileInfo.DateAuthored.HasValue)
-				{
-					item.Metadata.Set(MetadataKey.RawMtpAuthoredDate, mediaFileInfo.DateAuthored.Value);
-				}
-				item.Metadata.AuthoredDateTime = mediaFileInfo.DateAuthored;
-				item.Metadata.CreatedDateTime = mediaFileInfo.CreationTime;
-				item.Metadata.ModifiedDateTime = mediaFileInfo.LastWriteTime;
-
-				yield return item;
-			}
-		} finally
-		{
-			device.Disconnect();
+			yield return item;
 		}
 	}
 
-	private bool IsIncluded(string fullPath, BackupPlan plan)
-	{
-		return true;
-	}
+	private static bool IsIncluded(string fullPath, BackupPlan plan) =>
+		GlobMatcher.IsIncluded(fullPath, plan.IncludePatterns, plan.ExcludePatterns);
 
 	private string GetRelativePath(string root, string? fullDirectory)
 	{
 		if(string.IsNullOrEmpty(fullDirectory)) return "";
 		if(!fullDirectory.StartsWith(root, StringComparison.OrdinalIgnoreCase)) return fullDirectory;
-
-		string rel = fullDirectory.Substring(root.Length).TrimStart('\\', '/');
-		return rel;
+		return fullDirectory.Substring(root.Length).TrimStart('\\', '/');
 	}
-
-	// No local GetGatekeeperForDevice helper needed when gatekeeper is injected via DI.
 }

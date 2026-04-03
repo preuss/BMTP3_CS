@@ -1,4 +1,5 @@
-﻿using BMTP3.Consoles.Services;
+﻿using BMTP3.Consoles.ParserElements;
+using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
@@ -50,20 +51,48 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 			?? ServiceProvider.GetService<ILoggerFactory>()?.CreateLogger<BackupConsoleCommand2>()
 			?? NullLogger<BackupConsoleCommand2>.Instance;
 
+		// Determine source type first so SourcePath default can be chosen correctly.
+		bool explicitDeviceProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDevice);
+		bool explicitSourceDirProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDirectory);
+		bool isMtp = explicitDeviceProvided && !explicitSourceDirProvided;
+
+		// For MTP: default SourcePath to device root "\\" when --source-directory is omitted.
+		// For FileSystem: keep "." as a fallback (cwd).
+		string defaultSourcePath = isMtp ? "\\" : ".";
+
 		// Build BackupPlan from CLI options
 		BackupPlan plan = new BackupPlan
 		{
 			Name = BackupOptions.Config?.Name ?? "console-backup",
-			SourcePath = BackupOptions.SourceDirectory ?? ".",
+			SourcePath = BackupOptions.SourceDirectory ?? defaultSourcePath,
 			OutputPath = BackupOptions.OutputDirectory?.FullName ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "BMTP3_Backups"),
-			Recursive = BackupOptions.Recursive
+			Recursive = BackupOptions.Recursive,
+			DryRun = BackupOptions.Simulate,
+			IncludePatterns = BackupOptions.IncludePatterns,
+			ExcludePatterns = BackupOptions.ExcludePatterns,
+			OutputStrategy = (OutputStructureStrategy)BackupOptions.OutputStrategy,
+			CollisionResolution = (CollisionResolutionType)BackupOptions.CollisionResolutionType,
+			ComparisonType = (CollisionComparisonType)BackupOptions.CollisionComparison,
+			RenameStrategy = (RenameStrategy)BackupOptions.RenameStrategy,
+			SidecarFormat = (SidecarFormat)BackupOptions.SidecarFormat,
+			BackupIndexType = (BackupIndexType)BackupOptions.BackupIndexType,
+			DelayMs = BackupOptions.Delay,
+			CustomOutputPathPattern = BackupOptions.CustomOutputFilePath,
+			CustomCollisionPathPattern = BackupOptions.CustomCollisionOutputFilePath,
 		};
 
-		// Determine source type and source id: prefer explicit device when provided and no source-directory
-		bool explicitDeviceProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDevice);
-		bool explicitSourceDirProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDirectory);
-		plan.SourceType = (explicitDeviceProvided && !explicitSourceDirProvided) ? SourceType.MediaDevice : SourceType.FileSystem;
+		plan.SourceType = isMtp ? SourceType.MediaDevice : SourceType.FileSystem;
 		plan.SourceId = explicitDeviceProvided ? BackupOptions.SourceDevice! : Path.GetPathRoot(plan.SourcePath) ?? string.Empty;
+
+		/*
+		 // TODO: This is in the middle of refactor
+		// Compute SourceId reliably (use full path for relative inputs)
+		plan.SourceId = explicitDeviceProvided ? BackupOptions.SourceDevice! : Path.GetPathRoot(Path.GetFullPath(plan.SourcePath ?? ".")) ?? string.Empty;
+
+		// Normalize plan (clamp defaults, etc.)
+		plan.Normalize();
+		*/
+
 
 		// Friendly user-facing message
 		consolePrinter?.PrintStatus($"Starting backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' OutputPath='{plan.OutputPath}'");

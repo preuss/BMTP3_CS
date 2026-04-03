@@ -1,3 +1,4 @@
+using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Content;
@@ -51,6 +52,6 @@ public class StagingDownloader : IStagingDownloader
 		// 4. Update metadata to reflect staging
 		item.Metadata.Set(MetadataKey.LocalTempPath, stagingPath);
 
-		progress?.Report(new BackupProgress { Phase = BackupPhase.Transferring, ActiveFiles = new() });
+		progress?.Report(new BackupProgress { Phase = BackupPhase.Transferring, ActiveFiles = new List<FileProgress>() });
 	}
 }

@@ -1,4 +1,6 @@
 using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
+using BMTP3.Core2.BackupNew.Domain.Repositories;
 using BMTP3.Core2.BackupNew.Engine;
 using BMTP3.Core2.BackupNew.Engine.Hashing;
 using BMTP3.Core2.BackupNew.Engine.Orchestration;
@@ -9,6 +11,7 @@ using BMTP3.Core2.BackupNew.Engine.Transfers;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
 using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
+using MediaDevices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -36,12 +39,26 @@ public static class ServiceCollectionExtensions
 
 		// Engine defaults (use TryAdd so callers can provide replacements via preConfigure)
 		services.TryAddSingleton<IMtpGatekeeper, MtpGatekeeper>();
+		services.TryAddSingleton<IMediaDeviceScannerFactory, MediaDeviceScannerFactory>();
 
-		// High-level scanner default (safe no-op). Callers can override with BackupScanner.
-		services.TryAddSingleton<IBackupScanner, NoopBackupScanner>();
+		// Traversal scanner defaults: FileSystemScanner for local disk.
+		// MediaDeviceScanner cannot be registered here because it requires a MediaDevice instance
+		// at construction time (device-specific dependency). Callers that need MTP scanning must
+		// register ITraversalScanner<MediaFileInfo> themselves, or BackupScanner will fall back
+		// to throwing NotSupportedException for MediaDevice source type.
+		services.TryAddSingleton<ITraversalScanner<FileInfo>, FileSystemScanner>();
+		// NoopMediaDeviceScanner is the default fallback. Callers that need real MTP scanning must
+		// register a MediaDeviceScanner bound to a specific device via preConfigure before calling AddBMTP3Core2.
+		services.TryAddSingleton<ITraversalScanner<MediaFileInfo>, NoopMediaDeviceScanner>();
 
-		services.TryAddTransient<IStagingDownloader, StagingDownloader>();
-		services.TryAddTransient<IHashGenerator, NoopHashGenerator>();
+		// High-level scanner default. Uses the real BackupScanner which supports both FileSystem and MTP.
+		services.TryAddSingleton<IBackupScanner, BackupScanner>();
+
+ 		services.TryAddTransient<IStagingDownloader, StagingDownloader>();
+ 		// Default to a real hash generator for integration runs. The NoopHashGenerator
+ 		// remains in the codebase as a test/placeholder, but the default should
+ 		// compute real hashes so collision resolution and verification work.
+ 		services.TryAddTransient<IHashGenerator, StreamHashGenerator>();
 
 		services.TryAddTransient<IFileTransfer, LocalFileTransfer>();
 		services.TryAddSingleton<IBackupRepository, FileBackupRepository>();
@@ -50,8 +67,22 @@ public static class ServiceCollectionExtensions
 		services.TryAddTransient<IPathGenerator, PathGenerator>();
 		services.TryAddTransient<ICollisionResolver, CollisionResolver>();
 		services.TryAddTransient<IMetadataReader, MetadataReader>();
+		services.TryAddTransient<ITimestampWaterfall, DefaultTimestampWaterfall>();
+		// Destination inspector (provides cached destination snapshot & hashing helpers)
+		services.TryAddSingleton<IDestinationInspector, DestinationInspector>();
 		services.TryAddTransient<IItemHasher, ItemHasher>();
-		services.TryAddTransient<ISidecarGenerator, JsonSidecarGenerator>();
+        services.TryAddTransient<ISidecarGenerator, JsonSidecarGenerator>();
+        services.TryAddTransient<JsonSidecarGenerator>();
+        services.TryAddTransient<IniSidecarGenerator>();
+        services.TryAddSingleton<ISidecarGeneratorFactory>(sp =>
+        {
+            var generators = new Dictionary<SidecarFormat, ISidecarGenerator>
+            {
+                [SidecarFormat.Json] = sp.GetRequiredService<JsonSidecarGenerator>(),
+                [SidecarFormat.Ini]  = sp.GetRequiredService<IniSidecarGenerator>()
+            };
+            return new SidecarGeneratorFactory(generators);
+        });
 
 		// Resilience
 		services.TryAddTransient<IRetryPolicy>(sp =>

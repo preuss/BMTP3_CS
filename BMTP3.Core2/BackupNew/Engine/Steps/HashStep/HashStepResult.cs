@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Engine.Hashing; // For HashType
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
 

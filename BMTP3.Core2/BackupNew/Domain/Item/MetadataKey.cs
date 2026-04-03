@@ -62,4 +62,8 @@ public enum MetadataKey
 	LocalTempPath,// string – full path to temporary file
 	[KeyStringValue("final_target_path")]
 	FinalTargetPath,// string – where the file ends up in the backup folder
+	[KeyStringValue("destination_hashes")]
+	DestinationHashes,
+	[KeyStringValue("sidecar_path")]
+	SidecarPath,// string - full path to the generated sidecar file
 }

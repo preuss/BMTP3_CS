@@ -272,6 +272,7 @@ public class TimestampFormatter : ITimestampFormatter
 		return sep switch
 		{
 			TimeClockSeparator.Colon => ":",
+			TimeClockSeparator.Dot => ".",
 			TimeClockSeparator.None => string.Empty,
 			_ => throw new ArgumentOutOfRangeException(nameof(sep), sep, "Unknown separator.")
 		};

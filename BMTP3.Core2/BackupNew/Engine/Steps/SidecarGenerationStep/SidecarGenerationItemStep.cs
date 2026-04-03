@@ -16,18 +16,17 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 	private readonly BackupPlan _context;
 	public BackupPlan Context => _context;
 
-	private readonly ISidecarGenerator _generator;
+    private readonly ISidecarGeneratorFactory _factory;
 
-	/// <summary>
-	/// Initializes a new instance of <see cref="SidecarGenerationItemStep"/>.
-	/// </summary>
-	/// <param name="context">Backup plan context.</param>
-	/// <param name="generator">Sidecar generator implementation.</param>
-	public SidecarGenerationItemStep(BackupPlan context, ISidecarGenerator generator)
-	{
-		_context = context ?? throw new ArgumentNullException(nameof(context));
-		_generator = generator ?? throw new ArgumentNullException(nameof(generator));
-	}
+    /// <summary>
+    /// Initializes a new instance of <see cref="SidecarGenerationItemStep"/>.
+    /// The step will resolve the appropriate ISidecarGenerator implementation from the provided factory based on the BackupPlan.SidecarFormat.
+    /// </summary>
+    public SidecarGenerationItemStep(BackupPlan context, ISidecarGeneratorFactory factory)
+    {
+        _context = context ?? throw new ArgumentNullException(nameof(context));
+        _factory = factory ?? throw new ArgumentNullException(nameof(factory));
+    }
 
 	/// <summary>
 	/// Executes sidecar generation for a single item.
@@ -41,7 +40,15 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 
 		try
 		{
-			bool generated = await _generator.GenerateAsync(item, ct);
+            // Resolve generator based on configured sidecar format in the plan
+            ISidecarGenerator? generator = _factory.Create(_context.SidecarFormat);
+            if (generator == null)
+            {
+                item.AddLog("No sidecar generator available.", Name);
+                return false;
+            }
+
+            bool generated = await generator.GenerateAsync(item, ct);
 
 			if(generated)
 			{

@@ -2,10 +2,10 @@
 	<PropertyGroup>
 		<Major>0</Major>
 		<Minor>3</Minor>
-		<Patch>4</Patch>
-		<BuildNumber>1013</BuildNumber>
+		<Patch>6</Patch>
+		<BuildNumber>215</BuildNumber>
 		<ReleaseChannel>beta</ReleaseChannel>
-		<ReleaseChannelNumber>100</ReleaseChannelNumber>
+		<ReleaseChannelNumber>0</ReleaseChannelNumber>
 	<!--
 		<VersionSuffix>alpha</VersionSuffix>
 		<VersionSuffix>beta</VersionSuffix>

@@ -1,7 +1,7 @@
 using BMTP3.Core2.BackupNew.Domain.Item;
 using System.Reflection;
 
-namespace BMTP3.Core2.NetBackupFlow.Extensions;
+namespace BMTP3.Core2.BackupNew.Extensions;
 
 public static class MetadataKeyExtensions
 {

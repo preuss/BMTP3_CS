@@ -137,4 +137,4 @@ Formål: beskrive en fuldt specificeret pipeline så implementering, tests og re
 
 ---
 
-Hold dette dokument som kontrakt — hver PR der ændrer pipeline skal referere til denne fil og forklare hvordan den respekterer invariants (staging, hash‑format, sidecar, concurrency). Hvis du ønsker, kan jeg nu generere en konkret `BackupStepProcessor<TIn,TOut>` implementeringsskitse og et kort eksempel i `BackupEngineImpl` der kæder tre steps.  
+Hold dette dokument som kontrakt — hver ændring der ændrer pipeline skal referere til denne fil og forklare hvordan den respekterer invariants (staging, hash‑format, sidecar, concurrency). Hvis du ønsker, kan jeg nu generere en konkret `BackupStepProcessor<TIn,TOut>` implementeringsskitse og et kort eksempel i `BackupEngineImpl` der kæder tre steps.  

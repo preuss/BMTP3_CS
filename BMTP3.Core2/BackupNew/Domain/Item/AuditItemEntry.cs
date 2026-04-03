@@ -34,6 +34,18 @@ public class AuditItemEntry
 	/// </summary>
 	public string? ErrorSummary { get; set; }
 
-	// TODO: Additional fields like Duration, ItemCount, etc. can be added as needed.
-	// TODO: We can expand later example with: WorkerId, Duration, ResultState.
+	/// <summary>
+	/// Duration of the stage in milliseconds, if available.
+	/// </summary>
+	public long? DurationMs { get; set; }
+
+	/// <summary>
+	/// Optional worker identifier that processed the item for correlation.
+	/// </summary>
+	public string? WorkerId { get; set; }
+
+	/// <summary>
+	/// Optional number of items processed in a batch for this entry.
+	/// </summary>
+	public int? ItemCount { get; set; }
 }

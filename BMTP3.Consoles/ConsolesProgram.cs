@@ -1,5 +1,4 @@
 ﻿using BMTP3.Consoles.ConsoleCommands;
-using BMTP3.Consoles.exifreader;
 using BMTP3.Consoles.Startup.Configurations;
 using BMTP3.Consoles.Utilities;
 using Microsoft.Extensions.Configuration;
@@ -31,50 +30,6 @@ public class ConsolesProgram
 	}
 	public static async Task<int> Main(string[] args)
 	{
-		// Shortcurcuit to test Exif reader:
-		//new ExifReader().ReadExifData("C:\\Private.Testing\\test.source\\iPhone14\\202212__\\IMG_2196.HEIC");
-		ExifReader2 exifReader = new ExifReader2();
-		//exifReader.ReadExifData("D:\\Projects.Github\\sample-meta-data-media\\IMG_2205.JPG");
-		List<string> files = [
-			"D:\\Projects.Github\\sample-meta-data-media\\exif-samples\\jpg\\tests\\32-lens_data.jpeg",
-			"D:\\Projects.Github\\sample-meta-data-media\\exif-samples\\jpg\\hdr\\canon_hdr_YES.jpg",
-			"D:\\Projects.Github\\sample-meta-data-media\\exif-samples\\jpg\\invalid\\image00971.jpg",
-			"D:\\Projects.Github\\sample-meta-data-media\\exif-samples\\jpg\\mobile\\HMD_Nokia_8.3_5G.jpg",
-			"D:\\Projects.Github\\sample-meta-data-media\\metadata-extractor-images\\heic\\IMG_1034.heic",
-			"D:\\Projects.Github\\sample-meta-data-media\\metadata-extractor-images\\heic\\IMG_2927.HEIC",
-			"D:\\Projects.Github\\sample-meta-data-media\\metadata-extractor-images\\mov\\apple-livephoto-quicktime.mov",
-			"D:\\Projects.Github\\sample-meta-data-media\\metadata-extractor-images\\png\\sampleWithExifData.png",
-			"D:\\Projects.Github\\sample-meta-data-media\\metadata-extractor-images\\png\\Issue 316 (dotnet).png",
-		];
-		foreach(string file in files)
-		{
-			Console.WriteLine($"\n--- Reading EXIF data for file: {file} ---");
-			//exifReader.ReadExifData(file);
-		}
-		Console.WriteLine($"\n--- Reading EXIF data for file: {files[7]} ---");
-		//exifReader.ReadExifData(files[7], false);
-
-		//string iso = "2026-01-04T12:56:12+04:00";
-		//string iso = "2026-01-04T12:56:12Z";
-		string iso = "2025-06-15T12:30:00+08:00";
-		DateTime dt = DateTime.Parse(iso, null, DateTimeStyles.RoundtripKind);
-		Console.WriteLine("Dt: " + dt.ToString("o"));  // Output: 2025-06-15T04:30:00.0000000Z
-		Console.WriteLine("Print: " + dt.ToString());     // Output: 6/15/2025 4:30:00 AM
-		Console.WriteLine("Kind: " + dt.Kind);           // Output: Utc
-		Console.WriteLine("UTC: " + dt.ToUniversalTime().ToString("o"));
-
-		return 0;
-		// Temporary test args
-		args = ["backup", "--path", "C:\\BackupFolder"];
-		args = ["backup", "asdf", "-unknown", "--help"];
-		args = ["backup", "-v", "true", "true", "-v", "false", "false", "false", "-vvvv", "-v", "-v", "--help"];
-		args = ["backup", "-v", "-v", "-v", "-v", "-v", "--delay=45"];
-		//args = ["verify", "-v", "-v", "-v", "-v", "-v", "-d", "--help"];
-		//args = ["verify", "-v", "-v", "-v", "-v", "-v", "-d"];
-		args = ["backup", "", "--output-structure=xxx", "--help"];
-		args = ["backup", "--config=default.toml", "--output-structure=PreserveSourceTree"];
-		args = ["backupTest", "--config=default.toml", "--output-structure=PreserveSourceTree"];
-
 		HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
 		List<IConfigSetup> configSetups = new()
 		{
@@ -91,34 +46,21 @@ public class ConsolesProgram
 		ApplyServiceSetups(builder.Services, serviceSetups, builder.Configuration);
 
 		IHost host = builder.Build();
-
-		//IServiceProvider serviceProvider = ApplicationStartup.InitializeServiceProvider(args);
 		IServiceProvider serviceProvider = host.Services;
 
-		ConsoleApplication app = serviceProvider.GetRequiredService<ConsoleApplication>();
+		RootCommand rootCommand = new("BMTP3 CLI");
 
-		RootCommand rootCommand = new RootCommand("BMTP3 CLI");
-
-
-		GlobalOptionsModel globalOptions = new GlobalOptionsModel();
+		GlobalOptionsModel globalOptions = new();
 		globalOptions.GetAllOptions().ForEach(option => rootCommand.Options.Add(option));
 
-		BackupConsoleCommand backupCommand = new() { ServiceProvider = serviceProvider };
+		BackupConsoleCommand2 backupCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(backupCommand);
 
 		BackupTestConsoleCommand backupTestCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(backupTestCommand);
 
-		VerifyConsoleCommand verifyCommand = new();
+		VerifyConsoleCommand verifyCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(verifyCommand);
-
-		IList<Option> o = rootCommand.Options;
-		Console.WriteLine($"Options i root Command: " + o.Count);
-		foreach(Option option in o)
-		{
-			Console.WriteLine(option);
-		}
-
 
 		ParseResult parseResult = rootCommand.Parse(args);
 		return await parseResult.InvokeAsync();

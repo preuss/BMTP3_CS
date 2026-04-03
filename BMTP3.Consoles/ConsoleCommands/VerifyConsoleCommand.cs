@@ -1,10 +1,13 @@
-﻿using System.CommandLine;
+﻿using BMTP3.Consoles.Services;
+using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 public class VerifyConsoleCommand : BaseConsoleCommand
 {
 	public GlobalOptionsModel GlobalOptions { get; }
 	public VerifyOptionsModel VerifyOptions { get; }
+	public IServiceProvider? ServiceProvider { get; init; }
 
 	public VerifyConsoleCommand() : this("verify", "Verificér backup", new GlobalOptionsModel(), new VerifyOptionsModel())
 	{
@@ -25,9 +28,9 @@ public class VerifyConsoleCommand : BaseConsoleCommand
 		CancellationToken cancellationToken
 	)
 	{
-		Console.WriteLine("Verificering udføres...");
-		Console.WriteLine("DeepValidation: " + VerifyOptions.DeepValidation);
-		Console.WriteLine("DeepValidation: " + VerifyOptions.DeepValidation.GetType());
+		ConsolesPrinter? printer = ServiceProvider?.GetService<ConsolesPrinter>();
+		printer?.PrintStatus("Verify not yet implemented.");
+		printer?.PrintStatus($"DeepValidation: {VerifyOptions.DeepValidation}");
 		await Task.Delay(1000, cancellationToken);
 		return 0;
 	}

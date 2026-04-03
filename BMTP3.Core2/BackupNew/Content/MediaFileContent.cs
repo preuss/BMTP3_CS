@@ -1,13 +1,14 @@
-﻿using MediaDevices;
-using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
+using MediaDevices;
+using BMTP3.Core2.BackupNew.Engine.Traversal;
 using System.Runtime.Versioning;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Content;
+
 /// <summary>
-/// ISourceContent implementation for files on MTP/PTP devices (phones, cameras, etc.).
-/// Wraps a MediaFileInfo from the MediaDevices library.
+/// <see cref="IContent"/> implementation for files on MTP/PTP devices (phones, cameras, etc.).
+/// Wraps a <see cref="MediaFileInfo"/> from the MediaDevices library.
 /// </summary>
 [SupportedOSPlatform("windows7.0")]
 public sealed class MediaFileContent : IContent
@@ -28,43 +29,68 @@ public sealed class MediaFileContent : IContent
 	public ulong Length => _mediaFileInfo.Length;
 
 	/// <summary>
-	/// Opens a readable stream to the file content on the device.
-	/// The caller is responsible for disposing the returned stream.
+	/// Opens a readable stream to the file content on the MTP device.
+	///
+	/// The MTP gatekeeper semaphore is acquired <em>once</em> here and released only when
+	/// the returned stream is disposed.  This means every byte of the file transfer runs
+	/// under a single semaphore hold — eliminating the per-chunk acquire/release overhead
+	/// that the previous design incurred.
+	///
+	/// The caller is responsible for disposing the returned stream (which also releases the
+	/// semaphore lease).
 	/// </summary>
 	public Stream OpenRead()
 	{
 		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileContent));
 
-		// We open the raw stream, but wrap it so that every Read() call is gated.
-		// Opening the stream itself (sending the command) also needs protection?
-		// Usually OpenRead just returns a handle, but let's be safe.
-		Stream rawStream = _gatekeeper.ExecuteAsync(() => Task.FromResult(_mediaFileInfo.OpenRead()), CancellationToken.None).GetAwaiter().GetResult();
-
-		return new GatekeptStream(rawStream, _gatekeeper);
+		// Acquire the semaphore lease synchronously (MTP is inherently synchronous/single-threaded).
+		// The lease is held for the entire lifetime of the returned GatekeptStream.
+		IDisposable lease = _gatekeeper.AcquireAsync(CancellationToken.None).GetAwaiter().GetResult();
+		try
+		{
+			Stream rawStream = _mediaFileInfo.OpenRead();
+			// GatekeptStream owns both the raw stream and the lease; disposing it releases both.
+			return new GatekeptStream(rawStream, lease);
+		}
+		catch
+		{
+			// If OpenRead throws, release the lease immediately so the semaphore is not abandoned.
+			lease.Dispose();
+			throw;
+		}
 	}
 
 	/// <summary>
-	/// Opens a readable stream to the file content on the device asynchronously.
-	/// <para>
-	/// <strong>Warning:</strong> This method uses "Sync-over-Async". The underlying MTP operation is synchronous and blocking.
-	/// This method wraps the blocking call in <see cref="Task.Run(Action)"/> to offload it to a ThreadPool thread.
-	/// While this unblocks the calling thread, it consumes a ThreadPool thread for the duration of the operation.
-	/// High parallelism with this method may lead to ThreadPool starvation.
-	/// </para>
+	/// Opens a readable stream to the file content on the MTP device asynchronously.
+	///
+	/// The gatekeeper semaphore is acquired once via <see cref="IMtpGatekeeper.AcquireAsync"/>
+	/// and held for the lifetime of the returned stream.  The underlying
+	/// <see cref="MediaFileInfo.OpenRead"/> call is synchronous (no async MTP API exists in
+	/// MediaDevices), but the semaphore wait itself is async, avoiding a blocking wait on the
+	/// calling thread.
+	///
 	/// The caller is responsible for disposing the returned stream.
 	/// </summary>
-	public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
+	public async Task<Stream> OpenReadStreamAsync(CancellationToken ct)
 	{
 		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileContent));
-		// The MediaDevices library's OpenRead() is blocking, so we wrap it in Task.Run.
-		// There's no native async API for MTP devices in MediaDevices currently.
-		// Ensure single-threaded access with the gatekeeper, and avoid Task.Run which doesn't protect device
-		return _gatekeeper.ExecuteAsync(() => Task.FromResult(_mediaFileInfo.OpenRead()), ct);
+
+		IDisposable lease = await _gatekeeper.AcquireAsync(ct);
+		try
+		{
+			Stream rawStream = _mediaFileInfo.OpenRead();
+			return new GatekeptStream(rawStream, lease);
+		}
+		catch
+		{
+			lease.Dispose();
+			throw;
+		}
 	}
 
 	public void Dispose()
 	{
 		_disposed = true;
-		// No resources to release — stream is owned by caller
+		// No resources to release here — the stream (and its lease) is owned by the caller.
 	}
 }

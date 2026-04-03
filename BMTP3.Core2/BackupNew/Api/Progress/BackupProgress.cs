@@ -62,5 +62,5 @@ public class BackupProgress : IBackupProgress
 	/// <summary>
 	/// A list of files currently being processed (active in the pipeline).
 	/// </summary>
-	public required List<FileProgress> ActiveFiles { get; init; }
+	public required IReadOnlyList<FileProgress> ActiveFiles { get; init; }
 }

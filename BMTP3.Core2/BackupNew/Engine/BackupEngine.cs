@@ -4,10 +4,11 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Domain.Job;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
-using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
+using BMTP3.Core2.BackupNew.Domain.Repositories;
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
 using BMTP3.Core2.BackupNew.Api.Request;
@@ -18,6 +19,7 @@ using BMTP3.Core2.BackupNew.Engine.Transfers;
 using System.Threading.Channels;
 using MediaDevices;
 using BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
+using BMTP3.Core2.BackupNew.Engine.Steps.InspectorStep;
 using BMTP3.Core2.BackupNew.Engine.Orchestration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -41,14 +43,16 @@ public class BackupEngine : IBackupEngine
 	private readonly IStagingDownloader _stagingDownloader;
 	private readonly IMetadataReader _metadataReader;
 	private readonly IItemHasher _itemHasher;
+    private readonly IHashGenerator _hashGenerator;
 	private readonly IPathGenerator _pathGenerator;
 	private readonly ICollisionResolver _collisionResolver;
 	private readonly IFileTransfer _fileTransfer;
 	private readonly IBackupRepository _repository;
-	private readonly ISidecarGenerator _sidecarGenerator;
+	private readonly ISidecarGeneratorFactory _sidecarGeneratorFactory;
 	private readonly IJobValidator _validator;
 	private readonly IOptions<BackupEngineOptions> _options;
 	private readonly ILoggerFactory _loggerFactory;
+	private readonly IDestinationInspector _destinationInspector;
 
 	public BackupEngine(
 		IBackupScanner backupScanner,
@@ -58,31 +62,41 @@ public class BackupEngine : IBackupEngine
 		IPathGenerator pathGenerator,
 		ICollisionResolver collisionResolver,
 		IFileTransfer fileTransfer,
+		IHashGenerator hashGenerator,
 		IBackupRepository repository,
-		ISidecarGenerator sidecarGenerator,
+		ISidecarGeneratorFactory sidecarGeneratorFactory,
 		IJobValidator validator,
 		IOptions<BackupEngineOptions> options,
-		ILoggerFactory loggerFactory
+		ILoggerFactory loggerFactory,
+		IDestinationInspector destinationInspector
 	)
 	{
 		_backupScanner = backupScanner ?? throw new ArgumentNullException(nameof(backupScanner));
 		_stagingDownloader = stagingDownloader ?? throw new ArgumentNullException(nameof(stagingDownloader));
 		_metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
-		_itemHasher = itemHasher ?? throw new ArgumentNullException(nameof(itemHasher));
+			_itemHasher = itemHasher ?? throw new ArgumentNullException(nameof(itemHasher));
+			_hashGenerator = hashGenerator ?? throw new ArgumentNullException(nameof(hashGenerator));
 		_pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
 		_collisionResolver = collisionResolver ?? throw new ArgumentNullException(nameof(collisionResolver));
 		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
 		_repository = repository ?? throw new ArgumentNullException(nameof(repository));
-		_sidecarGenerator = sidecarGenerator ?? throw new ArgumentNullException(nameof(sidecarGenerator));
+		_sidecarGeneratorFactory = sidecarGeneratorFactory ?? throw new ArgumentNullException(nameof(sidecarGeneratorFactory));
 		_validator = validator ?? throw new ArgumentNullException(nameof(validator));
 		_options = options ?? throw new ArgumentNullException(nameof(options));
 		_loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
+		_destinationInspector = destinationInspector ?? throw new ArgumentNullException(nameof(destinationInspector));
 	}
 
 	public async Task<BackupJobResult> RunAsync(BackupPlan plan, IProgress<IBackupProgress> progress, CancellationToken ct)
 	{
 		ArgumentNullException.ThrowIfNull(plan);
 		progress ??= new Progress<IBackupProgress>();
+
+		// Adapter: forwards BackupProgress snapshots to the caller's IProgress<IBackupProgress>.
+		// ContentBufferingItemStep (and StagingDownloader) report per-file staging updates using
+		// BackupProgress. We bridge those into the same outer progress channel so callers see
+		// staging activity without needing to know about the internal type.
+		IProgress<BackupProgress> stagingProgress = new Progress<BackupProgress>(p => progress.Report(p));
 
 		// 0. Pre-flight Validation
 		await _validator.ValidateAsync(plan, ct);
@@ -140,8 +154,9 @@ public class BackupEngine : IBackupEngine
 		Channel<IBackupItem> bufferingChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.StagingChannelCapacity) { SingleWriter = false, SingleReader = true });
 		Channel<IBackupItem> metadataChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
 		Channel<IBackupItem> timestampChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> hashChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> transferChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+        Channel<IBackupItem> hashChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+        Channel<IBackupItem> inspectorChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+        Channel<IBackupItem> transferChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
 		Channel<IBackupItem> sidecarChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
 		Channel<IBackupItem> persistenceChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
 
@@ -149,19 +164,22 @@ public class BackupEngine : IBackupEngine
 		tracker.SetPhase(BackupPhase.Traversing);
 
 		// Instantiate Steps
-		ContentBufferingItemStep bufferingStep = new(_stagingDownloader, progress);
+		ContentBufferingItemStep bufferingStep = new(_stagingDownloader, stagingProgress, plan);
 		MetadataExtractionItemStep metadataStep = new(_metadataReader, plan);
 		TimestampCorrectionItemStep timestampStep = new(plan);
 
 		HashStepContext hashStepContext = new()
 		{
-			HashTypes = new List<HashType> { HashType.BLAKE3_512 },
+			HashTypes = (plan.HashTypes != null && plan.HashTypes.Count > 0) ? plan.HashTypes.ToList() : new List<HashType> { HashType.BLAKE3_512 },
 			ForceRecompute = false
 		};
 		HashItemStep hashStep = new(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>());
 
-		TransferItemStep transferStep = new(plan, _pathGenerator, _collisionResolver, _fileTransfer, _itemHasher);
-		SidecarGenerationItemStep sidecarStep = new(plan, _sidecarGenerator);
+        TransferItemStep transferStep = new(plan, _pathGenerator, _collisionResolver, _fileTransfer, _itemHasher);
+        // Destination Inspector
+        var inspectorStep = new DestinationInspectorItemStep(_destinationInspector, _hashGenerator, plan, _loggerFactory.CreateLogger<DestinationInspectorItemStep>());
+        var sidecarFactory = _sidecarGeneratorFactory;
+        SidecarGenerationItemStep sidecarStep = new(plan, sidecarFactory);
 
 		// Source Reading MUST be serial (1 thread) to prevent MTP timeouts and IO thrashing.
 		// We ignore degreeOfParallelism for this specific step.
@@ -169,12 +187,24 @@ public class BackupEngine : IBackupEngine
 
 		MetadataExtractionPipelineStage metadataPool = new(_loggerFactory.CreateLogger<MetadataExtractionPipelineStage>(), degreeOfParallelism, plan, tracker, metadataStep);
 		TimestampCorrectionPipelineStage timestampPool = new(_loggerFactory.CreateLogger<TimestampCorrectionPipelineStage>(), degreeOfParallelism, plan, tracker, timestampStep);
-		HashPipelineStage hashPool = new(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism, hashStepContext, tracker, hashStep);
-		TransferPipelineStage transferPool = new(_loggerFactory.CreateLogger<TransferPipelineStage>(), degreeOfParallelism, plan, tracker, transferStep);
+        HashPipelineStage hashPool = new(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism, hashStepContext, tracker, hashStep);
+        DestinationInspectorPipelineStage inspectorPool = new(_loggerFactory.CreateLogger<DestinationInspectorPipelineStage>(), degreeOfParallelism, plan, tracker, inspectorStep);
+        TransferPipelineStage transferPool = new(_loggerFactory.CreateLogger<TransferPipelineStage>(), degreeOfParallelism, plan, tracker, transferStep);
 		SidecarGenerationPipelineStage sidecarPool = new(_loggerFactory.CreateLogger<SidecarGenerationPipelineStage>(), degreeOfParallelism, plan, tracker, sidecarStep);
 
 
 		// Start Pipeline Tasks
+		// For MTP sources, open a device session before the pipeline starts and dispose it
+		// only after bufferingTask completes. This guarantees the device stays connected
+		// for the full duration that MediaFileContent.OpenRead() may be called by
+		// ContentBufferingPipelineStage, eliminating the race condition where
+		// device.Disconnect() could run before all items had been staged.
+		IMtpDeviceSession? mtpSession = null;
+		if(plan.SourceType == SourceType.MediaDevice && _backupScanner is IMtpCapableScanner mtpScanner)
+		{
+			mtpSession = mtpScanner.OpenSession(plan);
+		}
+
 		Task producerTask = Task.Run(async () =>
 		{
 			try
@@ -198,11 +228,26 @@ public class BackupEngine : IBackupEngine
 		}, ct);
 
 		Task bufferingTask = Task.Run(() => bufferingPool.RunAsync(scanChannel.Reader, bufferingChannel.Writer, ct), ct);
+
+		// Dispose MTP session after all file content has been read from the device.
+		// bufferingTask completes only after ContentBufferingPipelineStage has staged every item,
+		// so at this point it is safe to disconnect. Using ContinueWith with ExecuteSynchronously
+		// ensures the dispose runs immediately when bufferingTask finishes, regardless of the
+		// downstream pipeline state.
+		if(mtpSession != null)
+		{
+			_ = bufferingTask.ContinueWith(
+				_ => mtpSession.Dispose(),
+				CancellationToken.None,
+				TaskContinuationOptions.ExecuteSynchronously,
+				TaskScheduler.Default);
+		}
 		Task metadataTask = Task.Run(() => metadataPool.RunAsync(bufferingChannel.Reader, metadataChannel.Writer, ct), ct);
 		Task timestampTask = Task.Run(() => timestampPool.RunAsync(metadataChannel.Reader, timestampChannel.Writer, ct), ct);
 		Task hashTask = Task.Run(() => hashPool.RunAsync(timestampChannel.Reader, hashChannel.Writer, ct), ct);
-		Task transferTask = Task.Run(() => transferPool.RunAsync(hashChannel.Reader, transferChannel.Writer, ct), ct);
-		Task sidecarTask = Task.Run(() => sidecarPool.RunAsync(transferChannel.Reader, persistenceChannel.Writer, ct), ct);
+        Task transferTask = Task.Run(() => transferPool.RunAsync(hashChannel.Reader, transferChannel.Writer, ct), ct);
+        Task inspectorTask = Task.Run(() => inspectorPool.RunAsync(transferChannel.Reader, inspectorChannel.Writer, ct), ct);
+        Task sidecarTask = Task.Run(() => sidecarPool.RunAsync(inspectorChannel.Reader, persistenceChannel.Writer, ct), ct);
 
 		Task completionTask = Task.Run(async () =>
 		{
@@ -214,12 +259,12 @@ public class BackupEngine : IBackupEngine
 				{
 					ct.ThrowIfCancellationRequested();
 
-					long size = item.Metadata.Get<long>(MetadataKey.Length);
-					tracker.CompleteItem(
-						item.Id,
-						item.ResultState,
-						size
-					);
+				ulong size = item.Metadata.Get<ulong>(MetadataKey.Length);
+				tracker.CompleteItem(
+					item.Id,
+					item.ResultState,
+					(long)size
+				);
 				}
 			} catch(OperationCanceledException) { }
 
@@ -233,6 +278,7 @@ public class BackupEngine : IBackupEngine
 				metadataTask,
 				timestampTask,
 				hashTask,
+				inspectorTask,
 				transferTask,
 				sidecarTask,
 				completionTask

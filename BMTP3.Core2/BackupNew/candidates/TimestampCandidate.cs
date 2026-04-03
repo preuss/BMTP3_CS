@@ -91,7 +91,7 @@ public sealed record TimestampCandidate : IFormattable
 		}
 
 		// A time is only used for hour, minute, second; fractional seconds must be in SubSeconds.
-		if(Time is not null && Time.Value.Ticks != 0)
+		if(Time is not null && Time.Value.Ticks % TimeSpan.TicksPerSecond != 0)
 		{
 			throw new InvalidOperationException("TimeOnly must not contain fractional seconds. Use SubSeconds instead.");
 		}

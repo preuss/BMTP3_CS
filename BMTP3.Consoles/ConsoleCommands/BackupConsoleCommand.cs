@@ -1,6 +1,7 @@
 ﻿using BMTP3.Consoles.Services;
 using Microsoft.Extensions.DependencyInjection;
 using System.CommandLine;
+using System.IO;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -25,6 +26,13 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		BackupOptions = backupOptionsModel;
 	}
 
+	protected override void OnCommandError(Exception ex)
+	{
+		var printer = ServiceProvider.GetService<ConsolesPrinter>();
+		if(printer != null) printer.PrintError($"Error executing command: {ex.Message}");
+		else Console.Error.WriteLine($"Error executing command: {ex.Message}");
+	}
+
 	/// <summary>
 	/// Entry point for the backup command action.
 	/// </summary>
@@ -38,13 +46,8 @@ public class BackupConsoleCommand : BaseConsoleCommand
 
 		int verbosity = GlobalOptions.Verbose;
 
-		Console.WriteLine("Verbose Level: " + verbosity);
-		Console.WriteLine("Delay: " + BackupOptions.Delay);
-		Console.WriteLine("Simulate: " + BackupOptions.Simulate);
-		Console.WriteLine("Simulate Min: " + BackupOptionsModel.SimulateOption.Arity.MinimumNumberOfValues);
-		Console.WriteLine("Simulate Max: " + BackupOptionsModel.SimulateOption.Arity.MaximumNumberOfValues);
-		Console.WriteLine("Config: " + BackupOptions.Config);
-		Console.WriteLine("Config Exists: " + BackupOptions.Config?.Exists);
+        // Basic informational output through ConsolesPrinter
+        // Additional verbose diagnostics are omitted to keep console output clean; use logging/diagnostics when needed.
 
 		// TODO: Wire up the new IBackupEngine here. The old scanner logic has been removed.
 		/*
@@ -58,19 +61,47 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		Console.WriteLine($"Found {files.Count()} files on the media device.");
 		*/
 
-		// Simulates backup work here.
-		await Task.Delay(100, cancellationToken);
-		// Add your actual backup logic here
+        // If an IBackupEngine is registered, use it. Otherwise, fall back to a short simulation.
+        var engine = ServiceProvider.GetService<BMTP3.Core2.BackupNew.Api.IBackupEngine>();
+        if(engine != null)
+        {
+            // Determine source type and id from CLI options (mirrors BackupConsoleCommand2 logic)
+            bool explicitDeviceProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDevice);
+            bool explicitSourceDirProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDirectory);
+            string sourcePath = BackupOptions.SourceDirectory ?? ".";
 
-		PrintResult();
+            var plan = new BMTP3.Core2.BackupNew.Api.Request.BackupPlan
+            {
+                Name = "ConsoleBackup",
+                SourcePath = sourcePath,
+                SourceType = (explicitDeviceProvided && !explicitSourceDirProvided)
+                    ? BMTP3.Core2.BackupNew.Api.Request.Enums.SourceType.MediaDevice
+                    : BMTP3.Core2.BackupNew.Api.Request.Enums.SourceType.FileSystem,
+                SourceId = explicitDeviceProvided
+                    ? BackupOptions.SourceDevice!
+                    : Path.GetPathRoot(sourcePath) ?? string.Empty,
+                OutputPath = BackupOptions.OutputDirectory?.FullName ?? Environment.CurrentDirectory,
+                Recursive = BackupOptions.Recursive,
+                DryRun = BackupOptions.Simulate
+            };
+            var progress = new Progress<BMTP3.Core2.BackupNew.Api.Progress.IBackupProgress>(p => { /* no-op console output by default */ });
+            await engine.RunAsync(plan, progress, cancellationToken);
+        }
+        else
+        {
+            // Simulates backup work here if no engine present.
+            await Task.Delay(100, cancellationToken);
+        }
+
+		PrintResult(consolePrinter);
 		return 0;
 	}
 
 	/// <summary>
 	/// Prints the result of the backup operation.
 	/// </summary>
-	private void PrintResult()
+	private void PrintResult(ConsolesPrinter printer)
 	{
-		Console.WriteLine("Backup completed!");
+		printer.PrintStatus("Backup completed!");
 	}
 }

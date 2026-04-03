@@ -43,7 +43,9 @@ public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 			{
 				try
 				{
-					var utcTime = timestamp.Value.ToUniversalTime();
+					var utcTime = timestamp.Value.Kind == DateTimeKind.Unspecified
+						? DateTime.SpecifyKind(timestamp.Value, DateTimeKind.Utc)
+						: timestamp.Value.ToUniversalTime();
 					File.SetLastWriteTimeUtc(fileContent.FileInfo.FullName, utcTime);
 					File.SetCreationTimeUtc(fileContent.FileInfo.FullName, utcTime);
 				} catch(Exception ex)

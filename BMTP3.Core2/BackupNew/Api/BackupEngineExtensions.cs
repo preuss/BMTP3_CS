@@ -2,6 +2,7 @@
 using BMTP3.Core2.BackupNew.Api.Request;
 using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using BMTP3.Core2.BackupNew.Api.Response;
 
 namespace BMTP3.Core2.BackupNew.Api;
 public static class BackupEngineExtensions
@@ -15,13 +16,13 @@ public static class BackupEngineExtensions
 		BackupPlan job,
 		[EnumeratorCancellation] CancellationToken ct)
 	{
-		var options = new BoundedChannelOptions(capacity: 4)
+		BoundedChannelOptions options = new(capacity: 4)
 		{
 			SingleReader = true,
 			SingleWriter = false,
 			FullMode = BoundedChannelFullMode.DropOldest
 		};
-		var channel = Channel.CreateBounded<IBackupProgress>(options);
+		Channel<IBackupProgress> channel = Channel.CreateBounded<IBackupProgress>(options);
 
 		// IProgress adapter that producers can use safely from any thread.
 		IProgress<IBackupProgress> progress = new Progress<IBackupProgress>(p =>
@@ -31,7 +32,7 @@ public static class BackupEngineExtensions
 		});
 
 		// Start engine in background and ensure channel is completed when it finishes.
-		var runTask = engine.RunAsync(job, progress, ct);
+		Task<BackupJobResult> runTask = engine.RunAsync(job, progress, ct);
 		_ = runTask.ContinueWith(t =>
 		{
 			// Propagate exception if any; otherwise complete normally.
@@ -45,7 +46,7 @@ public static class BackupEngineExtensions
 		}, TaskScheduler.Default);
 
 		// Yield items as they arrive; consumer can drain between renders.
-		await foreach(var item in channel.Reader.ReadAllAsync(ct).WithCancellation(ct))
+		await foreach(IBackupProgress item in channel.Reader.ReadAllAsync(ct).WithCancellation(ct))
 		{
 			yield return item;
 		}
@@ -59,17 +60,17 @@ public static class BackupEngineExtensions
 		BackupPlan job,
 		CancellationToken ct = default)
 	{
-		var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-		var channel = Channel.CreateBounded<IBackupProgress>(
+		CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+		Channel<IBackupProgress> channel = Channel.CreateBounded<IBackupProgress>(
 			new BoundedChannelOptions(4) { FullMode = BoundedChannelFullMode.DropOldest });
 
-		var progress = new Progress<IBackupProgress>(p => channel.Writer.TryWrite(p));
+		Progress<IBackupProgress> progress = new(p => channel.Writer.TryWrite(p));
 
-		var task = Task.Run(async () =>
+		Task<BackupJobResult> task = Task.Run(async () =>
 		{
 			try
 			{
-				var result = await engine.RunAsync(job, progress, cts.Token);
+				BackupJobResult result = await engine.RunAsync(job, progress, cts.Token);
 				channel.Writer.Complete();
 				return result;
 			} catch(Exception ex)

@@ -30,7 +30,6 @@ public abstract class AbstractPipelineStage<TContext> : IPipelineStage<TContext>
 		ProgressTracker tracker)
 	{
 		ArgumentNullException.ThrowIfNull(logger);
-		ArgumentNullException.ThrowIfNull(parallelism);
 		if(parallelism < 0) throw new ArgumentOutOfRangeException(nameof(parallelism));
 		if(parallelism == 0) parallelism = Math.Max(Environment.ProcessorCount / 2, 1);
 		ArgumentNullException.ThrowIfNull(context);
@@ -57,10 +56,27 @@ public abstract class AbstractPipelineStage<TContext> : IPipelineStage<TContext>
 		}
 
 		// Wait for all workers to finish before completing output channel.
-		await Task.WhenAll(workers).ConfigureAwait(false);
-
-		_logger.LogDebug("All workers for Stage completed.");
-		writer.Complete();
+		// IMPORTANT: writer.Complete() must be called in a finally block so that downstream
+		// stages are never left waiting on a channel that will never receive more items.
+		// Without this, an unhandled exception in any worker would cause all downstream
+		// pipeline stages to deadlock indefinitely on ReadAllAsync().
+		Exception? workerException = null;
+		try
+		{
+			await Task.WhenAll(workers).ConfigureAwait(false);
+			_logger.LogDebug("All workers for Stage completed.");
+		}
+		catch(Exception ex)
+		{
+			workerException = ex;
+			_logger.LogError(ex, "One or more workers for Stage faulted.");
+		}
+		finally
+		{
+			// TryComplete propagates the exception as the channel's completion cause,
+			// which allows downstream ReadAllAsync to throw rather than hang.
+			writer.TryComplete(workerException);
+		}
 	}
 
 	private async Task WorkerLoop(ChannelReader<IBackupItem> reader, ChannelWriter<IBackupItem> writer, CancellationToken ct)

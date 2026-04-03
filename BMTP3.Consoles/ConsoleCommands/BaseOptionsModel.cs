@@ -13,7 +13,7 @@ namespace BMTP3.Consoles.ConsoleCommands;
 /// </remarks>
 public abstract class BaseOptionsModel
 {
-	private static readonly Dictionary<Type, Dictionary<Option, Action<ParseResult>>> _optionBindersCache = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Dictionary<Option, Action<ParseResult>>> _optionBindersCache = new();
 
 	/// <summary>
 	/// Gets or creates the option binders for this model type.
@@ -22,15 +22,14 @@ public abstract class BaseOptionsModel
 	private Dictionary<Option, Action<ParseResult>> GetOrCreateOptionBinders()
 	{
 		// TODO: Add thread safe caching
-		var type = GetType();
-		if(!_optionBindersCache.TryGetValue(type, out var binders))
-		{
-			binders = DoDefineOptions();
-			_optionBindersCache[type] = binders;
-			DoAddValidators();
-		}
-
-		return binders;
+        var type = GetType();
+        // Use GetOrAdd to guarantee thread-safe lazy initialization
+        return _optionBindersCache.GetOrAdd(type, t =>
+        {
+            var binders = DoDefineOptions();
+            DoAddValidators();
+            return binders;
+        });
 	}
 
 	/// <summary>

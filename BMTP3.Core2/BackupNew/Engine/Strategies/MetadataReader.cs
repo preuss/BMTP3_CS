@@ -9,15 +9,17 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
 /// <summary>
 /// Robust implementation of IMetadataReader using MetadataExtractor.
-/// Implements the "Timestamp Waterfall" logic: EXIF > MTP > Created > Modified.
+/// Delegates timestamp selection to an injected <see cref="ITimestampWaterfall"/>.
 /// </summary>
 public class MetadataReader : IMetadataReader
 {
 	private readonly ILogger<MetadataReader> _logger;
+	private readonly ITimestampWaterfall _timestampWaterfall;
 
-	public MetadataReader(ILogger<MetadataReader> logger)
+	public MetadataReader(ILogger<MetadataReader> logger, ITimestampWaterfall timestampWaterfall)
 	{
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+		_timestampWaterfall = timestampWaterfall ?? throw new ArgumentNullException(nameof(timestampWaterfall));
 	}
 
 	public async Task EnrichMetadataAsync(IBackupItem item, CancellationToken ct)
@@ -42,7 +44,7 @@ public class MetadataReader : IMetadataReader
 		}
 
 		// 3. Finalize AuthoredDateTime based on Waterfall Logic
-		ApplyTimestampWaterfall(item);
+		_timestampWaterfall.Apply(item);
 	}
 
 	private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
@@ -148,54 +150,5 @@ public class MetadataReader : IMetadataReader
 			_logger.LogWarning(ex, "Failed to extract internal metadata for item {ItemId} ({Path}). Using fallback dates.", item.Id, sourcePath);
 			item.AddLog($"Metadata Extraction Failed: {ex.Message}", "MetadataReader");
 		}
-	}
-
-	private void ApplyTimestampWaterfall(IBackupItem item)
-	{
-		// 1. EXIF (Highest Priority)
-		if(item.Metadata.Has(MetadataKey.RawExifDateTaken))
-		{
-			var exifDate = item.Metadata.Get<DateTime>(MetadataKey.RawExifDateTaken);
-			item.Metadata.Set(MetadataKey.AuthoredDateTime, exifDate);
-			item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Exif);
-			item.AddLog($"Timestamp set from EXIF: {exifDate}", "TimestampCorrection");
-			return;
-		}
-
-		// 2. MTP (Medium Priority)
-		if(item.Metadata.Has(MetadataKey.RawMtpAuthoredDate))
-		{
-			var mtpDate = item.Metadata.Get<DateTime>(MetadataKey.RawMtpAuthoredDate);
-			item.Metadata.Set(MetadataKey.AuthoredDateTime, mtpDate);
-			item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Mtp);
-			item.AddLog($"Timestamp set from MTP: {mtpDate}", "TimestampCorrection");
-			return;
-		}
-
-		// 3. FileSystem Created (Low Priority)
-		if(item.Metadata.Has(MetadataKey.CreatedDateTime))
-		{
-			var created = item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime);
-			item.Metadata.Set(MetadataKey.AuthoredDateTime, created);
-			item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.FileSystem);
-			item.AddLog($"Timestamp set from FS Created: {created}", "TimestampCorrection");
-			return;
-		}
-
-		// 4. FileSystem Modified (Lowest Priority)
-		if(item.Metadata.Has(MetadataKey.ModifiedDateTime))
-		{
-			var mod = item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
-			item.Metadata.Set(MetadataKey.AuthoredDateTime, mod);
-			item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.LastModified);
-			item.AddLog($"Timestamp set from FS Modified: {mod}", "TimestampCorrection");
-			return;
-		}
-
-		// 5. Fallback
-		var now = DateTime.UtcNow;
-		item.Metadata.Set(MetadataKey.AuthoredDateTime, now);
-		item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Unknown);
-		item.AddLog("Timestamp fallback to UTC Now", "TimestampCorrection");
 	}
 }

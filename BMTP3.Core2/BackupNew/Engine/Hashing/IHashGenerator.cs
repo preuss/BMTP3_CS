@@ -1,3 +1,5 @@
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
+
 namespace BMTP3.Core2.BackupNew.Engine.Hashing;
 
 public interface IHashGenerator

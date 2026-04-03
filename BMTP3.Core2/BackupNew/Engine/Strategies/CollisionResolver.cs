@@ -4,6 +4,7 @@ using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Hashing;
 using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
@@ -13,16 +14,22 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 /// </summary>
 public class CollisionResolver : ICollisionResolver
 {
-	private readonly IMetadataReader _metadataReader;
-	private readonly IPathGenerator _pathGenerator;
-	private readonly ILogger<CollisionResolver> _logger;
+    private static readonly ConcurrentDictionary<string, SemaphoreSlim> _renameLocks = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly ConcurrentDictionary<string, DateTimeOffset> _reservedRenamePaths = new(StringComparer.OrdinalIgnoreCase);
+    private static readonly TimeSpan ReservationTtl = TimeSpan.FromMinutes(10);
 
-	public CollisionResolver(IMetadataReader metadataReader, IPathGenerator pathGenerator, ILogger<CollisionResolver> logger)
-	{
-		_metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
-		_pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
-		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
-	}
+    private readonly IMetadataReader _metadataReader;
+    private readonly IPathGenerator _pathGenerator;
+    private readonly ILogger<CollisionResolver> _logger;
+    private readonly IHashGenerator? _hashGenerator;
+
+    public CollisionResolver(IMetadataReader metadataReader, IPathGenerator pathGenerator, ILogger<CollisionResolver> logger, IHashGenerator? hashGenerator = null)
+    {
+        _metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
+        _pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _hashGenerator = hashGenerator; // optional: used as a fallback to compute destination hashes when sidecar is missing
+    }
 
 	public async Task<CollisionResult> ResolveAsync(IBackupItem item, string proposedFullPath, BackupPlan plan, CancellationToken ct)
 	{
@@ -103,12 +110,13 @@ public class CollisionResolver : ICollisionResolver
 			HashType.MD5_128
 		};
 
-		// Read stored hashes (must be keyed by HashType)
-		Dictionary<HashType, string>? stored = source.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.Hashes);
-		if(stored == null)
-		{
-			throw new InvalidOperationException("Source item metadata does not contain any hashes. Ensure hashing ran before collision resolution.");
-		}
+        // Read stored hashes (must be keyed by HashType)
+        Dictionary<HashType, string>? stored = source.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.Hashes);
+        if(stored == null)
+        {
+            _logger.LogInformation("Source metadata does not contain hashes for item {SourcePath}; falling back to binary comparison.", source.SourcePath);
+            return await CompareBinaryAsync(source, destPath, ct);
+        }
 
 		// Find which requested algorithms are present (preserve priority order)
 		List<HashType> present = new List<HashType>();
@@ -120,31 +128,78 @@ public class CollisionResolver : ICollisionResolver
 			}
 		}
 
-		// If none present -> cannot compare by hash
-		if(present.Count == 0)
-		{
-			throw new InvalidOperationException("No suitable hash found in item metadata. Cannot perform hash-based comparison.");
-		}
+        // If none present -> fall back to binary comparison
+        if(present.Count == 0)
+        {
+            _logger.LogInformation("No suitable hash found in item metadata for {SourcePath}; falling back to binary comparison.", source.SourcePath);
+            return await CompareBinaryAsync(source, destPath, ct);
+        }
 
 		// For each present algorithm, compare source vs destination using the same algorithm.
 		// IMPORTANT: do NOT compute destination hash here. Only read sidecar/metadata.
 		foreach(HashType algo in present)
 		{
-			// explicit retrieval
-			if(!stored.TryGetValue(algo, out string? sourceHash) || string.IsNullOrWhiteSpace(sourceHash))
-			{
-				throw new InvalidOperationException($"Hash for {algo} is missing despite earlier detection. Metadata inconsistent.");
-			}
+            // explicit retrieval
+            if(!stored.TryGetValue(algo, out string? sourceHash) || string.IsNullOrWhiteSpace(sourceHash))
+            {
+                // Metadata inconsistent; log and skip this algorithm
+                _logger.LogWarning("Expected hash {HashType} present in metadata for {SourcePath} but it's missing or empty. Skipping algorithm.", algo, source.SourcePath);
+                continue;
+            }
 
-			// Try to obtain destination hash from sidecar ONLY.
-			string? destHash = await TryReadHashFromSidecarAsync(destPath, algo, ct);
+            // Try to obtain destination hash from item metadata first (inspector), then sidecar, then fallbacks.
+            string? destHash = null;
 
-			// If destination hash is not found in sidecar / metadata, fail fast:
-			// orchestration must have prepared destination facts (sidecar or inspector) before calling resolver.
-			if(string.IsNullOrEmpty(destHash))
-			{
-				throw new InvalidOperationException($"Destination hash for {algo} not available for '{destPath}'. Ensure destination sidecar or inspector prepared hashes before collision resolution.");
-			}
+            // 0) Destination hashes stored by DestinationInspector
+            var destStored = source.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.DestinationHashes);
+            if(destStored != null && destStored.TryGetValue(algo, out var dh) && !string.IsNullOrWhiteSpace(dh))
+            {
+                destHash = dh;
+            }
+
+            // 1) If not found, Try to obtain destination hash from sidecar.
+            if(string.IsNullOrEmpty(destHash)) destHash = await SidecarReader.TryReadHashFromSidecarAsync(destPath, algo, ct);
+
+            // If destination hash is not found in sidecar / metadata, try safe fallbacks instead of throwing.
+            if(string.IsNullOrEmpty(destHash))
+            {
+                _logger.LogInformation("Destination sidecar did not contain hash {HashType} for {DestPath}. Attempting fallback.", algo, destPath);
+
+                // Try compute once using IHashGenerator if available
+                if(_hashGenerator != null)
+                {
+                    try
+                    {
+                        using FileStream ds = new(destPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                        var computed = await _hashGenerator.ComputeHashesAsync(ds, new[] { algo }, null!, ct);
+                        if(computed != null && computed.TryGetValue(algo, out var compHash) && !string.IsNullOrWhiteSpace(compHash))
+                        {
+                            destHash = compHash;
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to compute destination hash {HashType} for {DestPath} as fallback.", algo, destPath);
+                    }
+                }
+
+                // If still not available, fallback to binary comparison. If binary compare reports equal -> identical, else -> different.
+                if(string.IsNullOrEmpty(destHash))
+                {
+                    _logger.LogInformation("Falling back to binary comparison for {DestPath} because no destination hash was available.", destPath);
+                    try
+                    {
+                        bool binaryEqual = await CompareBinaryAsync(source, destPath, ct);
+                        if(binaryEqual) return true;
+                        return false;
+                    }
+                    catch(Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Binary comparison failed for {DestPath}; treating files as different.", destPath);
+                        return false;
+                    }
+                }
+            }
 
 			// Compare normalized lowercase hex
 			if(!string.Equals(sourceHash, destHash, StringComparison.OrdinalIgnoreCase))
@@ -156,107 +211,6 @@ public class CollisionResolver : ICollisionResolver
 
 		// All present algorithms matched
 		return true;
-	}
-
-	private static async Task<string?> TryReadHashFromSidecarAsync(string destPath, HashType algorithm, CancellationToken ct)
-	{
-		string[] candidates = new string[]
-		{
-			destPath + ".bmtp3.json",
-			destPath + ".meta.json",
-			destPath + ".metadata.json",
-			destPath + ".json",
-			Path.ChangeExtension(destPath, ".meta"),
-			Path.ChangeExtension(destPath, ".ini")
-		};
-
-		foreach(string sidecar in candidates)
-		{
-			if(!File.Exists(sidecar)) continue;
-
-			ct.ThrowIfCancellationRequested();
-
-			try
-			{
-				string text = await File.ReadAllTextAsync(sidecar, ct);
-				if(string.IsNullOrWhiteSpace(text)) continue;
-
-				using System.Text.Json.JsonDocument doc = System.Text.Json.JsonDocument.Parse(text);
-				System.Text.Json.JsonElement root = doc.RootElement;
-
-				if(root.ValueKind == System.Text.Json.JsonValueKind.Object)
-				{
-					// try hashes object (Case-Insensitive search)
-					System.Text.Json.JsonElement hashesEl = default;
-					bool foundHashes = false;
-					foreach(var prop in root.EnumerateObject())
-					{
-						if(string.Equals(prop.Name, "hashes", StringComparison.OrdinalIgnoreCase))
-						{
-							hashesEl = prop.Value;
-							foundHashes = true;
-							break;
-						}
-					}
-
-					if(foundHashes && hashesEl.ValueKind == System.Text.Json.JsonValueKind.Object)
-					{
-						// try algorithm name key (Case-Insensitive)
-						foreach(var prop in hashesEl.EnumerateObject())
-						{
-							if(string.Equals(prop.Name, algorithm.ToString(), StringComparison.OrdinalIgnoreCase))
-								return prop.Value.GetString();
-						}
-
-						// legacy SHA256 key for SHA2_256
-						if(algorithm == HashType.SHA2_256)
-						{
-							foreach(var prop in hashesEl.EnumerateObject())
-							{
-								if(string.Equals(prop.Name, "SHA256", StringComparison.OrdinalIgnoreCase))
-									return prop.Value.GetString();
-							}
-						}
-					}
-
-					// direct key fallback (Case-Insensitive)
-					foreach(var prop in root.EnumerateObject())
-					{
-						if(string.Equals(prop.Name, algorithm.ToString(), StringComparison.OrdinalIgnoreCase))
-							return prop.Value.GetString();
-
-						if(algorithm == HashType.SHA2_256 && string.Equals(prop.Name, "SHA256", StringComparison.OrdinalIgnoreCase))
-							return prop.Value.GetString();
-					}
-				}
-			} catch
-			{
-				// ignore and try next
-			}
-
-			// try simple key=value lines
-			try
-			{
-				foreach(string line in File.ReadLines(sidecar))
-				{
-					ct.ThrowIfCancellationRequested();
-
-					int idx = line.IndexOf('=');
-					if(idx <= 0) continue;
-					string key = line.Substring(0, idx).Trim();
-					string val = line.Substring(idx + 1).Trim();
-					if(string.Equals(key, algorithm.ToString(), StringComparison.OrdinalIgnoreCase) || (algorithm == HashType.SHA2_256 && string.Equals(key, "SHA256", StringComparison.OrdinalIgnoreCase)))
-					{
-						if(!string.IsNullOrWhiteSpace(val)) return val;
-					}
-				}
-			} catch
-			{
-				// ignore
-			}
-		}
-
-		return null;
 	}
 
 	private async Task<bool> CompareBinaryAsync(IBackupItem source, string destPath, CancellationToken ct)
@@ -295,6 +249,12 @@ public class CollisionResolver : ICollisionResolver
 		string newPath;
 		RenameStrategy strategy = plan.RenameStrategy;
 
+		SemaphoreSlim renameLock = _renameLocks.GetOrAdd(directory, _ => new SemaphoreSlim(1, 1));
+		await renameLock.WaitAsync(ct);
+		try
+		{
+			CleanupExpiredReservations(directory);
+
 		// 1. Try Custom Pattern first if specified
 		if(strategy == RenameStrategy.CustomCollisionPathPattern && !string.IsNullOrWhiteSpace(plan.CustomCollisionPathPattern))
 		{
@@ -304,7 +264,12 @@ public class CollisionResolver : ICollisionResolver
 			if(!newPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
 				newPath += extension;
 
-			if(!File.Exists(newPath)) return newPath;
+			if(CanUseRenameTarget(newPath))
+			{
+				ReserveRenameTarget(newPath);
+				item.Metadata.Set(MetadataKey.CollisionIndex, "1");
+				return newPath;
+			}
 
 			// If custom pattern also exists, fallback to increment
 			fileNameWithoutExt = Path.GetFileNameWithoutExtension(newPath);
@@ -335,7 +300,12 @@ public class CollisionResolver : ICollisionResolver
 		{
 			// Try Strategy Suffix
 			newPath = Path.Combine(directory, $"{fileNameWithoutExt}{suffix}{extension}");
-			if(!File.Exists(newPath)) return newPath;
+			if(CanUseRenameTarget(newPath))
+			{
+				ReserveRenameTarget(newPath);
+				item.Metadata.Set(MetadataKey.CollisionIndex, "1");
+				return newPath;
+			}
 
 			// Strategy Suffix Collision? Fallback to Increment on top of Suffix
 			fileNameWithoutExt = $"{fileNameWithoutExt}{suffix}";
@@ -350,8 +320,63 @@ public class CollisionResolver : ICollisionResolver
 			newPath = Path.Combine(directory, newFileName);
 			counter++;
 
-		} while(File.Exists(newPath));
+		} while(!CanUseRenameTarget(newPath));
 
+		ReserveRenameTarget(newPath);
+
+		// counter was incremented one extra time after finding the free slot
+		item.Metadata.Set(MetadataKey.CollisionIndex, (counter - 1).ToString());
 		return newPath;
+		}
+		finally
+		{
+			renameLock.Release();
+		}
+	}
+
+	private static bool CanUseRenameTarget(string path)
+	{
+		if(File.Exists(path))
+		{
+			return false;
+		}
+
+		string fullPath = Path.GetFullPath(path);
+		if(_reservedRenamePaths.TryGetValue(fullPath, out DateTimeOffset reservedAt))
+		{
+			if((DateTimeOffset.UtcNow - reservedAt) <= ReservationTtl)
+			{
+				return false;
+			}
+
+			_reservedRenamePaths.TryRemove(fullPath, out _);
+		}
+
+		return true;
+	}
+
+	private static void ReserveRenameTarget(string path)
+	{
+		string fullPath = Path.GetFullPath(path);
+		_reservedRenamePaths[fullPath] = DateTimeOffset.UtcNow;
+	}
+
+	private static void CleanupExpiredReservations(string directory)
+	{
+		string fullDirectory = Path.GetFullPath(directory);
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+		foreach(var kv in _reservedRenamePaths)
+		{
+			string candidateDir = Path.GetDirectoryName(kv.Key) ?? string.Empty;
+			if(!string.Equals(Path.GetFullPath(candidateDir), fullDirectory, StringComparison.OrdinalIgnoreCase))
+			{
+				continue;
+			}
+
+			if((now - kv.Value) > ReservationTtl || File.Exists(kv.Key))
+			{
+				_reservedRenamePaths.TryRemove(kv.Key, out _);
+			}
+		}
 	}
 }

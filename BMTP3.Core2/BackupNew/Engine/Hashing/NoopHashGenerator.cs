@@ -1,3 +1,5 @@
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
+
 namespace BMTP3.Core2.BackupNew.Engine.Hashing;
 // Minimal hash generator that returns an empty result set (placeholder).
 public class NoopHashGenerator : IHashGenerator

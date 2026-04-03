@@ -1,6 +1,7 @@
 using BMTP3.Core2.BackupNew.Domain.Item;
+using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 
-namespace BMTP3.Core2.BackupNew.Infrastructure.Repositories;
+namespace BMTP3.Core2.BackupNew.Domain.Repositories;
 
 /// <summary>
 /// Repository contract for persisting and retrieving backup resume records and their associated plan.

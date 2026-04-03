@@ -1,4 +1,4 @@
-﻿using System.CommandLine;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 public abstract class BaseConsoleCommand : Command
@@ -28,6 +28,7 @@ public abstract class BaseConsoleCommand : Command
 
 		SetAction(ExecuteInternalAsync);
 	}
+
 	private async Task<int> ExecuteInternalAsync(ParseResult parseResult, CancellationToken cancellationToken)
 	{
 		try
@@ -39,14 +40,26 @@ public abstract class BaseConsoleCommand : Command
 			return await DoExecuteAsync(parseResult, cancellationToken);
 		} catch(Exception ex)
 		{
-			await Console.Error.WriteLineAsync($"Error executing command: {ex.Message}");
+			OnCommandError(ex);
 			return 1;
 		}
 	}
+
+	/// <summary>
+	/// Called when an unhandled exception occurs during command execution.
+	/// Override in subclasses to route errors through a printer or notifier.
+	/// Default falls back to stderr.
+	/// </summary>
+	protected virtual void OnCommandError(Exception ex)
+	{
+		Console.Error.WriteLine($"Error executing command: {ex.Message}");
+	}
+
 	protected virtual BaseOptionsModel DoBindOptionsModel(ParseResult parseResult, BaseOptionsModel optionsModel)
 	{
 		optionsModel.ApplyOptions(parseResult);
 		return optionsModel;
 	}
+
 	protected abstract Task<int> DoExecuteAsync(ParseResult parseResult, CancellationToken cancellationToken);
 }
