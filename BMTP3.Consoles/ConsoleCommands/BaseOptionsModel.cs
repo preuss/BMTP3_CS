@@ -13,7 +13,7 @@ namespace BMTP3.Consoles.ConsoleCommands;
 /// </remarks>
 public abstract class BaseOptionsModel
 {
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Dictionary<Option, Action<ParseResult>>> _optionBindersCache = new();
+	private static readonly System.Collections.Concurrent.ConcurrentDictionary<Type, Dictionary<Option, Action<ParseResult>>> _optionBindersCache = new();
 
 	/// <summary>
 	/// Gets or creates the option binders for this model type.
@@ -22,14 +22,14 @@ public abstract class BaseOptionsModel
 	private Dictionary<Option, Action<ParseResult>> GetOrCreateOptionBinders()
 	{
 		// TODO: Add thread safe caching
-        var type = GetType();
-        // Use GetOrAdd to guarantee thread-safe lazy initialization
-        return _optionBindersCache.GetOrAdd(type, t =>
-        {
-            var binders = DoDefineOptions();
-            DoAddValidators();
-            return binders;
-        });
+		Type type = GetType();
+		// Use GetOrAdd to guarantee thread-safe lazy initialization
+		return _optionBindersCache.GetOrAdd(type, t =>
+		{
+			Dictionary<Option, Action<ParseResult>> binders = DoDefineOptions();
+			DoAddValidators();
+			return binders;
+		});
 	}
 
 	/// <summary>
@@ -135,7 +135,7 @@ public abstract class BaseOptionsModel
 	protected virtual void DoPopulate(ParseResult parseResult)
 	{
 		Dictionary<Option, Action<ParseResult>> optionBinders = GetOrCreateOptionBinders();
-		foreach(var binder in optionBinders.Values)
+		foreach(Action<ParseResult> binder in optionBinders.Values)
 		{
 			binder(parseResult);
 		}
@@ -252,15 +252,15 @@ public abstract class BaseOptionsModel
 
 	public List<string> GetOptionPropertyValues()
 	{
-		var result = new List<string>();
-		var type = GetType();
+		List<string> result = new();
+		Type type = GetType();
 
-		var optionProps = type
+		List<PropertyInfo> optionProps = type
 			.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
 			.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType) && p.Name.EndsWith("Option"))
 			.ToList();
 
-		var instanceProps = type
+		Dictionary<string, PropertyInfo> instanceProps = type
 			.GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
 			.Where(p => p.CanRead)
 			.ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
@@ -292,13 +292,13 @@ public abstract class BaseOptionsModel
 		);
 		result.Add(underline);
 
-		foreach(var optionProp in optionProps)
+		foreach(PropertyInfo optionProp in optionProps)
 		{
 			string baseName = optionProp.Name.Substring(0, optionProp.Name.Length - "Option".Length);
-			if(instanceProps.TryGetValue(baseName, out var instanceProp))
+			if(instanceProps.TryGetValue(baseName, out PropertyInfo? instanceProp))
 			{
-				var optionInstance = optionProp.GetValue(null) as Option;
-				var value = instanceProp.GetValue(this);
+				Option? optionInstance = optionProp.GetValue(null) as Option;
+				object? value = instanceProp.GetValue(this);
 
 				string optionName = optionInstance?.Name ?? "(unknown)";
 				string propertyName = instanceProp.Name;
@@ -310,15 +310,15 @@ public abstract class BaseOptionsModel
 
 				// Render List<string> as comma-separated
 				string valueStr;
-				if(value is List<string> list)
+				if(value is List<string> list) {
 					valueStr = "[" + string.Join(", ", list.Select(s => $"\"{s}\"")) + "]";
-				else if(value is string str)
+				} else if(value is string str) {
 					valueStr = $"\"{str}\"";
-				else if(value is FileSystemInfo info)
+				} else if(value is FileSystemInfo info) {
 					valueStr = $"\"{info}\"";
-				else
+				} else {
 					valueStr = value?.ToString() ?? "(null)";
-
+				}
 
 				result.Add(
 					string.Format(

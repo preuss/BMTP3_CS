@@ -15,7 +15,7 @@ internal class SpectreAnsiConsoleLogger : ILogger
 		_category = category;
 	}
 
-	public IDisposable BeginScope<TState>(TState state) => NullScope.Instance;
+	public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
 
 	public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
 
@@ -57,7 +57,7 @@ internal class SpectreAnsiConsoleLogger : ILogger
 
 	private class NullScope : IDisposable
 	{
-		public static readonly NullScope Instance = new NullScope();
+		public static readonly NullScope Instance = new();
 		public void Dispose() { }
 	}
 }
