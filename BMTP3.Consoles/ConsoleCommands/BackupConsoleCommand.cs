@@ -2,6 +2,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.CommandLine;
 using System.IO;
+using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Api.Request;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -28,7 +31,7 @@ public class BackupConsoleCommand : BaseConsoleCommand
 
 	protected override void OnCommandError(Exception ex)
 	{
-		var printer = ServiceProvider.GetService<ConsolesPrinter>();
+		ConsolesPrinter? printer = ServiceProvider.GetService<ConsolesPrinter>();
 		if(printer != null) printer.PrintError($"Error executing command: {ex.Message}");
 		else Console.Error.WriteLine($"Error executing command: {ex.Message}");
 	}
@@ -62,7 +65,7 @@ public class BackupConsoleCommand : BaseConsoleCommand
 		*/
 
         // If an IBackupEngine is registered, use it. Otherwise, fall back to a short simulation.
-        var engine = ServiceProvider.GetService<BMTP3.Core2.BackupNew.Api.IBackupEngine>();
+        IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
         if(engine != null)
         {
             // Determine source type and id from CLI options (mirrors BackupConsoleCommand2 logic)
@@ -70,7 +73,7 @@ public class BackupConsoleCommand : BaseConsoleCommand
             bool explicitSourceDirProvided = !string.IsNullOrWhiteSpace(BackupOptions.SourceDirectory);
             string sourcePath = BackupOptions.SourceDirectory ?? ".";
 
-            var plan = new BMTP3.Core2.BackupNew.Api.Request.BackupPlan
+            BackupPlan plan = new()
             {
                 Name = "ConsoleBackup",
                 SourcePath = sourcePath,
@@ -84,7 +87,7 @@ public class BackupConsoleCommand : BaseConsoleCommand
                 Recursive = BackupOptions.Recursive,
                 DryRun = BackupOptions.Simulate
             };
-            var progress = new Progress<BMTP3.Core2.BackupNew.Api.Progress.IBackupProgress>(p => { /* no-op console output by default */ });
+            Progress<IBackupProgress> progress = new(p => { /* no-op console output by default */ });
             await engine.RunAsync(plan, progress, cancellationToken);
         }
         else
