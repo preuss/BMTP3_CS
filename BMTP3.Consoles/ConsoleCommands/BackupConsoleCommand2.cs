@@ -61,7 +61,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		string defaultSourcePath = isMtp ? "\\" : ".";
 
 		// Build BackupPlan from CLI options
-		BackupPlan plan = new BackupPlan
+		BackupPlan plan = new()
 		{
 			Name = BackupOptions.Config?.Name ?? "console-backup",
 			SourcePath = BackupOptions.SourceDirectory ?? defaultSourcePath,
@@ -70,12 +70,12 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 			DryRun = BackupOptions.Simulate,
 			IncludePatterns = BackupOptions.IncludePatterns,
 			ExcludePatterns = BackupOptions.ExcludePatterns,
-			OutputStrategy = (OutputStructureStrategy)BackupOptions.OutputStrategy,
-			CollisionResolution = (CollisionResolutionType)BackupOptions.CollisionResolutionType,
-			ComparisonType = (CollisionComparisonType)BackupOptions.CollisionComparison,
-			RenameStrategy = (RenameStrategy)BackupOptions.RenameStrategy,
-			SidecarFormat = (SidecarFormat)BackupOptions.SidecarFormat,
-			BackupIndexType = (BackupIndexType)BackupOptions.BackupIndexType,
+			OutputStrategy = BackupOptions.OutputStrategy,
+			CollisionResolution = BackupOptions.CollisionResolutionType,
+			ComparisonType = BackupOptions.CollisionComparison,
+			RenameStrategy = BackupOptions.RenameStrategy,
+			SidecarFormat = BackupOptions.SidecarFormat,
+			BackupIndexType = BackupOptions.BackupIndexType,
 			DelayMs = BackupOptions.Delay,
 			CustomOutputPathPattern = BackupOptions.CustomOutputFilePath,
 			CustomCollisionPathPattern = BackupOptions.CustomCollisionOutputFilePath,

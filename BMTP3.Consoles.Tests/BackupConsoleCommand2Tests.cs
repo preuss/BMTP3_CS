@@ -1,5 +1,7 @@
+using System.CommandLine;
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.ParserElements;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 namespace BMTP3.Consoles.Tests
 {
@@ -20,7 +22,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void SourceDirectory_WhenSet_ReturnsSameValue()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
             model.SourceDirectory = @"C:\Users\Alice\Pictures";
 
             Assert.Equal(@"C:\Users\Alice\Pictures", model.SourceDirectory);
@@ -29,7 +31,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void SourceDevice_WhenSet_ReturnsSameValue()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
             model.SourceDevice = "Apple iPhone";
 
             Assert.Equal("Apple iPhone", model.SourceDevice);
@@ -38,7 +40,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void SourceDirectory_DefaultsToNull()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
 
             Assert.Null(model.SourceDirectory);
         }
@@ -46,7 +48,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void SourceDevice_DefaultsToNull()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
 
             Assert.Null(model.SourceDevice);
         }
@@ -58,7 +60,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void IncludePatterns_WhenPopulated_ContainsAddedPatterns()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
             model.IncludePatterns.Add("*.jpg");
             model.IncludePatterns.Add("*.png");
 
@@ -70,7 +72,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void ExcludePatterns_WhenPopulated_ContainsAddedPatterns()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
             model.ExcludePatterns.Add("*.tmp");
             model.ExcludePatterns.Add("Thumbs.db");
 
@@ -82,7 +84,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void IncludePatterns_DefaultsToEmptyList()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
 
             Assert.NotNull(model.IncludePatterns);
             Assert.Empty(model.IncludePatterns);
@@ -91,7 +93,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void ExcludePatterns_DefaultsToEmptyList()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
 
             Assert.NotNull(model.ExcludePatterns);
             Assert.Empty(model.ExcludePatterns);
@@ -104,7 +106,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void Simulate_WhenSetTrue_ReturnsTrue()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
             model.Simulate = true;
 
             Assert.True(model.Simulate);
@@ -113,7 +115,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void Simulate_DefaultsToFalse()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
 
             Assert.False(model.Simulate);
         }
@@ -125,8 +127,8 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void OutputDirectory_WhenSet_ReturnsSameDirectoryInfo()
         {
-            var model = new BackupOptionsModel();
-            var dir = new DirectoryInfo(@"D:\Backups\2026");
+            BackupOptionsModel model = new();
+            DirectoryInfo dir = new(@"D:\Backups\2026");
             model.OutputDirectory = dir;
 
             Assert.NotNull(model.OutputDirectory);
@@ -136,7 +138,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void OutputDirectory_DefaultsToNull()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
 
             Assert.Null(model.OutputDirectory);
         }
@@ -149,8 +151,8 @@ namespace BMTP3.Consoles.Tests
         public void SimulateOption_HasDryRunAlias()
         {
             // Verify the static option is configured with the expected CLI names
-            var aliases = BackupOptionsModel.SimulateOption.Aliases.ToList();
-            var allNames = new[] { BackupOptionsModel.SimulateOption.Name }.Concat(aliases).ToList();
+            List<string> aliases = BackupOptionsModel.SimulateOption.Aliases.ToList();
+            List<string> allNames = new[] { BackupOptionsModel.SimulateOption.Name }.Concat(aliases).ToList();
 
             Assert.Contains("--dry-run", allNames);
         }
@@ -158,8 +160,8 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void SimulateOption_HasSimulateAlias()
         {
-            var aliases = BackupOptionsModel.SimulateOption.Aliases.ToList();
-            var allNames = new[] { BackupOptionsModel.SimulateOption.Name }.Concat(aliases).ToList();
+            List<string> aliases = BackupOptionsModel.SimulateOption.Aliases.ToList();
+            List<string> allNames = new[] { BackupOptionsModel.SimulateOption.Name }.Concat(aliases).ToList();
 
             Assert.Contains("--simulate", allNames);
         }
@@ -189,8 +191,8 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void GetAllOptions_ReturnsNonEmptyList()
         {
-            var model = new BackupOptionsModel();
-            var options = model.GetAllOptions();
+            BackupOptionsModel model = new();
+            List<Option> options = model.GetAllOptions();
 
             Assert.NotNull(options);
             Assert.NotEmpty(options);
@@ -199,8 +201,8 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void GetAllOptions_AllEntriesAreNonNull()
         {
-            var model = new BackupOptionsModel();
-            var options = model.GetAllOptions();
+            BackupOptionsModel model = new();
+            List<Option> options = model.GetAllOptions();
 
             Assert.All(options, o => Assert.NotNull(o));
         }
@@ -212,20 +214,20 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void CollisionResolutionType_DefaultsToRename()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
             // Default is set via DefaultValueFactory; direct property is value-type so starts at 0
             // We verify the option's DefaultValueFactory returns the expected default
-            Assert.Equal(CollisionResolutionTypes.Rename,
+            Assert.Equal(CollisionResolutionType.Rename,
                 BackupOptionsModel.CollisionResolutionTypeOption.DefaultValueFactory!(null!));
         }
 
         [Fact]
         public void RenameStrategy_WhenSetToTimestamp_ReturnsTimestamp()
         {
-            var model = new BackupOptionsModel();
-            model.RenameStrategy = RenameStrategies.Timestamp;
+            BackupOptionsModel model = new();
+            model.RenameStrategy = RenameStrategy.Timestamp;
 
-            Assert.Equal(RenameStrategies.Timestamp, model.RenameStrategy);
+            Assert.Equal(RenameStrategy.Timestamp, model.RenameStrategy);
         }
 
         // ----------------------------------------------------------------
@@ -235,7 +237,7 @@ namespace BMTP3.Consoles.Tests
         [Fact]
         public void Recursive_WhenSetFalse_ReturnsFalse()
         {
-            var model = new BackupOptionsModel();
+            BackupOptionsModel model = new();
             model.Recursive = false;
 
             Assert.False(model.Recursive);

@@ -1,5 +1,6 @@
 ﻿using BMTP3.Consoles.ParserElements;
 using System.CommandLine;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 public class BackupOptionsModel : BaseOptionsModel
@@ -47,13 +48,13 @@ public class BackupOptionsModel : BaseOptionsModel
 	// --------------------------------------------------
 	// OUTPUT STRUCTURE
 	// --------------------------------------------------
-	public static Option<OutputStructureStrategies> OutputStrategyOption { get; } = new("--output-structure")
+	public static Option<OutputStructureStrategy> OutputStrategyOption { get; } = new("--output-structure")
 	{
 		Description = "Defines how destination folders are structured: PreserveSourceTree, Flat, or CustomPathPattern.",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => OutputStructureStrategies.PreserveSourceTree
+		DefaultValueFactory = argumentResult => OutputStructureStrategy.PreserveSourceTree
 	};
-	public OutputStructureStrategies OutputStrategy { get; set; }
+	public OutputStructureStrategy OutputStrategy { get; set; }
 
 	public static Option<string> CustomOutputFilePathOption { get; } = new("--path-pattern")
 	{
@@ -66,29 +67,29 @@ public class BackupOptionsModel : BaseOptionsModel
 	// --------------------------------------------------
 	// COLLISION HANDLING
 	// --------------------------------------------------
-	public static Option<CollisionResolutionTypes> CollisionResolutionTypeOption { get; } = new("--collision-resolution")
+	public static Option<CollisionResolutionType> CollisionResolutionTypeOption { get; } = new("--collision-resolution")
 	{
 		Description = "Defines how to handle existing files: Overwrite, Skip, Error, or Rename.",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => CollisionResolutionTypes.Rename
+		DefaultValueFactory = argumentResult => CollisionResolutionType.Rename
 	};
-	public CollisionResolutionTypes CollisionResolutionType { get; set; }
+	public CollisionResolutionType CollisionResolutionType { get; set; }
 
-	public static Option<CollisionComparisonTypes> CollisionComparisonOption { get; } = new("--collision-compare")
+	public static Option<CollisionComparisonType> CollisionComparisonOption { get; } = new("--collision-compare")
 	{
 		Description = "Defines how to compare existing files before applying resolution: None, Hash, or Binary.",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => CollisionComparisonTypes.Binary
+		DefaultValueFactory = argumentResult => CollisionComparisonType.Binary
 	};
-	public CollisionComparisonTypes CollisionComparison { get; set; }
+	public CollisionComparisonType CollisionComparison { get; set; }
 
-	public static Option<RenameStrategies> RenameStrategyOption { get; } = new("--rename-strategy")
+	public static Option<RenameStrategy> RenameStrategyOption { get; } = new("--rename-strategy")
 	{
 		Description = "Defines rename behavior when collision resolution is 'Rename': Increment, Timestamp, Hash, or CustomCollisionPathPattern.",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => RenameStrategies.Increment
+		DefaultValueFactory = argumentResult => RenameStrategy.Increment
 	};
-	public RenameStrategies RenameStrategy { get; set; }
+	public RenameStrategy RenameStrategy { get; set; }
 
 	public static Option<string> CustomCollisionOutputFilePathOption { get; } = new("--collision-pattern")
 	{
@@ -120,22 +121,22 @@ public class BackupOptionsModel : BaseOptionsModel
 	// METADATA
 	// --------------------------------------------------
 
-	public static Option<SidecarFormats> SidecarFormatOption { get; } = new("--sidecar-format")
+	public static Option<SidecarFormat> SidecarFormatOption { get; } = new("--sidecar-format")
 	{
 		Description = "Format of per-file sidecar metadata: None, Ini, or Json.",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => SidecarFormats.Ini
+		DefaultValueFactory = argumentResult => SidecarFormat.Ini
 	};
 
-	public SidecarFormats SidecarFormat { get; set; }
+	public SidecarFormat SidecarFormat { get; set; }
 
-	public static Option<BackupIndexTypes> BackupIndexTypeOption { get; } = new("--backup-index")
+	public static Option<BackupIndexType> BackupIndexTypeOption { get; } = new("--backup-index")
 	{
 		Description = "Type of centralized backup index: None, Json, or Database.",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => BackupIndexTypes.Json
+		DefaultValueFactory = argumentResult => BackupIndexType.Json
 	};
-	public BackupIndexTypes BackupIndexType { get; set; }
+	public BackupIndexType BackupIndexType { get; set; }
 
 	// --------------------------------------------------
 	// EXECUTION
