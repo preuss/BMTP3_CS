@@ -5,6 +5,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.CommandLine;
+using System.CommandLine.Help;
 using System.Globalization;
 using System.Text.RegularExpressions;
 using DGlob = DotNet.Globbing;
@@ -62,8 +63,34 @@ public class ConsolesProgram
 		VerifyConsoleCommand verifyCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(verifyCommand);
 
+		//ReplaceHelp(rootCommand);
+		
+
 		ParseResult parseResult = rootCommand.Parse(args);
 		return await parseResult.InvokeAsync();
+	}
+
+	static void ReplaceHelp(Command command)
+	{
+		HelpOption? old = command.Options
+			.OfType<HelpOption>()
+			.FirstOrDefault();
+
+		if(old != null)
+		{
+			command.Options.Remove(old);
+		}
+
+		command.Add(new HelpOption("-h", "--help")
+		{
+			Description = "Show help and usage information",
+			Action = new CustomHelpAction()
+		});
+
+		foreach(Command sub in command.Subcommands)
+		{
+			ReplaceHelp(sub);
+		}
 	}
 
 	private static void TestMultipleCommands(string[] args)

@@ -1,10 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.CommandLine;
+﻿using System.CommandLine;
 using System.CommandLine.Invocation;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 public sealed class CustomHelpAction : SynchronousCommandLineAction
@@ -14,7 +9,7 @@ public sealed class CustomHelpAction : SynchronousCommandLineAction
 		TextWriter output = parseResult.InvocationConfiguration.Output;
 		Command command = parseResult.CommandResult.Command;
 
-		// Description  
+		// Description
 		if(!string.IsNullOrEmpty(command.Description))
 		{
 			output.WriteLine(command.Description);
@@ -62,7 +57,7 @@ public sealed class CustomHelpAction : SynchronousCommandLineAction
 		}
 
 		string name = option.HelpName
-		              ?? option.Name.TrimStart('-', '/');
+					  ?? option.Name.TrimStart('-', '/');
 
 		bool isOptional = option.Arity.MinimumNumberOfValues == 0 && option.Arity.MaximumNumberOfValues >= 1;
 
