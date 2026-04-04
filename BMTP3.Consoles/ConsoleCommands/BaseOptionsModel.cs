@@ -1,4 +1,5 @@
 ﻿using System.CommandLine;
+using System.CommandLine.Parsing;
 using System.Reflection;
 
 namespace BMTP3.Consoles.ConsoleCommands;
@@ -100,9 +101,17 @@ public abstract class BaseOptionsModel
 				throw new InvalidOperationException($"The corresponding instance property {baseName} does not exist for {optionProp.Name}");
 			}
 
+			// Find the opt-in *OptionResult property (e.g. "ConfigOptionResult")
+			instanceProps.TryGetValue(baseName + "OptionResult", out PropertyInfo? optionResultProp);
+			if(optionResultProp != null && optionResultProp.PropertyType != typeof(OptionResult))
+			{
+				throw new InvalidOperationException($"Type mismatch: {optionResultProp.Name} must be of type OptionResult");
+			}
+
 			Option? optionInstance = (Option?)optionProp.GetValue(null);
 			ArgumentNullException.ThrowIfNull(optionInstance);
-			dict.Add(optionInstance, parseResult => BindOptionPropertyFromParseResult(parseResult, optionProp, instanceProp));
+
+			dict.Add(optionInstance, parseResult => BindOptionPropertyFromParseResult(parseResult, optionProp, instanceProp, optionResultProp));
 		}
 
 		return dict;
@@ -179,7 +188,8 @@ public abstract class BaseOptionsModel
 	/// <param name="parseResult">The parse result.</param>
 	/// <param name="optionProp">The static option property.</param>
 	/// <param name="instanceProp">The instance property.</param>
-	private void BindOptionPropertyFromParseResult(ParseResult parseResult, PropertyInfo optionProp, PropertyInfo instanceProp)
+	/// <param name="optionResultProp">The optional OptionResult property.</param>
+	private void BindOptionPropertyFromParseResult(ParseResult parseResult, PropertyInfo optionProp, PropertyInfo instanceProp, PropertyInfo? optionResultProp)
 	{
 		Type optionType = optionProp.PropertyType;
 		Type? optionArgumentType = GetGenericType(optionType, typeof(Option<>));
@@ -228,6 +238,13 @@ public abstract class BaseOptionsModel
 				throw new InvalidOperationException($"Resolved value type '{value.GetType().Name}' does not match instance property '{instanceProp.Name}' of type '{instanceProp.PropertyType.Name}'.");
 			}
 			instanceProp.SetValue(this, value);
+		}
+
+
+		// Injects OptionResult into the OptionsModel's opt-in (nullable property)
+		if(optionResultProp != null && optionResultProp.CanWrite)
+		{
+			optionResultProp.SetValue(this, parseResult.GetResult(optionInstance));
 		}
 	}
 

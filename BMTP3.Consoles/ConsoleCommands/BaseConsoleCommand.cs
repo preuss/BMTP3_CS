@@ -33,7 +33,7 @@ public abstract class BaseConsoleCommand : Command
 	{
 		try
 		{
-			foreach(var optionsModel in _optionsModels)
+			foreach(BaseOptionsModel optionsModel in _optionsModels)
 			{
 				DoBindOptionsModel(parseResult, optionsModel);
 			}
