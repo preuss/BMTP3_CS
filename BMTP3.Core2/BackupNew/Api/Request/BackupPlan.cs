@@ -186,13 +186,72 @@ public class BackupPlan
 		if(VerificationRetryCount <= 0) VerificationRetryCount = 1;
 		if(VerificationRetryDelayMs < 0) VerificationRetryDelayMs = 0;
 		if(VerificationTimeoutMs < 0) VerificationTimeoutMs = 0;
-		// Ensure PostWriteVerification has a sensible default
-		if(!Enum.IsDefined(typeof(PostWriteVerificationType), PostWriteVerification))
-			PostWriteVerification = PostWriteVerificationType.Hash;
+		if(DelayMs < 0) DelayMs = 0;
 	}
 
 	/// <summary>
 	/// Artificial delay in ms between items (for throttling).
 	/// </summary>
 	public int DelayMs { get; set; } = 0;
-}
+
+	/// <summary>
+	/// Validates all domain-level invariants of the plan.
+	/// Throws <see cref="BackupPlanValidationException"/> if any rule is violated.
+	/// Call this before passing the plan to the engine — callers (CLI, TOML loader, tests) are responsible for calling it.
+	/// </summary>
+	/// <exception cref="BackupPlanValidationException">Thrown when one or more fields violate domain rules.</exception>
+	public void Validate()
+	{
+		List<string> errors = new();
+
+		if(string.IsNullOrWhiteSpace(OutputPath))
+			errors.Add("OutputPath is required.");
+
+		if(string.IsNullOrWhiteSpace(SourceId))
+			errors.Add("SourceId is required.");
+
+		if(string.IsNullOrWhiteSpace(SourcePath))
+			errors.Add("SourcePath is required.");
+
+		if(!Enum.IsDefined(typeof(SourceType), SourceType))
+			errors.Add($"Invalid SourceType value: {(int)SourceType}.");
+
+		if(!Enum.IsDefined(typeof(PostWriteVerificationType), PostWriteVerification))
+			errors.Add($"Invalid PostWriteVerification value: {(int)PostWriteVerification}.");
+
+		if(!Enum.IsDefined(typeof(SidecarFormat), SidecarFormat))
+			errors.Add($"Invalid SidecarFormat value: {(int)SidecarFormat}.");
+
+		if(!Enum.IsDefined(typeof(CollisionComparisonType), ComparisonType))
+			errors.Add($"Invalid CollisionComparisonType value: {(int)ComparisonType}.");
+
+		if(!Enum.IsDefined(typeof(CollisionResolutionType), CollisionResolution))
+			errors.Add($"Invalid CollisionResolutionType value: {(int)CollisionResolution}.");
+
+		if(!Enum.IsDefined(typeof(RenameStrategy), RenameStrategy))
+			errors.Add($"Invalid RenameStrategy value: {(int)RenameStrategy}.");
+
+		if(OutputStrategy == OutputStructureStrategy.CustomPathPattern && string.IsNullOrWhiteSpace(CustomOutputPathPattern))
+			errors.Add("CustomOutputPathPattern is required when OutputStrategy is CustomPathPattern.");
+
+		if(RenameStrategy == RenameStrategy.CustomCollisionPathPattern && string.IsNullOrWhiteSpace(CustomCollisionPathPattern))
+			errors.Add("CustomCollisionPathPattern is required when RenameStrategy is CustomCollisionPathPattern.");
+
+		if(HashTypes == null || HashTypes.Count == 0)
+			errors.Add("HashTypes must contain at least one hash algorithm.");
+
+		if(VerificationRetryCount < 1)
+			errors.Add($"VerificationRetryCount must be >= 1, got {VerificationRetryCount}.");
+
+		if(VerificationRetryDelayMs < 0)
+			errors.Add($"VerificationRetryDelayMs must be >= 0, got {VerificationRetryDelayMs}.");
+
+		if(VerificationTimeoutMs < 0)
+			errors.Add($"VerificationTimeoutMs must be >= 0, got {VerificationTimeoutMs}.");
+
+		if(DelayMs < 0)
+			errors.Add($"DelayMs must be >= 0, got {DelayMs}.");
+
+		if(errors.Count > 0)
+			throw new BackupPlanValidationException(errors);
+	}
