@@ -1,4 +1,7 @@
+using System.Threading;
+using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.Api.Request;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 namespace BMTP3.Core2.BackupNew.Engine.Orchestration;
 
@@ -11,41 +14,63 @@ public class JobValidator : IJobValidator
 {
 	public Task ValidateAsync(BackupPlan plan, CancellationToken ct)
 	{
-		// Domain rules are owned by BackupPlan itself — delegate first.
-		plan.Validate();
-
-		// IO-level checks that require runtime environment (disk space, directory access).
-		// These cannot live in BackupPlan because BackupPlan is a pure domain object.
-		DirectoryInfo outputDir = new(plan.OutputPath);
-		if(!outputDir.Exists)
-		{
-			// Try create to ensure access and catch potential issues early (e.g. permissions).
-			outputDir.Create();
-		}
-
-		// Check space (heuristic: warn if < 1GB, fail if < 10MB?)
-		// Since we don't know total backup size yet (scanning hasn't happened),
-		// we can only ensure we aren't completely full.
-		long freeSpace = GetFreeSpace(outputDir.FullName);
-		// 50 MB safety buffer
-		if(freeSpace < 50 * 1024 * 1024)
-		{
-			throw new IOException($"Insufficient disk space on output drive '{outputDir.Root}'. Available: {freeSpace / 1024 / 1024} MB.");
-		}
-
+		ValidateDomainRules(plan);
 		return Task.CompletedTask;
 	}
 
-	private static long GetFreeSpace(string path)
+	private static void ValidateDomainRules(BackupPlan plan)
 	{
-		try
-		{
-			string root = Path.GetPathRoot(path) ?? path;
-			DriveInfo drive = new(root);
-			return drive.AvailableFreeSpace;
-		} catch
-		{
-			return long.MaxValue;
-		}
+		List<string> errors = new();
+
+		if(string.IsNullOrWhiteSpace(plan.OutputPath))
+			errors.Add("OutputPath is required.");
+
+		if(string.IsNullOrWhiteSpace(plan.SourceId))
+			errors.Add("SourceId is required.");
+
+		if(string.IsNullOrWhiteSpace(plan.SourcePath))
+			errors.Add("SourcePath is required.");
+
+		if(!Enum.IsDefined(typeof(SourceType), plan.SourceType))
+			errors.Add($"Invalid SourceType value: {(int)plan.SourceType}.");
+
+		if(!Enum.IsDefined(typeof(PostWriteVerificationType), plan.PostWriteVerification))
+			errors.Add($"Invalid PostWriteVerification value: {(int)plan.PostWriteVerification}.");
+
+		if(!Enum.IsDefined(typeof(SidecarFormat), plan.SidecarFormat))
+			errors.Add($"Invalid SidecarFormat value: {(int)plan.SidecarFormat}.");
+
+		if(!Enum.IsDefined(typeof(CollisionComparisonType), plan.ComparisonType))
+			errors.Add($"Invalid CollisionComparisonType value: {(int)plan.ComparisonType}.");
+
+		if(!Enum.IsDefined(typeof(CollisionResolutionType), plan.CollisionResolution))
+			errors.Add($"Invalid CollisionResolutionType value: {(int)plan.CollisionResolution}.");
+
+		if(!Enum.IsDefined(typeof(RenameStrategy), plan.RenameStrategy))
+			errors.Add($"Invalid RenameStrategy value: {(int)plan.RenameStrategy}.");
+
+		if(plan.OutputStrategy == OutputStructureStrategy.CustomPathPattern && string.IsNullOrWhiteSpace(plan.CustomOutputPathPattern))
+			errors.Add("CustomOutputPathPattern is required when OutputStrategy is CustomPathPattern.");
+
+		if(plan.RenameStrategy == RenameStrategy.CustomCollisionPathPattern && string.IsNullOrWhiteSpace(plan.CustomCollisionPathPattern))
+			errors.Add("CustomCollisionPathPattern is required when RenameStrategy is CustomCollisionPathPattern.");
+
+		if(plan.HashTypes == null || plan.HashTypes.Count == 0)
+			errors.Add("HashTypes must contain at least one hash algorithm.");
+
+		if(plan.VerificationRetryCount < 1)
+			errors.Add($"VerificationRetryCount must be >= 1, got {plan.VerificationRetryCount}.");
+
+		if(plan.VerificationRetryDelayMs < 0)
+			errors.Add($"VerificationRetryDelayMs must be >= 0, got {plan.VerificationRetryDelayMs}.");
+
+		if(plan.VerificationTimeoutMs < 0)
+			errors.Add($"VerificationTimeoutMs must be >= 0, got {plan.VerificationTimeoutMs}.");
+
+		if(plan.DelayMs < 0)
+			errors.Add($"DelayMs must be >= 0, got {plan.DelayMs}.");
+
+		if(errors.Count > 0)
+			throw new BackupPlanValidationException(errors);
 	}
 }

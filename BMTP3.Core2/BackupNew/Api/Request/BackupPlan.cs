@@ -32,7 +32,7 @@ public class BackupPlan
 	/// <para>FileSystem: Drive letter or root path (e.g., "C:", "\\Nas\Share").</para>
 	/// <para>MTP: The friendly name of the device (e.g., "Apple iPhone", "Galaxy S21").</para>
 	/// </summary>
-	public string SourceId { get; set; } = string.Empty; // CHANGED FROM SourceDeviceId
+	public string SourceId { get; set; } = string.Empty;
 
 	/// <summary>
 	/// The specific path within the device to back up.
@@ -76,7 +76,7 @@ public class BackupPlan
 	/// <summary>
 	/// Strategy for folder structure (Preserve vs Flat vs Custom).
 	/// </summary>
-	public OutputStructureStrategy OutputStrategy { get; set; } = OutputStructureStrategy.PreserveSourceTree; // UPDATED DEFAULT
+	public OutputStructureStrategy OutputStrategy { get; set; } = OutputStructureStrategy.PreserveSourceTree;
 
 	/// <summary>
 	/// Template pattern for output path if OutputStrategy is CustomPathPattern.
@@ -92,19 +92,19 @@ public class BackupPlan
 	/// How to compare files before deciding on a collision (None, Hash, Binary).
 	/// Default is Binary for maximum data integrity.
 	/// </summary>
-	public CollisionComparisonType ComparisonType { get; set; } = CollisionComparisonType.Binary;  // UPDATED DEFAULT
+	public CollisionComparisonType ComparisonType { get; set; } = CollisionComparisonType.Binary;
 
 	/// <summary>
 	/// Action to take if a collision is confirmed (Overwrite, Skip, Rename).
 	/// Default is Rename to prevent data loss and ensure process completion.
 	/// </summary>
-	public CollisionResolutionType CollisionResolution { get; set; } = CollisionResolutionType.Rename; // UPDATED DEFAULT
+	public CollisionResolutionType CollisionResolution { get; set; } = CollisionResolutionType.Rename;
 
 	/// <summary>
 	/// Strategy for renaming if CollisionResolution is 'Rename'.
 	/// Default is Increment for simple versioning.
 	/// </summary>
-	public RenameStrategy RenameStrategy { get; set; } = RenameStrategy.Increment; // UPDATED DEFAULT and not nullable
+	public RenameStrategy RenameStrategy { get; set; } = RenameStrategy.Increment;
 
 	/// <summary>
 	/// Template pattern for renaming if RenameStrategy is CustomCollisionPathPattern.
@@ -121,17 +121,17 @@ public class BackupPlan
 	// 7. METADATA & LOGGING
 	// --------------------------------------------------
 
-    /// <summary>
-    /// Format for per-file metadata sidecars.
-    /// Default is Ini for human-readable metadata.
-    /// </summary>
-    public SidecarFormat SidecarFormat { get; set; } = SidecarFormat.Ini; // UPDATED DEFAULT
+	/// <summary>
+	/// Format for per-file metadata sidecars.
+	/// Default is Ini for human-readable metadata.
+	/// </summary>
+	public SidecarFormat SidecarFormat { get; set; } = SidecarFormat.Ini;
 
 	/// <summary>
 	/// Format for centralized backup index/catalog.
 	/// Default is Json for easy inspection and versioning.
 	/// </summary>
-	public BackupIndexType BackupIndexType { get; set; } = BackupIndexType.Json; // UPDATED DEFAULT
+	public BackupIndexType BackupIndexType { get; set; } = BackupIndexType.Json;
 
 	public ISet<HashType> HashTypes { get; set; } = new HashSet<HashType> {
 		HashType.SHA3_512_KECCAK,
@@ -141,117 +141,43 @@ public class BackupPlan
 		HashType.MD5_128,
 		HashType.BLAKE3_256,
 		HashType.BLAKE3_512
-	}; // UPDATED DEFAULT
+	};
 
 	// --------------------------------------------------
 	// 8. EXECUTION CONTROL
 	// --------------------------------------------------
 
-    /// <summary>
-    /// If true, calculates paths and decisions but performs no I/O (Write/Delete).
-    /// </summary>
-    public bool DryRun { get; set; } = false;
+	/// <summary>
+	/// If true, calculates paths and decisions but performs no I/O (Write/Delete).
+	/// </summary>
+	public bool DryRun { get; set; } = false;
 
-    // --------------------------------------------------
-    // 9. VERIFICATION POLICIES
-    // --------------------------------------------------
-
-    /// <summary>
-    /// Number of attempts to perform post-write verification before giving up.
-    /// </summary>
-	public int VerificationRetryCount { get; set; } = 1;
-
-    /// <summary>
-    /// Delay in milliseconds between verification attempts.
-    /// </summary>
-    public int VerificationRetryDelayMs { get; set; } = 250;
-
-    /// <summary>
-    /// If true, delete destination file when verification ultimately fails.
-    /// </summary>
-    public bool VerificationDeleteOnFailure { get; set; } = false;
-
-    /// <summary>
-    /// Optional timeout in milliseconds for per-operation verification. 0 == no timeout.
-    /// </summary>
-	public int VerificationTimeoutMs { get; set; } = 0;
+	// --------------------------------------------------
+	// 9. VERIFICATION POLICIES
+	// --------------------------------------------------
 
 	/// <summary>
-	/// Normalize and validate configuration values in the plan.
-	/// This will clamp verification-related fields to sensible defaults.
-	/// Call this during plan bootstrap to ensure downstream code can rely on values.
+	/// Number of attempts to perform post-write verification before giving up.
 	/// </summary>
-	public void Normalize()
-	{
-		if(VerificationRetryCount <= 0) VerificationRetryCount = 1;
-		if(VerificationRetryDelayMs < 0) VerificationRetryDelayMs = 0;
-		if(VerificationTimeoutMs < 0) VerificationTimeoutMs = 0;
-		if(DelayMs < 0) DelayMs = 0;
-	}
+	public int VerificationRetryCount { get; set; } = 1;
+
+	/// <summary>
+	/// Delay in milliseconds between verification attempts.
+	/// </summary>
+	public int VerificationRetryDelayMs { get; set; } = 250;
+
+	/// <summary>
+	/// If true, delete destination file when verification ultimately fails.
+	/// </summary>
+	public bool VerificationDeleteOnFailure { get; set; } = false;
+
+	/// <summary>
+	/// Optional timeout in milliseconds for per-operation verification. 0 == no timeout.
+	/// </summary>
+	public int VerificationTimeoutMs { get; set; } = 0;
 
 	/// <summary>
 	/// Artificial delay in ms between items (for throttling).
 	/// </summary>
 	public int DelayMs { get; set; } = 0;
-
-	/// <summary>
-	/// Validates all domain-level invariants of the plan.
-	/// Throws <see cref="BackupPlanValidationException"/> if any rule is violated.
-	/// Call this before passing the plan to the engine — callers (CLI, TOML loader, tests) are responsible for calling it.
-	/// </summary>
-	/// <exception cref="BackupPlanValidationException">Thrown when one or more fields violate domain rules.</exception>
-	public void Validate()
-	{
-		List<string> errors = new();
-
-		if(string.IsNullOrWhiteSpace(OutputPath))
-			errors.Add("OutputPath is required.");
-
-		if(string.IsNullOrWhiteSpace(SourceId))
-			errors.Add("SourceId is required.");
-
-		if(string.IsNullOrWhiteSpace(SourcePath))
-			errors.Add("SourcePath is required.");
-
-		if(!Enum.IsDefined(typeof(SourceType), SourceType))
-			errors.Add($"Invalid SourceType value: {(int)SourceType}.");
-
-		if(!Enum.IsDefined(typeof(PostWriteVerificationType), PostWriteVerification))
-			errors.Add($"Invalid PostWriteVerification value: {(int)PostWriteVerification}.");
-
-		if(!Enum.IsDefined(typeof(SidecarFormat), SidecarFormat))
-			errors.Add($"Invalid SidecarFormat value: {(int)SidecarFormat}.");
-
-		if(!Enum.IsDefined(typeof(CollisionComparisonType), ComparisonType))
-			errors.Add($"Invalid CollisionComparisonType value: {(int)ComparisonType}.");
-
-		if(!Enum.IsDefined(typeof(CollisionResolutionType), CollisionResolution))
-			errors.Add($"Invalid CollisionResolutionType value: {(int)CollisionResolution}.");
-
-		if(!Enum.IsDefined(typeof(RenameStrategy), RenameStrategy))
-			errors.Add($"Invalid RenameStrategy value: {(int)RenameStrategy}.");
-
-		if(OutputStrategy == OutputStructureStrategy.CustomPathPattern && string.IsNullOrWhiteSpace(CustomOutputPathPattern))
-			errors.Add("CustomOutputPathPattern is required when OutputStrategy is CustomPathPattern.");
-
-		if(RenameStrategy == RenameStrategy.CustomCollisionPathPattern && string.IsNullOrWhiteSpace(CustomCollisionPathPattern))
-			errors.Add("CustomCollisionPathPattern is required when RenameStrategy is CustomCollisionPathPattern.");
-
-		if(HashTypes == null || HashTypes.Count == 0)
-			errors.Add("HashTypes must contain at least one hash algorithm.");
-
-		if(VerificationRetryCount < 1)
-			errors.Add($"VerificationRetryCount must be >= 1, got {VerificationRetryCount}.");
-
-		if(VerificationRetryDelayMs < 0)
-			errors.Add($"VerificationRetryDelayMs must be >= 0, got {VerificationRetryDelayMs}.");
-
-		if(VerificationTimeoutMs < 0)
-			errors.Add($"VerificationTimeoutMs must be >= 0, got {VerificationTimeoutMs}.");
-
-		if(DelayMs < 0)
-			errors.Add($"DelayMs must be >= 0, got {DelayMs}.");
-
-		if(errors.Count > 0)
-			throw new BackupPlanValidationException(errors);
-	}
+}

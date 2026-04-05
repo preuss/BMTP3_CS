@@ -1,6 +1,6 @@
-﻿using BMTP3.Consoles.ParserElements;
+﻿using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using System.CommandLine;
-using BMTP3.Core2.BackupNew.Api.Request.Enums;
+using System.CommandLine.Parsing;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 public class BackupOptionsModel : BaseOptionsModel
@@ -12,27 +12,35 @@ public class BackupOptionsModel : BaseOptionsModel
 	public static Option<FileInfo> ConfigOption { get; } = new("--config", "-c")
 	{
 		Description = "Path to the backup configuration file (TOML or JSON).",
-		DefaultValueFactory = parseResult => new FileInfo("default.toml"),
+		//DefaultValueFactory = parseResult => new FileInfo("default.toml"),
+		CustomParser = result => result.Tokens.Count == 0
+			? new FileInfo("default.toml")
+			: new FileInfo(result.Tokens[0].Value),
+		Arity = ArgumentArity.ZeroOrOne
 	};
 	public FileInfo? Config { get; set; }
+	public OptionResult? ConfigOptionResult { get; set; }
+
+	public static Option<string> NameOption { get; } = new("--name")
+	{
+		Description = "Friendly name for this backup job (e.g. 'iPhone Photos'). Used in logs and reports.",
+	};
+	public string? Name { get; set; }
 
 	public static Option<string> SourceDeviceOption { get; } = new("--source-device", "-d")
 	{
 		Description = "Name of the source device to backup from (e.g. 'Apple iPhone').",
-		Arity = ArgumentArity.ZeroOrOne
 	};
 	public string? SourceDevice { get; set; }
 	public static Option<string> SourceDirectoryOption { get; } = new("--source-directory", "-s")
 	{
 		Description = "Source folder on the device (e.g. 'Internal Storage/DCIM/100APPLE' or 'C:\\Users\\Bob\\Pictures').",
-		Arity = ArgumentArity.ZeroOrOne
 	};
 	public string? SourceDirectory { get; set; }
 
 	public static Option<DirectoryInfo> OutputDirectoryOption { get; } = new("--output", "-o")
 	{
 		Description = "Destination folder for the backup.",
-		Arity = ArgumentArity.ZeroOrOne
 	};
 	public DirectoryInfo? OutputDirectory { get; set; }
 
@@ -40,7 +48,6 @@ public class BackupOptionsModel : BaseOptionsModel
 	{
 		Description = "Include subfolders recursively.",
 		DefaultValueFactory = parseResult => true,
-		Arity = ArgumentArity.ZeroOrOne
 	};
 	public bool Recursive { get; set; }
 
@@ -51,7 +58,6 @@ public class BackupOptionsModel : BaseOptionsModel
 	public static Option<OutputStructureStrategy> OutputStrategyOption { get; } = new("--output-structure")
 	{
 		Description = "Defines how destination folders are structured: PreserveSourceTree, Flat, or CustomPathPattern.",
-		Arity = ArgumentArity.ZeroOrOne,
 		DefaultValueFactory = argumentResult => OutputStructureStrategy.PreserveSourceTree
 	};
 	public OutputStructureStrategy OutputStrategy { get; set; }
@@ -59,7 +65,6 @@ public class BackupOptionsModel : BaseOptionsModel
 	public static Option<string> CustomOutputFilePathOption { get; } = new("--path-pattern")
 	{
 		Description = "Custom path or filename pattern (used if OutputStrategy = CustomPathPattern).",
-		Arity = ArgumentArity.ZeroOrOne
 	};
 	public string? CustomOutputFilePath { get; set; }
 
@@ -70,7 +75,6 @@ public class BackupOptionsModel : BaseOptionsModel
 	public static Option<CollisionResolutionType> CollisionResolutionTypeOption { get; } = new("--collision-resolution")
 	{
 		Description = "Defines how to handle existing files: Overwrite, Skip, Error, or Rename.",
-		Arity = ArgumentArity.ZeroOrOne,
 		DefaultValueFactory = argumentResult => CollisionResolutionType.Rename
 	};
 	public CollisionResolutionType CollisionResolutionType { get; set; }
@@ -94,7 +98,6 @@ public class BackupOptionsModel : BaseOptionsModel
 	public static Option<string> CustomCollisionOutputFilePathOption { get; } = new("--collision-pattern")
 	{
 		Description = "Custom pattern used when RenameStrategy = CustomCollisionPathPattern.",
-		Arity = ArgumentArity.ZeroOrOne
 	};
 	public string? CustomCollisionOutputFilePath { get; set; }
 

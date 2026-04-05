@@ -48,7 +48,7 @@ namespace BMTP3.Core2.Tests.Orchestration
             var plan = BuildValidPlan();
             plan.OutputPath = string.Empty;
 
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
                 validator.ValidateAsync(plan, CancellationToken.None));
         }
 
@@ -59,7 +59,7 @@ namespace BMTP3.Core2.Tests.Orchestration
             var plan = BuildValidPlan();
             plan.OutputPath = null!;
 
-            await Assert.ThrowsAsync<ArgumentException>(() =>
+            await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
                 validator.ValidateAsync(plan, CancellationToken.None));
         }
 
@@ -78,7 +78,7 @@ namespace BMTP3.Core2.Tests.Orchestration
                 var plan = BuildValidPlan(outputDir);
                 plan.SourcePath = string.Empty;
 
-                await Assert.ThrowsAsync<ArgumentException>(() =>
+                await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
                     validator.ValidateAsync(plan, CancellationToken.None));
             }
             finally
@@ -97,14 +97,14 @@ namespace BMTP3.Core2.Tests.Orchestration
             string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
             try
             {
+                // Ensure directory exists (now done by BackupEngine, not JobValidator)
+                Directory.CreateDirectory(outputDir);
+                
                 var validator = new JobValidator();
                 var plan = BuildValidPlan(outputDir);
 
                 // Should not throw
                 await validator.ValidateAsync(plan, CancellationToken.None);
-
-                // The validator should have created the output directory if it didn't exist
-                Assert.True(Directory.Exists(outputDir));
             }
             finally
             {
@@ -142,7 +142,7 @@ namespace BMTP3.Core2.Tests.Orchestration
                 var plan = BuildValidPlan(outputDir);
                 plan.SourceId = string.Empty;
 
-                await Assert.ThrowsAsync<ArgumentException>(() =>
+                await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
                     validator.ValidateAsync(plan, CancellationToken.None));
             }
             finally
@@ -158,6 +158,8 @@ namespace BMTP3.Core2.Tests.Orchestration
         [Fact]
         public async Task ValidateAsync_OutputPath_DoesNotExist_CreatesDirectory()
         {
+            // NOTE: Directory creation is now done by BackupEngine, not JobValidator.
+            // This test verifies that JobValidator does NOT create directories.
             string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_new_" + Guid.NewGuid().ToString("N"));
             Assert.False(Directory.Exists(outputDir), "Pre-condition: directory must not exist yet");
             try
@@ -165,9 +167,11 @@ namespace BMTP3.Core2.Tests.Orchestration
                 var validator = new JobValidator();
                 var plan = BuildValidPlan(outputDir);
 
+                // JobValidator should NOT throw - it only validates domain rules
                 await validator.ValidateAsync(plan, CancellationToken.None);
 
-                Assert.True(Directory.Exists(outputDir), "JobValidator should have created the output directory");
+                // Directory should NOT be created by JobValidator (that's BackupEngine's job now)
+                Assert.False(Directory.Exists(outputDir), "JobValidator should NOT create the output directory");
             }
             finally
             {
@@ -209,6 +213,9 @@ namespace BMTP3.Core2.Tests.Orchestration
             string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_fs_" + Guid.NewGuid().ToString("N"));
             try
             {
+                // Ensure directory exists (now done by BackupEngine, not JobValidator)
+                Directory.CreateDirectory(outputDir);
+                
                 var validator = new JobValidator();
                 var plan = new BackupPlan
                 {
@@ -225,8 +232,6 @@ namespace BMTP3.Core2.Tests.Orchestration
 
                 // Should not throw
                 await validator.ValidateAsync(plan, CancellationToken.None);
-
-                Assert.True(Directory.Exists(outputDir));
             }
             finally
             {

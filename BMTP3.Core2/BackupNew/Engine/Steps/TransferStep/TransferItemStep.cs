@@ -88,8 +88,6 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 
 	public async Task<OperationResult> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
-        // Normalize plan values to ensure sensible verification policy defaults
-        _context.Normalize();
 		// 1. Determine relative path
 		string relativePath = _pathGenerator.GenerateRelativePath(item, _context);
 		string destinationPath = Path.Combine(_context.OutputPath, relativePath);
