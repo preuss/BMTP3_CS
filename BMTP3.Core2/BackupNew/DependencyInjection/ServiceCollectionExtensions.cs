@@ -76,7 +76,7 @@ public static class ServiceCollectionExtensions
         services.TryAddTransient<IniSidecarGenerator>();
         services.TryAddSingleton<ISidecarGeneratorFactory>(sp =>
         {
-            var generators = new Dictionary<SidecarFormat, ISidecarGenerator>
+            Dictionary<SidecarFormat, ISidecarGenerator> generators = new()
             {
                 [SidecarFormat.Json] = sp.GetRequiredService<JsonSidecarGenerator>(),
                 [SidecarFormat.Ini]  = sp.GetRequiredService<IniSidecarGenerator>()

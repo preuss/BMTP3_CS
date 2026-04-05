@@ -1,5 +1,4 @@
-﻿using BMTP3.Consoles.ParserElements;
-using BMTP3.Consoles.Services;
+﻿using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using System.CommandLine;
-using System.CommandLine.Parsing;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -75,7 +73,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		});
 
 		// Support Ctrl+C for interactive cancellation and link to provided token
-		using CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 		ConsoleCancelEventHandler? cancelHandler = (s, e) =>
 		{
 			e.Cancel = true; // prevent process termination so we can cleanup
@@ -113,6 +111,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		} finally
 		{
 			Console.CancelKeyPress -= cancelHandler!;
+			//linkedCts.Dispose();
 		}
 	}
 

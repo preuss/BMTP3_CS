@@ -1174,7 +1174,7 @@ MediaTakenDateTime=2023-02-22T13:05:25.0000000Z
 			return allMediaInfoFiles;
 		}
 		private BackupRecordDataStore LoadBackupDataStore(DeviceSourceConfig config, IList<MediaFileInfo> allMediaInfoFiles, MediaDirectoryInfo backupSourceDirectoryInfo, bool exceptionIfChanged) {
-			List<BackupRecordInfo> allDeviceFiles = new List<BackupRecordInfo>();
+			List<BackupRecordInfo> allDeviceFiles = new();
 			FrozenDictionary<string, MediaFileInfo> uniqueIdMediaFileInfos;
 
 			foreach(var mediaFileInfo in allMediaInfoFiles) {
