@@ -84,6 +84,8 @@ public class BackupEngine : IBackupEngine
 	public async Task<BackupJobResult> RunAsync(BackupPlan plan, IProgress<IBackupProgress> progress, CancellationToken ct)
 	{
 		ArgumentNullException.ThrowIfNull(plan);
+
+		// TODO: I am trying to make this not nullable, but for now just in case, use null-coalescing assignment to ensure it's not null. We can remove this once we are sure all callers provide a non-null progress instance.
 		progress ??= new Progress<IBackupProgress>();
 
 		// Adapter: forwards BackupProgress snapshots to the caller's IProgress<IBackupProgress>.
@@ -97,6 +99,9 @@ public class BackupEngine : IBackupEngine
 
 		// 0b. Runtime validation: disk space
 		ValidateDiskSpace(plan);
+
+		// 0c. Pre-flight: validate source and output
+		ValidateSourceAndOutput(plan);
 
 		// Prepare result
 		ProgressTracker tracker = new();
@@ -389,6 +394,49 @@ public class BackupEngine : IBackupEngine
 		{
 			// 1GB - 10GB: info
 			_logger.LogInformation("Disk space on output drive '{Drive}': {FreeSpace} GB available.", outputDir.Root, freeSpaceGb);
+		}
+	}
+
+	private void ValidateSourceAndOutput(BackupPlan plan)
+	{
+		if(plan.SourceType == SourceType.FileSystem)
+		{
+			if(!Directory.Exists(plan.SourcePath))
+			{
+				throw new DirectoryNotFoundException($"Source path not found: {plan.SourcePath}");
+			}
+
+			try
+			{
+				string testFile = Path.Combine(plan.SourcePath, Path.GetRandomFileName());
+				File.WriteAllText(testFile, "test");
+				File.Delete(testFile);
+			} catch(Exception ex)
+			{
+				throw new UnauthorizedAccessException($"No read access to source: {plan.SourcePath}", ex);
+			}
+		}
+
+		DirectoryInfo outputDir = new(plan.OutputPath);
+		if(!outputDir.Exists)
+		{
+			try
+			{
+				outputDir.Create();
+			} catch(Exception ex)
+			{
+				throw new IOException($"Cannot create output directory: {plan.OutputPath}", ex);
+			}
+		}
+
+		try
+		{
+			string testFile = Path.Combine(plan.OutputPath, Path.GetRandomFileName());
+			File.WriteAllText(testFile, "test");
+			File.Delete(testFile);
+		} catch(Exception ex)
+		{
+			throw new UnauthorizedAccessException($"No write access to output: {plan.OutputPath}", ex);
 		}
 	}
 

@@ -26,9 +26,9 @@ namespace BMTP3.Core2.Tests.Integration
 
             public async IAsyncEnumerable<IBackupItem> ScanAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
             {
-                foreach(var f in Directory.GetFiles(_sourceDir))
+                foreach(string f in Directory.GetFiles(_sourceDir))
                 {
-                    var item = BackupItem.Create(new BMTP3.Core2.BackupNew.Content.FileContent(f), Path.GetFileName(f));
+                    BackupItem item = BackupItem.Create(new BMTP3.Core2.BackupNew.Content.FileContent(f), Path.GetFileName(f));
                     item.Metadata.Set(MetadataKey.SourceFileName, Path.GetFileName(f));
                     item.Metadata.Set(MetadataKey.Length, (ulong)new FileInfo(f).Length);
                     yield return item;
@@ -50,8 +50,9 @@ namespace BMTP3.Core2.Tests.Integration
             {
                 await File.WriteAllTextAsync(srcFile, "integration!\n");
 
-                var plan = new BackupPlan
+                BackupPlan plan = new()
                 {
+                    Name = "integration-test",
                     SourceType = SourceType.FileSystem,
                     SourceId = srcDir,
                     SourcePath = srcDir,
@@ -69,10 +70,10 @@ namespace BMTP3.Core2.Tests.Integration
                     sc.AddSingleton<IBackupScanner>(_ => new TestScanner(srcDir));
                 });
 
-                var sp = services.BuildServiceProvider();
-                var engine = sp.GetRequiredService<IBackupEngine>();
+                ServiceProvider sp = services.BuildServiceProvider();
+                IBackupEngine engine = sp.GetRequiredService<IBackupEngine>();
 
-                var result = await engine.RunAsync(plan, null, CancellationToken.None);
+                BackupJobResult result = await engine.RunAsync(plan, null, CancellationToken.None);
 
                 // In DryRun mode we may not produce the actual destination file, but FinalTargetPath and sidecar should be produced.
                 string sidecar = Path.ChangeExtension(Path.Combine(outDir, Path.GetFileName(srcFile)), ".ini");

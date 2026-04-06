@@ -33,17 +33,18 @@ public class BackupEngineTests
 		ServiceProvider sp = services.BuildServiceProvider();
 		IBackupEngine engine = sp.GetRequiredService<IBackupEngine>();
 
-		// Create a temporary output folder so JobValidator has a valid OutputPath
-		string tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N"));
+		// Create a temporary source and output folder
+		string tempSource = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N") + "_source");
+		string tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N") + "_output");
+		Directory.CreateDirectory(tempSource);
 		Directory.CreateDirectory(tempOutput);
 
 		BackupPlan plan = new()
 		{
 			Name = "unit-test-no-files",
 			SourceType = SourceType.FileSystem,
-			SourcePath = "C:\\nonexistent-path-for-test",
-			// SourceId is required by JobValidator; use root of the provided path as a valid identifier
-			SourceId = System.IO.Path.GetPathRoot("C:\\nonexistent-path-for-test") ?? "C:",
+			SourcePath = tempSource,
+			SourceId = tempSource,
 			Recursive = true,
 			OutputPath = tempOutput
 		};
@@ -62,6 +63,7 @@ public class BackupEngineTests
 		{
 			try
 			{
+				Directory.Delete(tempSource, true);
 				Directory.Delete(tempOutput, true);
 			} catch
 			{
