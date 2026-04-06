@@ -22,6 +22,9 @@ public class JobValidator : IJobValidator
 	{
 		List<string> errors = new();
 
+		if(string.IsNullOrWhiteSpace(plan.Name))
+			errors.Add("Name is required.");
+
 		if(string.IsNullOrWhiteSpace(plan.OutputPath))
 			errors.Add("OutputPath is required.");
 
@@ -39,6 +42,9 @@ public class JobValidator : IJobValidator
 
 		if(!Enum.IsDefined(typeof(SidecarFormat), plan.SidecarFormat))
 			errors.Add($"Invalid SidecarFormat value: {(int)plan.SidecarFormat}.");
+
+		if(!Enum.IsDefined(typeof(BackupIndexType), plan.BackupIndexType))
+			errors.Add($"Invalid BackupIndexType value: {(int)plan.BackupIndexType}.");
 
 		if(!Enum.IsDefined(typeof(CollisionComparisonType), plan.ComparisonType))
 			errors.Add($"Invalid CollisionComparisonType value: {(int)plan.ComparisonType}.");

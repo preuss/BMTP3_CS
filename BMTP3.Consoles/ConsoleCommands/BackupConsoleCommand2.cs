@@ -236,9 +236,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 					? Path.GetFileNameWithoutExtension(backupOptions.Config.Name)
 					: null)
 				?? backupOptions.SourceDevice
-				?? (backupOptions.OutputDirectory != null
-					? backupOptions.OutputDirectory.Name
-					: null)
+				?? backupOptions.OutputDirectory?.Name
 				?? "backup",
 			SourcePath = backupOptions.SourceDirectory!,
 			OutputPath = backupOptions.OutputDirectory!.FullName,
