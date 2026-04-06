@@ -175,7 +175,8 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 				int attempts = Math.Max(1, _context.VerificationRetryCount);
 				int delayMs = Math.Max(0, _context.VerificationRetryDelayMs);
 				bool verified = false;
-		for(int attempt = 1; attempt <= attempts; attempt++)
+				bool permanentFailure = false;
+		for(int attempt = 1; attempt <= attempts && !permanentFailure; attempt++)
 		{
                 // (diagnostic logging removed)
 				CancellationTokenSource? linkedCts = null;
@@ -201,7 +202,21 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 					{
 						linkedCts?.Dispose();
 					}
-					if(!verified && attempt < attempts && delayMs > 0)
+					
+					// For hash verification: hash mismatch is permanent, don't retry
+					// For binary: mismatch is rare but possible, but we still retry IO errors
+					if(!verified && attempt == 1)
+					{
+						// Check if it's a hash mismatch (permanent failure) - we can detect this by checking item state
+						// For now, we only skip retry on hash verification after first attempt fails
+						if(_context.PostWriteVerification == Api.Request.Enums.PostWriteVerificationType.Hash)
+						{
+							// Hash mismatch is permanent - don't retry
+							permanentFailure = true;
+						}
+					}
+					
+					if(!verified && !permanentFailure && attempt < attempts && delayMs > 0)
 					{
 						try { await Task.Delay(delayMs, ct); } catch { }
 					}
@@ -329,38 +344,52 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
                 return await CompareBinaryAsync(item, destPath, ct);
             }
 
-            // Pick the strongest available hash (first key)
-            var algo = hashes.Keys.First();
-            string expectedHash = hashes[algo];
+            // Verify ALL available hashes - if ANY hash doesn't match, the file is corrupted
+            // This is more robust than just checking the strongest one
+            var hashesToVerify = hashes.Keys.ToList();
 
-            // Compute hash of destination using item hasher by wrapping destination file as a BackupItem
-                // When hashing destination, run the hasher but fallback to binary on failure.
-                try
+            // Compute hashes of destination using item hasher
+            try
+            {
+                var destWrapper = BackupItem.Create(new FileContent(new FileInfo(destPath)), Path.GetFileName(destPath));
+                try {
+                    string destWrapperPath = "(not file)";
+                    if(destWrapper.Content is FileContent df) destWrapperPath = df.FileInfo.FullName;
+                    _logger?.LogDebug("DestWrapper path={Path}", destWrapperPath);
+                } catch { }
+                var computedHashes = await _itemHasher.ComputeHashesAsync(destWrapper, hashesToVerify, progress, ct);
+
+                // Verify each hash - ALL must match
+                foreach(var algo in hashesToVerify)
                 {
-                    var destWrapper = BackupItem.Create(new FileContent(new FileInfo(destPath)), Path.GetFileName(destPath));
-                    try {
-                        string destWrapperPath = "(not file)";
-                        if(destWrapper.Content is FileContent df) destWrapperPath = df.FileInfo.FullName;
-                        _logger?.LogDebug("DestWrapper path={Path}", destWrapperPath);
-                    } catch { }
-                    var computedHashes = await _itemHasher.ComputeHashesAsync(destWrapper, new List<HashType> { algo }, progress, ct);
-
+                    if(!hashes.TryGetValue(algo, out string? expectedHash) || string.IsNullOrWhiteSpace(expectedHash))
+                        continue; // Skip if source doesn't have this hash
+                        
                     if(!computedHashes.TryGetValue(algo, out string? actualHash) || string.IsNullOrWhiteSpace(actualHash))
                     {
-                        item.AddLog("Destination hasher did not produce a hash for verification; falling back to binary comparison.", Name);
+                        item.AddLog($"Destination hasher did not produce a hash for {algo}; falling back to binary comparison.", Name);
                         _logger?.LogDebug("Destination hasher produced no hash for algo={Algo}", algo);
                         return await CompareBinaryAsync(item, destPath, ct);
                     }
 
                     _logger?.LogDebug("VerificationCompare: expected={Expected} actual={Actual} algo={Algo}", expectedHash, actualHash, algo);
 
-                    return string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase);
+                    if(!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
+                    {
+                        // Hash mismatch - file is corrupted
+                        item.AddLog($"Hash mismatch for {algo}: expected={expectedHash.Substring(0, Math.Min(8, expectedHash.Length))}... actual={actualHash.Substring(0, Math.Min(8, actualHash.Length))}...", Name);
+                        return false;
+                    }
                 }
-                catch(Exception ex)
-                {
-                    item.AddLog($"Hashing destination for verification failed: {ex.GetType().Name} {ex.Message}. Falling back to binary comparison.", Name);
-                    return await CompareBinaryAsync(item, destPath, ct);
-                }
+
+                // All hashes verified successfully
+                return true;
+            }
+            catch(Exception ex)
+            {
+                item.AddLog($"Hashing destination for verification failed: {ex.GetType().Name} {ex.Message}. Falling back to binary comparison.", Name);
+                return await CompareBinaryAsync(item, destPath, ct);
+            }
         } else if(type == Api.Request.Enums.PostWriteVerificationType.Binary)
         {
             return await CompareBinaryAsync(item, destPath, ct);

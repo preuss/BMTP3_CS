@@ -257,7 +257,18 @@ public class CollisionResolver : ICollisionResolver
 		string newPath;
 		RenameStrategy strategy = plan.RenameStrategy;
 
-		SemaphoreSlim renameLock = _renameLocks.GetOrAdd(directory, _ => new SemaphoreSlim(1, 1));
+		// Thread-safe lock acquisition: try to get existing lock, or create new one
+		// This pattern prevents creating multiple semaphores for the same directory
+		if(!_renameLocks.TryGetValue(directory, out var renameLock))
+		{
+			var newLock = new SemaphoreSlim(1, 1);
+			renameLock = _renameLocks.GetOrAdd(directory, newLock);
+			// If we added a new lock but it's not the one we're using, dispose the extra
+			if(renameLock != newLock)
+			{
+				newLock.Dispose();
+			}
+		}
 		await renameLock.WaitAsync(ct);
 		try
 		{
