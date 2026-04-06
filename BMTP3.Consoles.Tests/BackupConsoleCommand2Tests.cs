@@ -242,5 +242,78 @@ namespace BMTP3.Consoles.Tests
 
             Assert.False(model.Recursive);
         }
+
+        // ----------------------------------------------------------------
+        // Verification options defaults
+        // ----------------------------------------------------------------
+
+        [Fact]
+        public void PostWriteVerification_DefaultsToHash()
+        {
+            BackupOptionsModel model = new();
+            Assert.Equal(PostWriteVerificationType.Hash,
+                BackupOptionsModel.PostWriteVerificationOption.DefaultValueFactory!(null!));
+        }
+
+        [Fact]
+        public void VerificationRetryCount_DefaultsTo1()
+        {
+            BackupOptionsModel model = new();
+            Assert.Equal(1,
+                BackupOptionsModel.VerificationRetryCountOption.DefaultValueFactory!(null!));
+        }
+
+        [Fact]
+        public void VerificationRetryDelayMs_DefaultsTo250()
+        {
+            BackupOptionsModel model = new();
+            Assert.Equal(250,
+                BackupOptionsModel.VerificationRetryDelayMsOption.DefaultValueFactory!(null!));
+        }
+
+        [Fact]
+        public void VerificationDeleteOnFailure_DefaultsToFalse()
+        {
+            BackupOptionsModel model = new();
+            Assert.False(model.VerificationDeleteOnFailure);
+        }
+
+        [Fact]
+        public void VerificationTimeoutMs_DefaultsTo0()
+        {
+            BackupOptionsModel model = new();
+            Assert.Equal(0,
+                BackupOptionsModel.VerificationTimeoutMsOption.DefaultValueFactory!(null!));
+        }
+
+        [Fact]
+        public void VerificationRetryCountOption_HasExpectedName()
+        {
+            Assert.Equal("--verify-retry-count", BackupOptionsModel.VerificationRetryCountOption.Name);
+        }
+
+        [Fact]
+        public void VerificationRetryDelayMsOption_HasExpectedName()
+        {
+            Assert.Equal("--verify-retry-delay", BackupOptionsModel.VerificationRetryDelayMsOption.Name);
+        }
+
+        [Fact]
+        public void VerificationDeleteOnFailureOption_HasExpectedName()
+        {
+            Assert.Equal("--verify-delete-on-failure", BackupOptionsModel.VerificationDeleteOnFailureOption.Name);
+        }
+
+        [Fact]
+        public void VerificationTimeoutMsOption_HasExpectedName()
+        {
+            Assert.Equal("--verify-timeout", BackupOptionsModel.VerificationTimeoutMsOption.Name);
+        }
+
+        [Fact]
+        public void PostWriteVerificationOption_HasExpectedName()
+        {
+            Assert.Equal("--verify", BackupOptionsModel.PostWriteVerificationOption.Name);
+        }
     }
 }

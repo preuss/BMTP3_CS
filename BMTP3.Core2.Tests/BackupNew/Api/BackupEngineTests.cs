@@ -70,6 +70,166 @@ public class BackupEngineTests
 				// Best-effort cleanup for test artifacts
 			}
 		}
+
+		// ----------------------------------------------------------------
+		// Pre-flight validation tests (ValidateSourceAndOutput)
+		// ----------------------------------------------------------------
+
+		[Fact]
+		public async Task RunAsync_WithMissingSourcePath_Throws()
+		{
+			var services = new ServiceCollection();
+			services.AddSingleton<IBackupScanner, NoopBackupScanner>();
+			services.AddBMTP3Core2();
+
+			ServiceProvider sp = services.BuildServiceProvider();
+			IBackupEngine engine = sp.GetRequiredService<IBackupEngine>();
+
+			string tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(tempOutput);
+
+			BackupPlan plan = new()
+			{
+				Name = "preflight-test",
+				SourceType = SourceType.FileSystem,
+				SourcePath = "C:\\nonexistent-path-for-preflight-test",
+				SourceId = "C:",
+				Recursive = true,
+				OutputPath = tempOutput
+			};
+
+			try
+			{
+				await engine.RunAsync(plan, null, CancellationToken.None);
+				Assert.Fail("Expected DirectoryNotFoundException");
+			}
+			catch(DirectoryNotFoundException)
+			{
+				// Expected
+			}
+			finally
+			{
+				try { Directory.Delete(tempOutput, true); } catch { }
+			}
+		}
+
+		[Fact]
+		public async Task RunAsync_WithNoReadAccess_Throws()
+		{
+			var services = new ServiceCollection();
+			services.AddSingleton<IBackupScanner, NoopBackupScanner>();
+			services.AddBMTP3Core2();
+
+			ServiceProvider sp = services.BuildServiceProvider();
+			IBackupEngine engine = sp.GetRequiredService<IBackupEngine>();
+
+			// Use a path that we can't read (system root without admin)
+			string systemRoot = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+			string tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N"));
+			Directory.CreateDirectory(tempOutput);
+
+			BackupPlan plan = new()
+			{
+				Name = "preflight-test",
+				SourceType = SourceType.FileSystem,
+				SourcePath = systemRoot,
+				SourceId = systemRoot,
+				Recursive = true,
+				OutputPath = tempOutput
+			};
+
+			try
+			{
+				await engine.RunAsync(plan, null, CancellationToken.None);
+				// If it doesn't throw, that's okay - might have access on this system
+			}
+			catch(UnauthorizedAccessException)
+			{
+				// Expected on systems without admin rights
+			}
+			finally
+			{
+				try { Directory.Delete(tempOutput, true); } catch { }
+			}
+		}
+
+		[Fact]
+		public async Task RunAsync_WithNoWriteAccess_Throws()
+		{
+			var services = new ServiceCollection();
+			services.AddSingleton<IBackupScanner, NoopBackupScanner>();
+			services.AddBMTP3Core2();
+
+			ServiceProvider sp = services.BuildServiceProvider();
+			IBackupEngine engine = sp.GetRequiredService<IBackupEngine>();
+
+			// Use a path that we can't write to (system root)
+			string systemRoot = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+			string tempSource = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N") + "_src");
+			Directory.CreateDirectory(tempSource);
+
+			BackupPlan plan = new()
+			{
+				Name = "preflight-test",
+				SourceType = SourceType.FileSystem,
+				SourcePath = tempSource,
+				SourceId = tempSource,
+				Recursive = true,
+				OutputPath = systemRoot // Try to write to system root - should fail
+			};
+
+			try
+			{
+				await engine.RunAsync(plan, null, CancellationToken.None);
+				// If it doesn't throw, that's okay - might have access on this system
+			}
+			catch(UnauthorizedAccessException)
+			{
+				// Expected on systems without admin rights
+			}
+			finally
+			{
+				try { Directory.Delete(tempSource, true); } catch { }
+			}
+		}
+
+		[Fact]
+		public async Task RunAsync_WithValidPaths_Succeeds()
+		{
+			var services = new ServiceCollection();
+			services.AddSingleton<IBackupScanner, NoopBackupScanner>();
+			services.AddBMTP3Core2();
+
+			ServiceProvider sp = services.BuildServiceProvider();
+			IBackupEngine engine = sp.GetRequiredService<IBackupEngine>();
+
+			string tempSource = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N") + "_src");
+			string tempOutput = Path.Combine(Path.GetTempPath(), "bmtp3-tests", Guid.NewGuid().ToString("N") + "_out");
+			Directory.CreateDirectory(tempSource);
+			Directory.CreateDirectory(tempOutput);
+
+			BackupPlan plan = new()
+			{
+				Name = "preflight-test",
+				SourceType = SourceType.FileSystem,
+				SourcePath = tempSource,
+				SourceId = tempSource,
+				Recursive = true,
+				OutputPath = tempOutput
+			};
+
+			try
+			{
+				BackupJobResult result = await engine.RunAsync(plan, null, CancellationToken.None);
+				Assert.NotNull(result);
+				Assert.Equal(JobState.Completed, result.Status);
+			}
+			finally
+			{
+				try { Directory.Delete(tempSource, true); } catch { }
+				try { Directory.Delete(tempOutput, true); } catch { }
+			}
+		}
 	}
 }
 

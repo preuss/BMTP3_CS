@@ -238,5 +238,53 @@ namespace BMTP3.Core2.Tests.Orchestration
                 try { Directory.Delete(outputDir, recursive: false); } catch { }
             }
         }
+
+        // -----------------------------------------------------------------
+        // 9. ValidateAsync_EmptyName_Throws
+        // -----------------------------------------------------------------
+
+        [Fact]
+        public async Task ValidateAsync_EmptyName_ThrowsArgumentException()
+        {
+            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(outputDir);
+            try
+            {
+                var validator = new JobValidator();
+                var plan = BuildValidPlan(outputDir);
+                plan.Name = string.Empty;
+
+                await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
+                    validator.ValidateAsync(plan, CancellationToken.None));
+            }
+            finally
+            {
+                try { Directory.Delete(outputDir, recursive: false); } catch { }
+            }
+        }
+
+        // -----------------------------------------------------------------
+        // 10. ValidateAsync_InvalidBackupIndexType_Throws
+        // -----------------------------------------------------------------
+
+        [Fact]
+        public async Task ValidateAsync_InvalidBackupIndexType_ThrowsArgumentException()
+        {
+            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(outputDir);
+            try
+            {
+                var validator = new JobValidator();
+                var plan = BuildValidPlan(outputDir);
+                plan.BackupIndexType = (BackupIndexType)999;
+
+                await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
+                    validator.ValidateAsync(plan, CancellationToken.None));
+            }
+            finally
+            {
+                try { Directory.Delete(outputDir, recursive: false); } catch { }
+            }
+        }
     }
 }
