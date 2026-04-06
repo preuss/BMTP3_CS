@@ -299,9 +299,8 @@ public class BackupEngine : IBackupEngine
 						{
 							await _repository.SaveAsync(session, ct).ConfigureAwait(false);
 							itemsSinceLastSave = 0;
-						}
-					}
-				}
+	}
+}
 			} catch(OperationCanceledException) { }
 
 		}, ct);
@@ -494,16 +493,20 @@ public class BackupEngine : IBackupEngine
 		}
 	}
 
-	private static long GetFreeSpace(string path)
-	{
-		try
-		{
-			string root = Path.GetPathRoot(path) ?? path;
-			DriveInfo drive = new(root);
-			return drive.AvailableFreeSpace;
-		} catch
-		{
-			return long.MaxValue;
-		}
-	}
+    private long GetFreeSpace(string path)
+    {
+        try
+        {
+            string root = Path.GetPathRoot(path) ?? path;
+            DriveInfo drive = new(root);
+            return drive.AvailableFreeSpace;
+        }
+        catch (Exception ex)
+        {
+            // If we can't determine free space, assume minimal to trigger validation failure
+            // This is safer than returning MaxValue which could skip the check
+            return 0;
+        }
+    }
+}
 }
