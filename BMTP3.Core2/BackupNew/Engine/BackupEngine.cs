@@ -118,7 +118,7 @@ public class BackupEngine : IBackupEngine
 		}
 
 		// reportingTask should be cancellable independently so we can stop it when the pipeline completes
-		using CancellationTokenSource reportingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+		CancellationTokenSource reportingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 		Task reportingTask = Task.Run(async () =>
 		{
 			try
@@ -167,7 +167,7 @@ public class BackupEngine : IBackupEngine
 
 		HashStepContext hashStepContext = new()
 		{
-			HashTypes = (plan.HashTypes != null && plan.HashTypes.Count > 0) ? plan.HashTypes.ToList() : new List<HashType> { HashType.BLAKE3_512 },
+			HashTypes = plan.HashTypes.ToList(),
 			ForceRecompute = false
 		};
 		HashItemStep hashStep = new(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>());

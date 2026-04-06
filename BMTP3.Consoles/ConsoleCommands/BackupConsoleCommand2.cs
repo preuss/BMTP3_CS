@@ -190,14 +190,36 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 			throw new ArgumentException("--collision-pattern is required when --rename-strategy is CustomCollisionPathPattern.");
 		}
 
-		if(string.IsNullOrWhiteSpace(backupOptions.SourceDevice) && string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
+		if((backupOptions.Config == null || !backupOptions.Config.Exists)
+			&& string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
 		{
-			throw new ArgumentException("Either --source-device or --source-directory must be specified.");
+			throw new ArgumentException("--source-directory is required when not using a config file.");
+		}
+
+		if((backupOptions.Config == null || !backupOptions.Config.Exists)
+			&& backupOptions.OutputDirectory == null)
+		{
+			throw new ArgumentException("--output is required when not using a config file.");
 		}
 
 		if(backupOptions.Delay < 0)
 		{
 			throw new ArgumentException("--delay must be >= 0.");
+		}
+
+		if(backupOptions.VerificationRetryCount < 1)
+		{
+			throw new ArgumentException("--verify-retry-count must be >= 1.");
+		}
+
+		if(backupOptions.VerificationRetryDelayMs < 0)
+		{
+			throw new ArgumentException("--verify-retry-delay must be >= 0.");
+		}
+
+		if(backupOptions.VerificationTimeoutMs < 0)
+		{
+			throw new ArgumentException("--verify-timeout must be >= 0.");
 		}
 	}
 
@@ -207,18 +229,13 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	/// </summary>
 	private BackupPlan EngineArgumentBuilder(BackupOptionsModel backupOptions)
 	{
-		bool explicitDeviceProvided = !string.IsNullOrWhiteSpace(backupOptions.SourceDevice);
-		bool isMtp = explicitDeviceProvided;
-
-		string defaultSourcePath = isMtp ? "\\" : ".";
-
 		BackupPlan plan = new()
 		{
 			Name = backupOptions.Name
 				?? Path.GetFileNameWithoutExtension(backupOptions.Config?.Name)
 				?? "console-backup",
-			SourcePath = backupOptions.SourceDirectory ?? defaultSourcePath,
-			OutputPath = backupOptions.OutputDirectory?.FullName ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "BMTP3_Backups"),
+			SourcePath = backupOptions.SourceDirectory!,
+			OutputPath = backupOptions.OutputDirectory!.FullName,
 			Recursive = backupOptions.Recursive,
 			DryRun = backupOptions.Simulate,
 			IncludePatterns = backupOptions.IncludePatterns,
@@ -232,13 +249,19 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 			DelayMs = backupOptions.Delay,
 			CustomOutputPathPattern = backupOptions.CustomOutputFilePath,
 			CustomCollisionPathPattern = backupOptions.CustomCollisionOutputFilePath,
-			SourceType = isMtp ? SourceType.MediaDevice : SourceType.FileSystem
+			SourceType = !string.IsNullOrWhiteSpace(backupOptions.SourceDevice) ? SourceType.MediaDevice : SourceType.FileSystem,
+			PostWriteVerification = backupOptions.PostWriteVerification,
+			VerificationRetryCount = backupOptions.VerificationRetryCount,
+			VerificationRetryDelayMs = backupOptions.VerificationRetryDelayMs,
+			VerificationDeleteOnFailure = backupOptions.VerificationDeleteOnFailure,
+			VerificationTimeoutMs = backupOptions.VerificationTimeoutMs
 		};
 
-		if(isMtp)
+		if(!string.IsNullOrWhiteSpace(backupOptions.SourceDevice))
 		{
 			plan.SourceId = backupOptions.SourceDevice!;
-		} else
+		}
+		else
 		{
 			plan.SourceId = Path.GetPathRoot(Path.GetFullPath(plan.SourcePath ?? ".")) ?? string.Empty;
 		}

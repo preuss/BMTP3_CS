@@ -34,7 +34,7 @@ public class BackupOptionsModel : BaseOptionsModel
 	public string? SourceDevice { get; set; }
 	public static Option<string> SourceDirectoryOption { get; } = new("--source-directory", "-s")
 	{
-		Description = "Source folder on the device (e.g. 'Internal Storage/DCIM/100APPLE' or 'C:\\Users\\Bob\\Pictures').",
+		Description = "Source folder on the device (e.g., 'Internal Storage/DCIM/100APPLE' or 'C:\\Users\\Bob\\Pictures').",
 	};
 	public string? SourceDirectory { get; set; }
 
@@ -156,6 +156,45 @@ public class BackupOptionsModel : BaseOptionsModel
 		DefaultValueFactory = parseResult => 42,
 	};
 	public int Delay { get; set; }
+
+	// --------------------------------------------------
+	// VERIFICATION
+	// --------------------------------------------------
+
+	public static Option<PostWriteVerificationType> PostWriteVerificationOption { get; } = new("--verify")
+	{
+		Description = "Post-write verification method: None, Hash, or Binary.",
+		Arity = ArgumentArity.ZeroOrOne,
+		DefaultValueFactory = argumentResult => PostWriteVerificationType.Hash
+	};
+	public PostWriteVerificationType PostWriteVerification { get; set; }
+
+	public static Option<int> VerificationRetryCountOption { get; } = new("--verify-retry-count")
+	{
+		Description = "Number of verification retry attempts before giving up.",
+		DefaultValueFactory = parseResult => 1,
+	};
+	public int VerificationRetryCount { get; set; }
+
+	public static Option<int> VerificationRetryDelayMsOption { get; } = new("--verify-retry-delay")
+	{
+		Description = "Delay in milliseconds between verification retry attempts.",
+		DefaultValueFactory = parseResult => 250,
+	};
+	public int VerificationRetryDelayMs { get; set; }
+
+	public static Option<bool> VerificationDeleteOnFailureOption { get; } = new("--verify-delete-on-failure")
+	{
+		Description = "Delete destination file if verification ultimately fails.",
+	};
+	public bool VerificationDeleteOnFailure { get; set; }
+
+	public static Option<int> VerificationTimeoutMsOption { get; } = new("--verify-timeout")
+	{
+		Description = "Timeout in milliseconds for per-operation verification. 0 = no timeout.",
+		DefaultValueFactory = parseResult => 0,
+	};
+	public int VerificationTimeoutMs { get; set; }
 
 	protected override void DoAddValidators()
 	{
