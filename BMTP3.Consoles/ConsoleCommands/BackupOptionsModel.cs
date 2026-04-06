@@ -12,7 +12,6 @@ public class BackupOptionsModel : BaseOptionsModel
 	public static Option<FileInfo> ConfigOption { get; } = new("--config", "-c")
 	{
 		Description = "Path to the backup configuration file (TOML or JSON).",
-		//DefaultValueFactory = parseResult => new FileInfo("default.toml"),
 		CustomParser = result => result.Tokens.Count == 0
 			? new FileInfo("default.toml")
 			: new FileInfo(result.Tokens[0].Value),

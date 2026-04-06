@@ -232,8 +232,14 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		BackupPlan plan = new()
 		{
 			Name = backupOptions.Name
-				?? Path.GetFileNameWithoutExtension(backupOptions.Config?.Name)
-				?? "console-backup",
+				?? (backupOptions.Config != null
+					? Path.GetFileNameWithoutExtension(backupOptions.Config.Name)
+					: null)
+				?? backupOptions.SourceDevice
+				?? (backupOptions.OutputDirectory != null
+					? backupOptions.OutputDirectory.Name
+					: null)
+				?? "backup",
 			SourcePath = backupOptions.SourceDirectory!,
 			OutputPath = backupOptions.OutputDirectory!.FullName,
 			Recursive = backupOptions.Recursive,
