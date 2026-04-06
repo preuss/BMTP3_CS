@@ -29,5 +29,5 @@ public interface IBackupRepository
 	/// <summary>
 	/// Persist the state of a single backup item (for diagnostics and resume support).
 	/// </summary>
-	Task PersistItemStateAsync(BackupItem item, CancellationToken ct = default);
+	Task PersistItemStateAsync(IBackupItem item, CancellationToken ct = default);
 }

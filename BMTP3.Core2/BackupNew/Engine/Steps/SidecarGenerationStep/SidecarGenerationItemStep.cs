@@ -40,12 +40,19 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 
 		try
 		{
+			// DryRun: skip sidecar generation completely
+			if(_context.DryRun)
+			{
+				item.AddLog("Sidecar skipped (DryRun).", Name);
+				return true;
+			}
+
             // Resolve generator based on configured sidecar format in the plan
             ISidecarGenerator? generator = _factory.Create(_context.SidecarFormat);
             if (generator == null)
             {
                 item.AddLog("No sidecar generator available.", Name);
-                return false;
+                return true; // Not an error - sidecar is optional
             }
 
             bool generated = await generator.GenerateAsync(item, ct);
@@ -55,7 +62,8 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 				item.AddLog("Sidecar generated.", Name);
 			} else
 			{
-				item.AddLog("No sidecar produced.", Name);
+				// Sidecar is critical - fail the item when generation fails
+				item.Fail("Sidecar generation failed: generator returned false", Name);
 			}
 
 			return generated;
@@ -64,6 +72,7 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 			throw;
 		} catch(Exception ex)
 		{
+			// Sidecar is critical - fail the item when generation throws
 			item.Fail($"Sidecar generation failed: {ex.Message}", Name);
 			return false;
 		}

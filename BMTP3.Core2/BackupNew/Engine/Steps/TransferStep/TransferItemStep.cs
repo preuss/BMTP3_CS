@@ -154,11 +154,6 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 
 		if(result.Success)
 		{
-			if(_context.DryRun)
-			{
-				TryCleanupDryRunStaging(item);
-			}
-
 			// BUG-06 FIX: LocalFileTransfer deletes the staging file before returning.
 			// item.Content still points to the (now-deleted) staging path at this point.
 			// Replace it with a FileContent pointing to the destination so that

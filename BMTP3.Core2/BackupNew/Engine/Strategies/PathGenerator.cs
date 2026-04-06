@@ -14,6 +14,8 @@ public class PathGenerator : IPathGenerator
 	// Regex matches tokens like ${YYYY}, ${Model}, etc.
 	private static readonly Regex TokenRegex = new(@"\$\{?([a-zA-Z0-9_]+)\}?", RegexOptions.Compiled);
 
+	private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
+
 	public string GenerateRelativePath(IBackupItem item, BackupPlan plan)
 	{
 		string fileName = item.Metadata.Get<string>(MetadataKey.SourceFileName)
@@ -22,6 +24,7 @@ public class PathGenerator : IPathGenerator
 		switch(plan.OutputStrategy)
 		{
 			case OutputStructureStrategy.Flat:
+				ValidateFileName(fileName);
 				return fileName;
 
 			case OutputStructureStrategy.PreserveSourceTree:
@@ -29,19 +32,24 @@ public class PathGenerator : IPathGenerator
 
 				if(string.IsNullOrWhiteSpace(relPath) || relPath.Trim(Path.DirectorySeparatorChar) == "")
 				{
+					ValidateFileName(fileName);
 					return fileName;
 				}
 
+				ValidatePath(relPath);
+				ValidateFileName(fileName);
 				return Path.Combine(relPath, fileName);
 
 			case OutputStructureStrategy.CustomPathPattern:
 				if(string.IsNullOrWhiteSpace(plan.CustomOutputPathPattern))
 				{
+					ValidateFileName(fileName);
 					return fileName;
 				}
 				return ApplyPattern(plan.CustomOutputPathPattern, item);
 
 			default:
+				ValidateFileName(fileName);
 				return fileName;
 		}
 	}
@@ -51,11 +59,43 @@ public class PathGenerator : IPathGenerator
 		if(string.IsNullOrWhiteSpace(pattern)) return string.Empty;
 
 		string originalFileName = item.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
-		return TokenRegex.Replace(pattern, match =>
+		string result = TokenRegex.Replace(pattern, match =>
 		{
 			string key = match.Groups[1].Value;
 			return GetTokenValueStrict(key, item, originalFileName);
 		});
+
+		ValidatePath(result);
+		return result;
+	}
+
+	private static void ValidateFileName(string fileName)
+	{
+		if(string.IsNullOrWhiteSpace(fileName))
+			throw new ArgumentException("File name cannot be empty.", nameof(fileName));
+
+		foreach(char c in InvalidFileNameChars)
+		{
+			if(fileName.Contains(c))
+				throw new ArgumentException($"File name '{fileName}' contains invalid character: '{c}' (0x{(int)c:X2}).");
+		}
+
+		if(fileName.Length > 255)
+			throw new ArgumentException($"File name '{fileName}' exceeds 255 characters.");
+	}
+
+	private static void ValidatePath(string path)
+	{
+		if(string.IsNullOrWhiteSpace(path)) return;
+
+		foreach(char c in InvalidFileNameChars)
+		{
+			if(path.Contains(c))
+				throw new ArgumentException($"Path '{path}' contains invalid character: '{c}' (0x{(int)c:X2}).");
+		}
+
+		if(path.Contains(".."))
+			throw new ArgumentException($"Path '{path}' contains path traversal sequence '..'.");
 	}
 
 	private string GetTokenValueStrict(string key, IBackupItem item, string originalFileName)

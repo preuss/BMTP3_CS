@@ -21,6 +21,7 @@ using BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
 using BMTP3.Core2.BackupNew.Engine.Transfers;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
+using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Threading.Channels;
@@ -102,6 +103,22 @@ public class BackupEngine : IBackupEngine
 
 		// 0c. Pre-flight: validate source and output
 		ValidateSourceAndOutput(plan);
+
+		// 0d. Initialize backup session for resume support
+		Guid sessionId = Guid.NewGuid();
+		BackupSessionEntity session = new()
+		{
+			SessionId = sessionId,
+			Plan = plan,
+			Records = new List<BackupResumeRecord>()
+		};
+
+		// Save initial session state (for resume support on crash/cancellation)
+		if(!plan.DryRun)
+		{
+			await _repository.SaveAsync(session, ct).ConfigureAwait(false);
+			_logger.LogInformation("Backup session {SessionId} started. Output: {OutputPath}", sessionId, plan.OutputPath);
+		}
 
 		// Prepare result
 		ProgressTracker tracker = new();
@@ -255,6 +272,9 @@ public class BackupEngine : IBackupEngine
 		{
 			tracker.SetPhase(BackupPhase.Transferring);
 
+			int itemsSinceLastSave = 0;
+			const int saveInterval = 10; // Save every 10 items
+
 			try
 			{
 				await foreach(IBackupItem item in persistenceChannel.Reader.ReadAllAsync(ct))
@@ -267,6 +287,20 @@ public class BackupEngine : IBackupEngine
 						item.ResultState,
 						(long)size
 					);
+
+					// Persist item state for resume support (skip in DryRun)
+					if(!plan.DryRun)
+					{
+						await _repository.PersistItemStateAsync(item, ct).ConfigureAwait(false);
+						itemsSinceLastSave++;
+
+						// Periodic save to avoid losing progress on crash
+						if(itemsSinceLastSave >= saveInterval)
+						{
+							await _repository.SaveAsync(session, ct).ConfigureAwait(false);
+							itemsSinceLastSave = 0;
+						}
+					}
 				}
 			} catch(OperationCanceledException) { }
 
@@ -352,6 +386,14 @@ public class BackupEngine : IBackupEngine
 		result.FilesSkipped = finalSnap.FilesSkipped;
 		result.TotalFilesScanned = finalSnap.FilesDiscovered;
 		result.TotalBytesCopied = finalSnap.BytesProcessed;
+
+		// Final save of session state (skip in DryRun)
+		if(!plan.DryRun)
+		{
+			await _repository.SaveAsync(session, ct).ConfigureAwait(false);
+			_logger.LogInformation("Backup session {SessionId} completed. Files: {Copied}/{Total}, Status: {Status}", 
+				sessionId, result.FilesCopied, result.TotalFilesScanned, result.Status);
+		}
 
 		return result;
 	}

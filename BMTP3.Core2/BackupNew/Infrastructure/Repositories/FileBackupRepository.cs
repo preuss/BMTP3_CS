@@ -2,6 +2,7 @@ using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Domain.Repositories;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using BMTP3.Core2.BackupNew.Api.Enums;
 
 namespace BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 
@@ -10,6 +11,8 @@ public class FileBackupRepository : IBackupRepository
 {
     private readonly string _storePath;
     private readonly Microsoft.Extensions.Logging.ILogger<FileBackupRepository>? _logger;
+    private List<BackupResumeRecord> _records = new();
+    private BackupSessionEntity? _currentSession;
 
     public FileBackupRepository(string? storePath = null, Microsoft.Extensions.Logging.ILogger<FileBackupRepository>? logger = null)
     {
@@ -23,26 +26,83 @@ public class FileBackupRepository : IBackupRepository
 		string path = Path.Combine(_storePath, "last_session.json");
 		if(!File.Exists(path)) return Task.FromResult<BackupSessionEntity?>(null);
 		string text = File.ReadAllText(path);
-		BackupSessionEntity? session = JsonSerializer.Deserialize<BackupSessionEntity>(text);
+		var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+		BackupSessionEntity? session = JsonSerializer.Deserialize<BackupSessionEntity>(text, options);
 		return Task.FromResult(session);
 	}
 
     public Task SaveAsync(BackupSessionEntity session, CancellationToken ct)
     {
+        _currentSession = session;
+        _records = session.Records ?? new List<BackupResumeRecord>();
+        
         string path = Path.Combine(_storePath, "last_session.json");
-        string text = JsonSerializer.Serialize(session, new JsonSerializerOptions { WriteIndented = true });
-        // Persist the session to disk. This is the intended repository behavior; log via ILogger for traceability.
+        var options = new JsonSerializerOptions { WriteIndented = true };
+        string text = JsonSerializer.Serialize(session, options);
         File.WriteAllText(path, text);
         _logger?.LogDebug("Saved backup session to {Path}", path);
         return Task.CompletedTask;
     }
 
-    public Task PersistItemStateAsync(BackupItem item, CancellationToken ct)
+    public Task PersistItemStateAsync(IBackupItem item, CancellationToken ct)
     {
-        // Previously this method appended a plain-text line to item_states.log inside the repo folder.
-        // That produced side-effect files under the repository during tests. Replace with structured logging.
-        string src = item.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "?";
-        _logger?.LogInformation("PersistItemState: Item {SourceFileName} State {State}", src, item.ResultState);
+        if(_currentSession == null)
+        {
+            _logger?.LogWarning("No session to persist item state. Call SaveAsync first.");
+            return Task.CompletedTask;
+        }
+
+        // Extract relevant metadata for resume record
+        string sourceId = item.Metadata.Get<string>(MetadataKey.SourceId) ?? "";
+        string sourcePath = item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "";
+        string sourceFileName = item.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
+        ulong length = item.Metadata.Get<ulong>(MetadataKey.Length);
+        
+        DateTime? dateCreated = item.Metadata.Has(MetadataKey.CreatedDateTime) 
+            ? item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime) 
+            : null;
+        DateTime? dateModified = item.Metadata.Has(MetadataKey.ModifiedDateTime) 
+            ? item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime) 
+            : null;
+        DateTime? dateAuthored = item.Metadata.Has(MetadataKey.AuthoredDateTime) 
+            ? item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime) 
+            : null;
+
+        PersistState state = item.ResultState switch
+        {
+            ItemResultState.Success => PersistState.Completed,
+            ItemResultState.Skipped => PersistState.Skipped,
+            _ => PersistState.Pending
+        };
+
+        // Check if record already exists and update, or add new
+        var existing = _records.FirstOrDefault(r => r.ItemId == item.Id);
+        if(existing != null)
+        {
+            existing.State = state;
+            existing.BackupDate = state == PersistState.Completed ? DateTime.UtcNow : null;
+        }
+        else
+        {
+            _records.Add(new BackupResumeRecord
+            {
+                ItemId = item.Id,
+                SourceId = sourceId,
+                SourcePath = sourcePath,
+                SourceFileName = sourceFileName,
+                LengthBytes = length,
+                DateCreated = dateCreated,
+                DateModified = dateModified,
+                DateAuthored = dateAuthored,
+                State = state,
+                BackupDate = state == PersistState.Completed ? DateTime.UtcNow : null
+            });
+        }
+
+        // Update session with current records
+        _currentSession.Records = _records;
+
+        _logger?.LogDebug("Persisted item {ItemId}: {State}", item.Id, state);
         return Task.CompletedTask;
     }
 
@@ -52,7 +112,6 @@ public class FileBackupRepository : IBackupRepository
 		{
 			if(Directory.Exists(_storePath))
 			{
-				// Delete the directory and recreate to keep repository in a clean state
 				Directory.Delete(_storePath, recursive: true);
 				Directory.CreateDirectory(_storePath);
 			}
