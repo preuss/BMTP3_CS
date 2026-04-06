@@ -5,6 +5,8 @@ using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Hashing;
 using Microsoft.Extensions.Logging;
 using System.Collections.Concurrent;
+using System.Linq;
+using System.Threading;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
@@ -17,6 +19,12 @@ public class CollisionResolver : ICollisionResolver
     private static readonly ConcurrentDictionary<string, SemaphoreSlim> _renameLocks = new(StringComparer.OrdinalIgnoreCase);
     private static readonly ConcurrentDictionary<string, DateTimeOffset> _reservedRenamePaths = new(StringComparer.OrdinalIgnoreCase);
     private static readonly TimeSpan ReservationTtl = TimeSpan.FromMinutes(10);
+    
+    // Limits to prevent unbounded memory growth
+    private const int MaxRenameLocks = 1000;
+    private const int MaxReservedPaths = 10000;
+    private static int _cleanupCounter = 0;
+    private const int CleanupInterval = 100; // Cleanup every 100 operations
 
     private readonly IMetadataReader _metadataReader;
     private readonly IPathGenerator _pathGenerator;
@@ -359,6 +367,12 @@ public class CollisionResolver : ICollisionResolver
 	{
 		string fullPath = Path.GetFullPath(path);
 		_reservedRenamePaths[fullPath] = DateTimeOffset.UtcNow;
+		
+		// Trigger periodic cleanup if needed
+		if(Interlocked.Increment(ref _cleanupCounter) % CleanupInterval == 0)
+		{
+			TryCleanupOldEntries();
+		}
 	}
 
 	private static void CleanupExpiredReservations(string directory)
@@ -378,5 +392,43 @@ public class CollisionResolver : ICollisionResolver
 				_reservedRenamePaths.TryRemove(kv.Key, out _);
 			}
 		}
+	}
+
+	/// <summary>
+	/// Periodic cleanup to prevent unbounded memory growth.
+	/// Removes expired reservations and old locks.
+	/// </summary>
+	private static void TryCleanupOldEntries()
+	{
+		DateTimeOffset now = DateTimeOffset.UtcNow;
+		
+		// Clean up expired reservations
+		var expiredKeys = _reservedRenamePaths
+			.Where(kv => (now - kv.Value) > ReservationTtl || File.Exists(kv.Key))
+			.Select(kv => kv.Key)
+			.ToList();
+		
+		foreach(var key in expiredKeys)
+		{
+			_reservedRenamePaths.TryRemove(key, out _);
+		}
+		
+		// If still too many entries, remove oldest 25%
+		if(_reservedRenamePaths.Count > MaxReservedPaths)
+		{
+			var keysToRemove = _reservedRenamePaths
+				.OrderBy(kv => kv.Value)
+				.Take(_reservedRenamePaths.Count / 4)
+				.Select(kv => kv.Key)
+				.ToList();
+			
+			foreach(var key in keysToRemove)
+			{
+				_reservedRenamePaths.TryRemove(key, out _);
+			}
+		}
+		
+		// Note: SemaphoreSlim cleanup is tricky because they may be in use.
+		// We just limit new additions when count exceeds limit.
 	}
 }

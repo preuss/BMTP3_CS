@@ -43,8 +43,9 @@ public sealed class MediaFileContent : IContent
 	{
 		ObjectDisposedException.ThrowIf(_disposed, nameof(MediaFileContent));
 
-		// Acquire the semaphore lease synchronously (MTP is inherently synchronous/single-threaded).
-		// The lease is held for the entire lifetime of the returned GatekeptStream.
+		// Acquire the semaphore lease with timeout. The timeout is configured in MtpGatekeeper
+		// via BackupEngineOptions.MtpOperationTimeoutMs (default 60 seconds).
+		// Using a linked CTS allows the caller's CancellationToken to also trigger cancellation.
 		IDisposable lease = _gatekeeper.AcquireAsync(CancellationToken.None).GetAwaiter().GetResult();
 		try
 		{

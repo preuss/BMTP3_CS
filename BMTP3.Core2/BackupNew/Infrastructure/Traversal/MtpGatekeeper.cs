@@ -1,14 +1,23 @@
 using BMTP3.Core2.BackupNew.Engine.Traversal;
+using System.Threading.Tasks;
 
 namespace BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 
 public class MtpGatekeeper : IMtpGatekeeper, IDisposable
 {
 	private readonly SemaphoreSlim _semaphore = new(1, 1);
+	private readonly int _defaultTimeoutMs;
+
+	public MtpGatekeeper(int defaultTimeoutMs = 60000)
+	{
+		_defaultTimeoutMs = defaultTimeoutMs > 0 ? defaultTimeoutMs : 60000;
+	}
 
 	public async Task<T> ExecuteAsync<T>(Func<Task<T>> action, CancellationToken ct)
 	{
-		await _semaphore.WaitAsync(ct);
+		using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+		cts.CancelAfter(_defaultTimeoutMs);
+		await _semaphore.WaitAsync(cts.Token);
 		try
 		{
 			return await action();
@@ -20,7 +29,9 @@ public class MtpGatekeeper : IMtpGatekeeper, IDisposable
 
 	public async Task ExecuteAsync(Func<Task> action, CancellationToken ct)
 	{
-		await _semaphore.WaitAsync(ct);
+		using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+		cts.CancelAfter(_defaultTimeoutMs);
+		await _semaphore.WaitAsync(cts.Token);
 		try
 		{
 			await action();
@@ -33,7 +44,17 @@ public class MtpGatekeeper : IMtpGatekeeper, IDisposable
 	/// <inheritdoc />
 	public async Task<IDisposable> AcquireAsync(CancellationToken ct)
 	{
-		await _semaphore.WaitAsync(ct);
+		return await AcquireAsync(_defaultTimeoutMs, ct);
+	}
+
+	/// <summary>
+	/// Acquires the semaphore with a specific timeout.
+	/// </summary>
+	public async Task<IDisposable> AcquireAsync(int timeoutMs, CancellationToken ct)
+	{
+		using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+		cts.CancelAfter(timeoutMs > 0 ? timeoutMs : _defaultTimeoutMs);
+		await _semaphore.WaitAsync(cts.Token);
 		return new SemaphoreLease(_semaphore);
 	}
 

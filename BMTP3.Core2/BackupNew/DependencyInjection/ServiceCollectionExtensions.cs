@@ -38,8 +38,15 @@ public static class ServiceCollectionExtensions
 		preConfigure?.Invoke(services);
 
 		// Engine defaults (use TryAdd so callers can provide replacements via preConfigure)
-		services.TryAddSingleton<IMtpGatekeeper, MtpGatekeeper>();
 		services.TryAddSingleton<IMediaDeviceScannerFactory, MediaDeviceScannerFactory>();
+
+		// MTP Gatekeeper with configurable timeout from BackupEngineOptions
+		services.TryAddSingleton<IMtpGatekeeper>(sp =>
+		{
+			var options = sp.GetService<Microsoft.Extensions.Options.IOptions<BackupEngineOptions>>();
+			int timeout = options?.Value.MtpOperationTimeoutMs ?? 60000;
+			return new MtpGatekeeper(timeout);
+		});
 
 		// Traversal scanner defaults: FileSystemScanner for local disk.
 		// MediaDeviceScanner cannot be registered here because it requires a MediaDevice instance

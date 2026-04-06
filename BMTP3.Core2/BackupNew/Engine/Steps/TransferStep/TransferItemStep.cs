@@ -218,6 +218,9 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 				}
 
 				item.AddLog($"Verified ({_context.PostWriteVerification})", Name);
+
+				// Delete staging file AFTER successful verification to preserve data integrity
+				TryCleanupStaging(item);
 			}
 
 			item.SetResult(ItemResultState.Success);
@@ -232,7 +235,7 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 		return result;
 	}
 
-	private void TryCleanupDryRunStaging(IBackupItem item)
+	private void TryCleanupStaging(IBackupItem item)
 	{
 		if(!item.Metadata.Has(MetadataKey.LocalTempPath))
 			return;
@@ -248,6 +251,7 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 				File.Delete(tempPath);
 			}
 
+			// Try to remove empty staging directory
 			string? parentDir = Path.GetDirectoryName(tempPath);
 			if(!string.IsNullOrWhiteSpace(parentDir) && Directory.Exists(parentDir) && !Directory.EnumerateFileSystemEntries(parentDir).Any())
 			{
@@ -256,7 +260,7 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 		}
 		catch(Exception ex)
 		{
-			item.AddLog($"Failed to clean dry-run staging file: {ex.Message}", Name);
+			item.AddLog($"Failed to clean staging file: {ex.Message}", Name);
 		}
 	}
 

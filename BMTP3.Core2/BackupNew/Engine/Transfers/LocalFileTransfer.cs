@@ -4,7 +4,9 @@ using BMTP3.Core2.BackupNew.Engine.Resilience;
 
 namespace BMTP3.Core2.BackupNew.Engine.Transfers;
 
-// Simple local file transfer implementation: copies file from staging to target and deletes source.
+// Simple local file transfer implementation: copies file from staging to target.
+// NOTE: Staging file deletion is NOT performed here - caller must handle cleanup
+// after verification to ensure data integrity on verification failure.
 public class LocalFileTransfer : IFileTransfer
 {
 	private readonly IRetryPolicy _retryPolicy;
@@ -25,7 +27,7 @@ public class LocalFileTransfer : IFileTransfer
 			string? destDir = Path.GetDirectoryName(targetPath);
 			if(!string.IsNullOrEmpty(destDir)) Directory.CreateDirectory(destDir);
 
-			// 1. Copy using Stream for Async/Cancellation support and Retry logic
+			// Copy using Stream for Async/Cancellation support and Retry logic
 			await _retryPolicy.ExecuteAsync(async () =>
 			{
 				using(FileStream sourceStream = new(stagingPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
@@ -36,8 +38,9 @@ public class LocalFileTransfer : IFileTransfer
 				return true;
 			}, ct);
 
-			// 2. Delete source after successful copy
-			File.Delete(stagingPath);
+			// NOTE: Staging file is NOT deleted here. 
+			// Caller (TransferItemStep) must delete staging AFTER verification succeeds.
+			// This ensures data integrity if verification fails.
 			return OperationResult.Ok();
 		} catch(Exception ex)
 		{

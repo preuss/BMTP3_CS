@@ -342,6 +342,12 @@ public class BackupEngine : IBackupEngine
 				// ignored
 			}
 
+			// Cleanup MTP session on pipeline crash
+			if(mtpSession != null)
+			{
+				try { mtpSession.Dispose(); } catch { /* best effort */ }
+			}
+
 			return result;
 		}
 
@@ -353,6 +359,12 @@ public class BackupEngine : IBackupEngine
 		} catch
 		{
 			// ignored
+		}
+
+		// Cleanup MTP session after normal completion
+		if(mtpSession != null)
+		{
+			try { mtpSession.Dispose(); } catch { /* best effort */ }
 		}
 
 		// Decide final status based on cancellation and per-item failures collected by the tracker.

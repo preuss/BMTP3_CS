@@ -6,6 +6,9 @@ public class BackupEngineOptions
 	public int BaseBackoffMs { get; set; } = 200;
 	public int DegreeOfParallelism { get; set; } = 0; // 0 means auto (Environment.ProcessorCount/2)
 
+	// MTP Device Timeout (milliseconds)
+	public int MtpOperationTimeoutMs { get; set; } = 60000; // Default 60 seconds for MTP operations
+
 	// Channel Buffer Sizes
 	public int ScanChannelCapacity { get; set; } = 128;
 	public int ConvertChannelCapacity { get; set; } = 128;
