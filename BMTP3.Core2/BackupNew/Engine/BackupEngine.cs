@@ -299,9 +299,11 @@ public class BackupEngine : IBackupEngine
 						{
 							await _repository.SaveAsync(session, ct).ConfigureAwait(false);
 							itemsSinceLastSave = 0;
-	}
-}
-			} catch(OperationCanceledException) { }
+						}
+					}
+				}
+			}
+			catch(OperationCanceledException) { }
 
 		}, ct);
 
@@ -501,12 +503,11 @@ public class BackupEngine : IBackupEngine
             DriveInfo drive = new(root);
             return drive.AvailableFreeSpace;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // If we can't determine free space, assume minimal to trigger validation failure
             // This is safer than returning MaxValue which could skip the check
             return 0;
         }
     }
-}
 }

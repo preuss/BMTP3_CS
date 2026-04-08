@@ -62,7 +62,7 @@ namespace BMTP3.Core2.Tests.Integration
                     DryRun = true
                 };
 
-                var services = new ServiceCollection();
+                ServiceCollection services = new();
                 services.AddLogging();
                 services.AddBMTP3Core2(preConfigure: sc =>
                 {
