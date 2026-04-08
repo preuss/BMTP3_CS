@@ -1,5 +1,4 @@
 using BMTP3.Core2.BackupNew.Engine.Models;
-
 using BMTP3.Core2.BackupNew.Engine.Resilience;
 
 namespace BMTP3.Core2.BackupNew.Engine.Transfers;
@@ -16,25 +15,43 @@ public class LocalFileTransfer : IFileTransfer
 		_retryPolicy = retryPolicy ?? throw new ArgumentNullException(nameof(retryPolicy));
 	}
 
-	public async Task<OperationResult> TransferAsync(string stagingPath, string targetPath, bool dryRun, CancellationToken ct)
+	public async Task<OperationResult> TransferAsync(string stagingPath, string targetPath, bool dryRun,
+		CancellationToken ct)
 	{
-		if(string.IsNullOrWhiteSpace(stagingPath)) return OperationResult.Fail("stagingPath is empty");
-		if(string.IsNullOrWhiteSpace(targetPath)) return OperationResult.Fail("targetPath is empty");
-		if(dryRun) return OperationResult.Ok();
+		if (string.IsNullOrWhiteSpace(stagingPath))
+		{
+			return OperationResult.Fail("stagingPath is empty");
+		}
+
+		if (string.IsNullOrWhiteSpace(targetPath))
+		{
+			return OperationResult.Fail("targetPath is empty");
+		}
+
+		if (dryRun)
+		{
+			return OperationResult.Ok();
+		}
 
 		try
 		{
 			string? destDir = Path.GetDirectoryName(targetPath);
-			if(!string.IsNullOrEmpty(destDir)) Directory.CreateDirectory(destDir);
+			if (!string.IsNullOrEmpty(destDir))
+			{
+				Directory.CreateDirectory(destDir);
+			}
 
 			// Copy using Stream for Async/Cancellation support and Retry logic
 			await _retryPolicy.ExecuteAsync(async () =>
 			{
-				using(FileStream sourceStream = new(stagingPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
-				using(FileStream destStream = new(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096, true))
+				using (FileStream sourceStream =
+				       new(stagingPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, true))
+				using (FileStream destStream = new(targetPath, FileMode.Create, FileAccess.Write, FileShare.None, 4096,
+					       true))
 				{
 					await sourceStream.CopyToAsync(destStream, ct);
 				}
+
 				return true;
 			}, ct);
 
@@ -42,7 +59,8 @@ public class LocalFileTransfer : IFileTransfer
 			// Caller (TransferItemStep) must delete staging AFTER verification succeeds.
 			// This ensures data integrity if verification fails.
 			return OperationResult.Ok();
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
 			return OperationResult.Fail(ex.Message);
 		}

@@ -1,20 +1,21 @@
+using System.Security;
 using System.Text;
 
 namespace BMTP3.Core2.BackupNew.Utilities;
 
 /// <summary>
-/// Helpers for normalizing file/device paths into stable URIs used in metadata.
+///     Helpers for normalizing file/device paths into stable URIs used in metadata.
 /// </summary>
 public static class PathNormalizer
 {
 	/// <summary>
-	/// Normalize a local filesystem path into a file:// URI string.
-	/// Examples: "file:///C:/folder/file.jpg" or "file://server/share/file.jpg".
-	/// Returns empty string on null/empty input.
+	///     Normalize a local filesystem path into a file:// URI string.
+	///     Examples: "file:///C:/folder/file.jpg" or "file://server/share/file.jpg".
+	///     Returns empty string on null/empty input.
 	/// </summary>
 	public static string NormalizeFileUri(string path)
 	{
-		if(string.IsNullOrWhiteSpace(path))
+		if (string.IsNullOrWhiteSpace(path))
 		{
 			return string.Empty;
 		}
@@ -26,46 +27,53 @@ public static class PathNormalizer
 			Uri uri = new(full);
 
 			// Defensive: only accept absolute file:// URIs (avoid accidentally persisting non-file schemes in metadata).
-			if(!uri.IsAbsoluteUri || !string.Equals(uri.Scheme, Uri.UriSchemeFile, StringComparison.OrdinalIgnoreCase))
+			if (!uri.IsAbsoluteUri || !string.Equals(uri.Scheme, Uri.UriSchemeFile, StringComparison.OrdinalIgnoreCase))
 			{
 				return string.Empty;
 			}
+
 			return uri.AbsoluteUri; // e.g. "file:///C:/folder/file.jpg" or "file://server/share/file.jpg"
-		} catch(ArgumentException)
+		}
+		catch (ArgumentException)
 		{
 			return string.Empty;
-		} catch(NotSupportedException)
+		}
+		catch (NotSupportedException)
 		{
 			return string.Empty;
-		} catch(PathTooLongException)
+		}
+		catch (PathTooLongException)
 		{
 			return string.Empty;
-		} catch(IOException)
+		}
+		catch (IOException)
 		{
 			return string.Empty;
-		} catch(System.Security.SecurityException)
+		}
+		catch (SecurityException)
 		{
 			return string.Empty;
-		} catch(UriFormatException)
+		}
+		catch (UriFormatException)
 		{
 			return string.Empty;
 		}
 	}
 
 	/// <summary>
-	/// Normalize a device (MTP) path into an mtp:// URI string using the provided deviceId as authority.
-	/// Example: "mtp://deviceId/DCIM/100APPLE/IMG_0001.JPG".
+	///     Normalize a device (MTP) path into an mtp:// URI string using the provided deviceId as authority.
+	///     Example: "mtp://deviceId/DCIM/100APPLE/IMG_0001.JPG".
 	/// </summary>
 	public static string NormalizeMtpUri(string path, string deviceId)
 	{
-		if(string.IsNullOrEmpty(deviceId))
+		if (string.IsNullOrEmpty(deviceId))
 		{
 			throw new ArgumentNullException(nameof(deviceId));
 		}
 
 		string escapedDevice = Uri.EscapeDataString(deviceId);
 
-		if(string.IsNullOrEmpty(path))
+		if (string.IsNullOrEmpty(path))
 		{
 			return $"mtp://{escapedDevice}/";
 		}
@@ -75,19 +83,21 @@ public static class PathNormalizer
 
 		// Split into segments, resolve dot segments ('.' and '..') and normalize unicode
 		string[] rawSegments = mtpPath.Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries);
-		List<string> stack = new List<string>(rawSegments.Length);
-		foreach(string seg in rawSegments)
+		List<string> stack = new(rawSegments.Length);
+		foreach (string seg in rawSegments)
 		{
-			if(seg == ".")
+			if (seg == ".")
 			{
 				continue;
 			}
-			if(seg == "..")
+
+			if (seg == "..")
 			{
-				if(stack.Count > 0)
+				if (stack.Count > 0)
 				{
 					stack.RemoveAt(stack.Count - 1);
 				}
+
 				continue;
 			}
 

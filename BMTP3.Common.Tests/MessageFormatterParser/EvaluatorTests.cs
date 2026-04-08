@@ -1,69 +1,69 @@
 using BMTP3.Common.MessageFormatterParser;
 using BMTP3.Common.MessageFormatterParser.Nodes;
 
-namespace BMTP3.Common.Tests.MessageFormatterParser
+namespace BMTP3.Common.Tests.MessageFormatterParser;
+
+public class EvaluatorTests
 {
-	public class EvaluatorTests
+	[Fact]
+	public void Evaluate_SimpleTextAndPlaceholder_ReturnsCombined()
 	{
-		[Fact]
-		public void Evaluate_SimpleTextAndPlaceholder_ReturnsCombined()
-		{
-			var ast = new RootNode();
-			ast.Children.Add(new TextNode("Hello "));
-			ast.Children.Add(new ConcretePlaceholderNode("name", new List<FunctionCallNode>(), null, null));
+		RootNode ast = new();
+		ast.Children.Add(new TextNode("Hello "));
+		ast.Children.Add(new ConcretePlaceholderNode("name", new List<FunctionCallNode>(), null, null));
 
-			var values = new Dictionary<string, object> { { "name", "World" } };
-			var ev = new Evaluator(values);
+		Dictionary<string, object> values = new() { { "name", "World" } };
+		Evaluator ev = new(values);
 
-			var result = ev.Evaluate(ast);
+		string result = ev.Evaluate(ast);
 
-			Assert.Equal("Hello World", result);
-		}
+		Assert.Equal("Hello World", result);
+	}
 
-		[Fact]
-		public void Evaluate_DatePattern_ReturnsFormattedParts()
-		{
-			var pattern = new List<AstNode> { new TextNode("yyyy"), new TextNode("-"), new TextNode("MM"), new TextNode("-"), new TextNode("dd") };
-			var placeholder = new ConcretePlaceholderNode("date", new List<FunctionCallNode>(), pattern, null);
-			var ast = new RootNode();
-			ast.Children.Add(placeholder);
+	[Fact]
+	public void Evaluate_DatePattern_ReturnsFormattedParts()
+	{
+		List<AstNode> pattern = new()
+			{ new TextNode("yyyy"), new TextNode("-"), new TextNode("MM"), new TextNode("-"), new TextNode("dd") };
+		ConcretePlaceholderNode placeholder = new("date", new List<FunctionCallNode>(), pattern, null);
+		RootNode ast = new();
+		ast.Children.Add(placeholder);
 
-			var dt = new DateTime(2021, 7, 9, 13, 5, 2);
-			var ev = new Evaluator(new Dictionary<string, object> { { "date", dt } });
+		DateTime dt = new(2021, 7, 9, 13, 5, 2);
+		Evaluator ev = new(new Dictionary<string, object> { { "date", dt } });
 
-			var result = ev.Evaluate(ast);
+		string result = ev.Evaluate(ast);
 
-			Assert.Equal("2021-07-09", result);
-		}
+		Assert.Equal("2021-07-09", result);
+	}
 
-		[Fact]
-		public void Evaluate_ToUpperFunction_Works()
-		{
-			var func = new FunctionCallNode("toUpper", new List<AstNode>());
-			var placeholder = new ConcretePlaceholderNode("name", new List<FunctionCallNode> { func }, null, null);
-			var ast = new RootNode();
-			ast.Children.Add(placeholder);
+	[Fact]
+	public void Evaluate_ToUpperFunction_Works()
+	{
+		FunctionCallNode func = new("toUpper", new List<AstNode>());
+		ConcretePlaceholderNode placeholder = new("name", new List<FunctionCallNode> { func }, null, null);
+		RootNode ast = new();
+		ast.Children.Add(placeholder);
 
-			var ev = new Evaluator(new Dictionary<string, object> { { "name", "abc" } });
+		Evaluator ev = new(new Dictionary<string, object> { { "name", "abc" } });
 
-			var result = ev.Evaluate(ast);
+		string result = ev.Evaluate(ast);
 
-			Assert.Equal("ABC", result);
-		}
+		Assert.Equal("ABC", result);
+	}
 
-		[Fact]
-		public void Evaluate_FormatFunction_Works()
-		{
-			var func = new FunctionCallNode("format", new List<AstNode> { new TextNode("{0:0.00}") });
-			var placeholder = new ConcretePlaceholderNode("num", new List<FunctionCallNode> { func }, null, null);
-			var ast = new RootNode();
-			ast.Children.Add(placeholder);
+	[Fact]
+	public void Evaluate_FormatFunction_Works()
+	{
+		FunctionCallNode func = new("format", new List<AstNode> { new TextNode("{0:0.00}") });
+		ConcretePlaceholderNode placeholder = new("num", new List<FunctionCallNode> { func }, null, null);
+		RootNode ast = new();
+		ast.Children.Add(placeholder);
 
-			var ev = new Evaluator(new Dictionary<string, object> { { "num", 3.14159 } });
+		Evaluator ev = new(new Dictionary<string, object> { { "num", 3.14159 } });
 
-			var result = ev.Evaluate(ast);
+		string result = ev.Evaluate(ast);
 
-			Assert.Equal("3.14", result);
-		}
+		Assert.Equal("3.14", result);
 	}
 }

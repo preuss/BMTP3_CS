@@ -4,8 +4,8 @@ namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
 public class QuickTimeTimestampReader : ITimestampReader
 {
-	private readonly QuickTimeMovieHeaderTimestampReader _movieHeaderReader = new();
 	private readonly QuickTimeMetadataHeaderTimestampReader _metadataHeaderReader = new();
+	private readonly QuickTimeMovieHeaderTimestampReader _movieHeaderReader = new();
 
 	public IReadOnlyList<TimestampCandidate> Read(FileInfo file)
 	{

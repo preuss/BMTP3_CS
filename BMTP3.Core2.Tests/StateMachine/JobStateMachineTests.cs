@@ -1,190 +1,194 @@
-using System;
 using BMTP3.Core2.BackupNew.Domain.Job;
 using BMTP3.Core2.BackupNew.Engine.StateMachine;
-using Xunit;
 
-namespace BMTP3.Core2.Tests.StateMachine
+namespace BMTP3.Core2.Tests.StateMachine;
+
+public class JobStateMachineTests
 {
-    public class JobStateMachineTests
-    {
-        // ---------------------------------------------------------------
-        // Helpers
-        // ---------------------------------------------------------------
+	// ---------------------------------------------------------------
+	// Helpers
+	// ---------------------------------------------------------------
 
-        private static BackupJob NewJob() => new BackupJob("test-job");
-        private static JobStateMachine Sut() => new JobStateMachine();
+	private static BackupJob NewJob()
+	{
+		return new BackupJob("test-job");
+	}
 
-        // ---------------------------------------------------------------
-        // CanTransition – valid paths
-        // ---------------------------------------------------------------
+	private static JobStateMachine Sut()
+	{
+		return new JobStateMachine();
+	}
 
-        [Fact]
-        public void CanTransition_ReadyToRunning_ReturnsTrue()
-        {
-            Assert.True(Sut().CanTransition(JobState.Ready, JobState.Running));
-        }
+	// ---------------------------------------------------------------
+	// CanTransition – valid paths
+	// ---------------------------------------------------------------
 
-        [Fact]
-        public void CanTransition_RunningToCompleted_ReturnsTrue()
-        {
-            Assert.True(Sut().CanTransition(JobState.Running, JobState.Completed));
-        }
+	[Fact]
+	public void CanTransition_ReadyToRunning_ReturnsTrue()
+	{
+		Assert.True(Sut().CanTransition(JobState.Ready, JobState.Running));
+	}
 
-        [Fact]
-        public void CanTransition_RunningToFailed_ReturnsTrue()
-        {
-            Assert.True(Sut().CanTransition(JobState.Running, JobState.Failed));
-        }
+	[Fact]
+	public void CanTransition_RunningToCompleted_ReturnsTrue()
+	{
+		Assert.True(Sut().CanTransition(JobState.Running, JobState.Completed));
+	}
 
-        [Fact]
-        public void CanTransition_RunningToCancelled_ReturnsTrue()
-        {
-            Assert.True(Sut().CanTransition(JobState.Running, JobState.Cancelled));
-        }
+	[Fact]
+	public void CanTransition_RunningToFailed_ReturnsTrue()
+	{
+		Assert.True(Sut().CanTransition(JobState.Running, JobState.Failed));
+	}
 
-        [Fact]
-        public void CanTransition_CancelledToRunning_ReturnsTrue()
-        {
-            // Cancelled jobs can be resumed (re-run)
-            Assert.True(Sut().CanTransition(JobState.Cancelled, JobState.Running));
-        }
+	[Fact]
+	public void CanTransition_RunningToCancelled_ReturnsTrue()
+	{
+		Assert.True(Sut().CanTransition(JobState.Running, JobState.Cancelled));
+	}
 
-        // ---------------------------------------------------------------
-        // CanTransition – invalid paths
-        // ---------------------------------------------------------------
+	[Fact]
+	public void CanTransition_CancelledToRunning_ReturnsTrue()
+	{
+		// Cancelled jobs can be resumed (re-run)
+		Assert.True(Sut().CanTransition(JobState.Cancelled, JobState.Running));
+	}
 
-        [Fact]
-        public void CanTransition_ReadyToCompleted_ReturnsFalse()
-        {
-            Assert.False(Sut().CanTransition(JobState.Ready, JobState.Completed));
-        }
+	// ---------------------------------------------------------------
+	// CanTransition – invalid paths
+	// ---------------------------------------------------------------
 
-        [Fact]
-        public void CanTransition_CompletedToAny_ReturnsFalse()
-        {
-            var sut = Sut();
-            Assert.False(sut.CanTransition(JobState.Completed, JobState.Running));
-            Assert.False(sut.CanTransition(JobState.Completed, JobState.Failed));
-            Assert.False(sut.CanTransition(JobState.Completed, JobState.Cancelled));
-        }
+	[Fact]
+	public void CanTransition_ReadyToCompleted_ReturnsFalse()
+	{
+		Assert.False(Sut().CanTransition(JobState.Ready, JobState.Completed));
+	}
 
-        [Fact]
-        public void CanTransition_FailedToAny_ReturnsFalse()
-        {
-            var sut = Sut();
-            Assert.False(sut.CanTransition(JobState.Failed, JobState.Running));
-            Assert.False(sut.CanTransition(JobState.Failed, JobState.Completed));
-        }
+	[Fact]
+	public void CanTransition_CompletedToAny_ReturnsFalse()
+	{
+		JobStateMachine sut = Sut();
+		Assert.False(sut.CanTransition(JobState.Completed, JobState.Running));
+		Assert.False(sut.CanTransition(JobState.Completed, JobState.Failed));
+		Assert.False(sut.CanTransition(JobState.Completed, JobState.Cancelled));
+	}
 
-        // ---------------------------------------------------------------
-        // Apply – happy-path mutations on BackupJob
-        // ---------------------------------------------------------------
+	[Fact]
+	public void CanTransition_FailedToAny_ReturnsFalse()
+	{
+		JobStateMachine sut = Sut();
+		Assert.False(sut.CanTransition(JobState.Failed, JobState.Running));
+		Assert.False(sut.CanTransition(JobState.Failed, JobState.Completed));
+	}
 
-        [Fact]
-        public void Apply_ReadyToRunning_SetsJobStateToRunning()
-        {
-            var job = NewJob();
-            var sut = Sut();
+	// ---------------------------------------------------------------
+	// Apply – happy-path mutations on BackupJob
+	// ---------------------------------------------------------------
 
-            sut.Apply(job, JobState.Running);
+	[Fact]
+	public void Apply_ReadyToRunning_SetsJobStateToRunning()
+	{
+		BackupJob job = NewJob();
+		JobStateMachine sut = Sut();
 
-            Assert.Equal(JobState.Running, job.State);
-        }
+		sut.Apply(job, JobState.Running);
 
-        [Fact]
-        public void Apply_RunningToCompleted_SetsJobStateToCompleted()
-        {
-            var job = NewJob();
-            var sut = Sut();
-            sut.Apply(job, JobState.Running);
+		Assert.Equal(JobState.Running, job.State);
+	}
 
-            sut.Apply(job, JobState.Completed);
+	[Fact]
+	public void Apply_RunningToCompleted_SetsJobStateToCompleted()
+	{
+		BackupJob job = NewJob();
+		JobStateMachine sut = Sut();
+		sut.Apply(job, JobState.Running);
 
-            Assert.Equal(JobState.Completed, job.State);
-        }
+		sut.Apply(job, JobState.Completed);
 
-        [Fact]
-        public void Apply_RunningToFailed_SetsJobStateToFailed()
-        {
-            var job = NewJob();
-            var sut = Sut();
-            sut.Apply(job, JobState.Running);
+		Assert.Equal(JobState.Completed, job.State);
+	}
 
-            sut.Apply(job, JobState.Failed);
+	[Fact]
+	public void Apply_RunningToFailed_SetsJobStateToFailed()
+	{
+		BackupJob job = NewJob();
+		JobStateMachine sut = Sut();
+		sut.Apply(job, JobState.Running);
 
-            Assert.Equal(JobState.Failed, job.State);
-        }
+		sut.Apply(job, JobState.Failed);
 
-        [Fact]
-        public void Apply_RunningToCancelled_SetsJobStateToCancelled()
-        {
-            var job = NewJob();
-            var sut = Sut();
-            sut.Apply(job, JobState.Running);
+		Assert.Equal(JobState.Failed, job.State);
+	}
 
-            sut.Apply(job, JobState.Cancelled);
+	[Fact]
+	public void Apply_RunningToCancelled_SetsJobStateToCancelled()
+	{
+		BackupJob job = NewJob();
+		JobStateMachine sut = Sut();
+		sut.Apply(job, JobState.Running);
 
-            Assert.Equal(JobState.Cancelled, job.State);
-        }
+		sut.Apply(job, JobState.Cancelled);
 
-        // ---------------------------------------------------------------
-        // Apply – invalid transition throws
-        // ---------------------------------------------------------------
+		Assert.Equal(JobState.Cancelled, job.State);
+	}
 
-        [Fact]
-        public void Apply_InvalidTransition_ThrowsInvalidOperationException()
-        {
-            var job = NewJob(); // state = Ready
-            var sut = Sut();
+	// ---------------------------------------------------------------
+	// Apply – invalid transition throws
+	// ---------------------------------------------------------------
 
-            // Jumping directly from Ready to Completed is not allowed
-            Assert.Throws<InvalidOperationException>(() => sut.Apply(job, JobState.Completed));
-        }
+	[Fact]
+	public void Apply_InvalidTransition_ThrowsInvalidOperationException()
+	{
+		BackupJob job = NewJob(); // state = Ready
+		JobStateMachine sut = Sut();
 
-        [Fact]
-        public void Apply_CompletedToRunning_ThrowsInvalidOperationException()
-        {
-            var job = NewJob();
-            var sut = Sut();
-            sut.Apply(job, JobState.Running);
-            sut.Apply(job, JobState.Completed);
+		// Jumping directly from Ready to Completed is not allowed
+		Assert.Throws<InvalidOperationException>(() => sut.Apply(job, JobState.Completed));
+	}
 
-            // Terminal state – no further transitions
-            Assert.Throws<InvalidOperationException>(() => sut.Apply(job, JobState.Running));
-        }
+	[Fact]
+	public void Apply_CompletedToRunning_ThrowsInvalidOperationException()
+	{
+		BackupJob job = NewJob();
+		JobStateMachine sut = Sut();
+		sut.Apply(job, JobState.Running);
+		sut.Apply(job, JobState.Completed);
 
-        // ---------------------------------------------------------------
-        // Audit trail
-        // ---------------------------------------------------------------
+		// Terminal state – no further transitions
+		Assert.Throws<InvalidOperationException>(() => sut.Apply(job, JobState.Running));
+	}
 
-        [Fact]
-        public void Apply_RunningToCompleted_WritesAuditEntry()
-        {
-            var job = NewJob();
-            var sut = Sut();
-            int auditCountBefore = job.AuditTrail.Count;
+	// ---------------------------------------------------------------
+	// Audit trail
+	// ---------------------------------------------------------------
 
-            sut.Apply(job, JobState.Running);
-            sut.Apply(job, JobState.Completed);
+	[Fact]
+	public void Apply_RunningToCompleted_WritesAuditEntry()
+	{
+		BackupJob job = NewJob();
+		JobStateMachine sut = Sut();
+		int auditCountBefore = job.AuditTrail.Count;
 
-            // Each Apply call adds one audit entry
-            Assert.Equal(auditCountBefore + 2, job.AuditTrail.Count);
-        }
+		sut.Apply(job, JobState.Running);
+		sut.Apply(job, JobState.Completed);
 
-        // ---------------------------------------------------------------
-        // AttemptCount
-        // ---------------------------------------------------------------
+		// Each Apply call adds one audit entry
+		Assert.Equal(auditCountBefore + 2, job.AuditTrail.Count);
+	}
 
-        [Fact]
-        public void Apply_Running_IncrementsAttemptCount()
-        {
-            var job = NewJob();
-            var sut = Sut();
-            uint before = job.AttemptCount;
+	// ---------------------------------------------------------------
+	// AttemptCount
+	// ---------------------------------------------------------------
 
-            sut.Apply(job, JobState.Running);
+	[Fact]
+	public void Apply_Running_IncrementsAttemptCount()
+	{
+		BackupJob job = NewJob();
+		JobStateMachine sut = Sut();
+		uint before = job.AttemptCount;
 
-            Assert.Equal(before + 1, job.AttemptCount);
-        }
-    }
+		sut.Apply(job, JobState.Running);
+
+		Assert.Equal(before + 1, job.AttemptCount);
+	}
 }

@@ -6,15 +6,15 @@ namespace BMTP3.Core2.BackupNew.exifreader.parsers;
 public class TimestampParser : ParserBase<long>
 {
 	/// <summary>
-	/// Parses a numeric epoch/timestamp token (integer) into a long.
-	/// Accepts optional leading/trailing whitespace and an optional leading '+' or '-' sign.
-	/// Returns false for null/empty input or non-integer values (e.g. strings with decimal separators).
+	///     Parses a numeric epoch/timestamp token (integer) into a long.
+	///     Accepts optional leading/trailing whitespace and an optional leading '+' or '-' sign.
+	///     Returns false for null/empty input or non-integer values (e.g. strings with decimal separators).
 	/// </summary>
 	public override bool TryParse(string? raw, [NotNullWhen(true)] out long timestamp)
 	{
 		timestamp = default;
 
-		if(string.IsNullOrWhiteSpace(raw))
+		if (string.IsNullOrWhiteSpace(raw))
 		{
 			return false;
 		}

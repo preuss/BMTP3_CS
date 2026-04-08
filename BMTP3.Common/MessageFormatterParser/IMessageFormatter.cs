@@ -1,7 +1,6 @@
-﻿namespace BMTP3.Common.MessageFormatterParser
+﻿namespace BMTP3.Common.MessageFormatterParser;
+
+public interface IMessageFormatter
 {
-	public interface IMessageFormatter
-	{
-		public string Format(string template, Dictionary<string, object> values);
-	}
+	public string Format(string template, Dictionary<string, object> values);
 }

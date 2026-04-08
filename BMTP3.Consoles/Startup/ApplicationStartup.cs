@@ -14,23 +14,26 @@ public class ApplicationStartup
 		// Build configuration
 		IConfigurationManager configBuilder = new ConfigurationManager();
 
-		List<IConfigSetup> configurators = [
+		List<IConfigSetup> configurators =
+		[
 			new ConfigAppSetup()
 		];
 
-		foreach(var configurator in configurators)
+		foreach (IConfigSetup configurator in configurators)
 		{
 			configurator.Configure(configBuilder);
 		}
+
 		IConfigurationRoot configuration = configBuilder.Build();
 
 		// Build DI-container/host
 		ServiceCollection services = new();
-		List<IServiceSetup> serviceSetupList = [
+		List<IServiceSetup> serviceSetupList =
+		[
 			new LoggingServiceSetup(),
 			new ApplicationServiceSetup()
 		];
-		foreach(IServiceSetup serviceSetup in serviceSetupList)
+		foreach (IServiceSetup serviceSetup in serviceSetupList)
 		{
 			serviceSetup.Configure(services, configuration);
 		}

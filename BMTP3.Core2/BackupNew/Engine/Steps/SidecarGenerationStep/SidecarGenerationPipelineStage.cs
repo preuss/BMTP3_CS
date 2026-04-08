@@ -23,7 +23,7 @@ public class SidecarGenerationPipelineStage : AbstractPipelineStage<BackupPlan>
 	protected override async Task ProcessItemAsync(IBackupItem item, CancellationToken ct)
 	{
 		UpdatePhase(item, _step.Phase);
-		var progress = CreateProgressReporter(item);
+		IProgress<ulong> progress = CreateProgressReporter(item);
 		await _step.ExecuteAsync(item, progress, ct).ConfigureAwait(false);
 	}
 }

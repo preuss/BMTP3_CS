@@ -1,290 +1,326 @@
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Engine.Orchestration;
-using Xunit;
 
-namespace BMTP3.Core2.Tests.Orchestration
+namespace BMTP3.Core2.Tests.Orchestration;
+
+public class JobValidatorTests
 {
-    public class JobValidatorTests
-    {
-        // -----------------------------------------------------------------
-        // Helpers
-        // -----------------------------------------------------------------
+	// -----------------------------------------------------------------
+	// Helpers
+	// -----------------------------------------------------------------
 
-        /// <summary>
-        /// Returns a BackupPlan that satisfies every JobValidator rule.
-        /// Uses the system temp directory as output path so disk-space and
-        /// directory-creation checks are always satisfied.
-        /// </summary>
-        private static BackupPlan BuildValidPlan(string? outputPath = null)
-        {
-            return new BackupPlan
-            {
-                Name           = "TestJob",
-                SourceType     = SourceType.FileSystem,
-                SourceId       = @"C:",
-                SourcePath     = @"Users\TestUser\Documents",
-                OutputPath     = outputPath ?? Path.Combine(Path.GetTempPath(), "bmtp3_validator_test_" + Guid.NewGuid().ToString("N")),
-                SidecarFormat  = SidecarFormat.Ini,
-                ComparisonType = CollisionComparisonType.Binary,
-                CollisionResolution = CollisionResolutionType.Rename,
-                HashTypes      = new HashSet<HashType> { HashType.SHA2_256 }
-            };
-        }
+	/// <summary>
+	///     Returns a BackupPlan that satisfies every JobValidator rule.
+	///     Uses the system temp directory as output path so disk-space and
+	///     directory-creation checks are always satisfied.
+	/// </summary>
+	private static BackupPlan BuildValidPlan(string? outputPath = null)
+	{
+		return new BackupPlan
+		{
+			Name = "TestJob",
+			SourceType = SourceType.FileSystem,
+			SourceId = @"C:",
+			SourcePath = @"Users\TestUser\Documents",
+			OutputPath = outputPath ??
+			             Path.Combine(Path.GetTempPath(), "bmtp3_validator_test_" + Guid.NewGuid().ToString("N")),
+			SidecarFormat = SidecarFormat.Ini,
+			ComparisonType = CollisionComparisonType.Binary,
+			CollisionResolution = CollisionResolutionType.Rename,
+			HashTypes = new HashSet<HashType> { HashType.SHA2_256 }
+		};
+	}
 
-        // -----------------------------------------------------------------
-        // 1. ValidateAsync_MissingOutputPath_ThrowsOrReturnsFail
-        // -----------------------------------------------------------------
+	// -----------------------------------------------------------------
+	// 1. ValidateAsync_MissingOutputPath_ThrowsOrReturnsFail
+	// -----------------------------------------------------------------
 
-        [Fact]
-        public async Task ValidateAsync_MissingOutputPath_ThrowsArgumentException()
-        {
-            var validator = new JobValidator();
-            var plan = BuildValidPlan();
-            plan.OutputPath = string.Empty;
+	[Fact]
+	public async Task ValidateAsync_MissingOutputPath_ThrowsArgumentException()
+	{
+		JobValidator validator = new();
+		BackupPlan plan = BuildValidPlan();
+		plan.OutputPath = string.Empty;
 
-            await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
-                validator.ValidateAsync(plan, CancellationToken.None));
-        }
+		await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
+			validator.ValidateAsync(plan, CancellationToken.None));
+	}
 
-        [Fact]
-        public async Task ValidateAsync_NullOutputPath_ThrowsArgumentException()
-        {
-            var validator = new JobValidator();
-            var plan = BuildValidPlan();
-            plan.OutputPath = null!;
+	[Fact]
+	public async Task ValidateAsync_NullOutputPath_ThrowsArgumentException()
+	{
+		JobValidator validator = new();
+		BackupPlan plan = BuildValidPlan();
+		plan.OutputPath = null!;
 
-            await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
-                validator.ValidateAsync(plan, CancellationToken.None));
-        }
+		await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
+			validator.ValidateAsync(plan, CancellationToken.None));
+	}
 
-        // -----------------------------------------------------------------
-        // 2. ValidateAsync_MissingSourcePath_ThrowsOrReturnsFail
-        // -----------------------------------------------------------------
+	// -----------------------------------------------------------------
+	// 2. ValidateAsync_MissingSourcePath_ThrowsOrReturnsFail
+	// -----------------------------------------------------------------
 
-        [Fact]
-        public async Task ValidateAsync_MissingSourcePath_ThrowsArgumentException()
-        {
-            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(outputDir);
-            try
-            {
-                var validator = new JobValidator();
-                var plan = BuildValidPlan(outputDir);
-                plan.SourcePath = string.Empty;
+	[Fact]
+	public async Task ValidateAsync_MissingSourcePath_ThrowsArgumentException()
+	{
+		string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
+		Directory.CreateDirectory(outputDir);
+		try
+		{
+			JobValidator validator = new();
+			BackupPlan plan = BuildValidPlan(outputDir);
+			plan.SourcePath = string.Empty;
 
-                await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
-                    validator.ValidateAsync(plan, CancellationToken.None));
-            }
-            finally
-            {
-                try { Directory.Delete(outputDir, recursive: false); } catch { }
-            }
-        }
+			await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
+				validator.ValidateAsync(plan, CancellationToken.None));
+		}
+		finally
+		{
+			try
+			{
+				Directory.Delete(outputDir, false);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-        // -----------------------------------------------------------------
-        // 3. ValidateAsync_ValidPlan_CompletesWithoutException
-        // -----------------------------------------------------------------
+	// -----------------------------------------------------------------
+	// 3. ValidateAsync_ValidPlan_CompletesWithoutException
+	// -----------------------------------------------------------------
 
-        [Fact]
-        public async Task ValidateAsync_ValidPlan_CompletesWithoutException()
-        {
-            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
-            try
-            {
-                // Ensure directory exists (now done by BackupEngine, not JobValidator)
-                Directory.CreateDirectory(outputDir);
-                
-                var validator = new JobValidator();
-                var plan = BuildValidPlan(outputDir);
+	[Fact]
+	public async Task ValidateAsync_ValidPlan_CompletesWithoutException()
+	{
+		string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
+		try
+		{
+			// Ensure directory exists (now done by BackupEngine, not JobValidator)
+			Directory.CreateDirectory(outputDir);
 
-                // Should not throw
-                await validator.ValidateAsync(plan, CancellationToken.None);
-            }
-            finally
-            {
-                try { Directory.Delete(outputDir, recursive: false); } catch { }
-            }
-        }
+			JobValidator validator = new();
+			BackupPlan plan = BuildValidPlan(outputDir);
 
-        // -----------------------------------------------------------------
-        // 4. ValidateAsync_NullPlan_ThrowsArgumentNullException
-        // -----------------------------------------------------------------
+			// Should not throw
+			await validator.ValidateAsync(plan, CancellationToken.None);
+		}
+		finally
+		{
+			try
+			{
+				Directory.Delete(outputDir, false);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-        [Fact]
-        public async Task ValidateAsync_NullPlan_ThrowsNullReferenceOrArgumentException()
-        {
-            var validator = new JobValidator();
+	// -----------------------------------------------------------------
+	// 4. ValidateAsync_NullPlan_ThrowsArgumentNullException
+	// -----------------------------------------------------------------
 
-            // The validator accesses plan.OutputPath directly without a null-guard,
-            // so passing null results in a NullReferenceException at runtime.
-            await Assert.ThrowsAnyAsync<Exception>(() =>
-                validator.ValidateAsync(null!, CancellationToken.None));
-        }
+	[Fact]
+	public async Task ValidateAsync_NullPlan_ThrowsNullReferenceOrArgumentException()
+	{
+		JobValidator validator = new();
 
-        // -----------------------------------------------------------------
-        // 5. ValidateAsync_MissingSourceId_ThrowsOrReturnsFail
-        // -----------------------------------------------------------------
+		// The validator accesses plan.OutputPath directly without a null-guard,
+		// so passing null results in a NullReferenceException at runtime.
+		await Assert.ThrowsAnyAsync<Exception>(() =>
+			validator.ValidateAsync(null!, CancellationToken.None));
+	}
 
-        [Fact]
-        public async Task ValidateAsync_MissingSourceId_ThrowsArgumentException()
-        {
-            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(outputDir);
-            try
-            {
-                var validator = new JobValidator();
-                var plan = BuildValidPlan(outputDir);
-                plan.SourceId = string.Empty;
+	// -----------------------------------------------------------------
+	// 5. ValidateAsync_MissingSourceId_ThrowsOrReturnsFail
+	// -----------------------------------------------------------------
 
-                await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
-                    validator.ValidateAsync(plan, CancellationToken.None));
-            }
-            finally
-            {
-                try { Directory.Delete(outputDir, recursive: false); } catch { }
-            }
-        }
+	[Fact]
+	public async Task ValidateAsync_MissingSourceId_ThrowsArgumentException()
+	{
+		string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
+		Directory.CreateDirectory(outputDir);
+		try
+		{
+			JobValidator validator = new();
+			BackupPlan plan = BuildValidPlan(outputDir);
+			plan.SourceId = string.Empty;
 
-        // -----------------------------------------------------------------
-        // 6. ValidateAsync_OutputPath_DoesNotExist_CreatesIt
-        // -----------------------------------------------------------------
+			await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
+				validator.ValidateAsync(plan, CancellationToken.None));
+		}
+		finally
+		{
+			try
+			{
+				Directory.Delete(outputDir, false);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-        [Fact]
-        public async Task ValidateAsync_OutputPath_DoesNotExist_CreatesDirectory()
-        {
-            // NOTE: Directory creation is now done by BackupEngine, not JobValidator.
-            // This test verifies that JobValidator does NOT create directories.
-            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_new_" + Guid.NewGuid().ToString("N"));
-            Assert.False(Directory.Exists(outputDir), "Pre-condition: directory must not exist yet");
-            try
-            {
-                var validator = new JobValidator();
-                var plan = BuildValidPlan(outputDir);
+	// -----------------------------------------------------------------
+	// 6. ValidateAsync_OutputPath_DoesNotExist_CreatesIt
+	// -----------------------------------------------------------------
 
-                // JobValidator should NOT throw - it only validates domain rules
-                await validator.ValidateAsync(plan, CancellationToken.None);
+	[Fact]
+	public async Task ValidateAsync_OutputPath_DoesNotExist_CreatesDirectory()
+	{
+		// NOTE: Directory creation is now done by BackupEngine, not JobValidator.
+		// This test verifies that JobValidator does NOT create directories.
+		string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_new_" + Guid.NewGuid().ToString("N"));
+		Assert.False(Directory.Exists(outputDir), "Pre-condition: directory must not exist yet");
+		try
+		{
+			JobValidator validator = new();
+			BackupPlan plan = BuildValidPlan(outputDir);
 
-                // Directory should NOT be created by JobValidator (that's BackupEngine's job now)
-                Assert.False(Directory.Exists(outputDir), "JobValidator should NOT create the output directory");
-            }
-            finally
-            {
-                try { Directory.Delete(outputDir, recursive: false); } catch { }
-            }
-        }
+			// JobValidator should NOT throw - it only validates domain rules
+			await validator.ValidateAsync(plan, CancellationToken.None);
 
-        // -----------------------------------------------------------------
-        // 7. RelaxedJobValidator_AlwaysPasses_WithMinimalPlan
-        // -----------------------------------------------------------------
+			// Directory should NOT be created by JobValidator (that's BackupEngine's job now)
+			Assert.False(Directory.Exists(outputDir), "JobValidator should NOT create the output directory");
+		}
+		finally
+		{
+			try
+			{
+				Directory.Delete(outputDir, false);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-        [Fact]
-        public async Task RelaxedJobValidator_AlwaysPasses_WithMinimalPlan()
-        {
-            var validator = new RelaxedJobValidator();
+	// -----------------------------------------------------------------
+	// 7. RelaxedJobValidator_AlwaysPasses_WithMinimalPlan
+	// -----------------------------------------------------------------
 
-            // RelaxedJobValidator does NOT check OutputPath, disk space, HashTypes,
-            // SidecarFormat, or enum sanity beyond SourceType – just SourceId/SourcePath.
-            var plan = new BackupPlan
-            {
-                SourceType  = SourceType.FileSystem,
-                SourceId    = @"C:",
-                SourcePath  = @"SomePath",
-                OutputPath  = string.Empty,   // intentionally empty – relaxed validator skips it
-                HashTypes   = new HashSet<HashType>() // intentionally empty – relaxed validator skips it
-            };
+	[Fact]
+	public async Task RelaxedJobValidator_AlwaysPasses_WithMinimalPlan()
+	{
+		RelaxedJobValidator validator = new();
 
-            // Should complete without throwing
-            await validator.ValidateAsync(plan, CancellationToken.None);
-        }
+		// RelaxedJobValidator does NOT check OutputPath, disk space, HashTypes,
+		// SidecarFormat, or enum sanity beyond SourceType – just SourceId/SourcePath.
+		BackupPlan plan = new()
+		{
+			SourceType = SourceType.FileSystem,
+			SourceId = @"C:",
+			SourcePath = @"SomePath",
+			OutputPath = string.Empty, // intentionally empty – relaxed validator skips it
+			HashTypes = new HashSet<HashType>() // intentionally empty – relaxed validator skips it
+		};
 
-        // -----------------------------------------------------------------
-        // 8. ValidateAsync_ValidPlan_FileSystem_DoesNotThrow
-        // -----------------------------------------------------------------
+		// Should complete without throwing
+		await validator.ValidateAsync(plan, CancellationToken.None);
+	}
 
-        [Fact]
-        public async Task ValidateAsync_ValidPlan_FileSystem_DoesNotThrow()
-        {
-            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_fs_" + Guid.NewGuid().ToString("N"));
-            try
-            {
-                // Ensure directory exists (now done by BackupEngine, not JobValidator)
-                Directory.CreateDirectory(outputDir);
-                
-                var validator = new JobValidator();
-                var plan = new BackupPlan
-                {
-                    Name           = "FileSystem Test Job",
-                    SourceType     = SourceType.FileSystem,
-                    SourceId       = @"C:",
-                    SourcePath     = @"Users\Public\Pictures",
-                    OutputPath     = outputDir,
-                    SidecarFormat  = SidecarFormat.Json,
-                    ComparisonType = CollisionComparisonType.Binary,
-                    CollisionResolution = CollisionResolutionType.Skip,
-                    HashTypes      = new HashSet<HashType> { HashType.SHA2_256, HashType.MD5_128 }
-                };
+	// -----------------------------------------------------------------
+	// 8. ValidateAsync_ValidPlan_FileSystem_DoesNotThrow
+	// -----------------------------------------------------------------
 
-                // Should not throw
-                await validator.ValidateAsync(plan, CancellationToken.None);
-            }
-            finally
-            {
-                try { Directory.Delete(outputDir, recursive: false); } catch { }
-            }
-        }
+	[Fact]
+	public async Task ValidateAsync_ValidPlan_FileSystem_DoesNotThrow()
+	{
+		string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_fs_" + Guid.NewGuid().ToString("N"));
+		try
+		{
+			// Ensure directory exists (now done by BackupEngine, not JobValidator)
+			Directory.CreateDirectory(outputDir);
 
-        // -----------------------------------------------------------------
-        // 9. ValidateAsync_EmptyName_Throws
-        // -----------------------------------------------------------------
+			JobValidator validator = new();
+			BackupPlan plan = new()
+			{
+				Name = "FileSystem Test Job",
+				SourceType = SourceType.FileSystem,
+				SourceId = @"C:",
+				SourcePath = @"Users\Public\Pictures",
+				OutputPath = outputDir,
+				SidecarFormat = SidecarFormat.Json,
+				ComparisonType = CollisionComparisonType.Binary,
+				CollisionResolution = CollisionResolutionType.Skip,
+				HashTypes = new HashSet<HashType> { HashType.SHA2_256, HashType.MD5_128 }
+			};
 
-        [Fact]
-        public async Task ValidateAsync_EmptyName_ThrowsArgumentException()
-        {
-            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(outputDir);
-            try
-            {
-                var validator = new JobValidator();
-                var plan = BuildValidPlan(outputDir);
-                plan.Name = string.Empty;
+			// Should not throw
+			await validator.ValidateAsync(plan, CancellationToken.None);
+		}
+		finally
+		{
+			try
+			{
+				Directory.Delete(outputDir, false);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-                await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
-                    validator.ValidateAsync(plan, CancellationToken.None));
-            }
-            finally
-            {
-                try { Directory.Delete(outputDir, recursive: false); } catch { }
-            }
-        }
+	// -----------------------------------------------------------------
+	// 9. ValidateAsync_EmptyName_Throws
+	// -----------------------------------------------------------------
 
-        // -----------------------------------------------------------------
-        // 10. ValidateAsync_InvalidBackupIndexType_Throws
-        // -----------------------------------------------------------------
+	[Fact]
+	public async Task ValidateAsync_EmptyName_ThrowsArgumentException()
+	{
+		string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
+		Directory.CreateDirectory(outputDir);
+		try
+		{
+			JobValidator validator = new();
+			BackupPlan plan = BuildValidPlan(outputDir);
+			plan.Name = string.Empty;
 
-        [Fact]
-        public async Task ValidateAsync_InvalidBackupIndexType_ThrowsArgumentException()
-        {
-            string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(outputDir);
-            try
-            {
-                var validator = new JobValidator();
-                var plan = BuildValidPlan(outputDir);
-                plan.BackupIndexType = (BackupIndexType)999;
+			await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
+				validator.ValidateAsync(plan, CancellationToken.None));
+		}
+		finally
+		{
+			try
+			{
+				Directory.Delete(outputDir, false);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-                await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
-                    validator.ValidateAsync(plan, CancellationToken.None));
-            }
-            finally
-            {
-                try { Directory.Delete(outputDir, recursive: false); } catch { }
-            }
-        }
-    }
+	// -----------------------------------------------------------------
+	// 10. ValidateAsync_InvalidBackupIndexType_Throws
+	// -----------------------------------------------------------------
+
+	[Fact]
+	public async Task ValidateAsync_InvalidBackupIndexType_ThrowsArgumentException()
+	{
+		string outputDir = Path.Combine(Path.GetTempPath(), "bmtp3_val_" + Guid.NewGuid().ToString("N"));
+		Directory.CreateDirectory(outputDir);
+		try
+		{
+			JobValidator validator = new();
+			BackupPlan plan = BuildValidPlan(outputDir);
+			plan.BackupIndexType = (BackupIndexType)999;
+
+			await Assert.ThrowsAsync<BackupPlanValidationException>(() =>
+				validator.ValidateAsync(plan, CancellationToken.None));
+		}
+		finally
+		{
+			try
+			{
+				Directory.Delete(outputDir, false);
+			}
+			catch
+			{
+			}
+		}
+	}
 }

@@ -1,30 +1,41 @@
-using System;
 using System.Text;
 using Microsoft.Extensions.Logging;
 
-namespace BMTP3.Core2.Tests.Utils
+namespace BMTP3.Core2.Tests.Utils;
+
+// Simple in-memory logger for tests. Thread-safe for append-only use.
+public class TestLogger<T> : ILogger<T>, IDisposable
 {
-    // Simple in-memory logger for tests. Thread-safe for append-only use.
-    public class TestLogger<T> : ILogger<T>, IDisposable
-    {
-        private readonly StringBuilder _sb = new();
+	private readonly StringBuilder _sb = new();
 
-        public string Logs => _sb.ToString();
+	public string Logs => _sb.ToString();
 
-        public IDisposable BeginScope<TState>(TState state) => this;
+	void IDisposable.Dispose()
+	{
+	}
 
-        public bool IsEnabled(LogLevel logLevel) => true;
+	public IDisposable BeginScope<TState>(TState state)
+	{
+		return this;
+	}
 
-        public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
-        {
-            var line = $"[{DateTime.UtcNow:O}] {logLevel}: {formatter(state, exception)}";
-            if (exception != null) line += $" Exception: {exception.GetType().Name} {exception.Message}";
-            lock (_sb)
-            {
-                _sb.AppendLine(line);
-            }
-        }
+	public bool IsEnabled(LogLevel logLevel)
+	{
+		return true;
+	}
 
-        void IDisposable.Dispose() { }
-    }
+	public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+		Func<TState, Exception?, string> formatter)
+	{
+		string line = $"[{DateTime.UtcNow:O}] {logLevel}: {formatter(state, exception)}";
+		if (exception != null)
+		{
+			line += $" Exception: {exception.GetType().Name} {exception.Message}";
+		}
+
+		lock (_sb)
+		{
+			_sb.AppendLine(line);
+		}
+	}
 }

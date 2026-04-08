@@ -1,13 +1,12 @@
-﻿using BMTP3.Consoles.ConsoleCommands;
+﻿using System.CommandLine;
+using System.CommandLine.Help;
+using System.Text.RegularExpressions;
+using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.Startup.Configurations;
 using BMTP3.Consoles.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using System.CommandLine;
-using System.CommandLine.Help;
-using System.Globalization;
-using System.Text.RegularExpressions;
 using DGlob = DotNet.Globbing;
 
 namespace BMTP3.Consoles;
@@ -16,19 +15,21 @@ public class ConsolesProgram
 {
 	public static void ApplyConfigSetups(IConfigurationManager configuration, IEnumerable<IConfigSetup> setups)
 	{
-		foreach(IConfigSetup setup in setups)
+		foreach (IConfigSetup setup in setups)
 		{
 			setup.Configure(configuration);
 		}
 	}
 
-	public static void ApplyServiceSetups(IServiceCollection services, IEnumerable<IServiceSetup> setups, IConfiguration configuration)
+	public static void ApplyServiceSetups(IServiceCollection services, IEnumerable<IServiceSetup> setups,
+		IConfiguration configuration)
 	{
-		foreach(IServiceSetup setup in setups)
+		foreach (IServiceSetup setup in setups)
 		{
 			setup.Configure(services, configuration);
 		}
 	}
+
 	public static async Task<int> Main(string[] args)
 	{
 		HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
@@ -64,19 +65,19 @@ public class ConsolesProgram
 		rootCommand.Subcommands.Add(verifyCommand);
 
 		//ReplaceHelp(rootCommand);
-		
+
 
 		ParseResult parseResult = rootCommand.Parse(args);
 		return await parseResult.InvokeAsync();
 	}
 
-	static void ReplaceHelp(Command command)
+	private static void ReplaceHelp(Command command)
 	{
 		HelpOption? old = command.Options
 			.OfType<HelpOption>()
 			.FirstOrDefault();
 
-		if(old != null)
+		if (old != null)
 		{
 			command.Options.Remove(old);
 		}
@@ -87,7 +88,7 @@ public class ConsolesProgram
 			Action = new CustomHelpAction()
 		});
 
-		foreach(Command sub in command.Subcommands)
+		foreach (Command sub in command.Subcommands)
 		{
 			ReplaceHelp(sub);
 		}
@@ -126,21 +127,21 @@ public class ConsolesProgram
 		rootCommand.Add(cmd3);
 
 		// Sæt handler for hver command
-		cmd1.SetAction((parseResult) =>
+		cmd1.SetAction(parseResult =>
 		{
 			string? device = parseResult.GetValue(deviceOption1);
 			Console.WriteLine($"cmd1 device: {device}");
 			return 0;
 		});
 
-		cmd2.SetAction((parseResult) =>
+		cmd2.SetAction(parseResult =>
 		{
 			string? device = parseResult.GetValue(deviceOption2);
 			Console.WriteLine($"cmd2 device: {device}");
 			return 0;
 		});
 
-		cmd3.SetAction((parseResult) =>
+		cmd3.SetAction(parseResult =>
 		{
 			string? device = parseResult.GetValue(deviceOption3);
 			Console.WriteLine($"cmd3 device: {device}");
@@ -167,7 +168,7 @@ public class ConsolesProgram
 		//globPattern = globPatternInput;
 		DGlob.Glob dglob = DGlob.Glob.Parse(globPattern);
 
-		Console.WriteLine($"--- Tester DotNet.Glob ---");
+		Console.WriteLine("--- Tester DotNet.Glob ---");
 		Console.WriteLine($"Glob Pattern: {globPattern}");
 		Console.WriteLine("--------------------------");
 
@@ -176,7 +177,7 @@ public class ConsolesProgram
 		Console.WriteLine("{\"Sti\",-" + padding + "} {\"Forventet\",-10} {\"Faktisk\",-10} {\"Status\",-10}");
 		Console.WriteLine(new string('-', padding + 30));
 
-		foreach(var testCase in testCases)
+		foreach (var testCase in testCases)
 		{
 			string pathConverted = testCase.Path; // Use the actual path
 			pathConverted = pathConverted.Replace('\\', '/');
@@ -184,15 +185,13 @@ public class ConsolesProgram
 			bool actualMatch = dglob.IsMatch(pathConverted);
 			string regexPattern = GlobConverter.GlobToRegex(globPattern);
 			Console.WriteLine("Regex Pattern: " + regexPattern);
-			Regex regex = new Regex(regexPattern, RegexOptions.IgnoreCase);
+			Regex regex = new(regexPattern, RegexOptions.IgnoreCase);
 			actualMatch = regex.Match(pathConverted).Success;
 
 			string status = actualMatch == testCase.Expected ? "✅ OK" : "❌ FEJL";
 
-			Console.WriteLine(string.Format(
-				"{0,-" + padding + "} {1,-10} {2,-10} {3,-10}",
-				testCase.Path, testCase.Expected, actualMatch, status
-			));
+			Console.WriteLine("{0,-" + padding + "} {1,-10} {2,-10} {3,-10}", testCase.Path, testCase.Expected,
+				actualMatch, status);
 		}
 	}
 }

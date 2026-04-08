@@ -1,22 +1,23 @@
-﻿using BMTP3.Core2.BackupNew.Api.Progress;
-using BMTP3.Core2.BackupNew.Api.Request;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Threading.Channels;
+using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Response;
 
 namespace BMTP3.Core2.BackupNew.Api;
+
 public static class BackupEngineExtensions
 {
 	/// <summary>
-	/// Run the engine and expose progress as an IAsyncEnumerable&lt;BackupProgress&gt; without changing IBackupEngine.
-	/// Adapter uses a bounded channel (DropOldest) so producer is not blocked by slow consumers.
+	///     Run the engine and expose progress as an IAsyncEnumerable&lt;BackupProgress&gt; without changing IBackupEngine.
+	///     Adapter uses a bounded channel (DropOldest) so producer is not blocked by slow consumers.
 	/// </summary>
 	public static async IAsyncEnumerable<IBackupProgress> RunAsStream(
 		this IBackupEngine engine,
 		BackupPlan job,
 		[EnumeratorCancellation] CancellationToken ct)
 	{
-		BoundedChannelOptions options = new(capacity: 4)
+		BoundedChannelOptions options = new(4)
 		{
 			SingleReader = true,
 			SingleWriter = false,
@@ -36,17 +37,18 @@ public static class BackupEngineExtensions
 		_ = runTask.ContinueWith(t =>
 		{
 			// Propagate exception if any; otherwise complete normally.
-			if(t.IsFaulted && t.Exception != null)
+			if (t.IsFaulted && t.Exception != null)
 			{
 				channel.Writer.TryComplete(t.Exception);
-			} else
+			}
+			else
 			{
 				channel.Writer.TryComplete();
 			}
 		}, TaskScheduler.Default);
 
 		// Yield items as they arrive; consumer can drain between renders.
-		await foreach(IBackupProgress item in channel.Reader.ReadAllAsync(ct).WithCancellation(ct))
+		await foreach (IBackupProgress item in channel.Reader.ReadAllAsync(ct).WithCancellation(ct))
 		{
 			yield return item;
 		}
@@ -73,7 +75,8 @@ public static class BackupEngineExtensions
 				BackupJobResult result = await engine.RunAsync(job, progress, cts.Token);
 				channel.Writer.Complete();
 				return result;
-			} catch(Exception ex)
+			}
+			catch (Exception ex)
 			{
 				channel.Writer.Complete(ex);
 				throw;

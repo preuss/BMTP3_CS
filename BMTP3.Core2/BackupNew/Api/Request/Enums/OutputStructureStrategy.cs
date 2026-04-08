@@ -4,6 +4,6 @@ namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 public enum OutputStructureStrategy
 {
 	PreserveSourceTree, // Preserves the original folder hierarchy from the source.
-	Flat,               // Places all files directly into the root destination folder.
-	CustomPathPattern,  // Uses the PathPattern to define the entire path, including folders and filename.
+	Flat, // Places all files directly into the root destination folder.
+	CustomPathPattern // Uses the PathPattern to define the entire path, including folders and filename.
 }

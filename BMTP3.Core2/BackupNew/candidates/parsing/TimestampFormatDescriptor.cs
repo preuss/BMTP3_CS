@@ -1,4 +1,5 @@
 ﻿namespace BMTP3.Core2.BackupNew.candidates.parsing;
+
 public sealed class TimestampFormatDescriptor
 {
 	public DateComponentSeparator DateYearMonthSeparator { get; init; }
@@ -16,7 +17,7 @@ public sealed class TimestampFormatDescriptor
 	public static TimestampFormatDescriptor Describe(TimestampFormatStyle style)
 	{
 		// All descriptors populated explicitly so callers don't need to handle nulls/defaults.
-		switch(style)
+		switch (style)
 		{
 			// ── Standard ISO 8601 Extended (with colon)
 			case TimestampFormatStyle.Iso8601_DotFraction:

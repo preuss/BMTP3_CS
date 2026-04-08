@@ -4,7 +4,7 @@ namespace BMTP3.Core2.BackupNew.Api.Request.Enums;
 public enum CollisionResolutionType
 {
 	Overwrite, // Overwrites the existing file.
-	Skip,      // Skips the current file.
-	Error,     // Stops the backup process.
-	Rename     // Renames the new file using a specific strategy.
+	Skip, // Skips the current file.
+	Error, // Stops the backup process.
+	Rename // Renames the new file using a specific strategy.
 }

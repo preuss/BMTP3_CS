@@ -1,10 +1,11 @@
 using BMTP3.Consoles.Services;
+using BMTP3.Consoles.UI;
+using BMTP3.Core2.BackupNew.Api.UI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using BMTP3.Core2.BackupNew.Api.UI;
-using BMTP3.Consoles.UI;
 
 namespace BMTP3.Consoles.Startup.Configurations;
+
 public class ConsolesServiceSetup : IServiceSetup
 {
 	public void Configure(IServiceCollection services, IConfiguration configuration)

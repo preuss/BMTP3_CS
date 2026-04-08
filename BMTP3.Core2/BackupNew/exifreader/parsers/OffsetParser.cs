@@ -7,20 +7,21 @@ public class OffsetParser : ParserBase<TimeSpan>
 {
 	private static readonly string[] OffsetFormats =
 	{
-		"hh':'mm':'ss'.'FFFFFFF",    // ±HH:mm:ss.FFFFFFF
-		"hh':'mm':'ss','FFFFFFF",    // ±HH:mm:ss,FFFFFFF
-		"hh':'mm':'ss",              // ±HH:mm:ss
-		"hh':'mm",                   // ±HH:mm
-		"hhmmss'.'FFFFFFF",          // ±HHMMSS.FFFFFFF
-		"hhmmss','FFFFFFF",          // ±HHMMSS,FFFFFFF
-		"hhmmss",                    // ±HHMMSS
-		"hh",                        // ±HH
-    };
+		"hh':'mm':'ss'.'FFFFFFF", // ±HH:mm:ss.FFFFFFF
+		"hh':'mm':'ss','FFFFFFF", // ±HH:mm:ss,FFFFFFF
+		"hh':'mm':'ss", // ±HH:mm:ss
+		"hh':'mm", // ±HH:mm
+		"hhmmss'.'FFFFFFF", // ±HHMMSS.FFFFFFF
+		"hhmmss','FFFFFFF", // ±HHMMSS,FFFFFFF
+		"hhmmss", // ±HHMMSS
+		"hh" // ±HH
+	};
+
 	public override bool TryParse(string? raw, [NotNullWhen(true)] out TimeSpan result)
 	{
 		result = default;
 
-		if(string.IsNullOrWhiteSpace(raw))
+		if (string.IsNullOrWhiteSpace(raw))
 		{
 			return false;
 		}
@@ -28,7 +29,7 @@ public class OffsetParser : ParserBase<TimeSpan>
 		raw = raw.Trim();
 
 		// Zulu time, UTC time
-		if(raw == "Z")
+		if (raw == "Z")
 		{
 			result = TimeSpan.Zero;
 			return true;
@@ -41,7 +42,10 @@ public class OffsetParser : ParserBase<TimeSpan>
 			TimeSpanStyles.None,
 			out result
 		);
-		if(parsed) return true;
+		if (parsed)
+		{
+			return true;
+		}
 
 		string[] PlusOffsetFormats = OffsetFormats
 			.Select(format => "'+'" + format)
@@ -53,7 +57,11 @@ public class OffsetParser : ParserBase<TimeSpan>
 			TimeSpanStyles.None,
 			out result
 		);
-		if(parsed) return true;
+		if (parsed)
+		{
+			return true;
+		}
+
 		string[] MinusOffsetFormats = OffsetFormats
 			.Select(format => "'-'" + format)
 			.ToArray();
@@ -64,11 +72,12 @@ public class OffsetParser : ParserBase<TimeSpan>
 			TimeSpanStyles.None,
 			out result
 		);
-		if(parsed)
+		if (parsed)
 		{
 			result = -result;
 			return true;
 		}
+
 		return false;
 	}
 }

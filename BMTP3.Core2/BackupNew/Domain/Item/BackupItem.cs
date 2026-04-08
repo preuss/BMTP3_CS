@@ -4,29 +4,12 @@ using BMTP3.Core2.BackupNew.Domain.Errors;
 namespace BMTP3.Core2.BackupNew.Domain.Item;
 
 /// <summary>
-/// Concrete implementation of IBackupItem.
-/// Encapsulates content, metadata, lifecycle and result state.
+///     Concrete implementation of IBackupItem.
+///     Encapsulates content, metadata, lifecycle and result state.
 /// </summary>
 public class BackupItem : IBackupItem
 {
-	public string Id { get; }
-	public string SourcePath { get; }
-
-	public IContent Content { get; private set; }
-
-	/// <summary>
-	/// Flexible property bag enriched throughout the pipeline.
-	/// </summary>
-	public BackupMetadata Metadata { get; private set; }
-
-	public ItemLifecycleState LifecycleState { get; private set; }
-	public ItemResultState ResultState { get; private set; }
-	public ErrorLog Errors { get; }
-
 	private readonly List<AuditItemEntry> _auditTrail;
-	public IReadOnlyList<AuditItemEntry> AuditTrail => _auditTrail.AsReadOnly();
-
-	public uint AttemptCount { get; private set; }
 
 	private BackupItem(string id, string sourcePath, IContent content, BackupMetadata metadata)
 	{
@@ -49,24 +32,22 @@ public class BackupItem : IBackupItem
 		AttemptCount = 0;
 	}
 
-	public static BackupItem Create(IContent content, string originalFileName, string? relativePath = null)
-	{
-		ArgumentNullException.ThrowIfNull(content);
-		ArgumentException.ThrowIfNullOrWhiteSpace(originalFileName);
+	public string Id { get; }
+	public string SourcePath { get; }
 
-		BackupMetadata metadata = new();
-		metadata.Set(MetadataKey.SourceFileName, originalFileName);
-		metadata.Set(MetadataKey.Length, content.Length);
+	public IContent Content { get; private set; }
 
-		string sourcePath = originalFileName;
-		if(!string.IsNullOrWhiteSpace(relativePath))
-		{
-			metadata.Set(MetadataKey.SourceRelativePath, relativePath);
-			sourcePath = System.IO.Path.Combine(relativePath, originalFileName);
-		}
+	/// <summary>
+	///     Flexible property bag enriched throughout the pipeline.
+	/// </summary>
+	public BackupMetadata Metadata { get; }
 
-		return new BackupItem(Guid.NewGuid().ToString(), sourcePath, content, metadata);
-	}
+	public ItemLifecycleState LifecycleState { get; private set; }
+	public ItemResultState ResultState { get; private set; }
+	public ErrorLog Errors { get; }
+	public IReadOnlyList<AuditItemEntry> AuditTrail => _auditTrail.AsReadOnly();
+
+	public uint AttemptCount { get; private set; }
 
 	public void Fail(string message, string stepName, Exception? ex = null)
 	{
@@ -90,6 +71,58 @@ public class BackupItem : IBackupItem
 	public void ReplaceContent(IContent newContent)
 	{
 		Content = newContent ?? throw new ArgumentNullException(nameof(newContent));
+	}
+
+	public void SetResult(ItemResultState to, string? errorSummary = null)
+	{
+		ResultState = to;
+
+		if (LifecycleState == ItemLifecycleState.Active)
+		{
+			LifecycleState = ItemLifecycleState.Processed;
+		}
+
+		_auditTrail.Add(new AuditItemEntry
+		{
+			Stage = "Result",
+			AttemptCount = AttemptCount,
+			LifecycleState = LifecycleState,
+			ResultState = ResultState,
+			Timestamp = DateTime.UtcNow,
+			ErrorSummary = errorSummary
+		});
+	}
+
+	public void AddLog(string message, string stage = "General")
+	{
+		_auditTrail.Add(new AuditItemEntry
+		{
+			Stage = stage,
+			AttemptCount = AttemptCount,
+			LifecycleState = LifecycleState,
+			ResultState = ResultState,
+			Timestamp = DateTime.UtcNow,
+			ErrorSummary = message
+		});
+	}
+
+	public static BackupItem Create(IContent content, string originalFileName, string? relativePath = null)
+	{
+		ArgumentNullException.ThrowIfNull(content);
+		ArgumentException.ThrowIfNullOrWhiteSpace(originalFileName);
+
+		BackupMetadata metadata = new();
+		metadata.Set(MetadataKey.SourceFileName, originalFileName);
+		metadata.Set(MetadataKey.Length, content.Length);
+
+		string sourcePath = originalFileName;
+		if (!string.IsNullOrWhiteSpace(relativePath))
+		{
+			metadata.Set(MetadataKey.SourceRelativePath, relativePath);
+			sourcePath = Path.Combine(relativePath, originalFileName);
+		}
+
+		return new BackupItem(Guid.NewGuid().ToString(), sourcePath, content, metadata);
 	}
 
 	// Internal helpers used by the state machine to keep mutations in one place:
@@ -121,37 +154,6 @@ public class BackupItem : IBackupItem
 			LifecycleState = LifecycleState,
 			ResultState = ResultState,
 			Timestamp = DateTime.UtcNow
-		});
-	}
-
-	public void SetResult(ItemResultState to, string? errorSummary = null)
-	{
-		ResultState = to;
-
-		if(LifecycleState == ItemLifecycleState.Active)
-			LifecycleState = ItemLifecycleState.Processed;
-
-		_auditTrail.Add(new AuditItemEntry
-		{
-			Stage = "Result",
-			AttemptCount = AttemptCount,
-			LifecycleState = LifecycleState,
-			ResultState = ResultState,
-			Timestamp = DateTime.UtcNow,
-			ErrorSummary = errorSummary
-		});
-	}
-
-	public void AddLog(string message, string stage = "General")
-	{
-		_auditTrail.Add(new AuditItemEntry
-		{
-			Stage = stage,
-			AttemptCount = AttemptCount,
-			LifecycleState = LifecycleState,
-			ResultState = ResultState,
-			Timestamp = DateTime.UtcNow,
-			ErrorSummary = message
 		});
 	}
 }

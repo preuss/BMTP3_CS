@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BMTP3.Consoles.Startup.Configurations;
+
 public class ApplicationServiceSetup : IServiceSetup
 {
 	public void Configure(IServiceCollection services, IConfiguration configuration)

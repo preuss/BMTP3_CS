@@ -4,8 +4,8 @@ using MediaDevices;
 namespace BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 
 /// <summary>
-/// Default implementation of <see cref="IMediaDeviceScannerFactory"/>.
-/// Creates a <see cref="MediaDeviceScanner"/> bound to the supplied connected device.
+///     Default implementation of <see cref="IMediaDeviceScannerFactory" />.
+///     Creates a <see cref="MediaDeviceScanner" /> bound to the supplied connected device.
 /// </summary>
 public sealed class MediaDeviceScannerFactory : IMediaDeviceScannerFactory
 {

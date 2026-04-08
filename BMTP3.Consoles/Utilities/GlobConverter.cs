@@ -1,50 +1,51 @@
 ﻿using System.Text.RegularExpressions;
 
 namespace BMTP3.Consoles.Utilities;
+
 public static class GlobConverter
 {
-    // Regex pattern to match one or more path separators (forward slash or backslash).
-    // Using + here makes the regex tolerant to doubled separators like "\\\\" in some inputs.
-    private const string SeparatorRegex = @"[/\\]+";
+	// Regex pattern to match one or more path separators (forward slash or backslash).
+	// Using + here makes the regex tolerant to doubled separators like "\\\\" in some inputs.
+	private const string SeparatorRegex = @"[/\\]+";
 
 	/// <summary>
-	/// Converts a Glob pattern into a Regex pattern, supporting Standard Globs, 
-	/// Recursive (**), all POSIX/Bash Extglobs (@, +, ?, !) and extended suffix negation.
+	///     Converts a Glob pattern into a Regex pattern, supporting Standard Globs,
+	///     Recursive (**), all POSIX/Bash Extglobs (@, +, ?, !) and extended suffix negation.
 	/// </summary>
 	public static string GlobToRegex(string globPattern)
 	{
-        // Special-case: pattern starting with extglob alternation like @(a|b)rest
-        // Convert into a leading group that is then followed by the remainder converted normally.
-        if (globPattern.StartsWith("@(") && globPattern.Contains(")"))
-        {
-            int end = globPattern.IndexOf(')');
-            if (end > 2)
-            {
-                string inner = globPattern.Substring(2, end - 2);
-                string remainder = globPattern.Substring(end + 1);
-                // remainder may contain glob tokens; convert it without anchors and append.
-                string remRegex = ConvertCoreGlobToRegex(remainder, ignoreAnchors: true);
-                return $"^({inner}){remRegex}$";
-            }
-        }
+		// Special-case: pattern starting with extglob alternation like @(a|b)rest
+		// Convert into a leading group that is then followed by the remainder converted normally.
+		if (globPattern.StartsWith("@(") && globPattern.Contains(")"))
+		{
+			int end = globPattern.IndexOf(')');
+			if (end > 2)
+			{
+				string inner = globPattern.Substring(2, end - 2);
+				string remainder = globPattern.Substring(end + 1);
+				// remainder may contain glob tokens; convert it without anchors and append.
+				string remRegex = ConvertCoreGlobToRegex(remainder, true);
+				return $"^({inner}){remRegex}$";
+			}
+		}
 
-        // Special-case: leading recursive wildcard **/ should allow zero or more directories
-        // including the case where there is no separator (so file at root matches).
-        if ((globPattern.StartsWith("**/") || globPattern.StartsWith("**\\")))
-        {
-            string remainder = globPattern.Substring(3);
-            string remRegex = ConvertCoreGlobToRegex(remainder, ignoreAnchors: true);
-            // Use an explicit alternation for separators to avoid character-class escaping issues.
-            // (?:.*(?:/|\\))? allows zero or more directory segments and also matches the root file.
-            return "^(?:.*(?:/|\\\\))?" + remRegex + "$";
-        }
+		// Special-case: leading recursive wildcard **/ should allow zero or more directories
+		// including the case where there is no separator (so file at root matches).
+		if (globPattern.StartsWith("**/") || globPattern.StartsWith("**\\"))
+		{
+			string remainder = globPattern.Substring(3);
+			string remRegex = ConvertCoreGlobToRegex(remainder, true);
+			// Use an explicit alternation for separators to avoid character-class escaping issues.
+			// (?:.*(?:/|\\))? allows zero or more directory segments and also matches the root file.
+			return "^(?:.*(?:/|\\\\))?" + remRegex + "$";
+		}
 
 		// 1. Handle Global Negation: !(*.jpg) (Priority for POSIX syntax)
-		if(globPattern.StartsWith("!(") && globPattern.EndsWith(")"))
+		if (globPattern.StartsWith("!(") && globPattern.EndsWith(")"))
 		{
 			string positivePattern = globPattern.Substring(2, globPattern.Length - 3);
 			// Internal conversion without anchors, as the Lookahead will anchor the entire string.
-			string positiveRegex = ConvertCoreGlobToRegex(positivePattern, ignoreAnchors: true);
+			string positiveRegex = ConvertCoreGlobToRegex(positivePattern, true);
 			// Global negation logic: Match anything that is NOT the positive pattern.
 			// We use a negative lookahead anchored to the full string.
 			return $"^(?!{positiveRegex}$).*$";
@@ -52,19 +53,19 @@ public static class GlobConverter
 
 		// 2. Handle Extended Suffix Negation: *.!(jpg)
 		// This implements the requested local Negative Lookahead Suffix Match.
-		if(globPattern.Contains("!(") && globPattern.Contains(")") && globPattern.EndsWith(")"))
+		if (globPattern.Contains("!(") && globPattern.Contains(")") && globPattern.EndsWith(")"))
 		{
 			int negationStart = globPattern.LastIndexOf("!(");
 			int negationEnd = globPattern.LastIndexOf(')');
 
-			if(negationStart > 0 && negationEnd == globPattern.Length - 1)
+			if (negationStart > 0 && negationEnd == globPattern.Length - 1)
 			{
 				string negatedSuffix = globPattern.Substring(negationStart + 2, negationEnd - (negationStart + 2));
 				// Convert the suffix to be negated into its Regex form. We only care about literal matching here.
 				string negatedRegex = Regex.Escape(negatedSuffix).Replace(@"\*", ".*").Replace(@"\?", ".");
 
 				string prefixGlob = globPattern.Substring(0, negationStart);
-				string prefixRegex = ConvertCoreGlobToRegex(prefixGlob, ignoreAnchors: true);
+				string prefixRegex = ConvertCoreGlobToRegex(prefixGlob, true);
 
 				// Local negation logic: ^prefix(?!suffix$).*
 				return $"^{prefixRegex}(?!{negatedRegex}$)(.*)$";
@@ -72,17 +73,17 @@ public static class GlobConverter
 		}
 
 		// 3. Standard and Extended Positive Glob Conversion
-		return ConvertCoreGlobToRegex(globPattern, ignoreAnchors: false);
+		return ConvertCoreGlobToRegex(globPattern, false);
 	}
 
 	/// <summary>
-	/// Handles the core conversion logic for all supported Glob elements.
+	///     Handles the core conversion logic for all supported Glob elements.
 	/// </summary>
 	private static string ConvertCoreGlobToRegex(string globPattern, bool ignoreAnchors)
 	{
-        // Define the Regex pattern for path separators (forward or backslash).
-        // Accept one or more separators so inputs with doubled backslashes also match.
-        const string SeparatorRegex = @"[/\\]+";
+		// Define the Regex pattern for path separators (forward or backslash).
+		// Accept one or more separators so inputs with doubled backslashes also match.
+		const string SeparatorRegex = @"[/\\]+";
 
 		// 1. Escape all Regex special characters first.
 		string regexPattern = Regex.Escape(globPattern);
@@ -146,7 +147,7 @@ public static class GlobConverter
 		// --- Final Anchors ---
 
 		// Add anchors
-		if(!ignoreAnchors)
+		if (!ignoreAnchors)
 		{
 			regexPattern = $"^{regexPattern}$";
 		}

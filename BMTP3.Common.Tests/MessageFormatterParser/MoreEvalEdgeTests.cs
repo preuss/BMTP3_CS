@@ -1,34 +1,33 @@
 using BMTP3.Common.MessageFormatterParser;
 
-namespace BMTP3.Common.Tests.MessageFormatterParser
+namespace BMTP3.Common.Tests.MessageFormatterParser;
+
+public class MoreEvalEdgeTests
 {
-	public class MoreEvalEdgeTests
+	[Fact]
+	public void Eval_IfBranch_WithNestedPlaceholderAndSpacing()
 	{
-		[Fact]
-		public void Eval_IfBranch_WithNestedPlaceholderAndSpacing()
+		string template = "Items: ${count§if,eq0?no items:${name} items}";
+		Dictionary<string, object> values = new()
 		{
-			var template = "Items: ${count§if,eq0?no items:${name} items}";
-			var values = new Dictionary<string, object>
-			{
-				{ "count", 2.0 },
-				{ "name", "several" }
-			};
+			{ "count", 2.0 },
+			{ "name", "several" }
+		};
 
-			var result = new MessageFormatter().Format(template, values);
-			Assert.Equal("Items: several items", result);
-		}
+		string result = new MessageFormatter().Format(template, values);
+		Assert.Equal("Items: several items", result);
+	}
 
-		[Fact]
-		public void Eval_IfBranch_ZeroCase_ResolvesZero()
+	[Fact]
+	public void Eval_IfBranch_ZeroCase_ResolvesZero()
+	{
+		string template = "Count: ${count§if,eq0?none:some}";
+		Dictionary<string, object> values = new()
 		{
-			var template = "Count: ${count§if,eq0?none:some}";
-			var values = new Dictionary<string, object>
-			{
-				{ "count", 0.0 }
-			};
+			{ "count", 0.0 }
+		};
 
-			var result = new MessageFormatter().Format(template, values);
-			Assert.Equal("Count: none", result);
-		}
+		string result = new MessageFormatter().Format(template, values);
+		Assert.Equal("Count: none", result);
 	}
 }

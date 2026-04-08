@@ -4,15 +4,23 @@ using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.QuickTime;
 using Microsoft.Extensions.Logging;
+using Directory = MetadataExtractor.Directory;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
 /// <summary>
-/// Robust implementation of IMetadataReader using MetadataExtractor.
-/// Delegates timestamp selection to an injected <see cref="ITimestampWaterfall"/>.
+///     Robust implementation of IMetadataReader using MetadataExtractor.
+///     Delegates timestamp selection to an injected <see cref="ITimestampWaterfall" />.
 /// </summary>
 public class MetadataReader : IMetadataReader
 {
+	private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+	{
+		".jpg", ".jpeg", ".tiff", ".tif", ".png", ".gif", ".bmp", ".webp", ".heic", ".heif", ".mp4", ".mov", ".avi",
+		".mkv"
+	};
+
+	private static readonly bool _usedOnlySupportedExtensions = false;
 	private readonly ILogger<MetadataReader> _logger;
 	private readonly ITimestampWaterfall _timestampWaterfall;
 
@@ -28,98 +36,113 @@ public class MetadataReader : IMetadataReader
 		ArgumentNullException.ThrowIfNull(item.Content);
 
 		// 1. Ensure basic file info is present
-		if(!item.Metadata.Has(MetadataKey.Length))
+		if (!item.Metadata.Has(MetadataKey.Length))
 		{
 			item.Metadata.Set(MetadataKey.Length, item.Content.Length);
 		}
 
 		// Only attempt to read file headers if we have a physical file we can read randomly/efficiently.
 		// At this stage in the pipeline (after Staging), the content should be a FileContent pointing to a local temp file.
-		if(item.Content is FileContent fileContent)
+		if (item.Content is FileContent fileContent)
 		{
 			await ExtractInternalMetadataAsync(item, fileContent.FileInfo.FullName, ct);
-		} else
+		}
+		else
 		{
-			_logger.LogWarning("Skipping internal metadata extraction for item {ItemId}. Content is not a local file (Type: {Type}).", item.Id, item.Content.GetType().Name);
+			_logger.LogWarning(
+				"Skipping internal metadata extraction for item {ItemId}. Content is not a local file (Type: {Type}).",
+				item.Id, item.Content.GetType().Name);
 		}
 
 		// 3. Finalize AuthoredDateTime based on Waterfall Logic
 		_timestampWaterfall.Apply(item);
 	}
 
-	private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
-	{
-		".jpg", ".jpeg", ".tiff", ".tif", ".png", ".gif", ".bmp", ".webp", ".heic", ".heif", ".mp4", ".mov", ".avi", ".mkv"
-	};
-	private static readonly bool _usedOnlySupportedExtensions = false;
 	/// <summary>
-	/// Quick guard: skip heavy parsing for unsupported extensions to avoid noisy exceptions.
+	///     Quick guard: skip heavy parsing for unsupported extensions to avoid noisy exceptions.
 	/// </summary>
 	/// <param name="ext"></param>
 	/// <returns></returns>
 	private static bool ContinueExtractionGuard(string ext)
 	{
-		if(!_usedOnlySupportedExtensions)
+		if (!_usedOnlySupportedExtensions)
 		{
 			return true;
 		}
-		if(string.IsNullOrEmpty(ext))
+
+		if (string.IsNullOrEmpty(ext))
 		{
 			return false;
 		}
+
 		return _supportedExtensions.Contains(ext);
 	}
+
 	private async Task ExtractInternalMetadataAsync(IBackupItem item, string filePath, CancellationToken ct)
 	{
 		try
 		{
-
-			if(!ContinueExtractionGuard(Path.GetExtension(filePath)))
+			if (!ContinueExtractionGuard(Path.GetExtension(filePath)))
 			{
 				string? ext = Path.GetExtension(filePath);
-				_logger.LogDebug("Skipping internal metadata extraction for unsupported extension '{Ext}' (Item {ItemId}).", ext, item.Id);
+				_logger.LogDebug(
+					"Skipping internal metadata extraction for unsupported extension '{Ext}' (Item {ItemId}).", ext,
+					item.Id);
 				return;
 			}
 
 			// Run on thread pool to avoid blocking the pipeline with heavy parsing
 			await Task.Run(() =>
 			{
-				if(!File.Exists(filePath)) return;
+				if (!File.Exists(filePath))
+				{
+					return;
+				}
 
 				try
 				{
-					var directories = ImageMetadataReader.ReadMetadata(filePath);
-					var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
-					var ifd0Directory = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
-					var quickTimeDirectory = directories.OfType<QuickTimeMovieHeaderDirectory>().FirstOrDefault();
+					IReadOnlyList<Directory> directories = ImageMetadataReader.ReadMetadata(filePath);
+					ExifSubIfdDirectory? subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+					ExifIfd0Directory? ifd0Directory = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
+					QuickTimeMovieHeaderDirectory? quickTimeDirectory =
+						directories.OfType<QuickTimeMovieHeaderDirectory>().FirstOrDefault();
 
 					DateTime? exifDate = null;
 
 					// A. Try EXIF SubIFD (Most precise for photos)
-					if(subIfdDirectory != null)
+					if (subIfdDirectory != null)
 					{
-						if(subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out DateTime dt))
+						if (subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out DateTime dt))
+						{
 							exifDate = dt;
-						else if(subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeDigitized, out dt))
+						}
+						else if (subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeDigitized, out dt))
+						{
 							exifDate = dt;
+						}
 					}
 
 					// B. Try EXIF IFD0 (Fallback for photos)
-					if(exifDate == null && ifd0Directory != null)
+					if (exifDate == null && ifd0Directory != null)
 					{
-						if(ifd0Directory.TryGetDateTime(ExifDirectoryBase.TagDateTime, out DateTime dt))
+						if (ifd0Directory.TryGetDateTime(ExifDirectoryBase.TagDateTime, out DateTime dt))
+						{
 							exifDate = dt;
+						}
 					}
 
 					// C. Try QuickTime (For MOV/MP4 from iPhones etc.)
-					if(exifDate == null && quickTimeDirectory != null)
+					if (exifDate == null && quickTimeDirectory != null)
 					{
-						if(quickTimeDirectory.TryGetDateTime(QuickTimeMovieHeaderDirectory.TagCreated, out DateTime dt))
+						if (quickTimeDirectory.TryGetDateTime(QuickTimeMovieHeaderDirectory.TagCreated,
+							    out DateTime dt))
+						{
 							exifDate = dt;
+						}
 					}
 
 					// Store if found
-					if(exifDate.HasValue && exifDate.Value != DateTime.MinValue)
+					if (exifDate.HasValue && exifDate.Value != DateTime.MinValue)
 					{
 						item.Metadata.Set(MetadataKey.RawExifDateTaken, exifDate.Value);
 						_logger.LogDebug("Found EXIF Date for {ItemId}: {Date}", item.Id, exifDate.Value);
@@ -127,27 +150,33 @@ public class MetadataReader : IMetadataReader
 
 					// D. Try to extract Model
 					string? model = null;
-					if(ifd0Directory != null)
+					if (ifd0Directory != null)
 					{
 						model = ifd0Directory.GetString(ExifDirectoryBase.TagModel);
 					}
 
-					if(!string.IsNullOrWhiteSpace(model))
+					if (!string.IsNullOrWhiteSpace(model))
 					{
 						item.Metadata.Set(MetadataKey.Model, model.Trim());
 					}
-				} catch(ImageProcessingException imgEx)
+				}
+				catch (ImageProcessingException imgEx)
 				{
 					// MetadataExtractor couldn't parse the file format even though extension matched.
-					_logger.LogWarning(imgEx, "Image processing failed for item {ItemId} ({Path}). Skipping internal metadata.", item.Id, filePath);
+					_logger.LogWarning(imgEx,
+						"Image processing failed for item {ItemId} ({Path}). Skipping internal metadata.", item.Id,
+						filePath);
 					item.AddLog($"Metadata Extraction Failed (image parse): {imgEx.Message}", "MetadataReader");
 				}
 			}, ct);
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
 			// We do NOT fail the backup just because we couldn't parse EXIF. We log and fall back.
 			string sourcePath = item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown";
-			_logger.LogWarning(ex, "Failed to extract internal metadata for item {ItemId} ({Path}). Using fallback dates.", item.Id, sourcePath);
+			_logger.LogWarning(ex,
+				"Failed to extract internal metadata for item {ItemId} ({Path}). Using fallback dates.", item.Id,
+				sourcePath);
 			item.AddLog($"Metadata Extraction Failed: {ex.Message}", "MetadataReader");
 		}
 	}

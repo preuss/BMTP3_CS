@@ -1,22 +1,24 @@
-using System;
 using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
+using Directory = MetadataExtractor.Directory;
 
 namespace BMTP3.Consoles;
 
 /// <summary>
-/// Lightweight safe-access extension methods for metadata directories.
-/// These helpers avoid throwing when a tag is missing or malformed.
+///     Lightweight safe-access extension methods for metadata directories.
+///     These helpers avoid throwing when a tag is missing or malformed.
 /// </summary>
 internal static class MetadataDirectoryExtensions
 {
 	/// <summary>
-	/// Return the string value for <paramref name="tagType"/> or <c>null</c> when not available or on error.
+	///     Return the string value for <paramref name="tagType" /> or <c>null</c> when not available or on error.
 	/// </summary>
-	public static string? SafeGetString(this MetadataExtractor.Directory? dir, int tagType)
+	public static string? SafeGetString(this Directory? dir, int tagType)
 	{
 		if (dir is null)
+		{
 			return null;
+		}
 
 		try
 		{
@@ -32,13 +34,15 @@ internal static class MetadataDirectoryExtensions
 	}
 
 	/// <summary>
-	/// Try read a DateTime value from an EXIF directory in a safe manner.
+	///     Try read a DateTime value from an EXIF directory in a safe manner.
 	/// </summary>
 	public static bool SafeTryGetDateTime(this ExifDirectoryBase? dir, int tagType, out DateTime dt)
 	{
 		dt = default;
 		if (dir is null)
+		{
 			return false;
+		}
 
 		try
 		{

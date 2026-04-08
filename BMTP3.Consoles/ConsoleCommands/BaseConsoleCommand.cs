@@ -1,9 +1,11 @@
 using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
+
 public abstract class BaseConsoleCommand : Command
 {
 	private readonly BaseOptionsModel[] _optionsModels;
+
 	protected BaseConsoleCommand(
 		string name,
 		string? description = null,
@@ -11,19 +13,21 @@ public abstract class BaseConsoleCommand : Command
 	) : base(name, description)
 	{
 		_optionsModels = optionsModels;
-		foreach(BaseOptionsModel optionsModel in _optionsModels)
+		foreach (BaseOptionsModel optionsModel in _optionsModels)
 		{
-			foreach(Option option in optionsModel.GetAllOptions())
+			foreach (Option option in optionsModel.GetAllOptions())
 			{
-				if(!Options.Contains(option))
+				if (!Options.Contains(option))
 				{
 					Options.Add(option);
-				} else
+				}
+				else
 				{
 					throw new InvalidOperationException($"Option {option.Name} is already defined.");
 				}
 			}
 		}
+
 		BaseOptionsModel.ValidateDuplicateNameAndAlias(_optionsModels);
 
 		SetAction(ExecuteInternalAsync);
@@ -33,12 +37,14 @@ public abstract class BaseConsoleCommand : Command
 	{
 		try
 		{
-			foreach(BaseOptionsModel optionsModel in _optionsModels)
+			foreach (BaseOptionsModel optionsModel in _optionsModels)
 			{
 				DoBindOptionsModel(parseResult, optionsModel);
 			}
+
 			return await DoExecuteAsync(parseResult, cancellationToken);
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
 			OnCommandError(ex);
 			return 1;
@@ -46,9 +52,9 @@ public abstract class BaseConsoleCommand : Command
 	}
 
 	/// <summary>
-	/// Called when an unhandled exception occurs during command execution.
-	/// Override in subclasses to route errors through a printer or notifier.
-	/// Default falls back to stderr.
+	///     Called when an unhandled exception occurs during command execution.
+	///     Override in subclasses to route errors through a printer or notifier.
+	///     Default falls back to stderr.
 	/// </summary>
 	protected virtual void OnCommandError(Exception ex)
 	{

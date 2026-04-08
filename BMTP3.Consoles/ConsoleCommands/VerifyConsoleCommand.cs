@@ -1,17 +1,16 @@
-﻿using BMTP3.Consoles.Services;
+﻿using System.CommandLine;
+using BMTP3.Consoles.Services;
 using Microsoft.Extensions.DependencyInjection;
-using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
+
 public class VerifyConsoleCommand : BaseConsoleCommand
 {
-	public GlobalOptionsModel GlobalOptions { get; }
-	public VerifyOptionsModel VerifyOptions { get; }
-	public IServiceProvider? ServiceProvider { get; init; }
-
-	public VerifyConsoleCommand() : this("verify", "Verificér backup", new GlobalOptionsModel(), new VerifyOptionsModel())
+	public VerifyConsoleCommand() : this("verify", "Verificér backup", new GlobalOptionsModel(),
+		new VerifyOptionsModel())
 	{
 	}
+
 	public VerifyConsoleCommand(
 		string name,
 		string description,
@@ -22,6 +21,10 @@ public class VerifyConsoleCommand : BaseConsoleCommand
 		GlobalOptions = globalOptionsModel;
 		VerifyOptions = verifyOptionsModel;
 	}
+
+	public GlobalOptionsModel GlobalOptions { get; }
+	public VerifyOptionsModel VerifyOptions { get; }
+	public IServiceProvider? ServiceProvider { get; init; }
 
 	protected override async Task<int> DoExecuteAsync(
 		ParseResult parseResult,

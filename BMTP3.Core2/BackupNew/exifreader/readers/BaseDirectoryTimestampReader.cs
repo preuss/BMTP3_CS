@@ -3,10 +3,11 @@ using BMTP3.Core2.BackupNew.exifreader.definitions;
 using BMTP3.Core2.BackupNew.exifreader.Extensions;
 using BMTP3.Core2.BackupNew.exifreader.parsers;
 using MetadataExtractor;
+using Directory = MetadataExtractor.Directory;
 
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
-public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReader where TDirectory : MetadataExtractor.Directory
+public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReader where TDirectory : Directory
 {
 	private static readonly DateTimeOffsetParser _dateTimeOffsetParser = new();
 	private static readonly DateTimeParser _dateTimeParser = new();
@@ -24,19 +25,20 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 	public IReadOnlyList<TimestampCandidate> Read(FileInfo file)
 	{
 		List<TimestampCandidate> candidates = new();
-		IEnumerable<MetadataExtractor.Directory> directories;
+		IEnumerable<Directory> directories;
 
 		try
 		{
 			directories = ImageMetadataReader.ReadMetadata(file.FullName);
-		} catch
+		}
+		catch
 		{
 			return Array.Empty<TimestampCandidate>();
 		}
 
-		foreach(TDirectory dir in directories.OfType<TDirectory>())
+		foreach (TDirectory dir in directories.OfType<TDirectory>())
 		{
-			foreach(TimestampTagGroup group in TagDefinitions)
+			foreach (TimestampTagGroup group in TagDefinitions)
 			{
 				string? rawDate = GetStringForTag(dir, group.DateTag);
 				string? rawTime = GetStringForTag(dir, group.TimeTag);
@@ -46,31 +48,36 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 				string? rawTimestamp = GetStringForTag(dir, group.TimestampTag);
 				long? timestampValue = GetLongForTag(dir, group.TimestampTag);
 
-				TimestampCandidate? timestampCandidate = CreateCandidateFromTimestamp(group, rawTimestamp, timestampValue);
+				TimestampCandidate? timestampCandidate =
+					CreateCandidateFromTimestamp(group, rawTimestamp, timestampValue);
 
-				TimestampCandidate? dateCandidate = CreateCandidateFromDates(group, rawDate, rawTime, rawOffset, rawSubSec);
+				TimestampCandidate? dateCandidate =
+					CreateCandidateFromDates(group, rawDate, rawTime, rawOffset, rawSubSec);
 
 				TimestampCandidate? candidate = dateCandidate
-								   ?? timestampCandidate;
-				if(candidate != null)
+				                                ?? timestampCandidate;
+				if (candidate != null)
 				{
 					candidates.Add(candidate);
 				}
 			}
 		}
+
 		return candidates;
 	}
+
 	private TimestampCandidate? CreateCandidateFromTimestamp(
 		TimestampTagGroup group,
 		string? rawTimestamp,
 		long? timestampValue
 	)
 	{
-		if(!timestampValue.HasValue && _timestampParser.TryParse(rawTimestamp, out long parsedTimestamp))
+		if (!timestampValue.HasValue && _timestampParser.TryParse(rawTimestamp, out long parsedTimestamp))
 		{
 			timestampValue = parsedTimestamp;
 		}
-		if(!timestampValue.HasValue)
+
+		if (!timestampValue.HasValue)
 		{
 			return null;
 		}
@@ -81,14 +88,15 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		);
 
 		return TimestampCandidateFactory.FromRawTimestamp(
-				SourceType,
-				group.Role,
-				rawTimestamp,
-				timestampValue.Value,
-				group.TimestampEpoch,
-				timestampResolution
+			SourceType,
+			group.Role,
+			rawTimestamp,
+			timestampValue.Value,
+			group.TimestampEpoch,
+			timestampResolution
 		);
 	}
+
 	private TimestampCandidate? CreateCandidateFromDates(
 		TimestampTagGroup group,
 		string? rawDate,
@@ -97,7 +105,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		string? rawSubSec
 	)
 	{
-		if(string.IsNullOrWhiteSpace(rawDate))
+		if (string.IsNullOrWhiteSpace(rawDate))
 		{
 			return null;
 		}
@@ -107,7 +115,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		long? subSec = _subSecondParser.ParseOrNull(rawSubSec);
 
 		// Try DateTimeOffset
-		if(_dateTimeOffsetParser.TryParse(rawDate, out DateTimeOffset dto))
+		if (_dateTimeOffsetParser.TryParse(rawDate, out DateTimeOffset dto))
 		{
 			return TimestampCandidateFactory.FromDateTimeOffsetWithSubSec(
 				SourceType, group.Role, rawDate, rawSubSec, dto, subSec
@@ -115,7 +123,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		}
 
 		// Try DateTime
-		if(_dateTimeParser.TryParse(rawDate, out DateTime dt))
+		if (_dateTimeParser.TryParse(rawDate, out DateTime dt))
 		{
 			return TimestampCandidateFactory.FromRawDateTimeWithOffsetAndSubSec(
 				SourceType, group.Role, rawDate, rawOffset, rawSubSec, dt, offset, subSec
@@ -123,7 +131,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		}
 
 		// Try DateOnly
-		if(TryParseDateWithResolution(rawDate, out DateOnly date, out ChronoDateResolution dateRes))
+		if (TryParseDateWithResolution(rawDate, out DateOnly date, out ChronoDateResolution dateRes))
 		{
 			return TimestampCandidateFactory.FromRawDateWithTimeAndOffSetAndSubSec(
 				SourceType, group.Role, rawDate, rawTime, rawOffset, rawSubSec,
@@ -136,24 +144,27 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 
 	private bool TryParseDateWithResolution(string? rawDate, out DateOnly date, out ChronoDateResolution resolution)
 	{
-		if(_dateParser.TryParse(rawDate, out DateOnly fullDate))
+		if (_dateParser.TryParse(rawDate, out DateOnly fullDate))
 		{
 			date = fullDate;
 			resolution = ChronoDateResolution.FullDate;
 			return true;
 		}
-		if(_dateWithYearMonthParser.TryParse(rawDate, out DateOnly yearMonth))
+
+		if (_dateWithYearMonthParser.TryParse(rawDate, out DateOnly yearMonth))
 		{
 			date = yearMonth;
 			resolution = ChronoDateResolution.YearAndMonth;
 			return true;
 		}
-		if(_dateWithYearParser.TryParse(rawDate, out DateOnly yearOnly))
+
+		if (_dateWithYearParser.TryParse(rawDate, out DateOnly yearOnly))
 		{
 			date = yearOnly;
 			resolution = ChronoDateResolution.YearOnly;
 			return true;
 		}
+
 		date = default;
 		resolution = default;
 		return false;
@@ -161,19 +172,21 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 
 	private string? GetStringForTag(TDirectory dir, int? tag)
 	{
-		if(!tag.HasValue)
+		if (!tag.HasValue)
 		{
 			return null;
 		}
+
 		return dir.SafeGetString(tag.Value);
 	}
 
 	private long? GetLongForTag(TDirectory dir, int? tag)
 	{
-		if(tag.HasValue && dir.TryGetInt64(tag.Value, out long val))
+		if (tag.HasValue && dir.TryGetInt64(tag.Value, out long val))
 		{
 			return val;
 		}
+
 		return null;
 	}
 }

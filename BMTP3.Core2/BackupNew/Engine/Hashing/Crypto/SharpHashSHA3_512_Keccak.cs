@@ -1,8 +1,9 @@
-﻿using SharpHash.Base;
+﻿using System.Security.Cryptography;
+using SharpHash.Base;
 using SharpHash.Interfaces;
-using System.Security.Cryptography;
 
 namespace BMTP3.Core2.Engine.Hashing.Crypto;
+
 public class SharpHashSHA3_512_Keccak : HashAlgorithm
 {
 	private readonly IHash _hash;

@@ -4,7 +4,7 @@ public static class TimestampFormatStyleParser
 {
 	public static TimestampFormatStyle ParseOrDefault(string? format, TimestampFormatStyle fallbackStyle)
 	{
-		switch(format)
+		switch (format)
 		{
 			case null:
 			case "":
@@ -20,12 +20,12 @@ public static class TimestampFormatStyleParser
 				return TimestampFormatStyle.Compact_DotFraction;
 		}
 
-		if(string.IsNullOrWhiteSpace(format))
+		if (string.IsNullOrWhiteSpace(format))
 		{
 			return fallbackStyle;
 		}
 
-		if(Enum.TryParse(format, ignoreCase: true, out TimestampFormatStyle style))
+		if (Enum.TryParse(format, true, out TimestampFormatStyle style))
 		{
 			return style;
 		}
@@ -33,4 +33,3 @@ public static class TimestampFormatStyleParser
 		return fallbackStyle;
 	}
 }
-

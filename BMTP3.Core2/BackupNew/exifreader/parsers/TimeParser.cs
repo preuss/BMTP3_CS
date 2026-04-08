@@ -9,17 +9,18 @@ public class TimeParser : ParserBase<TimeOnly>
 		"HH:mm:ss.FFFFFFF",
 		"HH:mm:ss,FFFFFFF",
 		"HH:mm:ss",
-		"HH:mm",
+		"HH:mm"
 	};
 
 	public override bool TryParse(string? raw, out TimeOnly result)
 	{
 		result = default;
 
-		if(string.IsNullOrWhiteSpace(raw))
+		if (string.IsNullOrWhiteSpace(raw))
 		{
 			return false;
 		}
+
 		raw = raw.Trim();
 
 		return TimeOnly.TryParseExact(

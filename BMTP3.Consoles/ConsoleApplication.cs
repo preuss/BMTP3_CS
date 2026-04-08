@@ -1,6 +1,7 @@
 ﻿using BMTP3.Consoles.Services;
 
 namespace BMTP3.Consoles;
+
 public class ConsoleApplication
 {
 	private readonly IClock _clock;
@@ -16,7 +17,7 @@ public class ConsoleApplication
 	{
 		_writer.WriteLine($"Programmet startede: {_clock.UtcNow}");
 		_writer.WriteLine("Argumenter modtaget:");
-		foreach(string arg in args)
+		foreach (string arg in args)
 		{
 			_writer.WriteLine(arg);
 		}
@@ -26,5 +27,4 @@ public class ConsoleApplication
 
 		return 0; // Exit code
 	}
-
 }

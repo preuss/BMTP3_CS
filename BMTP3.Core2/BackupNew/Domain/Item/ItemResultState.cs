@@ -1,26 +1,27 @@
 ﻿namespace BMTP3.Core2.BackupNew.Domain.Item;
+
 /// <summary>
-/// Represents the final outcome of a backup attempt for a single item.
+///     Represents the final outcome of a backup attempt for a single item.
 /// </summary>
 public enum ItemResultState
 {
 	/// <summary>
-	/// Item is registered and waiting to be processed.
+	///     Item is registered and waiting to be processed.
 	/// </summary>
 	Pending,
 
 	/// <summary>
-	/// Item backup completed successfully.
+	///     Item backup completed successfully.
 	/// </summary>
 	Success,
 
 	/// <summary>
-	/// Item backup attempt failed.
+	///     Item backup attempt failed.
 	/// </summary>
 	Failed,
 
 	/// <summary>
-	/// Item was intentionally skipped (e.g., file already exists).
+	///     Item was intentionally skipped (e.g., file already exists).
 	/// </summary>
 	Skipped
 }

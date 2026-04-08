@@ -1,192 +1,202 @@
-using System;
-using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.StateMachine;
-using Xunit;
 
-namespace BMTP3.Core2.Tests.StateMachine
+namespace BMTP3.Core2.Tests.StateMachine;
+
+/// <summary>
+///     Minimal IContent implementation that carries no real data, used only to satisfy
+///     BackupItem.Create's non-null content requirement.
+/// </summary>
+internal sealed class StubContent : IContent
 {
-    /// <summary>
-    /// Minimal IContent implementation that carries no real data, used only to satisfy
-    /// BackupItem.Create's non-null content requirement.
-    /// </summary>
-    internal sealed class StubContent : IContent
-    {
-        public ulong Length => 0;
-        public Stream OpenRead() => Stream.Null;
-        public Task<Stream> OpenReadStreamAsync(CancellationToken ct) => Task.FromResult(Stream.Null);
-        public void Dispose() { }
-    }
+	public ulong Length => 0;
 
-    public class ItemStateMachineTests
-    {
-        // ---------------------------------------------------------------
-        // Helpers
-        // ---------------------------------------------------------------
+	public Stream OpenRead()
+	{
+		return Stream.Null;
+	}
 
-        private static BackupItem NewItem() =>
-            BackupItem.Create(new StubContent(), "test.txt");
+	public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
+	{
+		return Task.FromResult(Stream.Null);
+	}
 
-        private static ItemStateMachine Sut() => new ItemStateMachine();
+	public void Dispose()
+	{
+	}
+}
 
-        // ---------------------------------------------------------------
-        // CanTransitionLifecycle – valid paths
-        // ---------------------------------------------------------------
+public class ItemStateMachineTests
+{
+	// ---------------------------------------------------------------
+	// Helpers
+	// ---------------------------------------------------------------
 
-        [Fact]
-        public void CanTransitionLifecycle_NewToQueued_ReturnsTrue()
-        {
-            var sut = Sut();
-            Assert.True(sut.CanTransitionLifecycle(ItemLifecycleState.New, ItemLifecycleState.Queued));
-        }
+	private static BackupItem NewItem()
+	{
+		return BackupItem.Create(new StubContent(), "test.txt");
+	}
 
-        [Fact]
-        public void CanTransitionLifecycle_QueuedToActive_ReturnsTrue()
-        {
-            var sut = Sut();
-            Assert.True(sut.CanTransitionLifecycle(ItemLifecycleState.Queued, ItemLifecycleState.Active));
-        }
+	private static ItemStateMachine Sut()
+	{
+		return new ItemStateMachine();
+	}
 
-        [Fact]
-        public void CanTransitionLifecycle_ActiveToProcessed_ReturnsTrue()
-        {
-            var sut = Sut();
-            Assert.True(sut.CanTransitionLifecycle(ItemLifecycleState.Active, ItemLifecycleState.Processed));
-        }
+	// ---------------------------------------------------------------
+	// CanTransitionLifecycle – valid paths
+	// ---------------------------------------------------------------
 
-        // ---------------------------------------------------------------
-        // CanTransitionLifecycle – invalid paths
-        // ---------------------------------------------------------------
+	[Fact]
+	public void CanTransitionLifecycle_NewToQueued_ReturnsTrue()
+	{
+		ItemStateMachine sut = Sut();
+		Assert.True(sut.CanTransitionLifecycle(ItemLifecycleState.New, ItemLifecycleState.Queued));
+	}
 
-        [Fact]
-        public void CanTransitionLifecycle_NewToActive_ReturnsFalse()
-        {
-            var sut = Sut();
-            Assert.False(sut.CanTransitionLifecycle(ItemLifecycleState.New, ItemLifecycleState.Active));
-        }
+	[Fact]
+	public void CanTransitionLifecycle_QueuedToActive_ReturnsTrue()
+	{
+		ItemStateMachine sut = Sut();
+		Assert.True(sut.CanTransitionLifecycle(ItemLifecycleState.Queued, ItemLifecycleState.Active));
+	}
 
-        [Fact]
-        public void CanTransitionLifecycle_ProcessedToAny_ReturnsFalse()
-        {
-            var sut = Sut();
-            Assert.False(sut.CanTransitionLifecycle(ItemLifecycleState.Processed, ItemLifecycleState.Active));
-            Assert.False(sut.CanTransitionLifecycle(ItemLifecycleState.Processed, ItemLifecycleState.Queued));
-            Assert.False(sut.CanTransitionLifecycle(ItemLifecycleState.Processed, ItemLifecycleState.New));
-        }
+	[Fact]
+	public void CanTransitionLifecycle_ActiveToProcessed_ReturnsTrue()
+	{
+		ItemStateMachine sut = Sut();
+		Assert.True(sut.CanTransitionLifecycle(ItemLifecycleState.Active, ItemLifecycleState.Processed));
+	}
 
-        // ---------------------------------------------------------------
-        // Queue / Activate – happy-path mutations on BackupItem
-        // ---------------------------------------------------------------
+	// ---------------------------------------------------------------
+	// CanTransitionLifecycle – invalid paths
+	// ---------------------------------------------------------------
 
-        [Fact]
-        public void Queue_FromNewItem_SetsLifecycleToQueued()
-        {
-            var item = NewItem();
-            var sut = Sut();
+	[Fact]
+	public void CanTransitionLifecycle_NewToActive_ReturnsFalse()
+	{
+		ItemStateMachine sut = Sut();
+		Assert.False(sut.CanTransitionLifecycle(ItemLifecycleState.New, ItemLifecycleState.Active));
+	}
 
-            sut.Queue(item);
+	[Fact]
+	public void CanTransitionLifecycle_ProcessedToAny_ReturnsFalse()
+	{
+		ItemStateMachine sut = Sut();
+		Assert.False(sut.CanTransitionLifecycle(ItemLifecycleState.Processed, ItemLifecycleState.Active));
+		Assert.False(sut.CanTransitionLifecycle(ItemLifecycleState.Processed, ItemLifecycleState.Queued));
+		Assert.False(sut.CanTransitionLifecycle(ItemLifecycleState.Processed, ItemLifecycleState.New));
+	}
 
-            Assert.Equal(ItemLifecycleState.Queued, item.LifecycleState);
-            Assert.Equal(ItemResultState.Pending, item.ResultState);
-        }
+	// ---------------------------------------------------------------
+	// Queue / Activate – happy-path mutations on BackupItem
+	// ---------------------------------------------------------------
 
-        [Fact]
-        public void Activate_FromQueuedItem_SetsLifecycleToActive()
-        {
-            var item = NewItem();
-            var sut = Sut();
+	[Fact]
+	public void Queue_FromNewItem_SetsLifecycleToQueued()
+	{
+		BackupItem item = NewItem();
+		ItemStateMachine sut = Sut();
 
-            sut.Queue(item);
-            sut.Activate(item);
+		sut.Queue(item);
 
-            Assert.Equal(ItemLifecycleState.Active, item.LifecycleState);
-        }
+		Assert.Equal(ItemLifecycleState.Queued, item.LifecycleState);
+		Assert.Equal(ItemResultState.Pending, item.ResultState);
+	}
 
-        // ---------------------------------------------------------------
-        // Queue / Activate – invalid transition throws
-        // ---------------------------------------------------------------
+	[Fact]
+	public void Activate_FromQueuedItem_SetsLifecycleToActive()
+	{
+		BackupItem item = NewItem();
+		ItemStateMachine sut = Sut();
 
-        [Fact]
-        public void Queue_FromAlreadyQueuedItem_ThrowsInvalidOperationException()
-        {
-            var item = NewItem();
-            var sut = Sut();
-            sut.Queue(item); // New -> Queued
+		sut.Queue(item);
+		sut.Activate(item);
 
-            Assert.Throws<InvalidOperationException>(() => sut.Queue(item));
-        }
+		Assert.Equal(ItemLifecycleState.Active, item.LifecycleState);
+	}
 
-        [Fact]
-        public void Activate_FromNewItem_ThrowsInvalidOperationException()
-        {
-            var item = NewItem();
-            var sut = Sut();
+	// ---------------------------------------------------------------
+	// Queue / Activate – invalid transition throws
+	// ---------------------------------------------------------------
 
-            // Item is still New, skipping Queue should fail
-            Assert.Throws<InvalidOperationException>(() => sut.Activate(item));
-        }
+	[Fact]
+	public void Queue_FromAlreadyQueuedItem_ThrowsInvalidOperationException()
+	{
+		BackupItem item = NewItem();
+		ItemStateMachine sut = Sut();
+		sut.Queue(item); // New -> Queued
 
-        // ---------------------------------------------------------------
-        // ApplyResult – each valid ItemResultState
-        // ---------------------------------------------------------------
+		Assert.Throws<InvalidOperationException>(() => sut.Queue(item));
+	}
 
-        [Fact]
-        public void ApplyResult_Success_SetsResultStateAndProcessedLifecycle()
-        {
-            var item = NewItem();
-            var sut = Sut();
-            sut.Queue(item);
-            sut.Activate(item);
+	[Fact]
+	public void Activate_FromNewItem_ThrowsInvalidOperationException()
+	{
+		BackupItem item = NewItem();
+		ItemStateMachine sut = Sut();
 
-            sut.ApplyResult(item, ItemResultState.Success);
+		// Item is still New, skipping Queue should fail
+		Assert.Throws<InvalidOperationException>(() => sut.Activate(item));
+	}
 
-            Assert.Equal(ItemResultState.Success, item.ResultState);
-            Assert.Equal(ItemLifecycleState.Processed, item.LifecycleState);
-        }
+	// ---------------------------------------------------------------
+	// ApplyResult – each valid ItemResultState
+	// ---------------------------------------------------------------
 
-        [Fact]
-        public void ApplyResult_Failed_SetsResultStateAndAddsError()
-        {
-            var item = NewItem();
-            var sut = Sut();
-            sut.Queue(item);
-            sut.Activate(item);
+	[Fact]
+	public void ApplyResult_Success_SetsResultStateAndProcessedLifecycle()
+	{
+		BackupItem item = NewItem();
+		ItemStateMachine sut = Sut();
+		sut.Queue(item);
+		sut.Activate(item);
 
-            sut.ApplyResult(item, ItemResultState.Failed, "disk full");
+		sut.ApplyResult(item, ItemResultState.Success);
 
-            Assert.Equal(ItemResultState.Failed, item.ResultState);
-            Assert.Equal(ItemLifecycleState.Processed, item.LifecycleState);
-            Assert.True(item.Errors.HasErrors);
-        }
+		Assert.Equal(ItemResultState.Success, item.ResultState);
+		Assert.Equal(ItemLifecycleState.Processed, item.LifecycleState);
+	}
 
-        [Fact]
-        public void ApplyResult_Skipped_SetsResultStateToSkipped()
-        {
-            var item = NewItem();
-            var sut = Sut();
-            sut.Queue(item);
-            sut.Activate(item);
+	[Fact]
+	public void ApplyResult_Failed_SetsResultStateAndAddsError()
+	{
+		BackupItem item = NewItem();
+		ItemStateMachine sut = Sut();
+		sut.Queue(item);
+		sut.Activate(item);
 
-            sut.ApplyResult(item, ItemResultState.Skipped);
+		sut.ApplyResult(item, ItemResultState.Failed, "disk full");
 
-            Assert.Equal(ItemResultState.Skipped, item.ResultState);
-            Assert.Equal(ItemLifecycleState.Processed, item.LifecycleState);
-        }
+		Assert.Equal(ItemResultState.Failed, item.ResultState);
+		Assert.Equal(ItemLifecycleState.Processed, item.LifecycleState);
+		Assert.True(item.Errors.HasErrors);
+	}
 
-        [Fact]
-        public void ApplyResult_FromAlreadySucceeded_ThrowsInvalidOperationException()
-        {
-            var item = NewItem();
-            var sut = Sut();
-            sut.Queue(item);
-            sut.Activate(item);
-            sut.ApplyResult(item, ItemResultState.Success);
+	[Fact]
+	public void ApplyResult_Skipped_SetsResultStateToSkipped()
+	{
+		BackupItem item = NewItem();
+		ItemStateMachine sut = Sut();
+		sut.Queue(item);
+		sut.Activate(item);
 
-            // Once in a terminal result state, no further result transition is allowed
-            Assert.Throws<InvalidOperationException>(() => sut.ApplyResult(item, ItemResultState.Failed));
-        }
-    }
+		sut.ApplyResult(item, ItemResultState.Skipped);
+
+		Assert.Equal(ItemResultState.Skipped, item.ResultState);
+		Assert.Equal(ItemLifecycleState.Processed, item.LifecycleState);
+	}
+
+	[Fact]
+	public void ApplyResult_FromAlreadySucceeded_ThrowsInvalidOperationException()
+	{
+		BackupItem item = NewItem();
+		ItemStateMachine sut = Sut();
+		sut.Queue(item);
+		sut.Activate(item);
+		sut.ApplyResult(item, ItemResultState.Success);
+
+		// Once in a terminal result state, no further result transition is allowed
+		Assert.Throws<InvalidOperationException>(() => sut.ApplyResult(item, ItemResultState.Failed));
+	}
 }
