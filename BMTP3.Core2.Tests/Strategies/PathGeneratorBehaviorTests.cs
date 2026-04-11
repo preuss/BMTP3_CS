@@ -1,27 +1,25 @@
-using System;
-using System.IO;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
-using BMTP3.Core2.BackupNew.Engine.Strategies;
+using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
-using Xunit;
+using BMTP3.Core2.BackupNew.Engine.Strategies;
 
-namespace BMTP3.Core2.Tests.Strategies
+namespace BMTP3.Core2.Tests.Strategies;
+
+public class PathGeneratorBehaviorTests
 {
-    public class PathGeneratorBehaviorTests
-    {
-        [Fact]
-        public void GenerateRelativePath_FlatStrategy_UsesSourceFileName()
-        {
-            var pg = new PathGenerator();
-            var plan = new BackupPlan { OutputStrategy = OutputStructureStrategy.Flat };
+	[Fact]
+	public void GenerateRelativePath_FlatStrategy_UsesSourceFileName()
+	{
+		PathGenerator pg = new();
+		BackupPlan plan = new() { OutputStrategy = OutputStructureStrategy.Flat };
 
-            var item = BackupItem.Create(new BMTP3.Core2.BackupNew.Content.FileContent(Path.GetTempFileName()), Path.GetFileName(Path.GetTempFileName()));
-            item.Metadata.Set(BMTP3.Core2.BackupNew.Domain.Item.MetadataKey.SourceFileName, "testfile.jpg");
+		BackupItem item = BackupItem.Create(new FileContent(Path.GetTempFileName()),
+			Path.GetFileName(Path.GetTempFileName()));
+		item.Metadata.Set(MetadataKey.SourceFileName, "testfile.jpg");
 
-            string rel = pg.GenerateRelativePath(item, plan);
+		string rel = pg.GenerateRelativePath(item, plan);
 
-            Assert.Equal("testfile.jpg", rel);
-        }
-    }
+		Assert.Equal("testfile.jpg", rel);
+	}
 }

@@ -1,3 +1,4 @@
+using System.Text;
 using BMTP3.Core2.BackupNew.Engine.Models;
 using BMTP3.Core2.BackupNew.Engine.Resilience;
 using BMTP3.Core2.BackupNew.Engine.Transfers;
@@ -6,130 +7,157 @@ namespace BMTP3.Core2.Tests.Transfers;
 
 public class LocalFileTransferTests
 {
-    /// <summary>
-    /// Simple no-retry policy that executes the action exactly once.
-    /// </summary>
-    private sealed class NoopRetryPolicy : IRetryPolicy
-    {
-        public Task<T> ExecuteAsync<T>(Func<Task<T>> action, CancellationToken ct)
-        {
-            ct.ThrowIfCancellationRequested();
-            return action();
-        }
-    }
+	private static LocalFileTransfer CreateTransfer()
+	{
+		return new LocalFileTransfer(new NoopRetryPolicy());
+	}
 
-    private static LocalFileTransfer CreateTransfer() =>
-        new LocalFileTransfer(new NoopRetryPolicy());
+	[Fact]
+	public async Task TransferAsync_CopiesSourceToDestination()
+	{
+		string srcFile = Path.GetTempFileName();
+		string destFile = Path.Combine(Path.GetTempPath(), $"bmtp3_dest_{Guid.NewGuid():N}.tmp");
 
-    [Fact]
-    public async Task TransferAsync_CopiesSourceToDestination()
-    {
-        string srcFile = Path.GetTempFileName();
-        string destFile = Path.Combine(Path.GetTempPath(), $"bmtp3_dest_{Guid.NewGuid():N}.tmp");
+		try
+		{
+			byte[] content = Encoding.UTF8.GetBytes("transfer test content");
+			await File.WriteAllBytesAsync(srcFile, content);
 
-        try
-        {
-            byte[] content = System.Text.Encoding.UTF8.GetBytes("transfer test content");
-            await File.WriteAllBytesAsync(srcFile, content);
+			LocalFileTransfer transfer = CreateTransfer();
+			OperationResult result = await transfer.TransferAsync(srcFile, destFile, false, CancellationToken.None);
 
-            var transfer = CreateTransfer();
-            OperationResult result = await transfer.TransferAsync(srcFile, destFile, dryRun: false, CancellationToken.None);
+			Assert.True(result.Success);
+			Assert.True(File.Exists(destFile));
+			byte[] written = await File.ReadAllBytesAsync(destFile);
+			Assert.Equal(content, written);
+			// Source should have been deleted after successful copy
+			Assert.False(File.Exists(srcFile));
+		}
+		finally
+		{
+			if (File.Exists(srcFile))
+			{
+				File.Delete(srcFile);
+			}
 
-            Assert.True(result.Success);
-            Assert.True(File.Exists(destFile));
-            byte[] written = await File.ReadAllBytesAsync(destFile);
-            Assert.Equal(content, written);
-            // Source should have been deleted after successful copy
-            Assert.False(File.Exists(srcFile));
-        }
-        finally
-        {
-            if(File.Exists(srcFile)) File.Delete(srcFile);
-            if(File.Exists(destFile)) File.Delete(destFile);
-        }
-    }
+			if (File.Exists(destFile))
+			{
+				File.Delete(destFile);
+			}
+		}
+	}
 
-    [Fact]
-    public async Task TransferAsync_DryRun_DoesNotCreateDestinationFile()
-    {
-        string srcFile = Path.GetTempFileName();
-        string destFile = Path.Combine(Path.GetTempPath(), $"bmtp3_dryrun_{Guid.NewGuid():N}.tmp");
+	[Fact]
+	public async Task TransferAsync_DryRun_DoesNotCreateDestinationFile()
+	{
+		string srcFile = Path.GetTempFileName();
+		string destFile = Path.Combine(Path.GetTempPath(), $"bmtp3_dryrun_{Guid.NewGuid():N}.tmp");
 
-        try
-        {
-            await File.WriteAllTextAsync(srcFile, "should not be copied");
+		try
+		{
+			await File.WriteAllTextAsync(srcFile, "should not be copied");
 
-            var transfer = CreateTransfer();
-            OperationResult result = await transfer.TransferAsync(srcFile, destFile, dryRun: true, CancellationToken.None);
+			LocalFileTransfer transfer = CreateTransfer();
+			OperationResult result = await transfer.TransferAsync(srcFile, destFile, true, CancellationToken.None);
 
-            Assert.True(result.Success);
-            Assert.False(File.Exists(destFile), "Dry run must not create the destination file.");
-            // Source must remain untouched
-            Assert.True(File.Exists(srcFile));
-        }
-        finally
-        {
-            if(File.Exists(srcFile)) File.Delete(srcFile);
-            if(File.Exists(destFile)) File.Delete(destFile);
-        }
-    }
+			Assert.True(result.Success);
+			Assert.False(File.Exists(destFile), "Dry run must not create the destination file.");
+			// Source must remain untouched
+			Assert.True(File.Exists(srcFile));
+		}
+		finally
+		{
+			if (File.Exists(srcFile))
+			{
+				File.Delete(srcFile);
+			}
 
-    [Fact]
-    public async Task TransferAsync_MissingSourceFile_ReturnsFail()
-    {
-        string missingSource = Path.Combine(Path.GetTempPath(), $"bmtp3_nosuchfile_{Guid.NewGuid():N}.tmp");
-        string destFile = Path.Combine(Path.GetTempPath(), $"bmtp3_dest_{Guid.NewGuid():N}.tmp");
+			if (File.Exists(destFile))
+			{
+				File.Delete(destFile);
+			}
+		}
+	}
 
-        try
-        {
-            var transfer = CreateTransfer();
-            OperationResult result = await transfer.TransferAsync(missingSource, destFile, dryRun: false, CancellationToken.None);
+	[Fact]
+	public async Task TransferAsync_MissingSourceFile_ReturnsFail()
+	{
+		string missingSource = Path.Combine(Path.GetTempPath(), $"bmtp3_nosuchfile_{Guid.NewGuid():N}.tmp");
+		string destFile = Path.Combine(Path.GetTempPath(), $"bmtp3_dest_{Guid.NewGuid():N}.tmp");
 
-            Assert.False(result.Success);
-            Assert.False(File.Exists(destFile));
-        }
-        finally
-        {
-            if(File.Exists(destFile)) File.Delete(destFile);
-        }
-    }
+		try
+		{
+			LocalFileTransfer transfer = CreateTransfer();
+			OperationResult result =
+				await transfer.TransferAsync(missingSource, destFile, false, CancellationToken.None);
 
-    [Fact]
-    public async Task TransferAsync_CancellationToken_RespectsCancel()
-    {
-        string srcFile = Path.GetTempFileName();
-        string destFile = Path.Combine(Path.GetTempPath(), $"bmtp3_cancel_{Guid.NewGuid():N}.tmp");
+			Assert.False(result.Success);
+			Assert.False(File.Exists(destFile));
+		}
+		finally
+		{
+			if (File.Exists(destFile))
+			{
+				File.Delete(destFile);
+			}
+		}
+	}
 
-        try
-        {
-            await File.WriteAllTextAsync(srcFile, "cancel test content");
+	[Fact]
+	public async Task TransferAsync_CancellationToken_RespectsCancel()
+	{
+		string srcFile = Path.GetTempFileName();
+		string destFile = Path.Combine(Path.GetTempPath(), $"bmtp3_cancel_{Guid.NewGuid():N}.tmp");
 
-            using var cts = new CancellationTokenSource();
-            cts.Cancel(); // already cancelled before we start
+		try
+		{
+			await File.WriteAllTextAsync(srcFile, "cancel test content");
 
-            var transfer = CreateTransfer();
+			using CancellationTokenSource cts = new();
+			cts.Cancel(); // already cancelled before we start
 
-            // Either an OperationCanceledException is thrown or the result is a failure.
-            // Both are acceptable; what is NOT acceptable is returning Success.
-            bool threwCancelled = false;
-            OperationResult? result = null;
+			LocalFileTransfer transfer = CreateTransfer();
 
-            try
-            {
-                result = await transfer.TransferAsync(srcFile, destFile, dryRun: false, cts.Token);
-            }
-            catch(OperationCanceledException)
-            {
-                threwCancelled = true;
-            }
+			// Either an OperationCanceledException is thrown or the result is a failure.
+			// Both are acceptable; what is NOT acceptable is returning Success.
+			bool threwCancelled = false;
+			OperationResult? result = null;
 
-            Assert.True(threwCancelled || (result != null && !result.Success),
-                "Expected either an OperationCanceledException or a Fail result when cancellation is pre-requested.");
-        }
-        finally
-        {
-            if(File.Exists(srcFile)) File.Delete(srcFile);
-            if(File.Exists(destFile)) File.Delete(destFile);
-        }
-    }
+			try
+			{
+				result = await transfer.TransferAsync(srcFile, destFile, false, cts.Token);
+			}
+			catch (OperationCanceledException)
+			{
+				threwCancelled = true;
+			}
+
+			Assert.True(threwCancelled || (result != null && !result.Success),
+				"Expected either an OperationCanceledException or a Fail result when cancellation is pre-requested.");
+		}
+		finally
+		{
+			if (File.Exists(srcFile))
+			{
+				File.Delete(srcFile);
+			}
+
+			if (File.Exists(destFile))
+			{
+				File.Delete(destFile);
+			}
+		}
+	}
+
+	/// <summary>
+	///     Simple no-retry policy that executes the action exactly once.
+	/// </summary>
+	private sealed class NoopRetryPolicy : IRetryPolicy
+	{
+		public Task<T> ExecuteAsync<T>(Func<Task<T>> action, CancellationToken ct)
+		{
+			ct.ThrowIfCancellationRequested();
+			return action();
+		}
+	}
 }

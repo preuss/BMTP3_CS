@@ -9,6 +9,8 @@ using BMTP3.Core2.BackupNew.Engine.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+namespace BMTP3.Core2.Tests.BackupNew.Api;
+
 public class BackupEngineTests
 {
 	private readonly ITestOutputHelper _output;
@@ -50,7 +52,10 @@ public class BackupEngineTests
 		};
 
 		using CancellationTokenSource cts = new(TimeSpan.FromSeconds(10));
-		Progress<IBackupProgress> progress = new(p => { /* optional: inspect progress */ });
+		Progress<IBackupProgress> progress = new(p =>
+		{
+			/* optional: inspect progress */
+		});
 
 		try
 		{
@@ -59,13 +64,15 @@ public class BackupEngineTests
 			Assert.NotNull(result);
 			Assert.Equal(JobState.Completed, result.Status);
 			Assert.Equal(0, result.TotalFilesScanned);
-		} finally
+		}
+		finally
 		{
 			try
 			{
 				Directory.Delete(tempSource, true);
 				Directory.Delete(tempOutput, true);
-			} catch
+			}
+			catch
 			{
 				// Best-effort cleanup for test artifacts
 			}
@@ -103,12 +110,20 @@ public class BackupEngineTests
 		{
 			await engine.RunAsync(plan, null, CancellationToken.None);
 			Assert.Fail("Expected DirectoryNotFoundException");
-		} catch(DirectoryNotFoundException)
+		}
+		catch (DirectoryNotFoundException)
 		{
 			// Expected
-		} finally
+		}
+		finally
 		{
-			try { Directory.Delete(tempOutput, true); } catch { }
+			try
+			{
+				Directory.Delete(tempOutput, true);
+			}
+			catch
+			{
+			}
 		}
 	}
 
@@ -141,12 +156,20 @@ public class BackupEngineTests
 		{
 			await engine.RunAsync(plan, null, CancellationToken.None);
 			// If it doesn't throw, that's okay - might have access on this system
-		} catch(UnauthorizedAccessException)
+		}
+		catch (UnauthorizedAccessException)
 		{
 			// Expected on systems without admin rights
-		} finally
+		}
+		finally
 		{
-			try { Directory.Delete(tempOutput, true); } catch { }
+			try
+			{
+				Directory.Delete(tempOutput, true);
+			}
+			catch
+			{
+			}
 		}
 	}
 
@@ -179,12 +202,20 @@ public class BackupEngineTests
 		{
 			await engine.RunAsync(plan, null, CancellationToken.None);
 			// If it doesn't throw, that's okay - might have access on this system
-		} catch(UnauthorizedAccessException)
+		}
+		catch (UnauthorizedAccessException)
 		{
 			// Expected on systems without admin rights
-		} finally
+		}
+		finally
 		{
-			try { Directory.Delete(tempSource, true); } catch { }
+			try
+			{
+				Directory.Delete(tempSource, true);
+			}
+			catch
+			{
+			}
 		}
 	}
 
@@ -218,10 +249,24 @@ public class BackupEngineTests
 			BackupJobResult result = await engine.RunAsync(plan, null, CancellationToken.None);
 			Assert.NotNull(result);
 			Assert.Equal(JobState.Completed, result.Status);
-		} finally
+		}
+		finally
 		{
-			try { Directory.Delete(tempSource, true); } catch { }
-			try { Directory.Delete(tempOutput, true); } catch { }
+			try
+			{
+				Directory.Delete(tempSource, true);
+			}
+			catch
+			{
+			}
+
+			try
+			{
+				Directory.Delete(tempOutput, true);
+			}
+			catch
+			{
+			}
 		}
 	}
 }
@@ -231,16 +276,24 @@ internal sealed class XunitTestOutputLoggerProvider : ILoggerProvider
 {
 	private readonly ITestOutputHelper _output;
 
-	public XunitTestOutputLoggerProvider(ITestOutputHelper output) => _output = output;
+	public XunitTestOutputLoggerProvider(ITestOutputHelper output)
+	{
+		_output = output;
+	}
 
-	public ILogger CreateLogger(string categoryName) => new XunitTestOutputLogger(_output, categoryName);
+	public ILogger CreateLogger(string categoryName)
+	{
+		return new XunitTestOutputLogger(_output, categoryName);
+	}
 
-	public void Dispose() { }
+	public void Dispose()
+	{
+	}
 
 	private sealed class XunitTestOutputLogger : ILogger
 	{
-		private readonly ITestOutputHelper _output;
 		private readonly string _category;
+		private readonly ITestOutputHelper _output;
 
 		public XunitTestOutputLogger(ITestOutputHelper output, string category)
 		{
@@ -248,23 +301,39 @@ internal sealed class XunitTestOutputLoggerProvider : ILoggerProvider
 			_category = category;
 		}
 
-		public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+		public IDisposable BeginScope<TState>(TState state) where TState : notnull
+		{
+			return NullScope.Instance;
+		}
 
-		public bool IsEnabled(LogLevel logLevel) => true;
+		public bool IsEnabled(LogLevel logLevel)
+		{
+			return true;
+		}
 
-		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+			Func<TState, Exception?, string> formatter)
 		{
 			try
 			{
 				_output.WriteLine($"[{logLevel}] {_category}: {formatter(state, exception)}");
-				if(exception != null) _output.WriteLine(exception.ToString());
-			} catch { } // test output should not throw tests
+				if (exception != null)
+				{
+					_output.WriteLine(exception.ToString());
+				}
+			}
+			catch
+			{
+			} // test output should not throw tests
 		}
 
 		private class NullScope : IDisposable
 		{
-			public static NullScope Instance { get; } = new NullScope();
-			public void Dispose() { }
+			public static NullScope Instance { get; } = new();
+
+			public void Dispose()
+			{
+			}
 		}
 	}
 }

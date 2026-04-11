@@ -7,126 +7,161 @@ namespace BMTP3.Core2.Tests.Steps;
 
 public class TimestampCorrectionItemStepTests
 {
-    // ── Helpers ──────────────────────────────────────────────────────────────
+	// ── Helpers ──────────────────────────────────────────────────────────────
 
-    private static TimestampCorrectionItemStep BuildStep()
-        => new TimestampCorrectionItemStep(new BackupPlan());
+	private static TimestampCorrectionItemStep BuildStep()
+	{
+		return new TimestampCorrectionItemStep(new BackupPlan());
+	}
 
-    /// <summary>
-    /// An in-memory IContent implementation that is NOT a FileContent.
-    /// Used to verify the step silently skips non-file content.
-    /// </summary>
-    private sealed class MemoryContent : IContent
-    {
-        private readonly byte[] _data;
-        public MemoryContent(byte[] data) { _data = data; }
-        public ulong Length => (ulong)_data.Length;
-        public Stream OpenRead() => new MemoryStream(_data, writable: false);
-        public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
-            => Task.FromResult<Stream>(new MemoryStream(_data, writable: false));
-        public void Dispose() { }
-    }
+	// ── Tests ────────────────────────────────────────────────────────────────
 
-    // ── Tests ────────────────────────────────────────────────────────────────
+	[Fact]
+	public async Task ExecuteAsync_SetsFileTimestamps_FromAuthoredDateTime()
+	{
+		string tempFile = Path.GetTempFileName();
+		try
+		{
+			await File.WriteAllBytesAsync(tempFile, new byte[] { 1, 2, 3 });
 
-    [Fact]
-    public async Task ExecuteAsync_SetsFileTimestamps_FromAuthoredDateTime()
-    {
-        string tempFile = Path.GetTempFileName();
-        try
-        {
-            await File.WriteAllBytesAsync(tempFile, new byte[] { 1, 2, 3 });
+			FileContent content = new(tempFile);
+			BackupItem item = BackupItem.Create(content, Path.GetFileName(tempFile));
 
-            var content = new FileContent(tempFile);
-            var item = BackupItem.Create(content, Path.GetFileName(tempFile));
+			// Set an authored timestamp that is clearly in the past
+			DateTime authored = new(2010, 6, 15, 12, 0, 0, DateTimeKind.Utc);
+			item.Metadata.Set(MetadataKey.AuthoredDateTime, authored);
 
-            // Set an authored timestamp that is clearly in the past
-            var authored = new DateTime(2010, 6, 15, 12, 0, 0, DateTimeKind.Utc);
-            item.Metadata.Set(MetadataKey.AuthoredDateTime, authored);
+			TimestampCorrectionItemStep step = BuildStep();
+			await step.ExecuteAsync(item, null, CancellationToken.None);
 
-            var step = BuildStep();
-            await step.ExecuteAsync(item, null, CancellationToken.None);
+			// Both creation and last-write times must have been updated to the authored date
+			FileInfo fileInfo = new(tempFile);
+			Assert.Equal(authored, fileInfo.LastWriteTimeUtc, TimeSpan.FromSeconds(2));
+			Assert.Equal(authored, fileInfo.CreationTimeUtc, TimeSpan.FromSeconds(2));
+		}
+		finally
+		{
+			try
+			{
+				File.Delete(tempFile);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-            // Both creation and last-write times must have been updated to the authored date
-            var fileInfo = new FileInfo(tempFile);
-            Assert.Equal(authored, fileInfo.LastWriteTimeUtc, precision: TimeSpan.FromSeconds(2));
-            Assert.Equal(authored, fileInfo.CreationTimeUtc, precision: TimeSpan.FromSeconds(2));
-        }
-        finally
-        {
-            try { File.Delete(tempFile); } catch { }
-        }
-    }
+	[Fact]
+	public async Task ExecuteAsync_FallsBackToCreatedDateTime_WhenAuthoredIsNull()
+	{
+		string tempFile = Path.GetTempFileName();
+		try
+		{
+			await File.WriteAllBytesAsync(tempFile, new byte[] { 4, 5, 6 });
 
-    [Fact]
-    public async Task ExecuteAsync_FallsBackToCreatedDateTime_WhenAuthoredIsNull()
-    {
-        string tempFile = Path.GetTempFileName();
-        try
-        {
-            await File.WriteAllBytesAsync(tempFile, new byte[] { 4, 5, 6 });
+			FileContent content = new(tempFile);
+			BackupItem item = BackupItem.Create(content, Path.GetFileName(tempFile));
 
-            var content = new FileContent(tempFile);
-            var item = BackupItem.Create(content, Path.GetFileName(tempFile));
+			// Only CreatedDateTime is present – no AuthoredDateTime
+			DateTime created = new(2015, 3, 20, 8, 30, 0, DateTimeKind.Utc);
+			item.Metadata.Set(MetadataKey.CreatedDateTime, created);
 
-            // Only CreatedDateTime is present – no AuthoredDateTime
-            var created = new DateTime(2015, 3, 20, 8, 30, 0, DateTimeKind.Utc);
-            item.Metadata.Set(MetadataKey.CreatedDateTime, created);
+			TimestampCorrectionItemStep step = BuildStep();
+			await step.ExecuteAsync(item, null, CancellationToken.None);
 
-            var step = BuildStep();
-            await step.ExecuteAsync(item, null, CancellationToken.None);
+			FileInfo fileInfo = new(tempFile);
+			Assert.Equal(created, fileInfo.LastWriteTimeUtc, TimeSpan.FromSeconds(2));
+			Assert.Equal(created, fileInfo.CreationTimeUtc, TimeSpan.FromSeconds(2));
+		}
+		finally
+		{
+			try
+			{
+				File.Delete(tempFile);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-            var fileInfo = new FileInfo(tempFile);
-            Assert.Equal(created, fileInfo.LastWriteTimeUtc, precision: TimeSpan.FromSeconds(2));
-            Assert.Equal(created, fileInfo.CreationTimeUtc, precision: TimeSpan.FromSeconds(2));
-        }
-        finally
-        {
-            try { File.Delete(tempFile); } catch { }
-        }
-    }
+	[Fact]
+	public async Task ExecuteAsync_SkipsNonFileContent_WithoutError()
+	{
+		// An item whose content is NOT a FileContent should pass through with no exception.
+		MemoryContent content = new(new byte[] { 7, 8, 9 });
+		BackupItem item = BackupItem.Create(content, "in-memory-item.bin");
 
-    [Fact]
-    public async Task ExecuteAsync_SkipsNonFileContent_WithoutError()
-    {
-        // An item whose content is NOT a FileContent should pass through with no exception.
-        var content = new MemoryContent(new byte[] { 7, 8, 9 });
-        var item = BackupItem.Create(content, "in-memory-item.bin");
+		DateTime authored = new(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+		item.Metadata.Set(MetadataKey.AuthoredDateTime, authored);
 
-        var authored = new DateTime(2020, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        item.Metadata.Set(MetadataKey.AuthoredDateTime, authored);
+		TimestampCorrectionItemStep step = BuildStep();
 
-        var step = BuildStep();
+		// Must not throw
+		bool result = await step.ExecuteAsync(item, null, CancellationToken.None);
 
-        // Must not throw
-        var result = await step.ExecuteAsync(item, null, CancellationToken.None);
+		Assert.True(result);
+		// Item must not have been marked failed
+		Assert.Equal(ItemResultState.Pending, item.ResultState);
+	}
 
-        Assert.True(result);
-        // Item must not have been marked failed
-        Assert.Equal(ItemResultState.Pending, item.ResultState);
-    }
+	[Fact]
+	public async Task ExecuteAsync_DoesNotThrow_WhenNoTimestampMetadata()
+	{
+		string tempFile = Path.GetTempFileName();
+		try
+		{
+			await File.WriteAllBytesAsync(tempFile, new byte[] { 11, 22, 33 });
 
-    [Fact]
-    public async Task ExecuteAsync_DoesNotThrow_WhenNoTimestampMetadata()
-    {
-        string tempFile = Path.GetTempFileName();
-        try
-        {
-            await File.WriteAllBytesAsync(tempFile, new byte[] { 11, 22, 33 });
+			FileContent content = new(tempFile);
+			BackupItem item = BackupItem.Create(content, Path.GetFileName(tempFile));
 
-            var content = new FileContent(tempFile);
-            var item = BackupItem.Create(content, Path.GetFileName(tempFile));
+			// No timestamp keys are set at all – step should be a no-op
+			TimestampCorrectionItemStep step = BuildStep();
+			bool result = await step.ExecuteAsync(item, null, CancellationToken.None);
 
-            // No timestamp keys are set at all – step should be a no-op
-            var step = BuildStep();
-            var result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			Assert.True(result);
+			Assert.Equal(ItemResultState.Pending, item.ResultState);
+		}
+		finally
+		{
+			try
+			{
+				File.Delete(tempFile);
+			}
+			catch
+			{
+			}
+		}
+	}
 
-            Assert.True(result);
-            Assert.Equal(ItemResultState.Pending, item.ResultState);
-        }
-        finally
-        {
-            try { File.Delete(tempFile); } catch { }
-        }
-    }
+	/// <summary>
+	///     An in-memory IContent implementation that is NOT a FileContent.
+	///     Used to verify the step silently skips non-file content.
+	/// </summary>
+	private sealed class MemoryContent : IContent
+	{
+		private readonly byte[] _data;
+
+		public MemoryContent(byte[] data)
+		{
+			_data = data;
+		}
+
+		public ulong Length => (ulong)_data.Length;
+
+		public Stream OpenRead()
+		{
+			return new MemoryStream(_data, false);
+		}
+
+		public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
+		{
+			return Task.FromResult<Stream>(new MemoryStream(_data, false));
+		}
+
+		public void Dispose()
+		{
+		}
+	}
 }

@@ -1,11 +1,10 @@
 using BMTP3.Core2.BackupNew.Utilities;
-using Xunit;
 
 namespace BMTP3.Core2.Tests.BackupNew.Utilities;
 
 /// <summary>
-/// Unit tests for <see cref="GlobMatcher"/>.
-/// Each test category corresponds to a documented glob feature.
+///     Unit tests for <see cref="GlobMatcher" />.
+///     Each test category corresponds to a documented glob feature.
 /// </summary>
 public class GlobMatcherTests
 {
@@ -16,7 +15,7 @@ public class GlobMatcherTests
 	[Theory]
 	[InlineData("file.txt", "*.txt", true)]
 	[InlineData("file.jpg", "*.txt", false)]
-	[InlineData("sub/file.txt", "*.txt", false)]   // * must not cross separator
+	[InlineData("sub/file.txt", "*.txt", false)] // * must not cross separator
 	public void Star_MatchesFilenameOnly(string path, string pattern, bool expected)
 	{
 		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
@@ -24,7 +23,7 @@ public class GlobMatcherTests
 
 	[Theory]
 	[InlineData("a/b/c.txt", "**/*.txt", true)]
-	[InlineData("file.txt", "**/*.txt", true)]      // root-level match
+	[InlineData("file.txt", "**/*.txt", true)] // root-level match
 	[InlineData("a/b/c.jpg", "**/*.txt", false)]
 	public void DoubleStar_MatchesAcrossDirectories(string path, string pattern, bool expected)
 	{
@@ -33,7 +32,7 @@ public class GlobMatcherTests
 
 	[Theory]
 	[InlineData("sub/file.txt", "sub/*.txt", true)]
-	[InlineData("sub\\file.txt", "sub/*.txt", true)]  // backslash path
+	[InlineData("sub\\file.txt", "sub/*.txt", true)] // backslash path
 	[InlineData("other/file.txt", "sub/*.txt", false)]
 	public void Separator_Flexibility(string path, string pattern, bool expected)
 	{
@@ -45,7 +44,7 @@ public class GlobMatcherTests
 	// -----------------------------------------------------------------------
 
 	[Theory]
-	[InlineData("file.jpg", "[jJ][pP][gG]", false)]   // pattern is extension only
+	[InlineData("file.jpg", "[jJ][pP][gG]", false)] // pattern is extension only
 	[InlineData("a.txt", "[abc].txt", true)]
 	[InlineData("d.txt", "[abc].txt", false)]
 	[InlineData("a.txt", "[!xyz].txt", true)]
@@ -98,8 +97,8 @@ public class GlobMatcherTests
 	[Fact]
 	public void IsIncluded_ExcludePatternTakesPrecedence()
 	{
-		var include = new List<string> { "**/*.txt" };
-		var exclude = new List<string> { "**/*.txt" };
+		List<string> include = new() { "**/*.txt" };
+		List<string> exclude = new() { "**/*.txt" };
 		// Exclude wins even when include also matches.
 		Assert.False(GlobMatcher.IsIncluded("notes/todo.txt", include, exclude));
 	}
@@ -107,7 +106,7 @@ public class GlobMatcherTests
 	[Fact]
 	public void IsIncluded_IncludePatternsFilterUnmatched()
 	{
-		var include = new List<string> { "**/*.jpg" };
+		List<string> include = new() { "**/*.jpg" };
 		Assert.True(GlobMatcher.IsIncluded("photos/img.jpg", include, null));
 		Assert.False(GlobMatcher.IsIncluded("docs/readme.txt", include, null));
 	}
@@ -115,7 +114,7 @@ public class GlobMatcherTests
 	[Fact]
 	public void IsIncluded_ExcludeOnlyFiltersMatched()
 	{
-		var exclude = new List<string> { "**/*.tmp" };
+		List<string> exclude = new() { "**/*.tmp" };
 		Assert.False(GlobMatcher.IsIncluded("work/scratch.tmp", null, exclude));
 		Assert.True(GlobMatcher.IsIncluded("work/document.pdf", null, exclude));
 	}
@@ -123,7 +122,7 @@ public class GlobMatcherTests
 	[Fact]
 	public void IsIncluded_MultipleExcludePatterns()
 	{
-		var exclude = new List<string> { "**/*.tmp", "**/.git/**", "**/*.log" };
+		List<string> exclude = new() { "**/*.tmp", "**/.git/**", "**/*.log" };
 		Assert.False(GlobMatcher.IsIncluded("repo/.git/config", null, exclude));
 		Assert.False(GlobMatcher.IsIncluded("app/debug.log", null, exclude));
 		Assert.True(GlobMatcher.IsIncluded("app/main.cs", null, exclude));
@@ -132,10 +131,10 @@ public class GlobMatcherTests
 	[Fact]
 	public void IsIncluded_BlankPatternsAreIgnored()
 	{
-		var include = new List<string> { "", "  ", "**/*.jpg" };
+		List<string> include = new() { "", "  ", "**/*.jpg" };
 		Assert.True(GlobMatcher.IsIncluded("photo.jpg", include, null));
 		// Only blank patterns → treated as having effective patterns → non-.jpg excluded
-		var blanksOnly = new List<string> { "", "   " };
+		List<string> blanksOnly = new() { "", "   " };
 		// All patterns are blank, so hasAny stays false → include everything
 		Assert.True(GlobMatcher.IsIncluded("photo.txt", blanksOnly, null));
 	}
@@ -147,7 +146,7 @@ public class GlobMatcherTests
 	[Fact]
 	public void IsIncluded_WindowsAbsolutePath()
 	{
-		var include = new List<string> { "**\\*.jpg" };
+		List<string> include = new() { "**\\*.jpg" };
 		// Path uses backslash — GlobMatcher normalises to forward slash internally
 		Assert.True(GlobMatcher.IsIncluded(@"C:\Photos\2024\img.jpg", include, null));
 		Assert.False(GlobMatcher.IsIncluded(@"C:\Docs\readme.txt", include, null));

@@ -11,11 +11,15 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace BMTP3.Core2.Tests.BackupNew.Api;
-public class BackupEngine_FileSystemIntegrationTests
+
+public class BackupEngineFileSystemIntegrationTests
 {
 	private readonly ITestOutputHelper _output;
 
-	public BackupEngine_FileSystemIntegrationTests(ITestOutputHelper output) => _output = output;
+	public BackupEngineFileSystemIntegrationTests(ITestOutputHelper output)
+	{
+		_output = output;
+	}
 
 	[Fact(Timeout = 60_000)]
 	[Trait("Category", "Integration")]
@@ -40,7 +44,7 @@ public class BackupEngine_FileSystemIntegrationTests
 		Assert.True(Directory.Exists(dataRoot), $"TestData not found at {dataRoot}");
 
 		// Log alle filer for diagnostic
-		foreach(string f in Directory.EnumerateFiles(dataRoot, "*", SearchOption.AllDirectories))
+		foreach (string f in Directory.EnumerateFiles(dataRoot, "*", SearchOption.AllDirectories))
 		{
 			_output.WriteLine($"  {f}");
 		}
@@ -57,15 +61,18 @@ public class BackupEngine_FileSystemIntegrationTests
 		{
 			Name = "fs-integration",
 			SourceType = SourceType.FileSystem,
-			SourcePath = tempSource,    // <- point the engine at the copied TestData folder
-										// SourceId required by JobValidator; use root path of the tempSource
-			SourceId = System.IO.Path.GetPathRoot(tempSource) ?? tempSource,
+			SourcePath = tempSource, // <- point the engine at the copied TestData folder
+			// SourceId required by JobValidator; use root path of the tempSource
+			SourceId = Path.GetPathRoot(tempSource) ?? tempSource,
 			Recursive = true,
 			OutputPath = tempOutput
 		};
 
 		using CancellationTokenSource cts = new(TimeSpan.FromSeconds(20));
-		Progress<IBackupProgress> progress = new(p => { /* optional inspect */ });
+		Progress<IBackupProgress> progress = new(p =>
+		{
+			/* optional inspect */
+		});
 
 		try
 		{
@@ -74,10 +81,24 @@ public class BackupEngine_FileSystemIntegrationTests
 			Assert.NotNull(result);
 			Assert.Equal(JobState.Completed, result.Status);
 			Assert.True(result.TotalFilesScanned >= 1, "Expected at least one file discovered.");
-		} finally
+		}
+		finally
 		{
-			try { Directory.Delete(tempSource, true); } catch { }
-			try { Directory.Delete(tempOutput, true); } catch { }
+			try
+			{
+				Directory.Delete(tempSource, true);
+			}
+			catch
+			{
+			}
+
+			try
+			{
+				Directory.Delete(tempOutput, true);
+			}
+			catch
+			{
+			}
 		}
 	}
 
@@ -85,12 +106,13 @@ public class BackupEngine_FileSystemIntegrationTests
 	private static void CopyDirectory(string sourceDir, string targetDir)
 	{
 		Directory.CreateDirectory(targetDir);
-		foreach(string file in Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
+		foreach (string file in Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
 		{
 			string dest = Path.Combine(targetDir, Path.GetFileName(file));
-			File.Copy(file, dest, overwrite: true);
+			File.Copy(file, dest, true);
 		}
-		foreach(string dir in Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
+
+		foreach (string dir in Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
 		{
 			string destSub = Path.Combine(targetDir, Path.GetFileName(dir));
 			CopyDirectory(dir, destSub);
