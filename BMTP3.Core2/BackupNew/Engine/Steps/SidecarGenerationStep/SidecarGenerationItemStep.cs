@@ -1,6 +1,8 @@
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
+using System.Text;
+using System.Text.Json;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
 
 namespace BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
@@ -39,11 +41,85 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 
 		try
 		{
-			// DryRun: skip sidecar generation completely
+           // DryRun: generate preview metadata but do not write files
 			if (Context.DryRun)
 			{
-				item.AddLog("Sidecar skipped (DryRun).", Name);
-				return true;
+				try
+				{
+					string previewContent;
+					string previewPath;
+					switch (Context.SidecarFormat)
+					{
+						case Api.Request.Enums.SidecarFormat.Ini:
+						{
+							StringBuilder sb = new();
+							IDictionary<string, object?> dict = item.Metadata.ToDictionary();
+							foreach (KeyValuePair<string, object?> kv in dict)
+							{
+                                if (string.Equals(kv.Key, "hashes", StringComparison.OrdinalIgnoreCase) && kv.Value is System.Collections.IDictionary hashDict)
+								{
+									foreach (System.Collections.DictionaryEntry hash in hashDict)
+									{
+										sb.AppendLine($"{hash.Key}={hash.Value}");
+									}
+									continue;
+								}
+								string value = kv.Value?.ToString() ?? string.Empty;
+								sb.AppendLine($"{kv.Key}={value}");
+							}
+							previewContent = sb.ToString();
+							string? final = item.Metadata.Get<string>(Domain.Item.MetadataKey.FinalTargetPath);
+							if (!string.IsNullOrWhiteSpace(final))
+							{
+								previewPath = Path.ChangeExtension(final, ".ini");
+							}
+							else
+							{
+								string? sourceName = item.Metadata.Get<string>(Domain.Item.MetadataKey.SourceFileName) ?? Guid.NewGuid().ToString();
+								previewPath = Path.ChangeExtension(sourceName, ".ini");
+							}
+							break;
+						}
+						case Api.Request.Enums.SidecarFormat.Json:
+						{
+							JsonSerializerOptions jsonOptions = new() { WriteIndented = true };
+							IDictionary<string, object?> dict = item.Metadata.ToDictionary();
+							previewContent = JsonSerializer.Serialize(dict, jsonOptions);
+							string? final = item.Metadata.Get<string>(Domain.Item.MetadataKey.FinalTargetPath);
+							if (!string.IsNullOrWhiteSpace(final))
+							{
+								previewPath = final + ".bmtp3.json";
+							}
+							else
+							{
+								string? sourceName = item.Metadata.Get<string>(Domain.Item.MetadataKey.SourceFileName) ?? Guid.NewGuid().ToString();
+								previewPath = sourceName + ".bmtp3.json";
+							}
+							break;
+						}
+						default:
+							// Unknown format – produce a simple key=value listing as fallback
+							StringBuilder sb2 = new();
+							foreach (KeyValuePair<string, object?> kv in item.Metadata.ToDictionary())
+							{
+								sb2.AppendLine($"{kv.Key}={kv.Value}");
+							}
+							previewContent = sb2.ToString();
+							previewPath = (item.Metadata.Get<string>(Domain.Item.MetadataKey.SourceFileName) ?? "sidecar") + ".preview";
+							break;
+					}
+
+					// Store preview in metadata for tests/preview UI – do not write to disk
+					item.Metadata.Set(Domain.Item.MetadataKey.SidecarPreviewContent, previewContent);
+					item.Metadata.Set(Domain.Item.MetadataKey.SidecarPathPreview, previewPath);
+					item.AddLog($"Generated sidecar preview for {previewPath}", Name);
+					return true;
+				}
+				catch (Exception ex)
+				{
+					item.AddLog($"Sidecar preview generation failed: {ex.Message}", Name);
+					return false;
+				}
 			}
 
 			// Resolve generator based on configured sidecar format in the plan

@@ -19,7 +19,6 @@ public class FileBackupRepository : IBackupRepository
 		_storePath = string.IsNullOrWhiteSpace(storePath)
 			? Path.Combine(Path.GetTempPath(), "bmtp3_sessions")
 			: storePath!;
-		Directory.CreateDirectory(_storePath);
 	}
 
 	public Task<BackupSessionEntity?> LoadAsync(CancellationToken ct)
@@ -41,12 +40,57 @@ public class FileBackupRepository : IBackupRepository
 		_currentSession = session;
 		_records = session.Records ?? new List<BackupResumeRecord>();
 
-		string path = Path.Combine(_storePath, "last_session.json");
+        string path = Path.Combine(_storePath, "last_session.json");
+		// Ensure storage directory exists lazily when actually saving session data
+		if (!Directory.Exists(_storePath))
+		{
+			Directory.CreateDirectory(_storePath);
+		}
 		JsonSerializerOptions options = new() { WriteIndented = true };
 		string text = JsonSerializer.Serialize(session, options);
-		File.WriteAllText(path, text);
-		_logger?.LogDebug("Saved backup session to {Path}", path);
-		return Task.CompletedTask;
+
+		// Write using a temp-file + replace strategy with retries to avoid transient file-lock collisions
+		int attempts = 5;
+		for (int attempt = 1; attempt <= attempts; attempt++)
+		{
+			string tempPath = path + "." + Guid.NewGuid().ToString("n") + ".tmp";
+			try
+			{
+				File.WriteAllText(tempPath, text);
+				// Overwrite target
+				File.Copy(tempPath, path, true);
+				File.Delete(tempPath);
+				_logger?.LogDebug("Saved backup session to {Path}", path);
+				return Task.CompletedTask;
+			}
+			catch (IOException) when (attempt < attempts)
+			{
+				// Transient file lock - wait and retry
+				try
+				{
+					Task.Delay(100 * attempt, ct).GetAwaiter().GetResult();
+				}
+				catch (OperationCanceledException)
+				{
+					// Propagate cancellation
+					throw;
+				}
+				finally
+				{
+					// Best-effort cleanup of temp file
+					try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+				}
+			}
+			catch (Exception ex)
+			{
+				// If it's the last attempt or non-IO error, surface it
+				try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+				_logger?.LogWarning(ex, "Failed to save backup session to {Path}", path);
+				throw;
+			}
+		}
+		// If we reach here something went wrong – throw generic IO exception
+		throw new IOException($"Failed to write backup session to '{path}' after {attempts} attempts.");
 	}
 
 	public Task PersistItemStateAsync(IBackupItem item, CancellationToken ct)

@@ -50,4 +50,7 @@ public enum MetadataKey
 	[KeyStringValue("final_target_path")] FinalTargetPath, // string – where the file ends up in the backup folder
 	[KeyStringValue("destination_hashes")] DestinationHashes,
 	[KeyStringValue("sidecar_path")] SidecarPath // string - full path to the generated sidecar file
+   ,
+	[KeyStringValue("sidecar_preview_content")] SidecarPreviewContent,
+	[KeyStringValue("sidecar_path_preview")] SidecarPathPreview
 }

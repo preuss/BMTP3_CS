@@ -35,7 +35,8 @@ public class BackupEngineIntegrationTests
 				OutputPath = outDir,
 				SidecarFormat = SidecarFormat.Ini,
 				PostWriteVerification = PostWriteVerificationType.Binary,
-				DryRun = true
+               // DryRun is disabled for this integration test so the engine actually writes files and sidecars.
+				DryRun = false
 			};
 
 			ServiceCollection services = new();

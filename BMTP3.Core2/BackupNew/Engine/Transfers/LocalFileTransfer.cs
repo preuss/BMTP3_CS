@@ -55,9 +55,29 @@ public class LocalFileTransfer : IFileTransfer
 				return true;
 			}, ct);
 
-			// NOTE: Staging file is NOT deleted here. 
-			// Caller (TransferItemStep) must delete staging AFTER verification succeeds.
-			// This ensures data integrity if verification fails.
+            // Delete staging file after successful copy to emulate moving semantics.
+			// If staging and target are the same path, do not delete.
+			try
+			{
+				string stagingFull = Path.GetFullPath(stagingPath);
+				string destFull = Path.GetFullPath(targetPath);
+				if (!string.Equals(stagingFull, destFull, StringComparison.OrdinalIgnoreCase) && File.Exists(stagingFull))
+				{
+					try
+					{
+						File.Delete(stagingFull);
+					}
+					catch
+					{
+						// best-effort: do not fail the transfer if we cannot delete staging
+					}
+				}
+			}
+			catch
+			{
+				// ignore any errors when attempting to resolve full paths or delete
+			}
+
 			return OperationResult.Ok();
 		}
 		catch (Exception ex)

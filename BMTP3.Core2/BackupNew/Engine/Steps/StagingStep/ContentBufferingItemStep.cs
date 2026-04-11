@@ -39,6 +39,13 @@ public class ContentBufferingItemStep : IBackupItemStep<BackupPlan, bool>
 	/// <returns>True if buffering was successful, otherwise false (or throws exception).</returns>
 	public async Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
+        // In DryRun we must avoid any filesystem side-effects including creating staging files.
+		if (Context.DryRun)
+		{
+			item.AddLog("Staging skipped (DryRun).", Name);
+			return true;
+		}
+
 		await _downloader.DownloadToStagingAsync(item, _stagingRoot, _progress, ct);
 		return true;
 	}
