@@ -11,33 +11,33 @@ public class BackupMetadata
 {
 	private readonly ConcurrentDictionary<MetadataKey, object?> _data = new();
 
-	public DateTime? AuthoredDateTime
+	public DateTimeOffset? AuthoredDateTime
 	{
-		get => Get<DateTime?>(MetadataKey.AuthoredDateTime);
+		get => Get<DateTimeOffset?>(MetadataKey.AuthoredDateTime);
 		set => Set(MetadataKey.AuthoredDateTime, value);
 	}
 
-	public DateTime? CreatedDateTime
+	public DateTimeOffset? CreatedDateTime
 	{
-		get => Get<DateTime?>(MetadataKey.CreatedDateTime);
+		get => Get<DateTimeOffset?>(MetadataKey.CreatedDateTime);
 		set => Set(MetadataKey.CreatedDateTime, value);
 	}
 
-	public DateTime? ModifiedDateTime
+	public DateTimeOffset? ModifiedDateTime
 	{
-		get => Get<DateTime?>(MetadataKey.ModifiedDateTime);
+		get => Get<DateTimeOffset?>(MetadataKey.ModifiedDateTime);
 		set => Set(MetadataKey.ModifiedDateTime, value);
 	}
 
-	public DateTime? AccessedDateTime
+	public DateTimeOffset? AccessedDateTime
 	{
-		get => Get<DateTime?>(MetadataKey.AccessedDateTime);
+		get => Get<DateTimeOffset?>(MetadataKey.AccessedDateTime);
 		set => Set(MetadataKey.AccessedDateTime, value);
 	}
 
-	public DateTime? MetadataChangedDatetime
+	public DateTimeOffset? MetadataChangedDatetime
 	{
-		get => Get<DateTime?>(MetadataKey.MetadataChangedDateTime);
+		get => Get<DateTimeOffset?>(MetadataKey.MetadataChangedDateTime);
 		set => Set(MetadataKey.MetadataChangedDateTime, value);
 	}
 
@@ -51,11 +51,10 @@ public class BackupMetadata
 	/// </summary>
 	public void Set(MetadataKey key, object? value)
 	{
-		if (value is null)
+		if(value is null)
 		{
 			_data.TryRemove(key, out _);
-		}
-		else
+		} else
 		{
 			_data[key] = value;
 		}
@@ -66,17 +65,17 @@ public class BackupMetadata
 	/// </summary>
 	public T? Get<T>(MetadataKey key, bool useDefault = false, T? defaultValue = default)
 	{
-		if (!_data.TryGetValue(key, out object? value))
+		if(!_data.TryGetValue(key, out object? value))
 		{
 			return default;
 		}
 
-		if (value is null)
+		if(value is null)
 		{
 			return default;
 		}
 
-		if (value is T t)
+		if(value is T t)
 		{
 			return t;
 		}
@@ -84,10 +83,9 @@ public class BackupMetadata
 		try
 		{
 			return (T)Convert.ChangeType(value, typeof(T));
-		}
-		catch (Exception ex) when (ex is InvalidCastException or FormatException or OverflowException)
+		} catch(Exception ex) when(ex is InvalidCastException or FormatException or OverflowException)
 		{
-			if (useDefault)
+			if(useDefault)
 			{
 				// Conversion failed, return default rather than crash
 				// In a stricter system we might throw, but for metadata retrieval best-effort is often preferred.
@@ -106,7 +104,7 @@ public class BackupMetadata
 	public T GetRequired<T>(MetadataKey key)
 	{
 		T? value = Get<T>(key);
-		if (value is null)
+		if(value is null)
 		{
 			throw new InvalidOperationException($"Required metadata key '{key.ToKeyString()}' is missing.");
 		}

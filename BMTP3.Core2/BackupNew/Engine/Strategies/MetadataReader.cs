@@ -142,25 +142,52 @@ public class MetadataReader : IMetadataReader
 					IReadOnlyList<(Type ReaderType, Exception Error)> readerErrors;
 					IReadOnlyList<BMTP3.Core2.BackupNew.candidates.TimestampCandidate> candidates = compositeReader.Read(fileInfo, out readerErrors);
 
-					foreach ((Type ReaderType, Exception Error) error in readerErrors)
+					foreach((Type ReaderType, Exception Error) error in readerErrors)
 					{
 						_logger.LogWarning(error.Error, "Timestamp reader {ReaderType} failed for item {ItemId}", error.ReaderType.Name, item.Id);
 						item.AddLog($"Reader {error.ReaderType.Name} failed: {error.Error.Message}", "MetadataReader");
 					}
 
-					DateTime? bestDate = candidates
-						.Where(c => c.IsValidComposition() && c.TryToDateTime(out DateTime _))
-						.Select(c =>
-						{
-							c.TryToDateTime(out DateTime dt);
-							return (DateTime?)dt;
-						})
-						.FirstOrDefault();
+					// Pick the best candidate: prefer one with a UTC offset (full DateTimeOffset),
+					// then fall back to date+time only (local/unspecified camera time as DateTime).
+					// Candidates are already ordered best-first by CompositeTimestampReader.
+					DateTimeOffset? bestDateTimeOffset = null;
+					DateTime? bestDateTime = null;
 
-					if (bestDate.HasValue && bestDate.Value != DateTime.MinValue)
+					foreach(BMTP3.Core2.BackupNew.candidates.TimestampCandidate candidate in candidates)
 					{
-						item.Metadata.Set(MetadataKey.RawExifDateTaken, bestDate.Value);
-						_logger.LogDebug("Found EXIF Date via CompositeReader for {ItemId}: {Date}", item.Id, bestDate.Value);
+						if(candidate.IsValidComposition() == false)
+						{
+							continue;
+						}
+
+						// Prefer offset-aware candidate (full DateTimeOffset)
+						if(bestDateTimeOffset is null && candidate.TryToDateTimeOffset(out DateTimeOffset dto))
+						{
+							bestDateTimeOffset = dto;
+							break;
+						}
+
+						// Fall back to date+time without offset (unspecified / local camera time)
+						if(bestDateTime is null && candidate.TryToDateTime(out DateTime dt))
+						{
+							bestDateTime = dt;
+							// Do not break — still look for an offset-aware candidate first
+						}
+					}
+
+					if(bestDateTimeOffset.HasValue)
+					{
+						item.Metadata.Set(MetadataKey.RawExifDateTaken, bestDateTimeOffset.Value);
+						_logger.LogDebug("Found EXIF DateTimeOffset via CompositeReader for {ItemId}: {Date}", item.Id, bestDateTimeOffset.Value);
+					} else if(bestDateTime.HasValue && bestDateTime.Value != DateTime.MinValue)
+					{
+						// Store as DateTimeOffset with zero offset to keep the type uniform.
+						// Kind is Unspecified from TryToDateTime, so we do NOT interpret it as UTC —
+						// we simply preserve the wall-clock value the camera recorded.
+						DateTimeOffset asOffset = new DateTimeOffset(bestDateTime.Value, TimeSpan.Zero);
+						item.Metadata.Set(MetadataKey.RawExifDateTaken, asOffset);
+						_logger.LogDebug("Found EXIF DateTime (no offset) via CompositeReader for {ItemId}: {Date}", item.Id, asOffset);
 					}
 
 					// 2. Extract specific physical device metadata (Model)
@@ -168,12 +195,12 @@ public class MetadataReader : IMetadataReader
 					ExifIfd0Directory? ifd0Directory = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
 
 					string? model = null;
-					if (ifd0Directory != null)
+					if(ifd0Directory != null)
 					{
 						model = ifd0Directory.GetString(ExifDirectoryBase.TagModel);
 					}
 
-					if (string.IsNullOrWhiteSpace(model) == false)
+					if(string.IsNullOrWhiteSpace(model) == false)
 					{
 						item.Metadata.Set(MetadataKey.Model, model.Trim());
 					}

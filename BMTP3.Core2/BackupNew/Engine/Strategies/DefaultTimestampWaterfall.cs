@@ -13,9 +13,9 @@ public class DefaultTimestampWaterfall : ITimestampWaterfall
 		ArgumentNullException.ThrowIfNull(item);
 
 		// 1. EXIF (Highest Priority)
-		if (item.Metadata.Has(MetadataKey.RawExifDateTaken))
+		if(item.Metadata.Has(MetadataKey.RawExifDateTaken))
 		{
-			DateTime exifDate = item.Metadata.Get<DateTime>(MetadataKey.RawExifDateTaken);
+			DateTimeOffset exifDate = item.Metadata.Get<DateTimeOffset>(MetadataKey.RawExifDateTaken);
 			item.Metadata.Set(MetadataKey.AuthoredDateTime, exifDate);
 			item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Exif);
 			item.AddLog($"Timestamp set from EXIF: {exifDate}", "TimestampCorrection");
@@ -23,9 +23,9 @@ public class DefaultTimestampWaterfall : ITimestampWaterfall
 		}
 
 		// 2. MTP (Medium Priority)
-		if (item.Metadata.Has(MetadataKey.RawMtpAuthoredDate))
+		if(item.Metadata.Has(MetadataKey.RawMtpAuthoredDate))
 		{
-			DateTime mtpDate = item.Metadata.Get<DateTime>(MetadataKey.RawMtpAuthoredDate);
+			DateTimeOffset mtpDate = item.Metadata.Get<DateTimeOffset>(MetadataKey.RawMtpAuthoredDate);
 			item.Metadata.Set(MetadataKey.AuthoredDateTime, mtpDate);
 			item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Mtp);
 			item.AddLog($"Timestamp set from MTP: {mtpDate}", "TimestampCorrection");
@@ -33,9 +33,9 @@ public class DefaultTimestampWaterfall : ITimestampWaterfall
 		}
 
 		// 3. FileSystem Created (Low Priority)
-		if (item.Metadata.Has(MetadataKey.CreatedDateTime))
+		if(item.Metadata.Has(MetadataKey.CreatedDateTime))
 		{
-			DateTime created = item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime);
+			DateTimeOffset created = item.Metadata.Get<DateTimeOffset>(MetadataKey.CreatedDateTime);
 			item.Metadata.Set(MetadataKey.AuthoredDateTime, created);
 			item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.FileSystem);
 			item.AddLog($"Timestamp set from FS Created: {created}", "TimestampCorrection");
@@ -43,9 +43,9 @@ public class DefaultTimestampWaterfall : ITimestampWaterfall
 		}
 
 		// 4. FileSystem Modified (Lowest Priority)
-		if (item.Metadata.Has(MetadataKey.ModifiedDateTime))
+		if(item.Metadata.Has(MetadataKey.ModifiedDateTime))
 		{
-			DateTime mod = item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
+			DateTimeOffset mod = item.Metadata.Get<DateTimeOffset>(MetadataKey.ModifiedDateTime);
 			item.Metadata.Set(MetadataKey.AuthoredDateTime, mod);
 			item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.LastModified);
 			item.AddLog($"Timestamp set from FS Modified: {mod}", "TimestampCorrection");
@@ -53,7 +53,7 @@ public class DefaultTimestampWaterfall : ITimestampWaterfall
 		}
 
 		// 5. Fallback
-		DateTime now = DateTime.UtcNow;
+		DateTimeOffset now = DateTimeOffset.UtcNow;
 		item.Metadata.Set(MetadataKey.AuthoredDateTime, now);
 		item.Metadata.Set(MetadataKey.TimestampSource, TimestampSource.Unknown);
 		item.AddLog("Timestamp fallback to UTC Now", "TimestampCorrection");
