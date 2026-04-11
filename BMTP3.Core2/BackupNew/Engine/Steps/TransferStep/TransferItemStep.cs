@@ -79,8 +79,6 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 			Directory.CreateDirectory(destDir);
 		}
 
-		// (diagnostic logging removed)
-
 		// If staging path == destination path, avoid calling the transfer (File.Copy would throw)
 		OperationResult result;
 		try
@@ -100,12 +98,8 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 		}
 		catch (Exception ex)
 		{
-			// Ensure we surface the transfer failure as OperationResult
 			result = OperationResult.Fail(ex.Message);
 		}
-
-		// Log the raw transfer result regardless of success/failure so we can debug test runs
-		// (diagnostic logging removed)
 
 		if (result.Success)
 		{
@@ -131,10 +125,9 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 				int attempts = Math.Max(1, Context.VerificationRetryCount);
 				int delayMs = Math.Max(0, Context.VerificationRetryDelayMs);
 				bool verified = false;
-				bool permanentFailure = false;
-				for (int attempt = 1; attempt <= attempts && !permanentFailure; attempt++)
+
+				for (int attempt = 1; attempt <= attempts; attempt++)
 				{
-					// (diagnostic logging removed)
 					CancellationTokenSource? linkedCts = null;
 					if (Context.VerificationTimeoutMs > 0)
 					{
@@ -165,20 +158,7 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 						linkedCts?.Dispose();
 					}
 
-					// For hash verification: hash mismatch is permanent, don't retry
-					// For binary: mismatch is rare but possible, but we still retry IO errors
-					if (!verified && attempt == 1)
-					{
-						// Check if it's a hash mismatch (permanent failure) - we can detect this by checking item state
-						// For now, we only skip retry on hash verification after first attempt fails
-						if (Context.PostWriteVerification == PostWriteVerificationType.Hash)
-						{
-							// Hash mismatch is permanent - don't retry
-							permanentFailure = true;
-						}
-					}
-
-					if (!verified && !permanentFailure && attempt < attempts && delayMs > 0)
+					if (!verified && attempt < attempts && delayMs > 0)
 					{
 						try
 						{
@@ -209,19 +189,18 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 				}
 
 				item.AddLog($"Verified ({Context.PostWriteVerification})", Name);
-
-				// Delete staging file AFTER successful verification to preserve data integrity
-				TryCleanupStaging(item);
 			}
+
+			// Always clean up the staging temp file once the transfer step completes
+			// successfully — regardless of DryRun or PostWriteVerification strategy.
+			TryCleanupStaging(item);
 
 			item.SetResult(ItemResultState.Success);
 			item.Metadata.Set(MetadataKey.FinalTargetPath, destinationPath);
-			// (diagnostic logging removed)
 		}
 		else
 		{
 			item.Fail("Transfer failed: " + result.Message, Name);
-			// (diagnostic logging removed)
 		}
 
 		return result;
@@ -321,31 +300,29 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 
 	private void TryApplyDestinationTimestamp(IBackupItem item, string destinationPath)
 	{
-		DateTime? timestamp = null;
-		if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
-		{
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
-		}
-		else if (item.Metadata.Has(MetadataKey.CreatedDateTime))
-		{
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime);
-		}
-		else if (item.Metadata.Has(MetadataKey.ModifiedDateTime))
-		{
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
-		}
-
-		if (!timestamp.HasValue)
-		{
-			return;
-		}
-
 		try
 		{
-			DateTime utcTime = timestamp.Value.Kind == DateTimeKind.Unspecified
-				? DateTime.SpecifyKind(timestamp.Value, DateTimeKind.Utc)
-				: timestamp.Value.ToUniversalTime();
+			DateTimeOffset? timestamp = null;
 
+			if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
+			{
+				timestamp = item.Metadata.Get<DateTimeOffset>(MetadataKey.AuthoredDateTime);
+			}
+			else if (item.Metadata.Has(MetadataKey.CreatedDateTime))
+			{
+				timestamp = item.Metadata.Get<DateTimeOffset>(MetadataKey.CreatedDateTime);
+			}
+			else if (item.Metadata.Has(MetadataKey.ModifiedDateTime))
+			{
+				timestamp = item.Metadata.Get<DateTimeOffset>(MetadataKey.ModifiedDateTime);
+			}
+
+			if (!timestamp.HasValue)
+			{
+				return;
+			}
+
+			DateTime utcTime = timestamp.Value.UtcDateTime;
 			File.SetLastWriteTimeUtc(destinationPath, utcTime);
 			File.SetCreationTimeUtc(destinationPath, utcTime);
 		}
@@ -360,17 +337,13 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 	{
 		_logger?.LogDebug("VerifyTransferAsync entry: destPath={Dest} type={Type} itemSource={Source}", destPath, type,
 			item.SourcePath);
-		// Allow for small wrapper timeout behaviour; callers may pass a linked token with a timeout.
 		if (type == PostWriteVerificationType.Hash)
 		{
-			// Re-hash destination using the Primary Hash Algo (e.g. BLAKE3 or SHA256)
-			// Ensure we have source hashes; if not, compute them on-the-fly using _itemHasher.
 			Dictionary<HashType, string>? hashes = item.Metadata.Get<Dictionary<HashType, string>>(MetadataKey.Hashes);
 			if (hashes == null || hashes.Count == 0)
 			{
 				try
 				{
-					// Determine which algorithms to request: prefer plan-defined HashTypes if present
 					List<HashType> toCompute = Context.HashTypes?.ToList() ?? new List<HashType> { HashType.SHA2_256 };
 					Dictionary<HashType, string>? computed =
 						await _itemHasher.ComputeHashesAsync(item, toCompute, progress, ct);
@@ -383,7 +356,6 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 				catch (Exception ex)
 				{
 					item.AddLog($"Hashing source for verification failed: {ex.GetType().Name} {ex.Message}", Name);
-					// Fallback to binary verification if hashing failed
 					_logger?.LogDebug("Source hashing failed: {ExType} {ExMessage}", ex.GetType().Name, ex.Message);
 					return await CompareBinaryAsync(item, destPath, ct);
 				}
@@ -391,42 +363,24 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 
 			if (hashes == null || hashes.Count == 0)
 			{
-				// Still no hashes -> fallback to binary compare
 				return await CompareBinaryAsync(item, destPath, ct);
 			}
 
-			// Verify ALL available hashes - if ANY hash doesn't match, the file is corrupted
-			// This is more robust than just checking the strongest one
 			List<HashType> hashesToVerify = hashes.Keys.ToList();
 
-			// Compute hashes of destination using item hasher
 			try
 			{
 				BackupItem destWrapper =
 					BackupItem.Create(new FileContent(new FileInfo(destPath)), Path.GetFileName(destPath));
-				try
-				{
-					string destWrapperPath = "(not file)";
-					if (destWrapper.Content is FileContent df)
-					{
-						destWrapperPath = df.FileInfo.FullName;
-					}
-
-					_logger?.LogDebug("DestWrapper path={Path}", destWrapperPath);
-				}
-				catch
-				{
-				}
 
 				Dictionary<HashType, string> computedHashes =
 					await _itemHasher.ComputeHashesAsync(destWrapper, hashesToVerify, progress, ct);
 
-				// Verify each hash - ALL must match
 				foreach (HashType algo in hashesToVerify)
 				{
 					if (!hashes.TryGetValue(algo, out string? expectedHash) || string.IsNullOrWhiteSpace(expectedHash))
 					{
-						continue; // Skip if source doesn't have this hash
+						continue;
 					}
 
 					if (!computedHashes.TryGetValue(algo, out string? actualHash) ||
@@ -444,7 +398,6 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 
 					if (!string.Equals(expectedHash, actualHash, StringComparison.OrdinalIgnoreCase))
 					{
-						// Hash mismatch - file is corrupted
 						item.AddLog(
 							$"Hash mismatch for {algo}: expected={expectedHash.Substring(0, Math.Min(8, expectedHash.Length))}... actual={actualHash.Substring(0, Math.Min(8, actualHash.Length))}...",
 							Name);
@@ -452,7 +405,6 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 					}
 				}
 
-				// All hashes verified successfully
 				return true;
 			}
 			catch (Exception ex)

@@ -107,15 +107,9 @@ public class FileBackupRepository : IBackupRepository
 		string sourceFileName = item.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "unknown";
 		ulong length = item.Metadata.Get<ulong>(MetadataKey.Length);
 
-		DateTime? dateCreated = item.Metadata.Has(MetadataKey.CreatedDateTime)
-			? item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime)
-			: null;
-		DateTime? dateModified = item.Metadata.Has(MetadataKey.ModifiedDateTime)
-			? item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime)
-			: null;
-		DateTime? dateAuthored = item.Metadata.Has(MetadataKey.AuthoredDateTime)
-			? item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime)
-			: null;
+		DateTimeOffset? dateCreated = item.Metadata.Get<DateTimeOffset?>(MetadataKey.CreatedDateTime);
+		DateTimeOffset? dateModified = item.Metadata.Get<DateTimeOffset?>(MetadataKey.ModifiedDateTime);
+		DateTimeOffset? dateAuthored = item.Metadata.Get<DateTimeOffset?>(MetadataKey.AuthoredDateTime);
 
 		PersistState state = item.ResultState switch
 		{
@@ -129,7 +123,7 @@ public class FileBackupRepository : IBackupRepository
 		if (existing != null)
 		{
 			existing.State = state;
-			existing.BackupDate = state == PersistState.Completed ? DateTime.UtcNow : null;
+			existing.BackupDate = state == PersistState.Completed ? DateTimeOffset.UtcNow : null;
 		}
 		else
 		{
@@ -144,7 +138,7 @@ public class FileBackupRepository : IBackupRepository
 				DateModified = dateModified,
 				DateAuthored = dateAuthored,
 				State = state,
-				BackupDate = state == PersistState.Completed ? DateTime.UtcNow : null
+				BackupDate = state == PersistState.Completed ? DateTimeOffset.UtcNow : null
 			});
 		}
 

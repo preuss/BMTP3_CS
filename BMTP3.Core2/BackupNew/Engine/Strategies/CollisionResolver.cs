@@ -344,7 +344,7 @@ public class CollisionResolver : ICollisionResolver
 			{
 				if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
 				{
-					DateTime dt = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
+					DateTimeOffset dt = item.Metadata.Get<DateTimeOffset>(MetadataKey.AuthoredDateTime);
 					suffix = "_" + dt.ToString("yyyyMMdd_HHmmss");
 				}
 			}

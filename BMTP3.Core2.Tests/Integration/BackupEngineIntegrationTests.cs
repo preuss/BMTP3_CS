@@ -35,7 +35,7 @@ public class BackupEngineIntegrationTests
 				OutputPath = outDir,
 				SidecarFormat = SidecarFormat.Ini,
 				PostWriteVerification = PostWriteVerificationType.Binary,
-               // DryRun is disabled for this integration test so the engine actually writes files and sidecars.
+				// DryRun is disabled — the engine should physically write files and sidecars.
 				DryRun = false
 			};
 
@@ -52,9 +52,8 @@ public class BackupEngineIntegrationTests
 
 			BackupJobResult result = await engine.RunAsync(plan, null, CancellationToken.None);
 
-			// In DryRun mode we may not produce the actual destination file, but FinalTargetPath and sidecar should be produced.
 			string sidecar = Path.ChangeExtension(Path.Combine(outDir, Path.GetFileName(srcFile)), ".ini");
-			Assert.True(File.Exists(sidecar), "Expected sidecar to be written in DryRun mode");
+			Assert.True(File.Exists(sidecar), $"Expected sidecar at '{sidecar}' to exist after a non-DryRun backup.");
 		}
 		finally
 		{

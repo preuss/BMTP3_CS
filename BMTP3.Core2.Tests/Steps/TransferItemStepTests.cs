@@ -560,7 +560,7 @@ public class TransferItemStepTests
 			new Random(23).NextBytes(data);
 			await File.WriteAllBytesAsync(src, data);
 
-			DateTime authoredUtc = new(2020, 01, 02, 03, 04, 05, DateTimeKind.Utc);
+			DateTimeOffset authoredUtc = new DateTimeOffset(2020, 01, 02, 03, 04, 05, TimeSpan.Zero);
 
 			BackupPlan plan = new()
 			{
@@ -580,8 +580,8 @@ public class TransferItemStepTests
 			Assert.True(File.Exists(dest));
 
 			DateTime lastWrite = File.GetLastWriteTimeUtc(dest);
-			Assert.True(Math.Abs((lastWrite - authoredUtc).TotalSeconds) < 2,
-				$"Expected destination last write near {authoredUtc:o}, actual {lastWrite:o}");
+			Assert.True(Math.Abs((lastWrite - authoredUtc.UtcDateTime).TotalSeconds) < 2,
+				$"Expected destination last write near {authoredUtc.UtcDateTime:o}, actual {lastWrite:o}");
 		}
 		finally
 		{

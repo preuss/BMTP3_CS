@@ -26,19 +26,19 @@ public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 
 	public Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
-		DateTime? timestamp = null;
+		DateTimeOffset? timestamp = null;
 
 		if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
 		{
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
+			timestamp = item.Metadata.Get<DateTimeOffset>(MetadataKey.AuthoredDateTime);
 		}
 		else if (item.Metadata.Has(MetadataKey.CreatedDateTime))
 		{
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime);
+			timestamp = item.Metadata.Get<DateTimeOffset>(MetadataKey.CreatedDateTime);
 		}
 		else if (item.Metadata.Has(MetadataKey.ModifiedDateTime))
 		{
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
+			timestamp = item.Metadata.Get<DateTimeOffset>(MetadataKey.ModifiedDateTime);
 		}
 
 		if (timestamp.HasValue)
@@ -47,9 +47,7 @@ public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 			{
 				try
 				{
-					DateTime utcTime = timestamp.Value.Kind == DateTimeKind.Unspecified
-						? DateTime.SpecifyKind(timestamp.Value, DateTimeKind.Utc)
-						: timestamp.Value.ToUniversalTime();
+					DateTime utcTime = timestamp.Value.UtcDateTime;
 					File.SetLastWriteTimeUtc(fileContent.FileInfo.FullName, utcTime);
 					File.SetCreationTimeUtc(fileContent.FileInfo.FullName, utcTime);
 				}

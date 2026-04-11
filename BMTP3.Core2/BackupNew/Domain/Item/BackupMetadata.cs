@@ -62,6 +62,8 @@ public class BackupMetadata
 
 	/// <summary>
 	///     Gets a value, or null if the key does not exist.
+	///     Supports transparent coercion between <see cref="DateTime" /> and <see cref="DateTimeOffset" />:
+	///     a stored <see cref="DateTime" /> can be retrieved as <see cref="DateTimeOffset" /> and vice-versa.
 	/// </summary>
 	public T? Get<T>(MetadataKey key, bool useDefault = false, T? defaultValue = default)
 	{
@@ -75,9 +77,30 @@ public class BackupMetadata
 			return default;
 		}
 
+		// Fast path: stored type matches requested type exactly.
 		if(value is T t)
 		{
 			return t;
+		}
+
+		// Transparent coercion: DateTime ↔ DateTimeOffset.
+		// Convert.ChangeType does not support these types, so we handle them explicitly.
+		Type target = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+
+		if(target == typeof(DateTimeOffset) && value is DateTime dt)
+		{
+			// DateTime → DateTimeOffset: preserve the wall-clock value.
+			// Unspecified kind is treated as UTC to avoid silent Local→UTC shifts.
+			DateTimeOffset dto = dt.Kind == DateTimeKind.Unspecified
+				? new DateTimeOffset(dt, TimeSpan.Zero)
+				: new DateTimeOffset(dt);
+			return (T)(object)dto;
+		}
+
+		if(target == typeof(DateTime) && value is DateTimeOffset dto2)
+		{
+			// DateTimeOffset → DateTime: use UTC representation for predictable behaviour.
+			return (T)(object)dto2.UtcDateTime;
 		}
 
 		try
@@ -87,8 +110,6 @@ public class BackupMetadata
 		{
 			if(useDefault)
 			{
-				// Conversion failed, return default rather than crash
-				// In a stricter system we might throw, but for metadata retrieval best-effort is often preferred.
 				return defaultValue;
 			}
 

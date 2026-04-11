@@ -504,31 +504,32 @@ public class BackupEngine : IBackupEngine
 
 	private void ValidateSourceAndOutput(BackupPlan plan)
 	{
-		if(plan.SourceType == SourceType.FileSystem)
+		if (plan.SourceType == SourceType.FileSystem)
 		{
-			if(!Directory.Exists(plan.SourcePath))
+			if (!Directory.Exists(plan.SourcePath))
 			{
 				throw new DirectoryNotFoundException($"Source path not found: {plan.SourcePath}");
 			}
 
+			// Verify read access by attempting to enumerate one entry — never write to the source.
 			try
 			{
-				string testFile = Path.Combine(plan.SourcePath, Path.GetRandomFileName());
-				File.WriteAllText(testFile, "test");
-				File.Delete(testFile);
-			} catch(Exception ex)
+				Directory.EnumerateFileSystemEntries(plan.SourcePath).FirstOrDefault();
+			}
+			catch (Exception ex)
 			{
 				throw new UnauthorizedAccessException($"No read access to source: {plan.SourcePath}", ex);
 			}
 		}
 
 		DirectoryInfo outputDir = new(plan.OutputPath);
-		if(!outputDir.Exists)
+		if (!outputDir.Exists)
 		{
 			try
 			{
 				outputDir.Create();
-			} catch(Exception ex)
+			}
+			catch (Exception ex)
 			{
 				throw new IOException($"Cannot create output directory: {plan.OutputPath}", ex);
 			}
@@ -539,7 +540,8 @@ public class BackupEngine : IBackupEngine
 			string testFile = Path.Combine(plan.OutputPath, Path.GetRandomFileName());
 			File.WriteAllText(testFile, "test");
 			File.Delete(testFile);
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
 			throw new UnauthorizedAccessException($"No write access to output: {plan.OutputPath}", ex);
 		}

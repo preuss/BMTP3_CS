@@ -1,18 +1,19 @@
-using System.CommandLine;
-using BMTP3.Consoles.ConsoleCommands;
-using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
-using BMTP3.Core2.BackupNew.DependencyInjection;
 using BMTP3.Core2.BackupNew.Domain.Job;
+using BMTP3.Core2.BackupNew.DependencyInjection;
+using BMTP3.Core2.BackupNew.Engine;
 using BMTP3.Core2.BackupNew.Engine.Orchestration;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Spectre.Console;
+using System.CommandLine;
+using BMTP3.Consoles.ConsoleCommands;
+using BMTP3.Consoles.Services;
+using Microsoft.Extensions.Logging;
 
 namespace BMTP3.Consoles.Tests;
 
@@ -97,6 +98,16 @@ public class BackupConsoleIntegrationTests
 			// Call the programmatic helper on the command to get a structured BackupJobResult
 			BackupConsoleCommand2 command = backupCommand;
 			BackupJobResult? result = await command.TryRunAsync(plan, progress, cts.Token);
+
+			// Log global errors unconditionally so failures are always diagnosable
+			if (result?.GlobalErrors?.Count > 0)
+			{
+				_output.WriteLine("GlobalErrors:");
+				foreach (string err in result.GlobalErrors)
+				{
+					_output.WriteLine($"  {err}");
+				}
+			}
 
 			_output.WriteLine($"Command run status: {result?.Status}. Files scanned: {result?.TotalFilesScanned}");
 			Assert.NotNull(result);

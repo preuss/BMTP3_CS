@@ -25,9 +25,9 @@ public class BackupResumeRecord
 
 	public required string SourceFileName { get; set; }
 	public ulong LengthBytes { get; set; }
-	public DateTime? DateCreated { get; set; }
-	public DateTime? DateModified { get; set; }
-	public DateTime? DateAuthored { get; set; }
+	public DateTimeOffset? DateCreated { get; set; }
+	public DateTimeOffset? DateModified { get; set; }
+	public DateTimeOffset? DateAuthored { get; set; }
 
 	/// <summary>
 	///     Persistence outcome, used for resume decision.
@@ -39,5 +39,5 @@ public class BackupResumeRecord
 	///     When we decided/got it saved (for auditing)
 	///     When Saved/Skipped was recorded
 	/// </summary>
-	public DateTime? BackupDate { get; set; }
+	public DateTimeOffset? BackupDate { get; set; }
 }
