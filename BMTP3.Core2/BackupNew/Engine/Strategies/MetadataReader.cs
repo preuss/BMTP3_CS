@@ -135,59 +135,45 @@ public class MetadataReader : IMetadataReader
 
 				try
 				{
+					// 1. Read timestamps using the CompositeTimestampReader
+					FileInfo fileInfo = new FileInfo(filePath);
+					BMTP3.Core2.BackupNew.exifreader.readers.CompositeTimestampReader compositeReader = new();
+
+					IReadOnlyList<(Type ReaderType, Exception Error)> readerErrors;
+					IReadOnlyList<BMTP3.Core2.BackupNew.candidates.TimestampCandidate> candidates = compositeReader.Read(fileInfo, out readerErrors);
+
+					foreach ((Type ReaderType, Exception Error) error in readerErrors)
+					{
+						_logger.LogWarning(error.Error, "Timestamp reader {ReaderType} failed for item {ItemId}", error.ReaderType.Name, item.Id);
+						item.AddLog($"Reader {error.ReaderType.Name} failed: {error.Error.Message}", "MetadataReader");
+					}
+
+					DateTime? bestDate = candidates
+						.Where(c => c.IsValidComposition() && c.TryToDateTime(out DateTime _))
+						.Select(c =>
+						{
+							c.TryToDateTime(out DateTime dt);
+							return (DateTime?)dt;
+						})
+						.FirstOrDefault();
+
+					if (bestDate.HasValue && bestDate.Value != DateTime.MinValue)
+					{
+						item.Metadata.Set(MetadataKey.RawExifDateTaken, bestDate.Value);
+						_logger.LogDebug("Found EXIF Date via CompositeReader for {ItemId}: {Date}", item.Id, bestDate.Value);
+					}
+
+					// 2. Extract specific physical device metadata (Model)
 					IReadOnlyList<Directory> directories = ImageMetadataReader.ReadMetadata(filePath);
-					ExifSubIfdDirectory? subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
 					ExifIfd0Directory? ifd0Directory = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
-					QuickTimeMovieHeaderDirectory? quickTimeDirectory = directories.OfType<QuickTimeMovieHeaderDirectory>().FirstOrDefault();
 
-					DateTime? exifDate = null;
-
-					// A. Try EXIF SubIFD (Most precise for photos)
-					if(subIfdDirectory != null)
-					{
-						DateTime dt;
-						if(subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out dt))
-						{
-							exifDate = dt;
-						} else if(subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeDigitized, out dt))
-						{
-							exifDate = dt;
-						}
-					}
-
-					// B. Try EXIF IFD0 (Fallback for photos)
-					if(exifDate == null && ifd0Directory != null)
-					{
-						if(ifd0Directory.TryGetDateTime(ExifDirectoryBase.TagDateTime, out DateTime dt))
-						{
-							exifDate = dt;
-						}
-					}
-
-					// C. Try QuickTime (For MOV/MP4 from iPhones etc.)
-					if(exifDate == null && quickTimeDirectory != null)
-					{
-						if(quickTimeDirectory.TryGetDateTime(QuickTimeMovieHeaderDirectory.TagCreated, out DateTime dt))
-						{
-							exifDate = dt;
-						}
-					}
-
-					// Store if found
-					if(exifDate.HasValue && exifDate.Value != DateTime.MinValue)
-					{
-						item.Metadata.Set(MetadataKey.RawExifDateTaken, exifDate.Value);
-						_logger.LogDebug("Found EXIF Date for {ItemId}: {Date}", item.Id, exifDate.Value);
-					}
-
-					// D. Try to extract Model
 					string? model = null;
-					if(ifd0Directory != null)
+					if (ifd0Directory != null)
 					{
 						model = ifd0Directory.GetString(ExifDirectoryBase.TagModel);
 					}
 
-					if(string.IsNullOrWhiteSpace(model) == false)
+					if (string.IsNullOrWhiteSpace(model) == false)
 					{
 						item.Metadata.Set(MetadataKey.Model, model.Trim());
 					}

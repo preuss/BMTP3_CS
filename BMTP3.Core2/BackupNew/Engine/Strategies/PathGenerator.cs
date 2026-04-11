@@ -102,17 +102,34 @@ public class PathGenerator : IPathGenerator
 			return;
 		}
 
-		foreach (char c in InvalidFileNameChars)
-		{
-			if (path.Contains(c))
-			{
-				throw new ArgumentException($"Path '{path}' contains invalid character: '{c}' (0x{(int)c:X2}).");
-			}
-		}
+		// Split into path segments and validate each segment as a file name.
+		char[] separators = new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar };
+		string[] segments = path.Split(separators, StringSplitOptions.None);
 
-		if (path.Contains(".."))
+		foreach (string segment in segments)
 		{
-			throw new ArgumentException($"Path '{path}' contains path traversal sequence '..'.");
+			if (string.IsNullOrWhiteSpace(segment))
+			{
+				throw new ArgumentException($"Path '{path}' contains empty segment.");
+			}
+
+			if (segment == "." || segment == "..")
+			{
+				throw new ArgumentException($"Path '{path}' contains invalid path traversal segment '{segment}'.");
+			}
+
+			foreach (char c in InvalidFileNameChars)
+			{
+				if (segment.Contains(c))
+				{
+					throw new ArgumentException($"Path '{path}' contains invalid character: '{c}' (0x{(int)c:X2}).");
+				}
+			}
+
+			if (segment.Length > 255)
+			{
+				throw new ArgumentException($"Path '{path}' contains segment '{segment}' that exceeds 255 characters.");
+			}
 		}
 	}
 

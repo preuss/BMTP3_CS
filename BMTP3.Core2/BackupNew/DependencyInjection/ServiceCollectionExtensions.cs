@@ -40,6 +40,10 @@ public static class ServiceCollectionExtensions
 		// Allow caller to register overrides before adding defaults.
 		preConfigure?.Invoke(services);
 
+		// Ensure logging services are available so ILogger<T> can be injected by default.
+		// Callers that already configured logging will not be affected.
+		services.AddLogging();
+
 		// Engine defaults (use TryAdd so callers can provide replacements via preConfigure)
 		services.TryAddSingleton<IMediaDeviceScannerFactory, MediaDeviceScannerFactory>();
 
