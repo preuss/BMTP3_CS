@@ -2,6 +2,7 @@
 using System.CommandLine.Invocation;
 
 namespace BMTP3.Consoles.ConsoleCommands;
+
 public sealed class CustomHelpAction : SynchronousCommandLineAction
 {
 	public override int Invoke(ParseResult parseResult)
@@ -10,23 +11,26 @@ public sealed class CustomHelpAction : SynchronousCommandLineAction
 		Command command = parseResult.CommandResult.Command;
 
 		// Description
-		if(!string.IsNullOrEmpty(command.Description))
+		if (!string.IsNullOrEmpty(command.Description))
 		{
 			output.WriteLine(command.Description);
 			output.WriteLine();
 		}
 
 		// Options  
-		if(command.Options.Count > 0)
+		if (command.Options.Count > 0)
 		{
 			output.WriteLine("Options:");
-			foreach(Option option in command.Options)
+			foreach (Option option in command.Options)
 			{
-				if(option.Hidden) continue;
+				if (option.Hidden)
+				{
+					continue;
+				}
 
 				// Build alias string: -c, --config  
-				List<string> aliases = new List<string> { option.Name };
-				foreach(string alias in option.Aliases)
+				List<string> aliases = new() { option.Name };
+				foreach (string alias in option.Aliases)
 				{
 					aliases.Add(alias);
 				}
@@ -35,7 +39,7 @@ public sealed class CustomHelpAction : SynchronousCommandLineAction
 				string aliasText = string.Join(", ", aliases);
 				// Build argument label with brackets if optional  
 				string argLabel = GetArgumentLabel(option);
-				if(!string.IsNullOrEmpty(argLabel))
+				if (!string.IsNullOrEmpty(argLabel))
 				{
 					aliasText += $" {argLabel}";
 				}
@@ -51,18 +55,18 @@ public sealed class CustomHelpAction : SynchronousCommandLineAction
 	private static string GetArgumentLabel(Option option)
 	{
 		// No argument to show  
-		if(option.Arity.MaximumNumberOfValues == 0)
+		if (option.Arity.MaximumNumberOfValues == 0)
 		{
 			return "";
 		}
 
 		string name = option.HelpName
-					  ?? option.Name.TrimStart('-', '/');
+		              ?? option.Name.TrimStart('-', '/');
 
 		bool isOptional = option.Arity.MinimumNumberOfValues == 0 && option.Arity.MaximumNumberOfValues >= 1;
 
 		return isOptional
-			? $"[<{name}>]"    // <-- this adds the brackets you want  
+			? $"[<{name}>]" // <-- this adds the brackets you want  
 			: $"<{name}>";
 	}
 }

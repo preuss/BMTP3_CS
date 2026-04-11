@@ -1,8 +1,9 @@
-﻿using SharpHash.Base;
+﻿using System.Security.Cryptography;
+using SharpHash.Base;
 using SharpHash.Interfaces;
-using System.Security.Cryptography;
 
 namespace BMTP3.Core2.Engine.Hashing.Crypto;
+
 public class SharpHashMD5 : HashAlgorithm
 {
 	private readonly IHash _hash;

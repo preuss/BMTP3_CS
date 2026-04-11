@@ -1,13 +1,12 @@
-﻿namespace BMTP3.Common.MessageFormatterParser.Nodes
-{
-	// Text node for plain text
-	public class TextNode : AstNode
-	{
-		public string Value { get; }
+﻿namespace BMTP3.Common.MessageFormatterParser.Nodes;
 
-		public TextNode(string value) : base(NodeType.Text)
-		{
-			Value = value;
-		}
+// Text node for plain text
+public class TextNode : AstNode
+{
+	public TextNode(string value) : base(NodeType.Text)
+	{
+		Value = value;
 	}
+
+	public string Value { get; }
 }

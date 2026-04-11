@@ -6,49 +6,54 @@ using BMTP3.Core2.BackupNew.Domain.Item;
 namespace BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
 
 /// <summary>
-/// Step for correcting the file system timestamp of the buffered/staged file
-/// to match the extracted metadata (e.g., Date Taken).
+///     Step for correcting the file system timestamp of the buffered/staged file
+///     to match the extracted metadata (e.g., Date Taken).
 /// </summary>
 public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 {
-	public string Name => "Timestamp Correction";
-	public FilePhase Phase => FilePhase.Metadata;
-
-	private readonly BackupPlan _context;
-	public BackupPlan Context => _context;
-
 	/// <summary>
-	/// Initializes a new instance of <see cref="TimestampCorrectionItemStep"/>.
+	///     Initializes a new instance of <see cref="TimestampCorrectionItemStep" />.
 	/// </summary>
 	/// <param name="context">The backup plan context for this step.</param>
 	public TimestampCorrectionItemStep(BackupPlan context)
 	{
-		_context = context ?? throw new ArgumentNullException(nameof(context));
+		Context = context ?? throw new ArgumentNullException(nameof(context));
 	}
+
+	public string Name => "Timestamp Correction";
+	public FilePhase Phase => FilePhase.Metadata;
+	public BackupPlan Context { get; }
 
 	public Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
 	{
 		DateTime? timestamp = null;
 
-		if(item.Metadata.Has(MetadataKey.AuthoredDateTime))
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
-		else if(item.Metadata.Has(MetadataKey.CreatedDateTime))
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime);
-		else if(item.Metadata.Has(MetadataKey.ModifiedDateTime))
-			timestamp = item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
-
-		if(timestamp.HasValue)
+		if (item.Metadata.Has(MetadataKey.AuthoredDateTime))
 		{
-			if(item.Content is FileContent fileContent)
+			timestamp = item.Metadata.Get<DateTime>(MetadataKey.AuthoredDateTime);
+		}
+		else if (item.Metadata.Has(MetadataKey.CreatedDateTime))
+		{
+			timestamp = item.Metadata.Get<DateTime>(MetadataKey.CreatedDateTime);
+		}
+		else if (item.Metadata.Has(MetadataKey.ModifiedDateTime))
+		{
+			timestamp = item.Metadata.Get<DateTime>(MetadataKey.ModifiedDateTime);
+		}
+
+		if (timestamp.HasValue)
+		{
+			if (item.Content is FileContent fileContent)
 			{
 				try
 				{
-					var utcTime = timestamp.Value.Kind == DateTimeKind.Unspecified
+					DateTime utcTime = timestamp.Value.Kind == DateTimeKind.Unspecified
 						? DateTime.SpecifyKind(timestamp.Value, DateTimeKind.Utc)
 						: timestamp.Value.ToUniversalTime();
 					File.SetLastWriteTimeUtc(fileContent.FileInfo.FullName, utcTime);
 					File.SetCreationTimeUtc(fileContent.FileInfo.FullName, utcTime);
-				} catch(Exception ex)
+				}
+				catch (Exception ex)
 				{
 					item.AddLog($"Failed to apply timestamp: {ex.Message}", Name);
 				}

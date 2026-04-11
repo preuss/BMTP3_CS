@@ -1,10 +1,10 @@
 ﻿using BMTP3.Core2.BackupNew.Api.Request;
 
-
 namespace BMTP3.Consoles.ConsoleCommands;
+
 /// <summary>
-/// Contract to map Console option model into a validated <see cref="BackupPlan"/>.
-/// Implemented by Console layer or an adapter in the composition root.
+///     Contract to map Console option model into a validated <see cref="BackupPlan" />.
+///     Implemented by Console layer or an adapter in the composition root.
 /// </summary>
 public interface IBackupPlanFactory
 {

@@ -3,21 +3,27 @@ using Microsoft.Extensions.Logging;
 namespace BMTP3.Core2.BackupNew.Engine.Resilience;
 
 /// <summary>
-/// Retry policy with exponential backoff.
-/// Configurable via max attempts and base backoff duration.
+///     Retry policy with exponential backoff.
+///     Configurable via max attempts and base backoff duration.
 /// </summary>
 public class ExponentialBackoffRetryPolicy : IRetryPolicy
 {
-	private readonly int _maxAttempts;
 	private readonly int _baseBackoffMs;
 	private readonly ILogger<ExponentialBackoffRetryPolicy>? _logger;
+	private readonly int _maxAttempts;
 
-	public ExponentialBackoffRetryPolicy(int maxAttempts, int baseBackoffMs, ILogger<ExponentialBackoffRetryPolicy>? logger = null)
+	public ExponentialBackoffRetryPolicy(int maxAttempts, int baseBackoffMs,
+		ILogger<ExponentialBackoffRetryPolicy>? logger = null)
 	{
-		if(maxAttempts < 1)
+		if (maxAttempts < 1)
+		{
 			throw new ArgumentOutOfRangeException(nameof(maxAttempts), "Max attempts must be at least 1.");
-		if(baseBackoffMs < 0)
+		}
+
+		if (baseBackoffMs < 0)
+		{
 			throw new ArgumentOutOfRangeException(nameof(baseBackoffMs), "Base backoff must be non-negative.");
+		}
 
 		_maxAttempts = maxAttempts;
 		_baseBackoffMs = baseBackoffMs;
@@ -29,7 +35,7 @@ public class ExponentialBackoffRetryPolicy : IRetryPolicy
 		int attempt = 0;
 		Exception? lastException = null;
 
-		while(attempt < _maxAttempts)
+		while (attempt < _maxAttempts)
 		{
 			attempt++;
 			ct.ThrowIfCancellationRequested();
@@ -38,15 +44,17 @@ public class ExponentialBackoffRetryPolicy : IRetryPolicy
 			{
 				_logger?.LogDebug("Retry attempt {Attempt}/{MaxAttempts}", attempt, _maxAttempts);
 				return await action();
-			} catch(OperationCanceledException)
+			}
+			catch (OperationCanceledException)
 			{
 				throw;
-			} catch(Exception ex)
+			}
+			catch (Exception ex)
 			{
 				lastException = ex;
 				_logger?.LogWarning(ex, "Attempt {Attempt}/{MaxAttempts} failed", attempt, _maxAttempts);
 
-				if(attempt >= _maxAttempts)
+				if (attempt >= _maxAttempts)
 				{
 					_logger?.LogError(ex, "All {MaxAttempts} retry attempts exhausted", _maxAttempts);
 					throw;

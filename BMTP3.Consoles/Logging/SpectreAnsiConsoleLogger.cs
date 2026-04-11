@@ -1,13 +1,12 @@
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using System;
 
 namespace BMTP3.Consoles.Logging;
 
 internal class SpectreAnsiConsoleLogger : ILogger
 {
-	private readonly IAnsiConsole _console;
 	private readonly string _category;
+	private readonly IAnsiConsole _console;
 
 	public SpectreAnsiConsoleLogger(IAnsiConsole console, string category)
 	{
@@ -15,18 +14,29 @@ internal class SpectreAnsiConsoleLogger : ILogger
 		_category = category;
 	}
 
-	public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
-
-	public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
-
-	public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+	public IDisposable BeginScope<TState>(TState state) where TState : notnull
 	{
-		if(!IsEnabled(logLevel)) return;
+		return NullScope.Instance;
+	}
+
+	public bool IsEnabled(LogLevel logLevel)
+	{
+		return logLevel != LogLevel.None;
+	}
+
+	public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+		Func<TState, Exception?, string> formatter)
+	{
+		if (!IsEnabled(logLevel))
+		{
+			return;
+		}
+
 		string message = formatter(state, exception);
-		
+
 		string text = $"[{logLevel}] {_category}: {message}";
-		
-		switch(logLevel)
+
+		switch (logLevel)
 		{
 			case LogLevel.Critical:
 				_console.MarkupLineInterpolated($"[bold red]{text}[/] ");
@@ -49,7 +59,7 @@ internal class SpectreAnsiConsoleLogger : ILogger
 				break;
 		}
 
-		if(exception != null)
+		if (exception != null)
 		{
 			_console.WriteException(exception);
 		}
@@ -58,6 +68,9 @@ internal class SpectreAnsiConsoleLogger : ILogger
 	private class NullScope : IDisposable
 	{
 		public static readonly NullScope Instance = new();
-		public void Dispose() { }
+
+		public void Dispose()
+		{
+		}
 	}
 }

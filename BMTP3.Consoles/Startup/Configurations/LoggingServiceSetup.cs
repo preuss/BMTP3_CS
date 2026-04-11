@@ -1,10 +1,11 @@
+using BMTP3.Consoles.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using BMTP3.Consoles.Logging;
 
 namespace BMTP3.Consoles.Startup.Configurations;
+
 public class LoggingServiceSetup : IServiceSetup
 {
 	public void Configure(IServiceCollection services, IConfiguration configuration)

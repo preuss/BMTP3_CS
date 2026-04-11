@@ -3,8 +3,8 @@ using BMTP3.Core2.BackupNew.Api.Request.Enums;
 namespace BMTP3.Core2.BackupNew.Api.Request;
 
 /// <summary>
-/// Represents a single, fully configured backup job to be executed by the BackupEngine.
-/// This acts as the DTO between the Console/UI layer and the Core Logic.
+///     Represents a single, fully configured backup job to be executed by the BackupEngine.
+///     This acts as the DTO between the Console/UI layer and the Core Logic.
 /// </summary>
 public class BackupPlan
 {
@@ -13,8 +13,8 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// Friendly name for the job (e.g., "iPhone Photos", "C-Drive Docs").
-	/// Used for logging and display.
+	///     Friendly name for the job (e.g., "iPhone Photos", "C-Drive Docs").
+	///     Used for logging and display.
 	/// </summary>
 	public string Name { get; set; } = string.Empty;
 
@@ -23,21 +23,21 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// The type of source (FileSystem vs. MTP Device).
+	///     The type of source (FileSystem vs. MTP Device).
 	/// </summary>
 	public SourceType SourceType { get; set; }
 
 	/// <summary>
-	/// The unique identifier for the source. This could be a device ID, a drive letter, or a network path.
-	/// <para>FileSystem: Drive letter or root path (e.g., "C:", "\\Nas\Share").</para>
-	/// <para>MTP: The friendly name of the device (e.g., "Apple iPhone", "Galaxy S21").</para>
+	///     The unique identifier for the source. This could be a device ID, a drive letter, or a network path.
+	///     <para>FileSystem: Drive letter or root path (e.g., "C:", "\\Nas\Share").</para>
+	///     <para>MTP: The friendly name of the device (e.g., "Apple iPhone", "Galaxy S21").</para>
 	/// </summary>
 	public string SourceId { get; set; } = string.Empty;
 
 	/// <summary>
-	/// The specific path within the device to back up.
-	/// <para>FileSystem: Absolute path (e.g., "Users\John\Pictures").</para>
-	/// <para>MTP: Path relative to device root (e.g., "\Internal Storage\DCIM").</para>
+	///     The specific path within the device to back up.
+	///     <para>FileSystem: Absolute path (e.g., "Users\John\Pictures").</para>
+	///     <para>MTP: Path relative to device root (e.g., "\Internal Storage\DCIM").</para>
 	/// </summary>
 	public string SourcePath { get; set; } = string.Empty;
 
@@ -46,7 +46,7 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// The root folder where backups will be stored.
+	///     The root folder where backups will be stored.
 	/// </summary>
 	public string OutputPath { get; set; } = string.Empty;
 
@@ -55,17 +55,17 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// Whether to traverse subdirectories.
+	///     Whether to traverse subdirectories.
 	/// </summary>
 	public bool Recursive { get; set; } = true;
 
 	/// <summary>
-	/// Glob patterns to include (e.g., "**/*.jpg"). Empty = Include All.
+	///     Glob patterns to include (e.g., "**/*.jpg"). Empty = Include All.
 	/// </summary>
 	public List<string> IncludePatterns { get; set; } = new();
 
 	/// <summary>
-	/// Glob patterns to exclude (e.g., "**/.git", "**/*.tmp").
+	///     Glob patterns to exclude (e.g., "**/.git", "**/*.tmp").
 	/// </summary>
 	public List<string> ExcludePatterns { get; set; } = new();
 
@@ -74,13 +74,13 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// Strategy for folder structure (Preserve vs Flat vs Custom).
+	///     Strategy for folder structure (Preserve vs Flat vs Custom).
 	/// </summary>
 	public OutputStructureStrategy OutputStrategy { get; set; } = OutputStructureStrategy.PreserveSourceTree;
 
 	/// <summary>
-	/// Template pattern for output path if OutputStrategy is CustomPathPattern.
-	/// Supports variables: ${yyyy}, ${MM}, ${originalName}, etc.
+	///     Template pattern for output path if OutputStrategy is CustomPathPattern.
+	///     Supports variables: ${yyyy}, ${MM}, ${originalName}, etc.
 	/// </summary>
 	public string? CustomOutputPathPattern { get; set; }
 
@@ -89,31 +89,31 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// How to compare files before deciding on a collision (None, Hash, Binary).
-	/// Default is Binary for maximum data integrity.
+	///     How to compare files before deciding on a collision (None, Hash, Binary).
+	///     Default is Binary for maximum data integrity.
 	/// </summary>
 	public CollisionComparisonType ComparisonType { get; set; } = CollisionComparisonType.Binary;
 
 	/// <summary>
-	/// Action to take if a collision is confirmed (Overwrite, Skip, Rename).
-	/// Default is Rename to prevent data loss and ensure process completion.
+	///     Action to take if a collision is confirmed (Overwrite, Skip, Rename).
+	///     Default is Rename to prevent data loss and ensure process completion.
 	/// </summary>
 	public CollisionResolutionType CollisionResolution { get; set; } = CollisionResolutionType.Rename;
 
 	/// <summary>
-	/// Strategy for renaming if CollisionResolution is 'Rename'.
-	/// Default is Increment for simple versioning.
+	///     Strategy for renaming if CollisionResolution is 'Rename'.
+	///     Default is Increment for simple versioning.
 	/// </summary>
 	public RenameStrategy RenameStrategy { get; set; } = RenameStrategy.Increment;
 
 	/// <summary>
-	/// Template pattern for renaming if RenameStrategy is CustomCollisionPathPattern.
+	///     Template pattern for renaming if RenameStrategy is CustomCollisionPathPattern.
 	/// </summary>
 	public string? CustomCollisionPathPattern { get; set; }
 
 	/// <summary>
-	/// Verification level after writing to destination.
-	/// Default is Hash for integrity.
+	///     Verification level after writing to destination.
+	///     Default is Hash for integrity.
 	/// </summary>
 	public PostWriteVerificationType PostWriteVerification { get; set; } = PostWriteVerificationType.Hash;
 
@@ -122,18 +122,19 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// Format for per-file metadata sidecars.
-	/// Default is Ini for human-readable metadata.
+	///     Format for per-file metadata sidecars.
+	///     Default is Ini for human-readable metadata.
 	/// </summary>
 	public SidecarFormat SidecarFormat { get; set; } = SidecarFormat.Ini;
 
 	/// <summary>
-	/// Format for centralized backup index/catalog.
-	/// Default is Json for easy inspection and versioning.
+	///     Format for centralized backup index/catalog.
+	///     Default is Json for easy inspection and versioning.
 	/// </summary>
 	public BackupIndexType BackupIndexType { get; set; } = BackupIndexType.Json;
 
-	public ISet<HashType> HashTypes { get; set; } = new HashSet<HashType> {
+	public ISet<HashType> HashTypes { get; set; } = new HashSet<HashType>
+	{
 		HashType.SHA3_512_KECCAK,
 		HashType.SHA3_512_FIPS202,
 		HashType.SHA2_512,
@@ -148,7 +149,7 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// If true, calculates paths and decisions but performs no I/O (Write/Delete).
+	///     If true, calculates paths and decisions but performs no I/O (Write/Delete).
 	/// </summary>
 	public bool DryRun { get; set; } = false;
 
@@ -157,27 +158,27 @@ public class BackupPlan
 	// --------------------------------------------------
 
 	/// <summary>
-	/// Number of attempts to perform post-write verification before giving up.
+	///     Number of attempts to perform post-write verification before giving up.
 	/// </summary>
 	public int VerificationRetryCount { get; set; } = 1;
 
 	/// <summary>
-	/// Delay in milliseconds between verification attempts.
+	///     Delay in milliseconds between verification attempts.
 	/// </summary>
 	public int VerificationRetryDelayMs { get; set; } = 250;
 
 	/// <summary>
-	/// If true, delete destination file when verification ultimately fails.
+	///     If true, delete destination file when verification ultimately fails.
 	/// </summary>
 	public bool VerificationDeleteOnFailure { get; set; } = false;
 
 	/// <summary>
-	/// Optional timeout in milliseconds for per-operation verification. 0 == no timeout.
+	///     Optional timeout in milliseconds for per-operation verification. 0 == no timeout.
 	/// </summary>
 	public int VerificationTimeoutMs { get; set; } = 0;
 
 	/// <summary>
-	/// Artificial delay in ms between items (for throttling).
+	///     Artificial delay in ms between items (for throttling).
 	/// </summary>
 	public int DelayMs { get; set; } = 0;
 }

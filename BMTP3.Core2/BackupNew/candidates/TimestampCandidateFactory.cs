@@ -1,9 +1,11 @@
 ﻿using BMTP3.Core2.BackupNew.exifreader.parsers;
 
 namespace BMTP3.Core2.BackupNew.candidates;
+
 public static class TimestampCandidateFactory
 {
 	private const long TicksPerSecond = TimeSpan.TicksPerSecond; // 10_000_000
+
 	public static TimeSpan? OffsetToTimeSpan(DateTime dt)
 	{
 		TimeSpan? offset = dt.Kind switch
@@ -14,25 +16,33 @@ public static class TimestampCandidateFactory
 		};
 		return offset;
 	}
+
 	public static TimeSpan? OffsetToTimeSpan(DateTimeOffset dto)
 	{
 		return dto.Offset;
 	}
+
 	public static long? TrimToNanoseconds(long? ticks)
 	{
-		if(!ticks.HasValue) return null;
+		if (!ticks.HasValue)
+		{
+			return null;
+		}
 
-		long nanosecondsFractions = (ticks.Value % TicksPerSecond) * 100;
+		long nanosecondsFractions = ticks.Value % TicksPerSecond * 100;
 		return nanosecondsFractions == 0 ? null : nanosecondsFractions;
 	}
+
 	public static long? TrimToNanoseconds(TimeOnly? time)
 	{
 		return TrimToNanoseconds(time?.Ticks);
 	}
+
 	public static long? TrimToNanoseconds(DateTime? dt)
 	{
 		return TrimToNanoseconds(dt?.Ticks);
 	}
+
 	public static long? TrimToNanoseconds(DateTimeOffset? dto)
 	{
 		return TrimToNanoseconds(dto?.Ticks);
@@ -50,16 +60,16 @@ public static class TimestampCandidateFactory
 
 		TimeOnly timeWithoutFractions = new(dt.Hour, dt.Minute, dt.Second);
 
-		return new(
-			sourceType: sourceType,
-			role: role,
+		return new TimestampCandidate(
+			sourceType,
+			role,
 			// DateTime has no original source strings
-			sources: TimestampSources.Empty,
-			date: DateOnly.FromDateTime(dt),
-			dateResolution: ChronoDateResolution.FullDate,
-			time: timeWithoutFractions,
-			subSeconds: nanosecondFractions,
-			offset: offset
+			TimestampSources.Empty,
+			DateOnly.FromDateTime(dt),
+			ChronoDateResolution.FullDate,
+			timeWithoutFractions,
+			nanosecondFractions,
+			offset
 		);
 	}
 
@@ -74,22 +84,22 @@ public static class TimestampCandidateFactory
 
 		TimeOnly time = new(dto.Hour, dto.Minute, dto.Second);
 
-		return new(
-			sourceType: sourceType,
-			role: role,
+		return new TimestampCandidate(
+			sourceType,
+			role,
 			// DateTimeOffset has no original source strings
-			sources: TimestampSources.Empty,
-			date: DateOnly.FromDateTime(dto.DateTime),
-			dateResolution: ChronoDateResolution.FullDate,
-			time: time,
-			subSeconds: nanosecondFractions,
-			offset: offset
+			TimestampSources.Empty,
+			DateOnly.FromDateTime(dto.DateTime),
+			ChronoDateResolution.FullDate,
+			time,
+			nanosecondFractions,
+			offset
 		);
 	}
 
 	/// <summary>
-	/// Creates a candidate from UTC date and time parts.
-	/// Automatically sets Offset to Zero and Resolution to FullDate.
+	///     Creates a candidate from UTC date and time parts.
+	///     Automatically sets Offset to Zero and Resolution to FullDate.
 	/// </summary>
 	public static TimestampCandidate FromUtcDateAndTime(
 		TimestampSourceType sourceType,
@@ -102,14 +112,14 @@ public static class TimestampCandidateFactory
 	{
 		long? nanosecondFractions = TrimToNanoseconds(time);
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: new TimestampSources { Date = rawDate, Time = rawTime },
-			date: date,
-			dateResolution: ChronoDateResolution.FullDate,
-			time: time,
-			subSeconds: null,
-			offset: TimeSpan.Zero
+			sourceType,
+			role,
+			new TimestampSources { Date = rawDate, Time = rawTime },
+			date,
+			ChronoDateResolution.FullDate,
+			time,
+			null,
+			TimeSpan.Zero
 		);
 	}
 
@@ -147,8 +157,10 @@ public static class TimestampCandidateFactory
 	}
 
 	/// <summary>
-	/// We expect a timestamp to be represented as a raw numeric value (e.g. from Exif or filesystem) along with metadata about how to interpret it (epoch and resolution).
-	/// And in UTC, so we can directly convert it to a DateTimeOffset and extract all the components for the candidate. We also keep the original raw timestamp string for reference.
+	///     We expect a timestamp to be represented as a raw numeric value (e.g. from Exif or filesystem) along with metadata
+	///     about how to interpret it (epoch and resolution).
+	///     And in UTC, so we can directly convert it to a DateTimeOffset and extract all the components for the candidate. We
+	///     also keep the original raw timestamp string for reference.
 	/// </summary>
 	/// <param name="sourceType"></param>
 	/// <param name="role"></param>
@@ -177,14 +189,14 @@ public static class TimestampCandidateFactory
 		TimeOnly time = new(dto.Hour, dto.Minute, dto.Second);
 
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: DateOnly.FromDateTime(dto.DateTime),
-			dateResolution: ChronoDateResolution.FullDate,
-			time: time,
-			subSeconds: nanosecondFractions,
-			offset: offset
+			sourceType,
+			role,
+			sources,
+			DateOnly.FromDateTime(dto.DateTime),
+			ChronoDateResolution.FullDate,
+			time,
+			nanosecondFractions,
+			offset
 		);
 	}
 
@@ -195,24 +207,25 @@ public static class TimestampCandidateFactory
 		DateTimeOffset dto
 	)
 	{
-		TimestampSources sources = new TimestampSources() { DateTimeOffset = rawDateTimeOffset };
-		if(sources.IsEmpty)
+		TimestampSources sources = new() { DateTimeOffset = rawDateTimeOffset };
+		if (sources.IsEmpty)
 		{
-			throw new ArgumentException("The rawDateTimeOffset cannot be null or whitespace.", nameof(rawDateTimeOffset));
+			throw new ArgumentException("The rawDateTimeOffset cannot be null or whitespace.",
+				nameof(rawDateTimeOffset));
 		}
 
 		TimeSpan? offset = OffsetToTimeSpan(dto);
 		long? nanosecondFractions = TrimToNanoseconds(dto);
 		TimeOnly time = new(dto.Hour, dto.Minute, dto.Second);
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: new TimestampSources { DateTimeOffset = rawDateTimeOffset },
-			date: DateOnly.FromDateTime(dto.DateTime),
-			dateResolution: ChronoDateResolution.FullDate,
-			time: time,
-			subSeconds: nanosecondFractions,
-			offset: offset
+			sourceType,
+			role,
+			new TimestampSources { DateTimeOffset = rawDateTimeOffset },
+			DateOnly.FromDateTime(dto.DateTime),
+			ChronoDateResolution.FullDate,
+			time,
+			nanosecondFractions,
+			offset
 		);
 	}
 
@@ -223,8 +236,8 @@ public static class TimestampCandidateFactory
 		DateTime dt
 	)
 	{
-		TimestampSources sources = new TimestampSources() { DateTime = rawDateTime };
-		if(sources.IsEmpty)
+		TimestampSources sources = new() { DateTime = rawDateTime };
+		if (sources.IsEmpty)
 		{
 			throw new ArgumentException("The rawDateTime cannot be null or whitespace.", nameof(rawDateTime));
 		}
@@ -235,14 +248,14 @@ public static class TimestampCandidateFactory
 		DateOnly dateOnly = DateOnly.FromDateTime(dt);
 
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: dateOnly,
-			dateResolution: ChronoDateResolution.FullDate,
-			time: timeWithoutFractions,
-			subSeconds: nanosecondFractions,
-			offset: offset
+			sourceType,
+			role,
+			sources,
+			dateOnly,
+			ChronoDateResolution.FullDate,
+			timeWithoutFractions,
+			nanosecondFractions,
+			offset
 		);
 	}
 
@@ -254,20 +267,21 @@ public static class TimestampCandidateFactory
 		ChronoDateResolution dateResolution
 	)
 	{
-		TimestampSources sources = new TimestampSources() { Date = rawDate };
-		if(sources.IsEmpty)
+		TimestampSources sources = new() { Date = rawDate };
+		if (sources.IsEmpty)
 		{
 			throw new ArgumentException("The rawDate cannot be null or whitespace.", nameof(rawDate));
 		}
+
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: date,
-			dateResolution: dateResolution,
-			time: null,
-			subSeconds: null,
-			offset: null
+			sourceType,
+			role,
+			sources,
+			date,
+			dateResolution,
+			null,
+			null,
+			null
 		);
 	}
 
@@ -278,8 +292,8 @@ public static class TimestampCandidateFactory
 		TimeOnly time
 	)
 	{
-		TimestampSources sources = new TimestampSources() { Time = rawTime };
-		if(sources.IsEmpty)
+		TimestampSources sources = new() { Time = rawTime };
+		if (sources.IsEmpty)
 		{
 			throw new ArgumentException("The rawTime cannot be null or whitespace.", nameof(rawTime));
 		}
@@ -290,14 +304,14 @@ public static class TimestampCandidateFactory
 		time = new TimeOnly(time.Hour, time.Minute, time.Second);
 
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: null,
-			dateResolution: null,
-			time: time,
-			subSeconds: subSeconds,
-			offset: null
+			sourceType,
+			role,
+			sources,
+			null,
+			null,
+			time,
+			subSeconds,
+			null
 		);
 	}
 
@@ -308,20 +322,21 @@ public static class TimestampCandidateFactory
 		TimeSpan offset
 	)
 	{
-		TimestampSources sources = new TimestampSources() { Offset = rawOffset };
-		if(sources.IsEmpty)
+		TimestampSources sources = new() { Offset = rawOffset };
+		if (sources.IsEmpty)
 		{
 			throw new ArgumentException("The rawOffset cannot be null or whitespace.", nameof(rawOffset));
 		}
+
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: null,
-			dateResolution: null,
-			time: null,
-			subSeconds: null,
-			offset: offset
+			sourceType,
+			role,
+			sources,
+			null,
+			null,
+			null,
+			null,
+			offset
 		);
 	}
 
@@ -332,20 +347,21 @@ public static class TimestampCandidateFactory
 		long subSeconds
 	)
 	{
-		TimestampSources sources = new TimestampSources() { SubSeconds = rawSubSeconds };
-		if(sources.IsEmpty)
+		TimestampSources sources = new() { SubSeconds = rawSubSeconds };
+		if (sources.IsEmpty)
 		{
 			throw new ArgumentException("The rawSubSeconds cannot be null or whitespace.", nameof(rawSubSeconds));
 		}
+
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: null,
-			dateResolution: null,
-			time: null,
-			subSeconds: subSeconds,
-			offset: null
+			sourceType,
+			role,
+			sources,
+			null,
+			null,
+			null,
+			subSeconds,
+			null
 		);
 	}
 
@@ -364,53 +380,64 @@ public static class TimestampCandidateFactory
 		sources = TimestampSources.Normalize(sources);
 
 		// date and dateResolution must come together
-		if(date.HasValue != dateResolution.HasValue)
+		if (date.HasValue != dateResolution.HasValue)
 		{
 			throw new ArgumentException("date and dateResolution must either both be provided or both null.");
 		}
 
 		// Predicates for available source strings (consider DateTime/DateTimeOffset as containing both date and time)
 		bool hasDateSource = !string.IsNullOrWhiteSpace(sources.Date) ||
-							 !string.IsNullOrWhiteSpace(sources.DateTime) ||
-							 !string.IsNullOrWhiteSpace(sources.DateTimeOffset);
+		                     !string.IsNullOrWhiteSpace(sources.DateTime) ||
+		                     !string.IsNullOrWhiteSpace(sources.DateTimeOffset);
 
 		bool hasTimeSource = !string.IsNullOrWhiteSpace(sources.Time) ||
-							 !string.IsNullOrWhiteSpace(sources.DateTime) ||
-							 !string.IsNullOrWhiteSpace(sources.DateTimeOffset);
+		                     !string.IsNullOrWhiteSpace(sources.DateTime) ||
+		                     !string.IsNullOrWhiteSpace(sources.DateTimeOffset);
 
 		bool hasSubSecondsSource = !string.IsNullOrWhiteSpace(sources.SubSeconds) ||
-								   hasTimeSource;
+		                           hasTimeSource;
 
 		bool hasOffsetSource = !string.IsNullOrWhiteSpace(sources.Offset) ||
-							   !string.IsNullOrWhiteSpace(sources.DateTimeOffset);
+		                       !string.IsNullOrWhiteSpace(sources.DateTimeOffset);
 
 		// Validate presence of corresponding source strings when values are provided
-		if(date.HasValue && !hasDateSource)
+		if (date.HasValue && !hasDateSource)
 		{
-			throw new ArgumentException("When 'date' is provided, one of sources.Date, sources.DateTime or sources.DateTimeOffset must be non-empty.", nameof(sources));
+			throw new ArgumentException(
+				"When 'date' is provided, one of sources.Date, sources.DateTime or sources.DateTimeOffset must be non-empty.",
+				nameof(sources));
 		}
-		if(time.HasValue && !hasTimeSource)
+
+		if (time.HasValue && !hasTimeSource)
 		{
-			throw new ArgumentException("When 'time' is provided, one of sources.Time, sources.DateTime or sources.DateTimeOffset must be non-empty.", nameof(sources));
+			throw new ArgumentException(
+				"When 'time' is provided, one of sources.Time, sources.DateTime or sources.DateTimeOffset must be non-empty.",
+				nameof(sources));
 		}
-		if(subSeconds.HasValue && !hasSubSecondsSource)
+
+		if (subSeconds.HasValue && !hasSubSecondsSource)
 		{
-			throw new ArgumentException("When 'subSeconds' is provided, one of sources.SubSeconds, sources.Time, sources.DateTime or sources.DateTimeOffset must be non-empty.", nameof(sources));
+			throw new ArgumentException(
+				"When 'subSeconds' is provided, one of sources.SubSeconds, sources.Time, sources.DateTime or sources.DateTimeOffset must be non-empty.",
+				nameof(sources));
 		}
-		if(offset.HasValue && !hasOffsetSource)
+
+		if (offset.HasValue && !hasOffsetSource)
 		{
-			throw new ArgumentException("When 'offset' is provided, one of sources.Offset or sources.DateTimeOffset must be non-empty.", nameof(sources));
+			throw new ArgumentException(
+				"When 'offset' is provided, one of sources.Offset or sources.DateTimeOffset must be non-empty.",
+				nameof(sources));
 		}
 
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: date,
-			dateResolution: dateResolution,
-			time: time,
-			subSeconds: subSeconds,
-			offset: offset
+			sourceType,
+			role,
+			sources,
+			date,
+			dateResolution,
+			time,
+			subSeconds,
+			offset
 		);
 	}
 
@@ -436,19 +463,23 @@ public static class TimestampCandidateFactory
 			Offset = rawOffset,
 			SubSeconds = rawSubSec
 		};
-		if(sources.IsEmpty)
+		if (sources.IsEmpty)
 		{
-			throw new ArgumentException("At least one of rawDate, rawTime, rawOffset or rawSubSec must be non-empty.", nameof(rawDate));
+			throw new ArgumentException("At least one of rawDate, rawTime, rawOffset or rawSubSec must be non-empty.",
+				nameof(rawDate));
 		}
-		if(time.HasValue && string.IsNullOrWhiteSpace(sources.Time))
+
+		if (time.HasValue && string.IsNullOrWhiteSpace(sources.Time))
 		{
 			throw new ArgumentException("When 'time' is provided, 'rawTime' must be non-empty.", nameof(rawTime));
 		}
-		if(offset.HasValue && string.IsNullOrWhiteSpace(sources.Offset))
+
+		if (offset.HasValue && string.IsNullOrWhiteSpace(sources.Offset))
 		{
 			throw new ArgumentException("When 'offset' is provided, 'rawOffset' must be non-empty.", nameof(rawOffset));
 		}
-		if(subSec.HasValue && string.IsNullOrWhiteSpace(sources.SubSeconds))
+
+		if (subSec.HasValue && string.IsNullOrWhiteSpace(sources.SubSeconds))
 		{
 			throw new ArgumentException("When 'subSec' is provided, 'rawSubSec' must be non-empty.", nameof(rawSubSec));
 		}
@@ -461,14 +492,14 @@ public static class TimestampCandidateFactory
 		long? finalNanosecondsFractions = subSec ?? nanosecondFractionsFromTime;
 
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: date,
-			dateResolution: dateResolution,
-			time: timeWithoutFractions,
-			subSeconds: finalNanosecondsFractions,
-			offset: offset
+			sourceType,
+			role,
+			sources,
+			date,
+			dateResolution,
+			timeWithoutFractions,
+			finalNanosecondsFractions,
+			offset
 		);
 	}
 
@@ -489,35 +520,38 @@ public static class TimestampCandidateFactory
 			Offset = rawOffset,
 			SubSeconds = rawSubSec
 		};
-		if(sources.IsEmpty)
+		if (sources.IsEmpty)
 		{
-			throw new ArgumentException("At least one of rawDateTime, rawOffset or rawSubSec must be non-empty.", nameof(rawDateTime));
+			throw new ArgumentException("At least one of rawDateTime, rawOffset or rawSubSec must be non-empty.",
+				nameof(rawDateTime));
 		}
-		if(offset.HasValue && string.IsNullOrWhiteSpace(sources.Offset))
+
+		if (offset.HasValue && string.IsNullOrWhiteSpace(sources.Offset))
 		{
 			throw new ArgumentException("When 'offset' is provided, 'rawOffset' must be non-empty.", nameof(rawOffset));
 		}
-		if(subSec.HasValue && string.IsNullOrWhiteSpace(sources.SubSeconds))
+
+		if (subSec.HasValue && string.IsNullOrWhiteSpace(sources.SubSeconds))
 		{
 			throw new ArgumentException("When 'subSec' is provided, 'rawSubSec' must be non-empty.", nameof(rawSubSec));
 		}
 
 		DateOnly dateOnly = DateOnly.FromDateTime(dt);
-		TimeOnly timeWithoutFractions = new TimeOnly(dt.Hour, dt.Minute, dt.Second);
+		TimeOnly timeWithoutFractions = new(dt.Hour, dt.Minute, dt.Second);
 		// Get sub-second fractions from the dt
 		long? nanosecondFractionsFromDT = TrimToNanoseconds(dt);
 		// If subSec is provided, it takes precedence over the value from dt
 		long? finalNanosecondFractions = subSec ?? nanosecondFractionsFromDT;
 
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: dateOnly,
-			dateResolution: ChronoDateResolution.FullDate,
-			time: timeWithoutFractions,
-			subSeconds: finalNanosecondFractions,
-			offset: offset
+			sourceType,
+			role,
+			sources,
+			dateOnly,
+			ChronoDateResolution.FullDate,
+			timeWithoutFractions,
+			finalNanosecondFractions,
+			offset
 		);
 	}
 
@@ -536,11 +570,13 @@ public static class TimestampCandidateFactory
 			DateTimeOffset = rawDateTimeOffset,
 			SubSeconds = rawSubSec
 		};
-		if(sources.IsEmpty)
+		if (sources.IsEmpty)
 		{
-			throw new ArgumentException("At least one of rawDateTimeOffset or rawSubSec must be non-empty.", nameof(rawDateTimeOffset));
+			throw new ArgumentException("At least one of rawDateTimeOffset or rawSubSec must be non-empty.",
+				nameof(rawDateTimeOffset));
 		}
-		if(subSec.HasValue && string.IsNullOrWhiteSpace(sources.SubSeconds))
+
+		if (subSec.HasValue && string.IsNullOrWhiteSpace(sources.SubSeconds))
 		{
 			throw new ArgumentException("When 'subSec' is provided, 'rawSubSec' must be non-empty.", nameof(rawSubSec));
 		}
@@ -554,14 +590,14 @@ public static class TimestampCandidateFactory
 		TimeOnly time = new(dateTimeOffset.Hour, dateTimeOffset.Minute, dateTimeOffset.Second);
 
 		return new TimestampCandidate(
-			sourceType: sourceType,
-			role: role,
-			sources: sources,
-			date: DateOnly.FromDateTime(dateTimeOffset.DateTime),
-			dateResolution: ChronoDateResolution.FullDate,
-			time: time,
-			subSeconds: finalNanosecondFractions,
-			offset: offset
+			sourceType,
+			role,
+			sources,
+			DateOnly.FromDateTime(dateTimeOffset.DateTime),
+			ChronoDateResolution.FullDate,
+			time,
+			finalNanosecondFractions,
+			offset
 		);
 	}
 }

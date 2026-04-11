@@ -1,14 +1,16 @@
 ﻿using BMTP3.Core2.BackupNew.candidates;
-using BMTP3.Core2.BackupNew.exifreader.Extensions;
 using MetadataExtractor.Formats.Exif;
 
 namespace BMTP3.Consoles.exifreader;
+
 public class ExifReader2
 {
 	public IReadOnlyList<TimestampCandidate> Read(ExifDirectoryBase? exif)
 	{
-		if(exif is null)
+		if (exif is null)
+		{
 			return Array.Empty<TimestampCandidate>();
+		}
 
 		List<TimestampCandidate> result = new();
 
@@ -41,6 +43,7 @@ public class ExifReader2
 
 		return result;
 	}
+
 	private static void AddExifDateTime(
 		List<TimestampCandidate> list,
 		ExifDirectoryBase exif,
@@ -51,45 +54,47 @@ public class ExifReader2
 	{
 		string? raw = exif.SafeGetString(tag);
 
-		if(string.IsNullOrWhiteSpace(raw))
+		if (string.IsNullOrWhiteSpace(raw))
+		{
 			return;
+		}
 
 		// 1) Preserve raw exactly as delivered
-		TimestampSources sources = new TimestampSources
+		TimestampSources sources = new()
 		{
 			DateTime = raw.Trim()
 		};
 
 		// 2) Parse according to Exif rules
-		if(!ExifDateTimeParser.TryParse(
-			raw,
-			out DateOnly? date,
-			out TimeOnly? time))
+		if (!ExifDateTimeParser.TryParse(
+			    raw,
+			    out DateOnly? date,
+			    out TimeOnly? time))
 		{
 			// raw is kept, but parsing failed → still a candidate
 			list.Add(new TimestampCandidate(
-				sourceType: TimestampSourceType.Exif,
-				role: role,
-				sources: sources,
-				date: null,
-				dateResolution: null,
-				time: null,
-				subSeconds: null,
-				offset: null
+				TimestampSourceType.Exif,
+				role,
+				sources,
+				null,
+				null,
+				null,
+				null,
+				null
 			));
 			return;
 		}
 
 		// 3) Successful parse
 		list.Add(new TimestampCandidate(
-			sourceType: TimestampSourceType.Exif,
-			role: role,
-			sources: sources,
-			date: date,
-			dateResolution: ChronoDateResolution.FullDate,
-			time: time,
-			subSeconds: null,
-			offset: null
+			TimestampSourceType.Exif,
+			role,
+			sources,
+			date,
+			ChronoDateResolution.FullDate,
+			time,
+			null,
+			null
 		));
 	}
 }

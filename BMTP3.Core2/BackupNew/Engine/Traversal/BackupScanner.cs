@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api;
+using System.Runtime.CompilerServices;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Content;
@@ -6,40 +6,33 @@ using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
 using BMTP3.Core2.BackupNew.Utilities;
 using MediaDevices;
-using System;
 using Microsoft.Extensions.Logging;
-using System.Linq;
-using System.IO;
-using System.Threading;
 
 namespace BMTP3.Core2.BackupNew.Engine.Traversal;
 
 /// <summary>
-/// Standard implementation of <see cref="IBackupScanner"/>.
-/// Supports both FileSystem and MTP device sources.
-///
-/// ## MTP device lifecycle
-///
-/// For MTP sources, device lifecycle (Connect/Disconnect) is controlled by
-/// <see cref="BackupEngine"/> via the <see cref="IMtpCapableScanner"/> interface:
-///
-/// 1. <see cref="BackupEngine"/> calls <see cref="OpenSession"/> to connect the device
-///    and obtain an <see cref="IMtpDeviceSession"/>.
-/// 2. <see cref="ScanAsync"/> uses that already-connected device instance (set by
-///    <see cref="OpenSession"/>). A fresh <see cref="ITraversalScanner{MediaFileInfo}"/>
-///    is created via <see cref="IMediaDeviceScannerFactory"/> bound to that device, so
-///    the scanner and BackupScanner always share the exact same object.
-/// 3. <see cref="BackupEngine"/> disposes the session only after
-///    <c>ContentBufferingPipelineStage</c> completes — guaranteeing the device stays
-///    connected for the full duration that <see cref="MediaFileContent.OpenRead"/> may
-///    be called.
+///     Standard implementation of <see cref="IBackupScanner" />.
+///     Supports both FileSystem and MTP device sources.
+///     ## MTP device lifecycle
+///     For MTP sources, device lifecycle (Connect/Disconnect) is controlled by
+///     <see cref="BackupEngine" /> via the <see cref="IMtpCapableScanner" /> interface:
+///     1. <see cref="BackupEngine" /> calls <see cref="OpenSession" /> to connect the device
+///     and obtain an <see cref="IMtpDeviceSession" />.
+///     2. <see cref="ScanAsync" /> uses that already-connected device instance (set by
+///     <see cref="OpenSession" />). A fresh <see cref="ITraversalScanner{MediaFileInfo}" />
+///     is created via <see cref="IMediaDeviceScannerFactory" /> bound to that device, so
+///     the scanner and BackupScanner always share the exact same object.
+///     3. <see cref="BackupEngine" /> disposes the session only after
+///     <c>ContentBufferingPipelineStage</c> completes — guaranteeing the device stays
+///     connected for the full duration that <see cref="MediaFileContent.OpenRead" /> may
+///     be called.
 /// </summary>
 public class BackupScanner : IBackupScanner, IMtpCapableScanner
 {
 	private readonly ITraversalScanner<FileInfo> _fileSystemScanner;
-	private readonly IMediaDeviceScannerFactory _mediaDeviceScannerFactory;
 	private readonly IMtpGatekeeper _gatekeeper;
 	private readonly ILogger<BackupScanner>? _logger;
+	private readonly IMediaDeviceScannerFactory _mediaDeviceScannerFactory;
 
 	// Set by OpenSession() before ScanAsync is called for MTP plans.
 	// Thread-safety: set once before the scan starts, read during scan.
@@ -52,27 +45,32 @@ public class BackupScanner : IBackupScanner, IMtpCapableScanner
 		ILogger<BackupScanner>? logger = null)
 	{
 		_fileSystemScanner = fileSystemScanner ?? throw new ArgumentNullException(nameof(fileSystemScanner));
-		_mediaDeviceScannerFactory = mediaDeviceScannerFactory ?? throw new ArgumentNullException(nameof(mediaDeviceScannerFactory));
+		_mediaDeviceScannerFactory = mediaDeviceScannerFactory ??
+		                             throw new ArgumentNullException(nameof(mediaDeviceScannerFactory));
 		_gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
 		_logger = logger;
 	}
 
 	/// <inheritdoc />
 	/// <remarks>
-	/// For MTP plans, <see cref="OpenSession"/> must be called before <see cref="ScanAsync"/>
-	/// so that the device is already connected when scanning begins.
+	///     For MTP plans, <see cref="OpenSession" /> must be called before <see cref="ScanAsync" />
+	///     so that the device is already connected when scanning begins.
 	/// </remarks>
-	public async IAsyncEnumerable<IBackupItem> ScanAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+	public async IAsyncEnumerable<IBackupItem> ScanAsync(BackupPlan plan, [EnumeratorCancellation] CancellationToken ct)
 	{
-		if(plan.SourceType == SourceType.FileSystem)
+		if (plan.SourceType == SourceType.FileSystem)
 		{
-			await foreach(IBackupItem item in ScanFileSystemAsync(plan, ct))
+			await foreach (IBackupItem item in ScanFileSystemAsync(plan, ct))
+			{
 				yield return item;
+			}
 		}
-		else if(plan.SourceType == SourceType.MediaDevice)
+		else if (plan.SourceType == SourceType.MediaDevice)
 		{
-			await foreach(IBackupItem item in ScanMediaDeviceAsync(plan, ct))
+			await foreach (IBackupItem item in ScanMediaDeviceAsync(plan, ct))
+			{
 				yield return item;
+			}
 		}
 		else
 		{
@@ -89,7 +87,7 @@ public class BackupScanner : IBackupScanner, IMtpCapableScanner
 		MediaDevice? device = devices.FirstOrDefault(d =>
 			d.FriendlyName.Equals(plan.SourceId, StringComparison.OrdinalIgnoreCase));
 
-		if(device == null)
+		if (device == null)
 		{
 			throw new DirectoryNotFoundException(
 				$"Media device '{plan.SourceId}' not found. " +
@@ -97,7 +95,8 @@ public class BackupScanner : IBackupScanner, IMtpCapableScanner
 		}
 
 		device.Connect();
-		_logger?.LogInformation("Connected to MTP device '{DeviceName}' (Id={DeviceId}).", device.FriendlyName, device.DeviceId);
+		_logger?.LogInformation("Connected to MTP device '{DeviceName}' (Id={DeviceId}).", device.FriendlyName,
+			device.DeviceId);
 
 		// Store the connected device so ScanAsync can use it.
 		_activeDevice = device;
@@ -105,18 +104,27 @@ public class BackupScanner : IBackupScanner, IMtpCapableScanner
 		return new MtpDeviceSession(device, _logger);
 	}
 
-	private async IAsyncEnumerable<IBackupItem> ScanFileSystemAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+	private async IAsyncEnumerable<IBackupItem> ScanFileSystemAsync(BackupPlan plan,
+		[EnumeratorCancellation] CancellationToken ct)
 	{
 		string rootPath = plan.SourcePath;
-		if(!Path.IsPathRooted(rootPath) && !string.IsNullOrEmpty(plan.SourceId))
-			rootPath = Path.Combine(plan.SourceId, rootPath);
-
-		await foreach(FileInfo fileInfo in _fileSystemScanner.ScanAsync(rootPath, plan.Recursive, null, ct))
+		if (!Path.IsPathRooted(rootPath) && !string.IsNullOrEmpty(plan.SourceId))
 		{
-			if(!IsIncluded(fileInfo.FullName, plan)) continue;
+			rootPath = Path.Combine(plan.SourceId, rootPath);
+		}
+
+		await foreach (FileInfo fileInfo in _fileSystemScanner.ScanAsync(rootPath, plan.Recursive, null, ct))
+		{
+			if (!IsIncluded(fileInfo.FullName, plan))
+			{
+				continue;
+			}
 
 			string relativePath = Path.GetRelativePath(rootPath, fileInfo.DirectoryName ?? rootPath);
-			if(relativePath == ".") relativePath = "";
+			if (relativePath == ".")
+			{
+				relativePath = "";
+			}
 
 			FileContent content = new(fileInfo);
 			BackupItem item = BackupItem.Create(content, fileInfo.Name, relativePath);
@@ -139,21 +147,25 @@ public class BackupScanner : IBackupScanner, IMtpCapableScanner
 		}
 	}
 
-	private async IAsyncEnumerable<IBackupItem> ScanMediaDeviceAsync(BackupPlan plan, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
+	private async IAsyncEnumerable<IBackupItem> ScanMediaDeviceAsync(BackupPlan plan,
+		[EnumeratorCancellation] CancellationToken ct)
 	{
 		MediaDevice device = _activeDevice
-			?? throw new InvalidOperationException(
-				"OpenSession() must be called before ScanAsync() for MTP sources. " +
-				"BackupEngine is responsible for calling OpenSession and managing the device lifetime.");
+		                     ?? throw new InvalidOperationException(
+			                     "OpenSession() must be called before ScanAsync() for MTP sources. " +
+			                     "BackupEngine is responsible for calling OpenSession and managing the device lifetime.");
 
 		// Create a scanner bound to THIS connected device instance.
 		ITraversalScanner<MediaFileInfo> scanner = _mediaDeviceScannerFactory.Create(device);
 
 		string rootPath = plan.SourcePath;
 
-		await foreach(MediaFileInfo mediaFileInfo in scanner.ScanAsync(rootPath, plan.Recursive, null, ct))
+		await foreach (MediaFileInfo mediaFileInfo in scanner.ScanAsync(rootPath, plan.Recursive, null, ct))
 		{
-			if(!IsIncluded(mediaFileInfo.FullName, plan)) continue;
+			if (!IsIncluded(mediaFileInfo.FullName, plan))
+			{
+				continue;
+			}
 
 			string dirName = Path.GetDirectoryName(mediaFileInfo.FullName) ?? rootPath;
 			string relativePath = GetRelativePath(rootPath, dirName);
@@ -177,8 +189,10 @@ public class BackupScanner : IBackupScanner, IMtpCapableScanner
 			item.Metadata.Set(MetadataKey.DeviceFileUrl, mtpUrl);
 			item.Metadata.Set(MetadataKey.DeviceUniqueId, device.DeviceId);
 
-			if(mediaFileInfo.DateAuthored.HasValue)
+			if (mediaFileInfo.DateAuthored.HasValue)
+			{
 				item.Metadata.Set(MetadataKey.RawMtpAuthoredDate, mediaFileInfo.DateAuthored.Value);
+			}
 
 			item.Metadata.AuthoredDateTime = mediaFileInfo.DateAuthored;
 			item.Metadata.CreatedDateTime = mediaFileInfo.CreationTime;
@@ -188,13 +202,23 @@ public class BackupScanner : IBackupScanner, IMtpCapableScanner
 		}
 	}
 
-	private static bool IsIncluded(string fullPath, BackupPlan plan) =>
-		GlobMatcher.IsIncluded(fullPath, plan.IncludePatterns, plan.ExcludePatterns);
+	private static bool IsIncluded(string fullPath, BackupPlan plan)
+	{
+		return GlobMatcher.IsIncluded(fullPath, plan.IncludePatterns, plan.ExcludePatterns);
+	}
 
 	private string GetRelativePath(string root, string? fullDirectory)
 	{
-		if(string.IsNullOrEmpty(fullDirectory)) return "";
-		if(!fullDirectory.StartsWith(root, StringComparison.OrdinalIgnoreCase)) return fullDirectory;
+		if (string.IsNullOrEmpty(fullDirectory))
+		{
+			return "";
+		}
+
+		if (!fullDirectory.StartsWith(root, StringComparison.OrdinalIgnoreCase))
+		{
+			return fullDirectory;
+		}
+
 		return fullDirectory.Substring(root.Length).TrimStart('\\', '/');
 	}
 }

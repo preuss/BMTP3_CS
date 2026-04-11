@@ -12,7 +12,7 @@ public class GlobalOptionsModel : BaseOptionsModel
 	*/
 	public static RepeatableFlagOption VerboseOption { get; } = new("--verbose", "-v")
 	{
-		Description = "Enable verbose output. Repeat for more detail.",
+		Description = "Enable verbose output. Repeat for more detail."
 	};
 
 	public int Verbose { get; set; } = 0;

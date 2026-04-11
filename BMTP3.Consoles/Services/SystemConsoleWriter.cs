@@ -1,4 +1,5 @@
 ﻿namespace BMTP3.Consoles.Services;
+
 internal class SystemConsoleWriter : IConsoleWriter
 {
 	public void WriteLine(string? text = null)

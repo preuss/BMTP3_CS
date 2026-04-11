@@ -6,7 +6,7 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 public interface IItemHasher
 {
 	/// <summary>
-	/// Computes the requested hashes for the given item.
+	///     Computes the requested hashes for the given item.
 	/// </summary>
 	/// <param name="item">The item to hash (must have openable content).</param>
 	/// <param name="hashTypes">List of hash algorithms to compute.</param>

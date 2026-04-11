@@ -7,8 +7,8 @@ namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
 public class ItemHasher : IItemHasher
 {
-	private readonly ILogger<ItemHasher> _logger;
 	private readonly IHashGenerator _hashGenerator;
+	private readonly ILogger<ItemHasher> _logger;
 
 	public ItemHasher(ILogger<ItemHasher> logger, IHashGenerator hashGenerator)
 	{
@@ -25,23 +25,30 @@ public class ItemHasher : IItemHasher
 		ArgumentNullException.ThrowIfNull(item);
 		ArgumentNullException.ThrowIfNull(item.Content);
 
-		var requested = (hashTypes ?? Enumerable.Empty<HashType>()).Distinct().ToList();
-		if(requested.Count == 0)
+		List<HashType> requested = (hashTypes ?? Enumerable.Empty<HashType>()).Distinct().ToList();
+		if (requested.Count == 0)
+		{
 			requested.Add(HashType.SHA2_256); // Default to SHA2_256 if none specified
+		}
 
-		_logger.LogTrace("Computing hashes for item {itemId} from {itemPath} with types: {hashTypes}", item.Id, item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown", string.Join(", ", requested));
+		_logger.LogTrace("Computing hashes for item {itemId} from {itemPath} with types: {hashTypes}", item.Id,
+			item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown", string.Join(", ", requested));
 
 		try
 		{
-			await using var stream = await item.Content.OpenReadStreamAsync(ct);
+			await using Stream stream = await item.Content.OpenReadStreamAsync(ct);
 			// Pass progress to the generator
-			var hashes = (await _hashGenerator.ComputeHashesAsync(stream, requested, progress, ct)).ToDictionary(x => x.Key, x => x.Value);
+			Dictionary<HashType, string> hashes =
+				(await _hashGenerator.ComputeHashesAsync(stream, requested, progress, ct)).ToDictionary(x => x.Key,
+					x => x.Value);
 
 			_logger.LogDebug("Hashes computed for item {itemId}", item.Id);
 			return hashes;
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
-			_logger.LogError(ex, "Failed to compute hashes for item {itemId} from {itemPath}", item.Id, item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown");
+			_logger.LogError(ex, "Failed to compute hashes for item {itemId} from {itemPath}", item.Id,
+				item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "unknown");
 			throw;
 		}
 	}

@@ -4,15 +4,41 @@ using MetadataExtractor;
 using MetadataExtractor.Formats.Exif;
 using MetadataExtractor.Formats.QuickTime;
 using Microsoft.Extensions.Logging;
+using Directory = MetadataExtractor.Directory;
 
 namespace BMTP3.Core2.BackupNew.Engine.Strategies;
 
 /// <summary>
-/// Robust implementation of IMetadataReader using MetadataExtractor.
-/// Delegates timestamp selection to an injected <see cref="ITimestampWaterfall"/>.
+///     Robust implementation of IMetadataReader using MetadataExtractor.
+///     Delegates timestamp selection to an injected <see cref="ITimestampWaterfall" />.
 /// </summary>
 public class MetadataReader : IMetadataReader
 {
+	private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
+	{
+		// Common raster image formats
+		".jpg", ".jpeg", ".jpe", ".jfif", ".jp2", ".jpx",
+
+		".png", ".gif", ".bmp", ".webp", ".svg",
+
+		// HEIF / HEIC
+		".heic", ".heif",
+
+		// TIFF
+		".tiff", ".tif",
+
+		// Camera RAW formats (common manufacturers)
+		".cr2", ".cr3", ".nef", ".nrw", ".arw", ".orf", ".raf", ".rw2", ".dng", ".pef", ".sr2", ".srw",
+
+		// Photoshop / other image containers
+		".psd",
+
+		// Video containers
+		".mp4", ".m4v", ".mov", ".avi", ".mkv", ".webm", ".3gp", ".3g2", ".wmv", ".mts", ".m2ts"
+	};
+
+	// When true, restrict extraction attempts to the extensions listed in _supportedExtensions.
+	private static readonly bool _restrictToSupportedExtensions = true;
 	private readonly ILogger<MetadataReader> _logger;
 	private readonly ITimestampWaterfall _timestampWaterfall;
 
@@ -28,7 +54,7 @@ public class MetadataReader : IMetadataReader
 		ArgumentNullException.ThrowIfNull(item.Content);
 
 		// 1. Ensure basic file info is present
-		if(!item.Metadata.Has(MetadataKey.Length))
+		if(item.Metadata.Has(MetadataKey.Length) == false)
 		{
 			item.Metadata.Set(MetadataKey.Length, item.Content.Length);
 		}
@@ -47,36 +73,54 @@ public class MetadataReader : IMetadataReader
 		_timestampWaterfall.Apply(item);
 	}
 
-	private static readonly HashSet<string> _supportedExtensions = new(StringComparer.OrdinalIgnoreCase)
-	{
-		".jpg", ".jpeg", ".tiff", ".tif", ".png", ".gif", ".bmp", ".webp", ".heic", ".heif", ".mp4", ".mov", ".avi", ".mkv"
-	};
-	private static readonly bool _usedOnlySupportedExtensions = false;
 	/// <summary>
-	/// Quick guard: skip heavy parsing for unsupported extensions to avoid noisy exceptions.
+	///     Check whether the given extension is one of the supported extensions.
+	///     Accepts null/empty and returns false for those.
 	/// </summary>
-	/// <param name="ext"></param>
-	/// <returns></returns>
-	private static bool ContinueExtractionGuard(string ext)
+	private static bool IsSupportedExtension(string? ext)
 	{
-		if(!_usedOnlySupportedExtensions)
-		{
-			return true;
-		}
-		if(string.IsNullOrEmpty(ext))
+		if(string.IsNullOrWhiteSpace(ext))
 		{
 			return false;
 		}
+
 		return _supportedExtensions.Contains(ext);
 	}
+
+	/// <summary>
+	///     Decide whether we should attempt internal metadata extraction for the given extension.
+	///     Returns true when extraction is allowed.
+	/// </summary>
+	private static bool TryExtract(string? ext)
+	{
+		// If not restricting, allow extraction for all files.
+		if(_restrictToSupportedExtensions == false)
+		{
+			return true;
+		}
+
+		// Otherwise only allow if extension is in the whitelist.
+		return IsSupportedExtension(ext);
+	}
+
 	private async Task ExtractInternalMetadataAsync(IBackupItem item, string filePath, CancellationToken ct)
 	{
 		try
 		{
-
-			if(!ContinueExtractionGuard(Path.GetExtension(filePath)))
+			// Prefer the original source file extension (if present) because staging often renames files to .bin/.tmp
+			string? sourcePath = item.Metadata.Get<string>(MetadataKey.SourceFullPath);
+			string extToCheck;
+			if(string.IsNullOrEmpty(sourcePath) == false)
 			{
-				string? ext = Path.GetExtension(filePath);
+				extToCheck = Path.GetExtension(sourcePath);
+			} else
+			{
+				extToCheck = Path.GetExtension(filePath);
+			}
+
+			if(TryExtract(extToCheck) == false)
+			{
+				string ext = extToCheck;
 				_logger.LogDebug("Skipping internal metadata extraction for unsupported extension '{Ext}' (Item {ItemId}).", ext, item.Id);
 				return;
 			}
@@ -84,38 +128,49 @@ public class MetadataReader : IMetadataReader
 			// Run on thread pool to avoid blocking the pipeline with heavy parsing
 			await Task.Run(() =>
 			{
-				if(!File.Exists(filePath)) return;
+				if(File.Exists(filePath) == false)
+				{
+					return;
+				}
 
 				try
 				{
-					var directories = ImageMetadataReader.ReadMetadata(filePath);
-					var subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
-					var ifd0Directory = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
-					var quickTimeDirectory = directories.OfType<QuickTimeMovieHeaderDirectory>().FirstOrDefault();
+					IReadOnlyList<Directory> directories = ImageMetadataReader.ReadMetadata(filePath);
+					ExifSubIfdDirectory? subIfdDirectory = directories.OfType<ExifSubIfdDirectory>().FirstOrDefault();
+					ExifIfd0Directory? ifd0Directory = directories.OfType<ExifIfd0Directory>().FirstOrDefault();
+					QuickTimeMovieHeaderDirectory? quickTimeDirectory = directories.OfType<QuickTimeMovieHeaderDirectory>().FirstOrDefault();
 
 					DateTime? exifDate = null;
 
 					// A. Try EXIF SubIFD (Most precise for photos)
 					if(subIfdDirectory != null)
 					{
-						if(subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out DateTime dt))
+						DateTime dt;
+						if(subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeOriginal, out dt))
+						{
 							exifDate = dt;
-						else if(subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeDigitized, out dt))
+						} else if(subIfdDirectory.TryGetDateTime(ExifDirectoryBase.TagDateTimeDigitized, out dt))
+						{
 							exifDate = dt;
+						}
 					}
 
 					// B. Try EXIF IFD0 (Fallback for photos)
 					if(exifDate == null && ifd0Directory != null)
 					{
 						if(ifd0Directory.TryGetDateTime(ExifDirectoryBase.TagDateTime, out DateTime dt))
+						{
 							exifDate = dt;
+						}
 					}
 
 					// C. Try QuickTime (For MOV/MP4 from iPhones etc.)
 					if(exifDate == null && quickTimeDirectory != null)
 					{
 						if(quickTimeDirectory.TryGetDateTime(QuickTimeMovieHeaderDirectory.TagCreated, out DateTime dt))
+						{
 							exifDate = dt;
+						}
 					}
 
 					// Store if found
@@ -132,7 +187,7 @@ public class MetadataReader : IMetadataReader
 						model = ifd0Directory.GetString(ExifDirectoryBase.TagModel);
 					}
 
-					if(!string.IsNullOrWhiteSpace(model))
+					if(string.IsNullOrWhiteSpace(model) == false)
 					{
 						item.Metadata.Set(MetadataKey.Model, model.Trim());
 					}

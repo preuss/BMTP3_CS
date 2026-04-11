@@ -3,7 +3,7 @@
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
 /// <summary>
-/// A master reader that aggregates timestamp candidates from all supported metadata formats.
+///     A master reader that aggregates timestamp candidates from all supported metadata formats.
 /// </summary>
 public class CompositeTimestampReader : ITimestampReader
 {
@@ -27,16 +27,17 @@ public class CompositeTimestampReader : ITimestampReader
 	{
 		List<TimestampCandidate> allCandidates = new();
 
-		foreach(ITimestampReader reader in _readers)
+		foreach (ITimestampReader reader in _readers)
 		{
 			try
 			{
 				IReadOnlyList<TimestampCandidate> candidates = reader.Read(file);
-				if(candidates != null)
+				if (candidates != null)
 				{
 					allCandidates.AddRange(candidates);
 				}
-			} catch
+			}
+			catch
 			{
 				// Keep going if a reader throws unexpectedly
 			}

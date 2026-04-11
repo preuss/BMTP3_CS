@@ -6,8 +6,15 @@ public sealed class FileSystemTimestampReader : ITimestampReader
 {
 	public IReadOnlyList<TimestampCandidate> Read(FileInfo file)
 	{
-		if(file is null) throw new ArgumentNullException(nameof(file));
-		if(!file.Exists) return Array.Empty<TimestampCandidate>();
+		if (file is null)
+		{
+			throw new ArgumentNullException(nameof(file));
+		}
+
+		if (!file.Exists)
+		{
+			return Array.Empty<TimestampCandidate>();
+		}
 
 		List<TimestampCandidate> candidates = new();
 
@@ -17,7 +24,6 @@ public sealed class FileSystemTimestampReader : ITimestampReader
 				TimestampSourceType.FileSystem,
 				TimestampRole.Created,
 				file.CreationTimeUtc
-
 			)
 		);
 

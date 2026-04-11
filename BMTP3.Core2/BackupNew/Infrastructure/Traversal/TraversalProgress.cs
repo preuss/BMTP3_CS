@@ -1,4 +1,5 @@
 ﻿namespace BMTP3.Core2.BackupNew.Engine.Traversal;
+
 public record TraversalProgress(
 	// File metrics
 	int FileCount,

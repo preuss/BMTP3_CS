@@ -1,13 +1,14 @@
 ﻿namespace BMTP3.Core2.BackupNew.Domain.Errors;
+
 /// <summary>
-/// Captures error information related to a specific backup item.
-/// Holds all errors that occurred for a specific backup item.
-/// The collection is read-only from the outside and thread-safe for adding errors.
+///     Captures error information related to a specific backup item.
+///     Holds all errors that occurred for a specific backup item.
+///     The collection is read-only from the outside and thread-safe for adding errors.
 /// </summary>
 public class ErrorLog
 {
 	/// <summary>
-	/// The error messages.
+	///     The error messages.
 	/// </summary>
 	private readonly List<ErrorEntry> _errors = new();
 
@@ -16,11 +17,11 @@ public class ErrorLog
 	public int Count => _errors.Count;
 
 	/// <summary>
-	/// Adds a new error to the collection.
+	///     Adds a new error to the collection.
 	/// </summary>
 	public void AddError(string stepName, string message, DateTime timestamp, Exception? ex = null)
 	{
-		var error = new ErrorEntry
+		ErrorEntry error = new()
 		{
 			StageName = stepName,
 			StepName = stepName,
@@ -35,7 +36,7 @@ public class ErrorLog
 	}
 
 	/// <summary>
-	/// Adds an already constructed BackupError instance.
+	///     Adds an already constructed BackupError instance.
 	/// </summary>
 	public void AddError(ErrorEntry error)
 	{
@@ -43,10 +44,12 @@ public class ErrorLog
 	}
 
 	/// <summary>
-	/// Returns a short human-readable summary of the error state.
+	///     Returns a short human-readable summary of the error state.
 	/// </summary>
-	public string GetSummary() =>
-		HasErrors
+	public string GetSummary()
+	{
+		return HasErrors
 			? $"{Count} error(s) – latest: {_errors[^1].Message}"
 			: "No errors";
+	}
 }

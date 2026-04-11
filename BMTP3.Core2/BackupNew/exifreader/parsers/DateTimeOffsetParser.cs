@@ -117,15 +117,17 @@ public class DateTimeOffsetParser : ParserBase<DateTimeOffset>
 		"yyyyMMddTHH:mm:ssK",
 
 		"yyyyMMdd HH:mmK",
-		"yyyyMMddTHH:mmK",
+		"yyyyMMddTHH:mmK"
 	};
 
 	public override bool TryParse(string? raw, [NotNullWhen(true)] out DateTimeOffset result)
 	{
 		result = default;
 
-		if(string.IsNullOrWhiteSpace(raw))
+		if (string.IsNullOrWhiteSpace(raw))
+		{
 			return false;
+		}
 
 		raw = raw.Trim();
 

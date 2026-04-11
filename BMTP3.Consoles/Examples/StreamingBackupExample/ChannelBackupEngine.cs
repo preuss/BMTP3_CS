@@ -1,10 +1,10 @@
+using System.Threading.Channels;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Response;
 using BMTP3.Core2.BackupNew.Domain.Job;
-using System.Threading.Channels;
 
 namespace BMTP3.Consoles.Examples.StreamingBackupExample;
 
@@ -14,7 +14,7 @@ public class ChannelBackupEngine : IBackupEngine
 
 	public ChannelBackupEngine()
 	{
-		var options = new BoundedChannelOptions(4)
+		BoundedChannelOptions options = new(4)
 		{
 			SingleReader = true,
 			SingleWriter = false,
@@ -25,10 +25,11 @@ public class ChannelBackupEngine : IBackupEngine
 
 	public ChannelWriter<BackupProgress> Writer => _channel.Writer;
 
-	public async Task<BackupJobResult> RunAsync(BackupPlan job, IProgress<IBackupProgress> progress, CancellationToken ct)
+	public async Task<BackupJobResult> RunAsync(BackupPlan job, IProgress<IBackupProgress> progress,
+		CancellationToken ct)
 	{
 		// Example implementation that writes into the channel while still supporting IProgress for backwards compatibility
-		for(int i = 0; i < 100; i++)
+		for (int i = 0; i < 100; i++)
 		{
 			ct.ThrowIfCancellationRequested();
 
@@ -37,7 +38,7 @@ public class ChannelBackupEngine : IBackupEngine
 			int processed = i;
 			int succeeded = Math.Max(0, processed - failed - skipped);
 
-			var snapshot = new BackupProgress
+			BackupProgress snapshot = new()
 			{
 				Phase = BackupPhase.Starting,
 				DirectoriesTraversed = i + 10,

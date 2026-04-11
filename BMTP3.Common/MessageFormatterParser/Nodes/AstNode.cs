@@ -1,13 +1,12 @@
-﻿namespace BMTP3.Common.MessageFormatterParser.Nodes
-{
-	// Base class for AST nodes
-	public abstract class AstNode
-	{
-		public NodeType Type { get; }
+﻿namespace BMTP3.Common.MessageFormatterParser.Nodes;
 
-		protected AstNode(NodeType type)
-		{
-			Type = type;
-		}
+// Base class for AST nodes
+public abstract class AstNode
+{
+	protected AstNode(NodeType type)
+	{
+		Type = type;
 	}
+
+	public NodeType Type { get; }
 }

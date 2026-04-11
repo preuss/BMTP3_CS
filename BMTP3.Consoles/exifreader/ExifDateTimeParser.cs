@@ -1,6 +1,7 @@
 ﻿using System.Globalization;
 
 namespace BMTP3.Consoles.exifreader;
+
 public static class ExifDateTimeParser
 {
 	private static readonly string[] Formats =
@@ -19,12 +20,12 @@ public static class ExifDateTimeParser
 		date = null;
 		time = null;
 
-		if(DateTime.TryParseExact(
-			raw.Trim(),
-			Formats,
-			CultureInfo.InvariantCulture,
-			DateTimeStyles.None,
-			out DateTime dt))
+		if (DateTime.TryParseExact(
+			    raw.Trim(),
+			    Formats,
+			    CultureInfo.InvariantCulture,
+			    DateTimeStyles.None,
+			    out DateTime dt))
 		{
 			date = DateOnly.FromDateTime(dt);
 			time = TimeOnly.FromDateTime(dt);

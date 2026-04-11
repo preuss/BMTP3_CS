@@ -1,3 +1,5 @@
+using System.Diagnostics;
+using System.Threading.Channels;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
@@ -24,29 +26,29 @@ using BMTP3.Core2.BackupNew.Engine.Traversal;
 using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using System.Threading.Channels;
 
 namespace BMTP3.Core2.BackupNew.Engine;
+
 /// <summary>
-/// Skeleton BackupEngine
+///     Skeleton BackupEngine
 /// </summary>
 public class BackupEngine : IBackupEngine
 {
 	private readonly IBackupScanner _backupScanner;
-	private readonly IStagingDownloader _stagingDownloader;
-	private readonly IMetadataReader _metadataReader;
-	private readonly IItemHasher _itemHasher;
-	private readonly IHashGenerator _hashGenerator;
-	private readonly IPathGenerator _pathGenerator;
 	private readonly ICollisionResolver _collisionResolver;
+	private readonly IDestinationInspector _destinationInspector;
 	private readonly IFileTransfer _fileTransfer;
+	private readonly IHashGenerator _hashGenerator;
+	private readonly IItemHasher _itemHasher;
+	private readonly ILogger<BackupEngine> _logger;
+	private readonly ILoggerFactory _loggerFactory;
+	private readonly IMetadataReader _metadataReader;
+	private readonly IOptions<BackupEngineOptions> _options;
+	private readonly IPathGenerator _pathGenerator;
 	private readonly IBackupRepository _repository;
 	private readonly ISidecarGeneratorFactory _sidecarGeneratorFactory;
+	private readonly IStagingDownloader _stagingDownloader;
 	private readonly IJobValidator _validator;
-	private readonly IOptions<BackupEngineOptions> _options;
-	private readonly ILoggerFactory _loggerFactory;
-	private readonly ILogger<BackupEngine> _logger;
-	private readonly IDestinationInspector _destinationInspector;
 
 	public BackupEngine(
 		IBackupScanner backupScanner,
@@ -74,7 +76,8 @@ public class BackupEngine : IBackupEngine
 		_collisionResolver = collisionResolver ?? throw new ArgumentNullException(nameof(collisionResolver));
 		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
 		_repository = repository ?? throw new ArgumentNullException(nameof(repository));
-		_sidecarGeneratorFactory = sidecarGeneratorFactory ?? throw new ArgumentNullException(nameof(sidecarGeneratorFactory));
+		_sidecarGeneratorFactory =
+			sidecarGeneratorFactory ?? throw new ArgumentNullException(nameof(sidecarGeneratorFactory));
 		_validator = validator ?? throw new ArgumentNullException(nameof(validator));
 		_options = options ?? throw new ArgumentNullException(nameof(options));
 		_loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
@@ -117,7 +120,8 @@ public class BackupEngine : IBackupEngine
 		if(!plan.DryRun)
 		{
 			await _repository.SaveAsync(session, ct).ConfigureAwait(false);
-			_logger.LogInformation("Backup session {SessionId} started. Output: {OutputPath}", sessionId, plan.OutputPath);
+			_logger.LogInformation("Backup session {SessionId} started. Output: {OutputPath}", sessionId,
+				plan.OutputPath);
 		}
 
 		// Prepare result
@@ -150,7 +154,9 @@ public class BackupEngine : IBackupEngine
 					progress.Report(tracker.GetSnapshot());
 					await Task.Delay(250, reportingCts.Token).ConfigureAwait(false);
 				}
-			} catch(OperationCanceledException) { }
+			} catch(OperationCanceledException)
+			{
+			}
 		}, reportingCts.Token);
 
 		// Configure Options
@@ -159,25 +165,34 @@ public class BackupEngine : IBackupEngine
 		// Allow single-threaded debug mode when:
 		// - BackupEngineOptions.DebugSingleThreaded == true OR
 		// - a debugger is attached (convenient during development)
-		bool debugSingleThread = (opts.DebugSingleThreaded) || System.Diagnostics.Debugger.IsAttached;
+		bool debugSingleThread = opts.DebugSingleThreaded || Debugger.IsAttached;
 
 		int degreeOfParallelism = debugSingleThread
 			? 1
-			: (opts.DegreeOfParallelism > 0
+			: opts.DegreeOfParallelism > 0
 				? opts.DegreeOfParallelism
-				: Math.Max(1, Environment.ProcessorCount / 2));
+				: Math.Max(1, Environment.ProcessorCount / 2);
 
 		// Define Channels
-		Channel<IBackupItem> scanChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ScanChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> scanChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.ScanChannelCapacity) { SingleWriter = false, SingleReader = true });
 		//var convertChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ConvertChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> bufferingChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.StagingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> metadataChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> timestampChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> hashChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> inspectorChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> transferChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> sidecarChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
-		Channel<IBackupItem> persistenceChannel = Channel.CreateBounded<IBackupItem>(new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> bufferingChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.StagingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> metadataChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> timestampChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> hashChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> inspectorChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> transferChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> sidecarChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+		Channel<IBackupItem> persistenceChannel = Channel.CreateBounded<IBackupItem>(
+			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
 
 		result.Status = JobState.Running;
 		tracker.SetPhase(BackupPhase.Traversing);
@@ -196,20 +211,31 @@ public class BackupEngine : IBackupEngine
 
 		TransferItemStep transferStep = new(plan, _pathGenerator, _collisionResolver, _fileTransfer, _itemHasher);
 		// Destination Inspector
-		DestinationInspectorItemStep inspectorStep = new(_destinationInspector, _hashGenerator, plan, _loggerFactory.CreateLogger<DestinationInspectorItemStep>());
+		DestinationInspectorItemStep inspectorStep = new(_destinationInspector, _hashGenerator, plan,
+			_loggerFactory.CreateLogger<DestinationInspectorItemStep>());
 		ISidecarGeneratorFactory sidecarFactory = _sidecarGeneratorFactory;
 		SidecarGenerationItemStep sidecarStep = new(plan, sidecarFactory);
 
 		// Source Reading MUST be serial (1 thread) to prevent MTP timeouts and IO thrashing.
 		// We ignore degreeOfParallelism for this specific step.
-		ContentBufferingPipelineStage bufferingPool = new(_loggerFactory.CreateLogger<ContentBufferingPipelineStage>(), 1, plan, tracker, bufferingStep);
+		ContentBufferingPipelineStage bufferingPool = new(_loggerFactory.CreateLogger<ContentBufferingPipelineStage>(),
+			1, plan, tracker, bufferingStep);
 
-		MetadataExtractionPipelineStage metadataPool = new(_loggerFactory.CreateLogger<MetadataExtractionPipelineStage>(), degreeOfParallelism, plan, tracker, metadataStep);
-		TimestampCorrectionPipelineStage timestampPool = new(_loggerFactory.CreateLogger<TimestampCorrectionPipelineStage>(), degreeOfParallelism, plan, tracker, timestampStep);
-		HashPipelineStage hashPool = new(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism, hashStepContext, tracker, hashStep);
-		DestinationInspectorPipelineStage inspectorPool = new(_loggerFactory.CreateLogger<DestinationInspectorPipelineStage>(), degreeOfParallelism, plan, tracker, inspectorStep);
-		TransferPipelineStage transferPool = new(_loggerFactory.CreateLogger<TransferPipelineStage>(), degreeOfParallelism, plan, tracker, transferStep);
-		SidecarGenerationPipelineStage sidecarPool = new(_loggerFactory.CreateLogger<SidecarGenerationPipelineStage>(), degreeOfParallelism, plan, tracker, sidecarStep);
+		MetadataExtractionPipelineStage metadataPool =
+			new(_loggerFactory.CreateLogger<MetadataExtractionPipelineStage>(), degreeOfParallelism, plan, tracker,
+				metadataStep);
+		TimestampCorrectionPipelineStage timestampPool =
+			new(_loggerFactory.CreateLogger<TimestampCorrectionPipelineStage>(), degreeOfParallelism, plan, tracker,
+				timestampStep);
+		HashPipelineStage hashPool = new(_loggerFactory.CreateLogger<HashPipelineStage>(), degreeOfParallelism,
+			hashStepContext, tracker, hashStep);
+		DestinationInspectorPipelineStage inspectorPool =
+			new(_loggerFactory.CreateLogger<DestinationInspectorPipelineStage>(), degreeOfParallelism, plan, tracker,
+				inspectorStep);
+		TransferPipelineStage transferPool = new(_loggerFactory.CreateLogger<TransferPipelineStage>(),
+			degreeOfParallelism, plan, tracker, transferStep);
+		SidecarGenerationPipelineStage sidecarPool = new(_loggerFactory.CreateLogger<SidecarGenerationPipelineStage>(),
+			degreeOfParallelism, plan, tracker, sidecarStep);
 
 
 		// Start Pipeline Tasks
@@ -237,16 +263,20 @@ public class BackupEngine : IBackupEngine
 					{
 						length = item.Metadata.Get<ulong>(MetadataKey.Length);
 					}
+
 					tracker.AddDiscovery(false, (long)length);
 					await scanChannel.Writer.WriteAsync(item, ct);
 				}
-			} catch(OperationCanceledException) { } finally
+			} catch(OperationCanceledException)
+			{
+			} finally
 			{
 				scanChannel.Writer.Complete();
 			}
 		}, ct);
 
-		Task bufferingTask = Task.Run(() => bufferingPool.RunAsync(scanChannel.Reader, bufferingChannel.Writer, ct), ct);
+		Task bufferingTask =
+			Task.Run(() => bufferingPool.RunAsync(scanChannel.Reader, bufferingChannel.Writer, ct), ct);
 
 		// Dispose MTP session after all file content has been read from the device.
 		// bufferingTask completes only after ContentBufferingPipelineStage has staged every item,
@@ -261,12 +291,17 @@ public class BackupEngine : IBackupEngine
 				TaskContinuationOptions.ExecuteSynchronously,
 				TaskScheduler.Default);
 		}
-		Task metadataTask = Task.Run(() => metadataPool.RunAsync(bufferingChannel.Reader, metadataChannel.Writer, ct), ct);
-		Task timestampTask = Task.Run(() => timestampPool.RunAsync(metadataChannel.Reader, timestampChannel.Writer, ct), ct);
+
+		Task metadataTask = Task.Run(() => metadataPool.RunAsync(bufferingChannel.Reader, metadataChannel.Writer, ct),
+			ct);
+		Task timestampTask = Task.Run(() => timestampPool.RunAsync(metadataChannel.Reader, timestampChannel.Writer, ct),
+			ct);
 		Task hashTask = Task.Run(() => hashPool.RunAsync(timestampChannel.Reader, hashChannel.Writer, ct), ct);
 		Task transferTask = Task.Run(() => transferPool.RunAsync(hashChannel.Reader, transferChannel.Writer, ct), ct);
-		Task inspectorTask = Task.Run(() => inspectorPool.RunAsync(transferChannel.Reader, inspectorChannel.Writer, ct), ct);
-		Task sidecarTask = Task.Run(() => sidecarPool.RunAsync(inspectorChannel.Reader, persistenceChannel.Writer, ct), ct);
+		Task inspectorTask = Task.Run(() => inspectorPool.RunAsync(transferChannel.Reader, inspectorChannel.Writer, ct),
+			ct);
+		Task sidecarTask = Task.Run(() => sidecarPool.RunAsync(inspectorChannel.Reader, persistenceChannel.Writer, ct),
+			ct);
 
 		Task completionTask = Task.Run(async () =>
 		{
@@ -302,9 +337,9 @@ public class BackupEngine : IBackupEngine
 						}
 					}
 				}
+			} catch(OperationCanceledException)
+			{
 			}
-			catch(OperationCanceledException) { }
-
 		}, ct);
 
 		try
@@ -346,7 +381,13 @@ public class BackupEngine : IBackupEngine
 			// Cleanup MTP session on pipeline crash
 			if(mtpSession != null)
 			{
-				try { mtpSession.Dispose(); } catch { /* best effort */ }
+				try
+				{
+					mtpSession.Dispose();
+				} catch
+				{
+					/* best effort */
+				}
 			}
 
 			return result;
@@ -365,7 +406,13 @@ public class BackupEngine : IBackupEngine
 		// Cleanup MTP session after normal completion
 		if(mtpSession != null)
 		{
-			try { mtpSession.Dispose(); } catch { /* best effort */ }
+			try
+			{
+				mtpSession.Dispose();
+			} catch
+			{
+				/* best effort */
+			}
 		}
 
 		// Decide final status based on cancellation and per-item failures collected by the tracker.
@@ -404,7 +451,7 @@ public class BackupEngine : IBackupEngine
 		if(!plan.DryRun)
 		{
 			await _repository.SaveAsync(session, ct).ConfigureAwait(false);
-			_logger.LogInformation("Backup session {SessionId} completed. Files: {Copied}/{Total}, Status: {Status}", 
+			_logger.LogInformation("Backup session {SessionId} completed. Files: {Copied}/{Total}, Status: {Status}",
 				sessionId, result.FilesCopied, result.TotalFilesScanned, result.Status);
 		}
 
@@ -438,17 +485,20 @@ public class BackupEngine : IBackupEngine
 		if(freeSpace <= oneHundredMb)
 		{
 			// < 100MB: exception
-			throw new IOException($"Insufficient disk space on output drive '{outputDir.Root}'. Available: {freeSpaceMb} MB.");
+			throw new IOException(
+				$"Insufficient disk space on output drive '{outputDir.Root}'. Available: {freeSpaceMb} MB.");
 		}
 
 		if(freeSpace <= oneGb)
 		{
 			// 100MB - 1GB: warning
-			_logger.LogWarning("Low disk space on output drive '{Drive}': {FreeSpace} MB. Backup may fail.", outputDir.Root, freeSpaceMb);
+			_logger.LogWarning("Low disk space on output drive '{Drive}': {FreeSpace} MB. Backup may fail.",
+				outputDir.Root, freeSpaceMb);
 		} else if(freeSpace <= tenGb)
 		{
 			// 1GB - 10GB: info
-			_logger.LogInformation("Disk space on output drive '{Drive}': {FreeSpace} GB available.", outputDir.Root, freeSpaceGb);
+			_logger.LogInformation("Disk space on output drive '{Drive}': {FreeSpace} GB available.", outputDir.Root,
+				freeSpaceGb);
 		}
 	}
 
@@ -495,19 +545,18 @@ public class BackupEngine : IBackupEngine
 		}
 	}
 
-    private long GetFreeSpace(string path)
-    {
-        try
-        {
-            string root = Path.GetPathRoot(path) ?? path;
-            DriveInfo drive = new(root);
-            return drive.AvailableFreeSpace;
-        }
-        catch (Exception)
-        {
-            // If we can't determine free space, assume minimal to trigger validation failure
-            // This is safer than returning MaxValue which could skip the check
-            return 0;
-        }
-    }
+	private long GetFreeSpace(string path)
+	{
+		try
+		{
+			string root = Path.GetPathRoot(path) ?? path;
+			DriveInfo drive = new(root);
+			return drive.AvailableFreeSpace;
+		} catch(Exception)
+		{
+			// If we can't determine free space, assume minimal to trigger validation failure
+			// This is safer than returning MaxValue which could skip the check
+			return 0;
+		}
+	}
 }

@@ -1,12 +1,11 @@
-﻿namespace BMTP3.Common.MessageFormatterParser.Nodes
-{
-	public class IndexedPlaceholderNode : PlaceholderNode
-	{
-		public int Index { get; }
+﻿namespace BMTP3.Common.MessageFormatterParser.Nodes;
 
-		public IndexedPlaceholderNode(int index) : base(/*NodeType.IndexedPlaceholder*/ "")
-		{
-			Index = index;
-		}
+public class IndexedPlaceholderNode : PlaceholderNode
+{
+	public IndexedPlaceholderNode(int index) : base( /*NodeType.IndexedPlaceholder*/ "")
+	{
+		Index = index;
 	}
+
+	public int Index { get; }
 }

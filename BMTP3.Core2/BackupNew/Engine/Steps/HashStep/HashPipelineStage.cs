@@ -25,7 +25,7 @@ public class HashPipelineStage : AbstractPipelineStage<HashStepContext>
 		UpdatePhase(item, _hashStep.Phase);
 
 		// 2. Create reporter for bytes
-		var progress = CreateProgressReporter(item);
+		IProgress<ulong> progress = CreateProgressReporter(item);
 
 		// 3. Execute step with progress
 		await _hashStep.ExecuteAsync(item, progress, ct).ConfigureAwait(false);

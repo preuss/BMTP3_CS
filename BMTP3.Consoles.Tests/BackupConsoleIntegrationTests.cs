@@ -1,7 +1,10 @@
+using System.CommandLine;
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
+using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
 using BMTP3.Core2.BackupNew.DependencyInjection;
 using BMTP3.Core2.BackupNew.Domain.Job;
@@ -10,13 +13,17 @@ using BMTP3.Core2.BackupNew.Engine.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using System.CommandLine;
 
 namespace BMTP3.Consoles.Tests;
+
 public class BackupConsoleIntegrationTests
 {
 	private readonly ITestOutputHelper _output;
-	public BackupConsoleIntegrationTests(ITestOutputHelper output) => _output = output;
+
+	public BackupConsoleIntegrationTests(ITestOutputHelper output)
+	{
+		_output = output;
+	}
 
 	[Fact(Timeout = 60_000)]
 	[Trait("Category", "Integration")]
@@ -31,7 +38,7 @@ public class BackupConsoleIntegrationTests
 		{
 			Ansi = AnsiSupport.No,
 			ColorSystem = ColorSystemSupport.NoColors,
-			Out = new AnsiConsoleOutput(new StringWriter()),
+			Out = new AnsiConsoleOutput(new StringWriter())
 		}));
 		services.AddSingleton<ConsolesPrinter>();
 
@@ -76,14 +83,16 @@ public class BackupConsoleIntegrationTests
 			BackupPlan plan = new()
 			{
 				Name = "test-console-engine",
-				SourceType = Core2.BackupNew.Api.Request.Enums.SourceType.FileSystem,
+				SourceType = SourceType.FileSystem,
 				SourcePath = tempSource,
 				SourceId = sourceId,
 				OutputPath = tempOutput,
 				Recursive = true
 			};
 
-			Progress<Core2.BackupNew.Api.Progress.IBackupProgress> progress = new(p => _output.WriteLine($"{p.Phase}: discovered={p.FilesDiscovered} succeeded={p.FilesSucceeded} failed={p.FilesFailed}"));
+			Progress<IBackupProgress> progress = new(p =>
+				_output.WriteLine(
+					$"{p.Phase}: discovered={p.FilesDiscovered} succeeded={p.FilesSucceeded} failed={p.FilesFailed}"));
 
 			// Call the programmatic helper on the command to get a structured BackupJobResult
 			BackupConsoleCommand2 command = backupCommand;
@@ -94,11 +103,26 @@ public class BackupConsoleIntegrationTests
 			Assert.Equal(JobState.Completed, result.Status);
 
 			// Ensure something was written to output
-			Assert.True(Directory.EnumerateFiles(tempOutput, "*", SearchOption.AllDirectories).Any(), "Expected files in output directory");
-		} finally
+			Assert.True(Directory.EnumerateFiles(tempOutput, "*", SearchOption.AllDirectories).Any(),
+				"Expected files in output directory");
+		}
+		finally
 		{
-			try { Directory.Delete(tempSource, true); } catch { }
-			try { Directory.Delete(tempOutput, true); } catch { }
+			try
+			{
+				Directory.Delete(tempSource, true);
+			}
+			catch
+			{
+			}
+
+			try
+			{
+				Directory.Delete(tempOutput, true);
+			}
+			catch
+			{
+			}
 		}
 	}
 
@@ -107,12 +131,13 @@ public class BackupConsoleIntegrationTests
 	private static void CopyDirectory(string sourceDir, string targetDir)
 	{
 		Directory.CreateDirectory(targetDir);
-		foreach(string file in Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
+		foreach (string file in Directory.GetFiles(sourceDir, "*", SearchOption.TopDirectoryOnly))
 		{
 			string dest = Path.Combine(targetDir, Path.GetFileName(file));
-			File.Copy(file, dest, overwrite: true);
+			File.Copy(file, dest, true);
 		}
-		foreach(string dir in Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
+
+		foreach (string dir in Directory.GetDirectories(sourceDir, "*", SearchOption.TopDirectoryOnly))
 		{
 			string destSub = Path.Combine(targetDir, Path.GetFileName(dir));
 			CopyDirectory(dir, destSub);
@@ -125,16 +150,24 @@ internal sealed class XunitTestOutputLoggerProvider : ILoggerProvider
 {
 	private readonly ITestOutputHelper _output;
 
-	public XunitTestOutputLoggerProvider(ITestOutputHelper output) => _output = output;
+	public XunitTestOutputLoggerProvider(ITestOutputHelper output)
+	{
+		_output = output;
+	}
 
-	public ILogger CreateLogger(string categoryName) => new XunitTestOutputLogger(_output, categoryName);
+	public ILogger CreateLogger(string categoryName)
+	{
+		return new XunitTestOutputLogger(_output, categoryName);
+	}
 
-	public void Dispose() { }
+	public void Dispose()
+	{
+	}
 
 	private sealed class XunitTestOutputLogger : ILogger
 	{
-		private readonly ITestOutputHelper _output;
 		private readonly string _category;
+		private readonly ITestOutputHelper _output;
 
 		public XunitTestOutputLogger(ITestOutputHelper output, string category)
 		{
@@ -142,23 +175,39 @@ internal sealed class XunitTestOutputLoggerProvider : ILoggerProvider
 			_category = category;
 		}
 
-		public IDisposable BeginScope<TState>(TState state) where TState : notnull => NullScope.Instance;
+		public IDisposable BeginScope<TState>(TState state) where TState : notnull
+		{
+			return NullScope.Instance;
+		}
 
-		public bool IsEnabled(LogLevel logLevel) => true;
+		public bool IsEnabled(LogLevel logLevel)
+		{
+			return true;
+		}
 
-		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception, Func<TState, Exception?, string> formatter)
+		public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
+			Func<TState, Exception?, string> formatter)
 		{
 			try
 			{
 				_output.WriteLine($"[{logLevel}] {_category}: {formatter(state, exception)}");
-				if(exception != null) _output.WriteLine(exception.ToString());
-			} catch { }
+				if (exception != null)
+				{
+					_output.WriteLine(exception.ToString());
+				}
+			}
+			catch
+			{
+			}
 		}
 
 		private class NullScope : IDisposable
 		{
-			public static NullScope Instance { get; } = new NullScope();
-			public void Dispose() { }
+			public static NullScope Instance { get; } = new();
+
+			public void Dispose()
+			{
+			}
 		}
 	}
 }

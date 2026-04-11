@@ -3,10 +3,11 @@ using BMTP3.Core2.BackupNew.exifreader.definitions;
 using BMTP3.Core2.BackupNew.exifreader.Extensions;
 using BMTP3.Core2.BackupNew.exifreader.parsers;
 using MetadataExtractor;
+using Directory = MetadataExtractor.Directory;
 
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
-public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReader where TDirectory : MetadataExtractor.Directory
+public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReader where TDirectory : Directory
 {
 	private static readonly DateTimeOffsetParser _dateTimeOffsetParser = new();
 	private static readonly DateTimeParser _dateTimeParser = new();
@@ -24,7 +25,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 	public IReadOnlyList<TimestampCandidate> Read(FileInfo file)
 	{
 		List<TimestampCandidate> candidates = new();
-		IEnumerable<MetadataExtractor.Directory> directories;
+		IEnumerable<Directory> directories;
 
 		try
 		{
@@ -50,16 +51,17 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 
 				TimestampCandidate? dateCandidate = CreateCandidateFromDates(group, rawDate, rawTime, rawOffset, rawSubSec);
 
-				TimestampCandidate? candidate = dateCandidate
-								   ?? timestampCandidate;
+				TimestampCandidate? candidate = dateCandidate ?? timestampCandidate;
 				if(candidate != null)
 				{
 					candidates.Add(candidate);
 				}
 			}
 		}
+
 		return candidates;
 	}
+
 	private TimestampCandidate? CreateCandidateFromTimestamp(
 		TimestampTagGroup group,
 		string? rawTimestamp,
@@ -70,6 +72,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		{
 			timestampValue = parsedTimestamp;
 		}
+
 		if(!timestampValue.HasValue)
 		{
 			return null;
@@ -81,14 +84,15 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		);
 
 		return TimestampCandidateFactory.FromRawTimestamp(
-				SourceType,
-				group.Role,
-				rawTimestamp,
-				timestampValue.Value,
-				group.TimestampEpoch,
-				timestampResolution
+			SourceType,
+			group.Role,
+			rawTimestamp,
+			timestampValue.Value,
+			group.TimestampEpoch,
+			timestampResolution
 		);
 	}
+
 	private TimestampCandidate? CreateCandidateFromDates(
 		TimestampTagGroup group,
 		string? rawDate,
@@ -126,8 +130,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		if(TryParseDateWithResolution(rawDate, out DateOnly date, out ChronoDateResolution dateRes))
 		{
 			return TimestampCandidateFactory.FromRawDateWithTimeAndOffSetAndSubSec(
-				SourceType, group.Role, rawDate, rawTime, rawOffset, rawSubSec,
-				date, dateRes, time, offset, subSec
+				SourceType, group.Role, rawDate, rawTime, rawOffset, rawSubSec, date, dateRes, time, offset, subSec
 			);
 		}
 
@@ -142,18 +145,21 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 			resolution = ChronoDateResolution.FullDate;
 			return true;
 		}
+
 		if(_dateWithYearMonthParser.TryParse(rawDate, out DateOnly yearMonth))
 		{
 			date = yearMonth;
 			resolution = ChronoDateResolution.YearAndMonth;
 			return true;
 		}
+
 		if(_dateWithYearParser.TryParse(rawDate, out DateOnly yearOnly))
 		{
 			date = yearOnly;
 			resolution = ChronoDateResolution.YearOnly;
 			return true;
 		}
+
 		date = default;
 		resolution = default;
 		return false;
@@ -165,6 +171,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		{
 			return null;
 		}
+
 		return dir.SafeGetString(tag.Value);
 	}
 
@@ -174,6 +181,7 @@ public abstract class BaseDirectoryTimestampReader<TDirectory> : ITimestampReade
 		{
 			return val;
 		}
+
 		return null;
 	}
 }

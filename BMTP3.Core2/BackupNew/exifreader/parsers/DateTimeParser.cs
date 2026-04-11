@@ -67,7 +67,7 @@ public sealed class DateTimeParser : ParserBase<DateTime>
 	{
 		result = default;
 
-		if(string.IsNullOrWhiteSpace(raw))
+		if (string.IsNullOrWhiteSpace(raw))
 		{
 			return false;
 		}

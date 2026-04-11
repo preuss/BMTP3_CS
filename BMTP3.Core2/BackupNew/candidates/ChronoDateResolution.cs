@@ -3,15 +3,17 @@
 public enum ChronoDateResolution
 {
 	/// <summary>
-	/// Date (year, month, day).
+	///     Date (year, month, day).
 	/// </summary>
 	FullDate,
+
 	/// <summary>
-	/// Year and Month only (year, month).
+	///     Year and Month only (year, month).
 	/// </summary>
 	YearAndMonth,
+
 	/// <summary>
-	/// Year only (year).
+	///     Year only (year).
 	/// </summary>
-	YearOnly,
+	YearOnly
 }

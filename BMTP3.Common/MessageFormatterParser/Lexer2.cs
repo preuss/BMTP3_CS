@@ -5,17 +5,9 @@ namespace BMTP3.Common.MessageFormatterParser;
 public class Lexer2 : ILexer
 {
 	private readonly CharStream _charStream;
+	private readonly Stack<LexerState> _stateStack = new();
 	private LexerState _currentLexerState;
-	private readonly System.Collections.Generic.Stack<LexerState> _stateStack = new();
-	private bool _evalNextAsText = false;
-
-	private enum LexerState
-	{
-		Default,
-		InsideExpression,
-		InsidePatternLiteral,
-		InsideEvalPattern
-	}
+	private bool _evalNextAsText;
 
 	public Lexer2(string input)
 	{
@@ -25,20 +17,21 @@ public class Lexer2 : ILexer
 
 	public Token NextToken()
 	{
-		if(!HasNextToken())
+		if (!HasNextToken())
 		{
-			return new Token(TokenType.EOF, string.Empty, _charStream.ColumnNumber, _charStream.LineNumber, _charStream.ColumnNumber);
+			return new Token(TokenType.EOF, string.Empty, _charStream.ColumnNumber, _charStream.LineNumber,
+				_charStream.ColumnNumber);
 		}
 
 		int startColumn = _charStream.ColumnNumber;
 
 
-		if(_currentLexerState == LexerState.Default)
+		if (_currentLexerState == LexerState.Default)
 		{
-			if(_charStream.HasChars(2))
+			if (_charStream.HasChars(2))
 			{
 				List<char> twoChars = _charStream.Peek(2);
-				if(twoChars[0] == '$' && twoChars[1] == '{')
+				if (twoChars[0] == '$' && twoChars[1] == '{')
 				{
 					_charStream.Next();
 					_charStream.Next();
@@ -46,7 +39,9 @@ public class Lexer2 : ILexer
 					_stateStack.Push(_currentLexerState);
 					_currentLexerState = LexerState.InsideExpression;
 					return new Token(TokenType.DollarBraceOpen, "${", startColumn, _charStream.LineNumber, startColumn);
-				} else if(twoChars[0] == '#' && twoChars[1] == '{')
+				}
+
+				if (twoChars[0] == '#' && twoChars[1] == '{')
 				{
 					// Consistently emit HashBraceOpen for "#{" (Index/Hash naming were inconsistent)
 					_charStream.Next();
@@ -59,7 +54,9 @@ public class Lexer2 : ILexer
 			}
 
 			return ScanLiteralString();
-		} else if(_currentLexerState == LexerState.InsideExpression)
+		}
+
+		if (_currentLexerState == LexerState.InsideExpression)
 		{
 			// Skip optional whitespace after an opening brace for normal expressions
 			RemoveWhitespaces();
@@ -67,65 +64,91 @@ public class Lexer2 : ILexer
 
 			char peekNextChar = _charStream.Peek();
 
-			if(peekNextChar == '}')
+			if (peekNextChar == '}')
 			{
 				_charStream.Next();
 				// Restore previous lexer state if available
-				if(_stateStack.Count > 0)
+				if (_stateStack.Count > 0)
+				{
 					_currentLexerState = _stateStack.Pop();
+				}
 				else
+				{
 					_currentLexerState = LexerState.Default;
+				}
+
 				return new Token(TokenType.BraceClose, "}", startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == '.')
+			}
+
+			if (peekNextChar == '.')
 			{
 				_charStream.Next();
 				return new Token(TokenType.Dot, ".", startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == ',')
+			}
+
+			if (peekNextChar == ',')
 			{
 				_charStream.Next();
 				return new Token(TokenType.Comma, ",", startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == ':')
+			}
+
+			if (peekNextChar == ':')
 			{
 				_charStream.Next();
 				// Enter pattern literal state and remember previous
 				_stateStack.Push(_currentLexerState);
 				_currentLexerState = LexerState.InsidePatternLiteral;
 				return new Token(TokenType.Colon, ":", startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == '(')
+			}
+
+			if (peekNextChar == '(')
 			{
 				_charStream.Next();
 				return new Token(TokenType.ParenOpen, "(", startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == ')')
+			}
+
+			if (peekNextChar == ')')
 			{
 				_charStream.Next();
 				return new Token(TokenType.ParenClose, ")", startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == '§' || peekNextChar == '¶')
+			}
+
+			if (peekNextChar == '§' || peekNextChar == '¶')
 			{
 				// Enter eval pattern state and remember previous
 				_stateStack.Push(_currentLexerState);
 				_currentLexerState = LexerState.InsideEvalPattern;
 				_evalNextAsText = false;
-				return new Token(TokenType.Section, _charStream.Next(), startColumn, _charStream.LineNumber, startColumn);
+				return new Token(TokenType.Section, _charStream.Next(), startColumn, _charStream.LineNumber,
+					startColumn);
 			}
 
 			// Allow quoted string arguments within function calls inside expressions
-			if(peekNextChar == '`' || peekNextChar == '\'' || peekNextChar == '"' || peekNextChar == '´' || peekNextChar == '/')
+			if (peekNextChar == '`' || peekNextChar == '\'' || peekNextChar == '"' || peekNextChar == '´' ||
+			    peekNextChar == '/')
 			{
 				return ScanLiteralStringInExpression();
 			}
 
 			return ScanIdentifier();
-		} else if(_currentLexerState == LexerState.InsidePatternLiteral)
+		}
+
+		if (_currentLexerState == LexerState.InsidePatternLiteral)
 		{
 			return ScanPatternLiteral();
-		} else if(_currentLexerState == LexerState.InsideEvalPattern)
+		}
+
+		if (_currentLexerState == LexerState.InsideEvalPattern)
 		{
 			// Skip optional whitespace at start of eval sub-expression unless we're preserving branch text
-			if(!_evalNextAsText)
+			if (!_evalNextAsText)
+			{
 				RemoveWhitespaces();
+			}
+
 			startColumn = _charStream.ColumnNumber;
 
-			if(!HasNextToken())
+			if (!HasNextToken())
 			{
 				throw new InvalidOperationException("Unterminated eval pattern.");
 			}
@@ -134,54 +157,78 @@ public class Lexer2 : ILexer
 
 			// If we were instructed to preserve branch text and the next char is whitespace,
 			// consume the following run as eval text (preserve leading space)
-			if(_evalNextAsText && char.IsWhiteSpace(peekNextChar))
+			if (_evalNextAsText && char.IsWhiteSpace(peekNextChar))
 			{
 				_evalNextAsText = false;
 				return ScanEvalText();
 			}
 
-			if(peekNextChar == '?')
+			if (peekNextChar == '?')
 			{
-				return new Token(TokenType.QuestionMark, _charStream.Next(), startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == ':')
+				return new Token(TokenType.QuestionMark, _charStream.Next(), startColumn, _charStream.LineNumber,
+					startColumn);
+			}
+
+			if (peekNextChar == ':')
 			{
 				return new Token(TokenType.Colon, _charStream.Next(), startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == '`' || peekNextChar == '\'' || peekNextChar == '\"' || peekNextChar == '´' || peekNextChar == '/')
+			}
+
+			if (peekNextChar == '`' || peekNextChar == '\'' || peekNextChar == '\"' || peekNextChar == '´' ||
+			    peekNextChar == '/')
 			{
 				return ScanLiteralStringInExpression();
-			} else if(char.IsLetter(peekNextChar))
+			}
+
+			if (char.IsLetter(peekNextChar))
 			{
 				// If a previous section indicated nested text parsing (e.g., we saw 'if,'), prefer text
-				if(_evalNextAsText)
+				if (_evalNextAsText)
 				{
 					_evalNextAsText = false;
 					return ScanEvalText();
 				}
 
 				// If the upcoming eval segment contains a space before any delimiter, treat as a literal text
-				var look = LookAheadUntil(':', '}', '?', ',');
+				string look = LookAheadUntil(':', '}', '?', ',');
 				// If the lookahead contains a space but no digits, it's likely branch text like 'No files'
-				if(look.Contains(' ') && !look.Any(char.IsDigit))
+				if (look.Contains(' ') && !look.Any(char.IsDigit))
+				{
 					return ScanEvalText();
+				}
+
 				return ScanIdentifier();
-			} else if(char.IsDigit(peekNextChar))
+			}
+
+			if (char.IsDigit(peekNextChar))
 			{
 				// ensure leading whitespace isn't included in numeric token
 				RemoveWhitespaces();
 				return ScanLiteralInteger();
-			} else if(peekNextChar == '}')
+			}
+
+			if (peekNextChar == '}')
 			{
 				_charStream.Next();
 				// Restore previous lexer state when closing eval pattern
-				if(_stateStack.Count > 0)
+				if (_stateStack.Count > 0)
+				{
 					_currentLexerState = _stateStack.Pop();
+				}
 				else
+				{
 					_currentLexerState = LexerState.Default;
+				}
+
 				return new Token(TokenType.BraceClose, "}", startColumn, _charStream.LineNumber, startColumn);
-			} else if(peekNextChar == ',')
+			}
+
+			if (peekNextChar == ',')
 			{
 				return new Token(TokenType.Comma, _charStream.Next(), startColumn, _charStream.LineNumber, startColumn);
-			} else if(_charStream.HasChars(2) && _charStream.Peek(2)[0] == '#' && _charStream.Peek(2)[1] == '{')
+			}
+
+			if (_charStream.HasChars(2) && _charStream.Peek(2)[0] == '#' && _charStream.Peek(2)[1] == '{')
 			{
 				_charStream.Next();
 				_charStream.Next();
@@ -189,7 +236,9 @@ public class Lexer2 : ILexer
 				_stateStack.Push(_currentLexerState);
 				_currentLexerState = LexerState.InsideExpression;
 				return new Token(TokenType.HashBraceOpen, "#{", startColumn, _charStream.LineNumber, startColumn);
-			} else if(_charStream.HasChars(2) && _charStream.Peek(2)[0] == '$' && _charStream.Peek(2)[1] == '{')
+			}
+
+			if (_charStream.HasChars(2) && _charStream.Peek(2)[0] == '$' && _charStream.Peek(2)[1] == '{')
 			{
 				_charStream.Next();
 				_charStream.Next();
@@ -208,6 +257,11 @@ public class Lexer2 : ILexer
 		throw new InvalidOperationException("Unhandled lexer state or input.");
 	}
 
+	public bool HasNextToken()
+	{
+		return !_charStream.EndOfStream;
+	}
+
 	// Scan a literal string from the default lexer state. This consumes any characters
 	// until an expression open sequence ('${' or '#{') is encountered or until EOF.
 	private Token ScanLiteralString()
@@ -215,42 +269,44 @@ public class Lexer2 : ILexer
 		int startColumn = _charStream.ColumnNumber;
 		StringBuilder buffer = new();
 
-		while(HasNextToken())
+		while (HasNextToken())
 		{
 			char peekNextChar = _charStream.Peek();
-			if(_charStream.HasChars(2))
+			if (_charStream.HasChars(2))
 			{
 				char peekNextNextChar = _charStream.Peek(2)[1];
 
 				// Checks if expression starts and end of literal string.
-				if(peekNextChar == '$')
+				if (peekNextChar == '$')
 				{
-					if(peekNextNextChar == '{')
+					if (peekNextNextChar == '{')
 					{
 						break;
 					}
-				} else if(peekNextChar == '#')
+				}
+				else if (peekNextChar == '#')
 				{
-					if(peekNextNextChar == '{')
+					if (peekNextNextChar == '{')
 					{
 						break;
 					}
 				}
 
 				// Checks for escape sequences
-				if(peekNextChar == '{')
+				if (peekNextChar == '{')
 				{
 					// Handle escaping open brace
-					if(peekNextNextChar == '{')
+					if (peekNextNextChar == '{')
 					{
 						_charStream.Next();
 						buffer.Append(_charStream.Next());
 						continue;
 					}
-				} else if(peekNextChar == '}')
+				}
+				else if (peekNextChar == '}')
 				{
 					// Handle escaping close brace
-					if(peekNextNextChar == '}')
+					if (peekNextNextChar == '}')
 					{
 						_charStream.Next();
 						buffer.Append(_charStream.Next());
@@ -258,33 +314,34 @@ public class Lexer2 : ILexer
 					}
 				}
 			}
-			buffer.Append(_charStream.Next());
 
+			buffer.Append(_charStream.Next());
 		}
 
-		if(buffer.Length == 0)
+		if (buffer.Length == 0)
 		{
-			if(_charStream.EndOfStream)
+			if (_charStream.EndOfStream)
 			{
 				throw new IndexOutOfRangeException("It should never could try to ScanLiteralString if EOF.");
-			} else
-			{
-				throw new InvalidOperationException("Problem no EOF but still no literal string");
 			}
+
+			throw new InvalidOperationException("Problem no EOF but still no literal string");
 		}
+
 		return new Token(TokenType.LiteralString, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
+
 	private Token ScanLiteralInteger()
 	{
 		int startColumn = _charStream.ColumnNumber;
-		StringBuilder buffer = new StringBuilder();
+		StringBuilder buffer = new();
 
-		while(HasNextToken() && char.IsDigit(_charStream.Peek()))
+		while (HasNextToken() && char.IsDigit(_charStream.Peek()))
 		{
 			buffer.Append(_charStream.Next());
 		}
 
-		if(buffer.Length == 0)
+		if (buffer.Length == 0)
 		{
 			throw new InvalidOperationException("Expected an integer but found none.");
 		}
@@ -296,56 +353,61 @@ public class Lexer2 : ILexer
 	// but will not consume nested expression openings so they can be tokenized separately.
 	private Token ScanPattern()
 	{
-		if(_currentLexerState != LexerState.InsideEvalPattern)
+		if (_currentLexerState != LexerState.InsideEvalPattern)
 		{
 			throw new InvalidOperationException("Lexer is not in valid pattern state.");
 		}
 
-		if(_charStream.EndOfStream) throw new IndexOutOfRangeException("No pattern.");
+		if (_charStream.EndOfStream)
+		{
+			throw new IndexOutOfRangeException("No pattern.");
+		}
 
 		int startColumn = _charStream.ColumnNumber;
 
-		StringBuilder buffer = new StringBuilder();
+		StringBuilder buffer = new();
 
-		while(HasNextToken())
+		while (HasNextToken())
 		{
 			char peekFirstChar = _charStream.Peek();
-			if('}' == peekFirstChar)
+			if ('}' == peekFirstChar)
 			{
-				if(_charStream.HasChars(2) && '}' == _charStream.Peek(2)[1])
+				if (_charStream.HasChars(2) && '}' == _charStream.Peek(2)[1])
 				{
 					_charStream.Next(); // Escape
 					buffer.Append(_charStream.Next());
 					continue;
-				} else
-				{
-					// End of expression
-					break;
 				}
+
+				// End of expression
+				break;
 			}
+
 			buffer.Append(_charStream.Next());
 		}
 
 		return new Token(TokenType.LiteralPattern, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
+
 	private Token ScanLiteralStringInExpression()
 	{
 		int startColumn = _charStream.ColumnNumber;
-		StringBuilder buffer = new StringBuilder();
+		StringBuilder buffer = new();
 
 		char delimiter = _charStream.Next();
-		while(HasNextToken() && _charStream.Peek() != delimiter)
+		while (HasNextToken() && _charStream.Peek() != delimiter)
 		{
-			if(_charStream.Peek() == '\\' && _charStream.HasChars(2) && _charStream.Peek(2)[1] == delimiter)
+			if (_charStream.Peek() == '\\' && _charStream.HasChars(2) && _charStream.Peek(2)[1] == delimiter)
 			{
 				_charStream.Next();
 				buffer.Append(_charStream.Next());
 				continue;
 			}
+
 			buffer.Append(_charStream.Next());
 		}
 
-		if(!HasNextToken() || _charStream.Peek() != delimiter)
+		if (!HasNextToken() || _charStream.Peek() != delimiter)
 		{
 			throw new InvalidOperationException("Unterminated string literal.");
 		}
@@ -357,18 +419,26 @@ public class Lexer2 : ILexer
 	private Token ScanEvalText()
 	{
 		int startColumn = _charStream.ColumnNumber;
-		StringBuilder buffer = new StringBuilder();
+		StringBuilder buffer = new();
 
-		while(HasNextToken())
+		while (HasNextToken())
 		{
 			char c = _charStream.Peek();
 			// stop on delimiters or nested expressions
-			if(c == '?' || c == ':' || c == '}' || c == ',') break;
-			if(_charStream.HasChars(2))
+			if (c == '?' || c == ':' || c == '}' || c == ',')
 			{
-				var two = _charStream.Peek(2);
-				if((two[0] == '$' || two[0] == '#') && two[1] == '{') break;
+				break;
 			}
+
+			if (_charStream.HasChars(2))
+			{
+				List<char> two = _charStream.Peek(2);
+				if ((two[0] == '$' || two[0] == '#') && two[1] == '{')
+				{
+					break;
+				}
+			}
+
 			buffer.Append(_charStream.Next());
 		}
 
@@ -378,20 +448,33 @@ public class Lexer2 : ILexer
 
 	private string LookAheadUntil(params char[] delimiters)
 	{
-		var sb = new System.Text.StringBuilder();
+		StringBuilder sb = new();
 		int i = 1;
-		while(true)
+		while (true)
 		{
-			if(!_charStream.HasChars(i)) break;
-			var list = _charStream.Peek(i);
+			if (!_charStream.HasChars(i))
+			{
+				break;
+			}
+
+			List<char> list = _charStream.Peek(i);
 			char c = list[list.Count - 1];
-			if(delimiters.Contains(c)) break;
+			if (delimiters.Contains(c))
+			{
+				break;
+			}
+
 			sb.Append(c);
 			i++;
-			if(i > 512) break; // safety
+			if (i > 512)
+			{
+				break; // safety
+			}
 		}
+
 		return sb.ToString();
 	}
+
 	private Token ScanIdentifier()
 	{
 		/*
@@ -405,58 +488,60 @@ public class Lexer2 : ILexer
 
 		int startColumn = _charStream.ColumnNumber;
 
-		StringBuilder buffer = new StringBuilder();
+		StringBuilder buffer = new();
 
 		char peekFirstChar = _charStream.Peek();
-		if(IsLegalIdentifierFirstCharacter(peekFirstChar))
+		if (IsLegalIdentifierFirstCharacter(peekFirstChar))
 		{
 			buffer.Append(_charStream.Next());
-		} else
+		}
+		else
 		{
 			throw new InvalidDataException($"Next char is illegal identifier '{peekFirstChar}'");
 		}
 
 
-		while(HasNextToken() && IsLegalIdentifierCharacter(_charStream.Peek()))
+		while (HasNextToken() && IsLegalIdentifierCharacter(_charStream.Peek()))
 		{
 			buffer.Append(_charStream.Next());
 		}
 
-		if(!HasNextToken())
+		if (!HasNextToken())
 		{
 			throw new InvalidOperationException("Invalid identifier, because not end message formatter");
 		}
+
 		return new Token(TokenType.Identifier, buffer.ToString(), startColumn, _charStream.LineNumber, startColumn);
 	}
 
 	private bool IsLegalIdentifierFirstCharacter(char firstCharacter)
 	{
 		return (firstCharacter >= 'a' && firstCharacter <= 'z') ||
-			   (firstCharacter >= 'A' && firstCharacter <= 'Z') ||
-			   firstCharacter == '$' ||
-			   firstCharacter == '@' ||
-			   firstCharacter == '_';
+		       (firstCharacter >= 'A' && firstCharacter <= 'Z') ||
+		       firstCharacter == '$' ||
+		       firstCharacter == '@' ||
+		       firstCharacter == '_';
 	}
 
 	private bool IsLegalIdentifierCharacter(char character)
 	{
 		return IsLegalIdentifierFirstCharacter(character) ||
-			   (character >= '0' && character <= '9');
+		       (character >= '0' && character <= '9');
 	}
 
 	private Token ScanPatternLiteral()
 	{
 		int startColumn = _charStream.ColumnNumber;
-		StringBuilder buffer = new StringBuilder();
+		StringBuilder buffer = new();
 
-		while(HasNextToken() && _charStream.Peek() != '}')
+		while (HasNextToken() && _charStream.Peek() != '}')
 		{
 			// If a nested expression starts inside the pattern (e.g. '${' or '#{'), stop here so the
 			// expression can be tokenized separately. Do not consume the '${'/'#{'.
-			if(_charStream.HasChars(2))
+			if (_charStream.HasChars(2))
 			{
-				var two = _charStream.Peek(2);
-				if((two[0] == '$' || two[0] == '#') && two[1] == '{')
+				List<char> two = _charStream.Peek(2);
+				if ((two[0] == '$' || two[0] == '#') && two[1] == '{')
 				{
 					break;
 				}
@@ -471,14 +556,17 @@ public class Lexer2 : ILexer
 
 	private void RemoveWhitespaces()
 	{
-		while(HasNextToken() && char.IsWhiteSpace(_charStream.Peek()))
+		while (HasNextToken() && char.IsWhiteSpace(_charStream.Peek()))
 		{
 			_charStream.Next();
 		}
 	}
 
-	public bool HasNextToken()
+	private enum LexerState
 	{
-		return !_charStream.EndOfStream;
+		Default,
+		InsideExpression,
+		InsidePatternLiteral,
+		InsideEvalPattern
 	}
 }

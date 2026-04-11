@@ -1,34 +1,36 @@
+using System.Collections.Concurrent;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
-using BMTP3.Core2.BackupNew.Domain.Item; // For ItemResultState
-using System.Collections.Concurrent;
+using BMTP3.Core2.BackupNew.Domain.Item;
+// For ItemResultState
 
 namespace BMTP3.Core2.BackupNew.Engine.Internal;
 
 /// <summary>
-/// Internal thread-safe tracker for backup progress.
-/// Maintains state and produces snapshots for the API.
+///     Internal thread-safe tracker for backup progress.
+///     Maintains state and produces snapshots for the API.
 /// </summary>
 public class ProgressTracker
 {
+	// --- Active Files (Thread-Safe Dictionary) ---
+	// Key: ItemId (unique GUID string per running file)
+	private readonly ConcurrentDictionary<string, FileProgress> _activeFiles = new();
+	private long _bytesProcessed;
+
+	private long _bytesTotal;
+
 	// --- Global Phase ---
 	private volatile BackupPhase _currentPhase = BackupPhase.Starting;
 
 	// --- Discovery Counters (Interlocked) ---
 	private int _directoriesTraversed;
-	private int _filesTotal;
-	private long _bytesTotal;
+	private int _filesFailed;
+	private int _filesSkipped;
 
 	// --- Processing Counters (Interlocked) ---
 	private int _filesSucceeded;
-	private int _filesFailed;
-	private int _filesSkipped;
-	private long _bytesProcessed;
-
-	// --- Active Files (Thread-Safe Dictionary) ---
-	// Key: ItemId (unique GUID string per running file)
-	private readonly ConcurrentDictionary<string, FileProgress> _activeFiles = new();
+	private int _filesTotal;
 
 	// --- Phase Management ---
 
@@ -41,10 +43,11 @@ public class ProgressTracker
 
 	public void AddDiscovery(bool isDirectory, long size = 0)
 	{
-		if(isDirectory)
+		if (isDirectory)
 		{
 			Interlocked.Increment(ref _directoriesTraversed);
-		} else
+		}
+		else
 		{
 			Interlocked.Increment(ref _filesTotal);
 			Interlocked.Add(ref _bytesTotal, size);
@@ -54,9 +57,10 @@ public class ProgressTracker
 	// --- Active Item Management ---
 
 	/// <summary>
-	/// Starts tracking a file or updates its phase.
+	///     Starts tracking a file or updates its phase.
 	/// </summary>
-	public void UpdateItemPhase(string itemId, string sourcePath, string fileName, string relativePath, FilePhase phase, ulong totalBytes)
+	public void UpdateItemPhase(string itemId, string sourcePath, string fileName, string relativePath, FilePhase phase,
+		ulong totalBytes)
 	{
 		_activeFiles.AddOrUpdate(itemId,
 			// Add new
@@ -74,24 +78,28 @@ public class ProgressTracker
 			{
 				existing.Phase = phase;
 				// Ensure total bytes is set if discovered late
-				if(existing.BytesTotal == 0) existing.BytesTotal = totalBytes;
+				if (existing.BytesTotal == 0)
+				{
+					existing.BytesTotal = totalBytes;
+				}
+
 				return existing;
 			});
 	}
 
 	/// <summary>
-	/// Updates the byte progress of an active file.
+	///     Updates the byte progress of an active file.
 	/// </summary>
 	public void UpdateItemBytes(string itemId, ulong bytesProcessed)
 	{
-		if(_activeFiles.TryGetValue(itemId, out var progress))
+		if (_activeFiles.TryGetValue(itemId, out FileProgress? progress))
 		{
 			progress.BytesProcessed = bytesProcessed;
 		}
 	}
 
 	/// <summary>
-	/// Completes an item: Removes from active list and updates global stats.
+	///     Completes an item: Removes from active list and updates global stats.
 	/// </summary>
 	public void CompleteItem(string itemId, ItemResultState result, long totalBytes)
 	{
@@ -99,7 +107,7 @@ public class ProgressTracker
 		_activeFiles.TryRemove(itemId, out _);
 
 		// 2. Update Globals
-		switch(result)
+		switch (result)
 		{
 			case ItemResultState.Success:
 				Interlocked.Increment(ref _filesSucceeded);
@@ -127,7 +135,7 @@ public class ProgressTracker
 		int processed = _filesSucceeded + _filesFailed + _filesSkipped;
 
 		// Snapshot active files (ToArray is thread-safe on ConcurrentDictionary values)
-		var activeSnapshot = _activeFiles.Values.Select(fp => new FileProgress
+		List<FileProgress> activeSnapshot = _activeFiles.Values.Select(fp => new FileProgress
 		{
 			FileName = fp.FileName,
 			RelativePath = fp.RelativePath,
