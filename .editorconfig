@@ -33,6 +33,9 @@ csharp_new_line_before_open_brace = all
 end_of_line = crlf
 insert_final_newline = false
 
+# Analyzer severities
+dotnet_diagnostic.IDE0028.severity = none
+
 [*.{cs,vb}]
 dotnet_style_operator_placement_when_wrapping = beginning_of_line
 tab_width = 4

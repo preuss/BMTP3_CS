@@ -36,7 +36,7 @@ public sealed class FileSystemTimestampReader : ITimestampReader
 			)
 		);
 
-		// ── Last Access Time (ukendt rolle)
+		// ── Last Access Time (unknown role)
 		candidates.Add(
 			TimestampCandidateFactory.FromDateTime(
 				TimestampSourceType.FileSystem,

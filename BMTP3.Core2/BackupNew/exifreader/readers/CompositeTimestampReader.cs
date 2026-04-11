@@ -1,18 +1,22 @@
-﻿using BMTP3.Core2.BackupNew.candidates;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
+using BMTP3.Core2.BackupNew.candidates;
 
 namespace BMTP3.Core2.BackupNew.exifreader.readers;
 
 /// <summary>
 ///     A master reader that aggregates timestamp candidates from all supported metadata formats.
+///     - Each sub-reader MUST return an empty IReadOnlyList&lt;TimestampCandidate&gt; when no candidates are found.
+///     - CompositeTimestampReader will continue if an individual reader throws, but will capture the exception.
 /// </summary>
 public class CompositeTimestampReader : ITimestampReader
 {
 	private readonly List<ITimestampReader> _readers;
 
 	public CompositeTimestampReader()
-	{
-		// Register all specific readers here (include filesystem reader)
-		_readers = new List<ITimestampReader>
+		: this(new List<ITimestampReader>
 		{
 			new FileSystemTimestampReader(),
 			new ExifTimestampReader(),
@@ -20,29 +24,66 @@ public class CompositeTimestampReader : ITimestampReader
 			new GpsTimestampReader(),
 			new QuickTimeTimestampReader(),
 			new XmpTimestampReader()
-		};
+		})
+	{
 	}
 
+	public CompositeTimestampReader(IList<ITimestampReader> readers)
+	{
+		if(readers == null)
+		{
+			throw new ArgumentNullException(nameof(readers));
+		}
+		if(!readers.Any())
+		{
+			throw new ArgumentException("At least one reader is required.", nameof(readers));
+		}
+
+		_readers = new(readers);
+	}
+
+	/// <summary>
+	///     ITimestampReader contract - returns combined candidates and discards reader errors.
+	/// </summary>
 	public IReadOnlyList<TimestampCandidate> Read(FileInfo file)
 	{
-		List<TimestampCandidate> allCandidates = new();
+		// silently ignore errors when using the parameterless Read method.
+		return Read(file, out IReadOnlyList<(Type ReaderType, Exception Error)> _);
+	}
 
-		foreach (ITimestampReader reader in _readers)
+	/// <summary>
+	///     Reads timestamp candidates from the given file and outputs a list of any errors encountered.
+	/// </summary>
+	/// <param name="file">The file to read from.</param>
+	/// <param name="errors">A list of exceptions thrown by individual readers, along with the reader type.</param>
+	/// <returns>A combined list of all successfully read candidates.</returns>
+	public IReadOnlyList<TimestampCandidate> Read(FileInfo file, out IReadOnlyList<(Type ReaderType, Exception Error)> errors)
+	{
+		if(file == null)
+		{
+			throw new ArgumentNullException(nameof(file));
+		}
+
+		// Defensive initialisation: ensure 'errors' is never null for normal returns.
+		errors = Array.Empty<(Type ReaderType, Exception Error)>();
+
+		List<TimestampCandidate> allCandidates = new();
+		List<(Type ReaderType, Exception Error)> encounteredErrors = new();
+
+		foreach(ITimestampReader reader in _readers)
 		{
 			try
 			{
-				IReadOnlyList<TimestampCandidate> candidates = reader.Read(file);
-				if (candidates != null)
-				{
-					allCandidates.AddRange(candidates);
-				}
-			}
-			catch
+				allCandidates.AddRange(reader.Read(file));
+			} catch(Exception ex)
 			{
-				// Keep going if a reader throws unexpectedly
+				// Keep going if a reader throws unexpectedly, but record the error it threw.
+				encounteredErrors.Add((reader.GetType(), ex));
 			}
 		}
 
+		// Expose collected errors (readonly view)
+		errors = encounteredErrors.AsReadOnly();
 		return allCandidates;
 	}
 }
