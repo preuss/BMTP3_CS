@@ -1,0 +1,21 @@
+Perform backup
+
+Options:
+  -v, --verbose                            Enable verbose output. Repeat for more detail.
+  -c, --config [<config>]                  Path to the backup configuration file (TOML or JSON).
+  --name <name>                            Friendly name for this backup job (e.g. 'iPhone Photos'). Used in logs and reports.
+  -d, --source-device <source-device>      Name of the source device to backup from (e.g. 'Apple iPhone').
+  -s, --source-directory <source-directory> Source folder on the device (e.g. 'Internal Storage/DCIM/100APPLE' or 'C:\Users\Bob\Pictures').
+  -o, --output <output>                    Destination folder for the backup.
+  -r, --recursive [<recursive>]            Include subfolders recursively.
+  --output-structure <output-structure>    Defines how destination folders are structured: PreserveSourceTree, Flat, or CustomPathPattern.
+  --path-pattern <path-pattern>            Custom path or filename pattern (used if OutputStrategy = CustomPathPattern).  --collision-resolution <collision-resolution> Defines how to handle existing files: Overwrite, Skip, Error, or Rename.  --collision-compare [<collision-compare>] Defines how to compare existing files before applying resolution: None, Hash, or Binary.
+  --rename-strategy [<rename-strategy>]    Defines rename behavior when collision resolution is 'Rename': Increment, Timestamp, Hash, or CustomCollisionPathPattern.
+  --collision-pattern <collision-pattern>  Custom pattern used when RenameStrategy = CustomCollisionPathPattern.
+  --include [<include>]                    Glob patterns of files or folders to explicitly include (comma-separated).
+  --exclude [<exclude>]                    Glob patterns of files or folders to exclude (comma-separated).
+  --sidecar-format [<sidecar-format>]      Format of per-file sidecar metadata: None, Ini, or Json.
+  --backup-index [<backup-index>]          Type of centralized backup index: None, Json, or Database.
+  -n, --dry-run, --simulate [<dry-run>]    Simulates the backup without performing any write operations.
+  -w, --wait, --delay <delay>              Delay between file operations, in milliseconds (useful for throttling or testing).
+  -h, --help                               Show help and usage information

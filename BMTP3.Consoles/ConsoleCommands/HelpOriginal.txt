@@ -1,0 +1,28 @@
+Description:
+  Perform backup
+
+Usage:
+  BMTP3.Consoles backup [options]
+
+Options:
+  -v, --verbose                                                            Enable verbose output. Repeat for more detail.
+  -c, --config <config>                                                    Path to the backup configuration file (TOML or JSON). [default: default.toml]
+  --name <name>                                                            Friendly name for this backup job (e.g. 'iPhone Photos'). Used in logs and reports.
+  -d, --source-device <source-device>                                      Name of the source device to backup from (e.g. 'Apple iPhone').
+  -s, --source-directory <source-directory>                                Source folder on the device (e.g. 'Internal Storage/DCIM/100APPLE' or 'C:\Users\Bob\Pictures').
+  -o, --output <output>                                                    Destination folder for the backup.
+  -r, --recursive                                                          Include subfolders recursively.
+  --output-structure <CustomPathPattern|Flat|PreserveSourceTree>           Defines how destination folders are structured: PreserveSourceTree, Flat, or CustomPathPattern. [default: PreserveSourceTree]
+  --path-pattern <path-pattern>                                            Custom path or filename pattern (used if OutputStrategy = CustomPathPattern).
+  --collision-resolution <Error|Overwrite|Rename|Skip>                     Defines how to handle existing files: Overwrite, Skip, Error, or Rename. [default: Rename]
+  --collision-compare <Binary|Hash|None>                                   Defines how to compare existing files before applying resolution: None, Hash, or Binary. [default: Binary]
+  --rename-strategy <CustomCollisionPathPattern|Hash|Increment|Timestamp>  Defines rename behavior when collision resolution is 'Rename': Increment, Timestamp, Hash, or CustomCollisionPathPattern. [default: Increment]
+  --collision-pattern <collision-pattern>                                  Custom pattern used when RenameStrategy = CustomCollisionPathPattern.
+  --include <include>                                                      Glob patterns of files or folders to explicitly include (comma-separated).
+  --exclude <exclude>                                                      Glob patterns of files or folders to exclude (comma-separated).
+  --sidecar-format <Ini|Json|None>                                         Format of per-file sidecar metadata: None, Ini, or Json. [default: Ini]
+  --backup-index <Database|Json|None>                                      Type of centralized backup index: None, Json, or Database. [default: Json]
+  -n, --dry-run, --simulate                                                Simulates the backup without performing any write operations.
+  -w, --delay, --wait <delay>                                              Delay between file operations, in milliseconds (useful for throttling or testing). [default: 42]
+  -?, -h, --help                                                           Show help and usage information
+
