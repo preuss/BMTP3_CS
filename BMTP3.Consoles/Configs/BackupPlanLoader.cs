@@ -12,19 +12,18 @@ public static class BackupPlanLoader
 {
 	public static BackupPlan Load(FileInfo file)
 	{
-		if (file == null) throw new ArgumentNullException(nameof(file));
-		if (!file.Exists) throw new FileNotFoundException($"Config file not found: {file.FullName}", file.FullName);
+		if(file == null) throw new ArgumentNullException(nameof(file));
+		if(!file.Exists) throw new FileNotFoundException($"Config file not found: {file.FullName}", file.FullName);
 
 		string ext = file.Extension.ToLowerInvariant();
 		string content = File.ReadAllText(file.FullName);
-		if (ext == ".json")
+		if(ext == ".json")
 		{
-			var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-			var plan = JsonSerializer.Deserialize<BackupPlan>(content, options);
-			if (plan == null) throw new InvalidOperationException("Failed to deserialize config file to BackupPlan.");
+			JsonSerializerOptions options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+			BackupPlan? plan = JsonSerializer.Deserialize<BackupPlan>(content, options);
+			if(plan == null) throw new InvalidOperationException("Failed to deserialize config file to BackupPlan.");
 			return plan;
-		}
-		else if (ext == ".toml")
+		} else if(ext == ".toml")
 		{
 			TomlModelOptions modelOptions = new()
 			{
@@ -36,33 +35,31 @@ public static class BackupPlanLoader
 			DiagnosticsBag? diagnostics;
 			try
 			{
-				if (false == Toml.TryToModel(File.ReadAllText(file.FullName), out plan, out diagnostics, null, modelOptions))
+				if(false == Toml.TryToModel(File.ReadAllText(file.FullName), out plan, out diagnostics, null, modelOptions))
 				{
-					var sb = new StringBuilder();
+					StringBuilder sb = new();
 					sb.AppendLine($"Failed to parse TOML config: {file.FullName}");
-					if (diagnostics != null && diagnostics.Count > 0)
+					if(diagnostics != null && diagnostics.Count > 0)
 					{
-						foreach (var d in diagnostics)
+						foreach(DiagnosticMessage d in diagnostics)
 						{
 							sb.AppendLine(d.ToString());
 						}
 					}
 					throw new InvalidOperationException(sb.ToString());
 				}
-			}
-			catch (FileNotFoundException)
+			} catch(FileNotFoundException)
 			{
 				throw;
 			}
 
-			if (plan == null)
+			if(plan == null)
 			{
 				throw new InvalidOperationException($"Failed to parse config file: {file.FullName}");
 			}
 
 			return plan;
-		}
-		else
+		} else
 		{
 			throw new NotSupportedException($"Unsupported config file extension '{ext}'. Supported: .toml, .json");
 		}
@@ -70,22 +67,22 @@ public static class BackupPlanLoader
 
 	private static object MyCreateInstanceImpl(Type type, ObjectKind kind)
 	{
-		if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+		if(type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IEnumerable<>))
 		{
 			Type inner = type.GetGenericArguments()[0];
 			object? obj = Activator.CreateInstance(typeof(List<>).MakeGenericType(inner));
-			if (obj != null)
+			if(obj != null)
 			{
 				return obj;
-			}
-			else
+			} else
 			{
 				throw new InvalidOperationException("Null exception");
 			}
 		}
-		if (type == typeof(object))
+
+		if(type == typeof(object))
 		{
-			switch (kind)
+			switch(kind)
 			{
 				case ObjectKind.Table:
 				case ObjectKind.InlineTable:
@@ -97,21 +94,22 @@ public static class BackupPlanLoader
 					return new TomlArray();
 			}
 		}
-		return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Failed to create an instance of type '{type.FullName}'");
+
+		return Activator.CreateInstance(type) ?? throw new InvalidOperationException($"Failed to create an instance of type '{type.FullName}'");
 	}
-	private static string PascalToSnake(string name)
+
+	private static string PascalToSnake(string name)
 	{
-		if (string.IsNullOrEmpty(name)) return name;
-		var sb = new StringBuilder();
-		for (int i = 0; i < name.Length; i++)
+		if(string.IsNullOrEmpty(name)) return name;
+		StringBuilder sb = new();
+		for(int i = 0; i < name.Length; i++)
 		{
 			char c = name[i];
-			if (char.IsUpper(c))
+			if(char.IsUpper(c))
 			{
-				if (i > 0) sb.Append('_');
+				if(i > 0) sb.Append('_');
 				sb.Append(char.ToLowerInvariant(c));
-			}
-			else
+			} else
 			{
 				sb.Append(c);
 			}
