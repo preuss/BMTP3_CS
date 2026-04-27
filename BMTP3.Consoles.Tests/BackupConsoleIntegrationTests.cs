@@ -14,6 +14,7 @@ using System.CommandLine;
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.Services;
 using Microsoft.Extensions.Logging;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 
 namespace BMTP3.Consoles.Tests;
 
@@ -99,19 +100,19 @@ public class BackupConsoleIntegrationTests
 			BackupConsoleCommand2 command = backupCommand;
 			BackupJobResult? result = await command.TryRunAsync(plan, progress, cts.Token);
 
-			// Log global errors unconditionally so failures are always diagnosable
-			if (result?.GlobalErrors?.Count > 0)
+			// Log errors unconditionally so failures are always diagnosable
+			if (result?.Errors?.Count > 0)
 			{
-				_output.WriteLine("GlobalErrors:");
-				foreach (string err in result.GlobalErrors)
+				_output.WriteLine("Errors:");
+				foreach (string err in result.Errors)
 				{
 					_output.WriteLine($"  {err}");
 				}
 			}
 
-			_output.WriteLine($"Command run status: {result?.Status}. Files scanned: {result?.TotalFilesScanned}");
+			_output.WriteLine($"Command run state: {result?.State}. Files discovered: {result?.FilesDiscovered}");
 			Assert.NotNull(result);
-			Assert.Equal(JobState.Completed, result.Status);
+			Assert.Equal(BackupState.Completed, result.State);
 
 			// Ensure something was written to output
 			Assert.True(Directory.EnumerateFiles(tempOutput, "*", SearchOption.AllDirectories).Any(),

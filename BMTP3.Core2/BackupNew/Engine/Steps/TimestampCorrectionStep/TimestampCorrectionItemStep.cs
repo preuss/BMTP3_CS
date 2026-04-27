@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
@@ -20,8 +20,8 @@ public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
 		Context = context ?? throw new ArgumentNullException(nameof(context));
 	}
 
-	public string Name => "Timestamp Correction";
-	public FilePhase Phase => FilePhase.Metadata;
+   public string Name => "Timestamp Correction";
+   public FilePhase Phase => FilePhase.None; // No direct match in new model
 	public BackupPlan Context { get; }
 
 	public Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)

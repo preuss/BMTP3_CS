@@ -1,5 +1,6 @@
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
@@ -62,8 +63,8 @@ public class BackupEngineTests
 			BackupJobResult result = await engine.RunAsync(plan, progress, cts.Token);
 
 			Assert.NotNull(result);
-			Assert.Equal(JobState.Completed, result.Status);
-			Assert.Equal(0, result.TotalFilesScanned);
+			Assert.Equal(BackupState.Completed, result.State);
+			Assert.Equal(0, result.FilesDiscovered);
 		}
 		finally
 		{
@@ -248,7 +249,7 @@ public class BackupEngineTests
 		{
 			BackupJobResult result = await engine.RunAsync(plan, null, CancellationToken.None);
 			Assert.NotNull(result);
-			Assert.Equal(JobState.Completed, result.Status);
+			Assert.Equal(BackupState.Completed, result.State);
 		}
 		finally
 		{

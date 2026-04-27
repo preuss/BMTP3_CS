@@ -2,10 +2,10 @@ using System.CommandLine;
 using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
-using BMTP3.Core2.BackupNew.Domain.Job;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -92,23 +92,22 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		try
 		{
 			BackupJobResult result = await engine.RunAsync(plan, progress, linkedCts.Token);
-			// Print friendly result for the user and log diagnostics
 			consolePrinter?.PrintResult(result);
-			logger.LogInformation("Job '{JobName}' finished: {Status}", result.JobName, result.Status);
+			logger.LogInformation("Job '{JobName}' finished: {State}", result.JobName, result.State);
 			logger.LogInformation(
-			"Scanned: {Scanned} Copied: {Copied} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}",
-			result.TotalFilesScanned, result.FilesCopied, result.FilesFailed, result.FilesSkipped,
-			result.TotalBytesCopied);
-			if(result.GlobalErrors?.Count > 0)
+			"Discovered: {Discovered} Succeeded: {Succeeded} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}",
+			result.FilesDiscovered, result.FilesSucceeded, result.FilesFailed, result.FilesSkipped,
+			result.BytesProcessed);
+			if(result.Errors?.Count > 0)
 			{
-				logger.LogWarning("Global errors:");
-				foreach(string e in result.GlobalErrors)
+				logger.LogWarning("Errors:");
+				foreach(string e in result.Errors)
 				{
 					logger.LogWarning(e);
 				}
 			}
 
-			return result.Status == JobState.Completed ? 0 : 1;
+			return result.State == BackupState.Completed ? 0 : 1;
 		} catch(OperationCanceledException)
 		{
 			consolePrinter?.PrintStatus("Backup cancelled.");
@@ -144,8 +143,8 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	{
 		ConsolesPrinter? consolePrinter = ServiceProvider.GetService<ConsolesPrinter>();
 		ILogger<BackupConsoleCommand2>? logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand2>>()
-												 ?? ServiceProvider.GetService<ILoggerFactory>()
-												 ?.CreateLogger<BackupConsoleCommand2>();
+											 ?? ServiceProvider.GetService<ILoggerFactory>()
+											 ?.CreateLogger<BackupConsoleCommand2>();
 
 		if(plan == null)
 		{
@@ -157,9 +156,14 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		{
 			BackupJobResult fail = new()
 			{
-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
+				JobName = plan.Name,
+				StartTime = DateTimeOffset.UtcNow,
+				EndTime = DateTimeOffset.UtcNow,
+				State = BackupState.Stopped,
+				StopReason = StopReason.FatalError,
+				Errors = new List<string> { "Backup engine not configured in DI." },
+				FinalProgress = new BackupProgress()
 			};
-			fail.GlobalErrors.Add("Backup engine not configured in DI.");
 			logger?.LogError("Backup engine not configured in DI.");
 			return fail;
 		}
@@ -170,24 +174,38 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 			await engine.RunAsync(plan, progress ?? new Progress<IBackupProgress>(p => { }), ct);
 			return result ?? new BackupJobResult
 			{
-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
+				JobName = plan.Name,
+				StartTime = DateTimeOffset.UtcNow,
+				EndTime = DateTimeOffset.UtcNow,
+				State = BackupState.Stopped,
+				StopReason = StopReason.FatalError,
+				FinalProgress = new BackupProgress()
 			};
 		} catch(OperationCanceledException)
 		{
 			logger?.LogInformation("Backup cancelled (TryRunAsync)");
 			return new BackupJobResult
 			{
-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Cancelled
+				JobName = plan.Name,
+				StartTime = DateTimeOffset.UtcNow,
+				EndTime = DateTimeOffset.UtcNow,
+				State = BackupState.Stopped,
+				StopReason = StopReason.UserCancelled,
+				FinalProgress = new BackupProgress()
 			};
 		} catch(Exception ex)
 		{
 			logger?.LogError(ex, "Unhandled exception during TryRunAsync");
 			BackupJobResult r = new()
 			{
-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
+				JobName = plan.Name,
+				StartTime = DateTimeOffset.UtcNow,
+				EndTime = DateTimeOffset.UtcNow,
+				State = BackupState.Stopped,
+				StopReason = StopReason.FatalError,
+				Errors = new List<string> { ex.Message, ex.ToString() },
+				FinalProgress = new BackupProgress()
 			};
-			r.GlobalErrors.Add(ex.Message);
-			r.GlobalErrors.Add(ex.ToString());
 			return r;
 		}
 	}

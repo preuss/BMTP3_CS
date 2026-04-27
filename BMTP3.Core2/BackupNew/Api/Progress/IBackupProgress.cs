@@ -1,65 +1,97 @@
-using BMTP3.Core2.BackupNew.Api.Enums;
+using System;
+using System.Collections.Generic;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 
 namespace BMTP3.Core2.BackupNew.Api.Progress;
 
 /// <summary>
-///     Represents the current progress of an ongoing backup job.
-///     A snapshot of the backup job's current progress.
+///     Represents a point-in-time snapshot of a running backup job.
+///     This is a live dashboard — not the final report.
 /// </summary>
 public interface IBackupProgress
 {
 	/// <summary>
-	///     The overall phase of the backup job.
+	///     The current lifecycle state of the job.
+	/// </summary>
+	BackupState State { get; }
+	/// <summary>
+	///     The current work phase. Only meaningful when State is Running.
 	/// </summary>
 	BackupPhase Phase { get; }
 
 	/// <summary>
-	///     The total number of directories discovered by the scanner so far.
+	///     When the job started.
+	/// </summary>
+	DateTimeOffset StartedAt { get; }
+	/// <summary>
+	///     Elapsed time since the job started.
+	/// </summary>
+	TimeSpan Elapsed { get; }
+
+	/// <summary>
+	///     Number of directories traversed so far.
 	/// </summary>
 	int DirectoriesTraversed { get; }
-
 	/// <summary>
-	///     The total number of files discovered by the scanner so far.
+	///     The directory currently being scanned. Empty when not scanning.
+	/// </summary>
+	string CurrentDirectory { get; }
+	/// <summary>
+	///     Total number of files discovered by the scanner.
 	/// </summary>
 	int FilesDiscovered { get; }
+	/// <summary>
+	///     Number of files excluded by filter rules during scanning.
+	/// </summary>
+	int FilesExcluded { get; }
+	/// <summary>
+	///     Number of directories or files that could not be read during scanning.
+	/// </summary>
+	int ScanErrors { get; }
 
 	/// <summary>
-	///     The total size in bytes of all files discovered so far.
+	///     Total bytes to process (known so far — grows during Traversing phase).
 	/// </summary>
 	long BytesTotal { get; }
-
 	/// <summary>
-	///     Number of files processed so far (Success + Skipped + Failed).
-	/// </summary>
-	int FilesProcessed { get; }
-
-	/// <summary>
-	///     The number of files successfully backed up.
-	/// </summary>
-	int FilesSucceeded { get; }
-
-	/// <summary>
-	///     The number of files skipped (e.g., due to existing files or filters).
-	/// </summary>
-	int FilesSkipped { get; }
-
-	/// <summary>
-	///     The number of files that failed processing.
-	/// </summary>
-	int FilesFailed { get; }
-
-	/// <summary>
-	///     The total number of bytes successfully processed (moved/copied/skipped).
+	///     Total bytes processed so far.
 	/// </summary>
 	long BytesProcessed { get; }
 
 	/// <summary>
-	///     Percentage of completion (0..100).
+	///     Number of files fully processed (succeeded + skipped + failed).
+	/// </summary>
+	int FilesProcessed { get; }
+	/// <summary>
+	///     Number of files successfully copied.
+	/// </summary>
+	int FilesSucceeded { get; }
+	/// <summary>
+	///     Number of files skipped.
+	/// </summary>
+	int FilesSkipped { get; }
+	/// <summary>
+	///     Number of files that failed.
+	/// </summary>
+	int FilesFailed { get; }
+
+	/// <summary>
+	///     Current transfer speed in bytes per second.
+	/// </summary>
+	long BytesPerSecond { get; }
+	/// <summary>
+	///     Overall completion percentage (0–100).
 	/// </summary>
 	double PercentageComplete { get; }
 
 	/// <summary>
-	///     A read-only list of files currently being processed (active in the pipeline).
+	///     Files currently being processed by the pipeline.
 	/// </summary>
 	IReadOnlyList<FileProgress> ActiveFiles { get; }
+
+	/// <summary>
+	///     A rolling window of recent events for display in the UI.
+	///     Oldest events are dropped as new ones arrive.
+	/// </summary>
+	IReadOnlyList<BackupEvent> RecentEvents { get; }
 }

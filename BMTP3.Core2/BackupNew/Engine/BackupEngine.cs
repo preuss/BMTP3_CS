@@ -1,7 +1,6 @@
 using System.Diagnostics;
 using System.Threading.Channels;
 using BMTP3.Core2.BackupNew.Api;
-using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
@@ -26,6 +25,7 @@ using BMTP3.Core2.BackupNew.Engine.Traversal;
 using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 
 namespace BMTP3.Core2.BackupNew.Engine;
 
@@ -89,13 +89,7 @@ public class BackupEngine : IBackupEngine
 	{
 		ArgumentNullException.ThrowIfNull(plan);
 
-		// TODO: I am trying to make this not nullable, but for now just in case, use null-coalescing assignment to ensure it's not null. We can remove this once we are sure all callers provide a non-null progress instance.
 		progress ??= new Progress<IBackupProgress>();
-
-		// Adapter: forwards BackupProgress snapshots to the caller's IProgress<IBackupProgress>.
-		// ContentBufferingItemStep (and StagingDownloader) report per-file staging updates using
-		// BackupProgress. We bridge those into the same outer progress channel so callers see
-		// staging activity without needing to know about the internal type.
 		IProgress<BackupProgress> stagingProgress = new Progress<BackupProgress>(p => progress.Report(p));
 
 		// 0. Pre-flight Validation
@@ -120,27 +114,29 @@ public class BackupEngine : IBackupEngine
 		if(!plan.DryRun)
 		{
 			await _repository.SaveAsync(session, ct).ConfigureAwait(false);
-			_logger.LogInformation("Backup session {SessionId} started. Output: {OutputPath}", sessionId,
-				plan.OutputPath);
+			_logger.LogInformation("Backup session {SessionId} started. Output: {OutputPath}", sessionId, plan.OutputPath);
 		}
 
 		// Prepare result
 		ProgressTracker tracker = new();
-		tracker.SetPhase(BackupPhase.Starting);
+		tracker.SetPhase(BackupPhase.Initializing);
 
-		BackupJobResult result = new()
-		{
-			JobName = plan.Name,
-			StartTime = DateTime.UtcNow,
-			Status = JobState.Ready
-		};
+		DateTimeOffset startTime = DateTimeOffset.UtcNow;
+		BackupState state = BackupState.Ready;
+		StopReason stopReason = StopReason.None;
+		List<string> errors = new();
 
 		if(ct.IsCancellationRequested)
 		{
-			result.EndTime = DateTime.UtcNow;
-			result.Status = JobState.Cancelled;
-			result.GlobalErrors.Add("Cancelled before start");
-			return result;
+			return new BackupJobResult
+			{
+				JobName = plan.Name,
+				StartTime = startTime,
+				EndTime = DateTimeOffset.UtcNow,
+				State = BackupState.Stopped,
+				StopReason = StopReason.UserCancelled,
+				FinalProgress = tracker.GetSnapshot()
+			};
 		}
 
 		// reportingTask should be cancellable independently so we can stop it when the pipeline completes
@@ -154,7 +150,8 @@ public class BackupEngine : IBackupEngine
 					progress.Report(tracker.GetSnapshot());
 					await Task.Delay(250, reportingCts.Token).ConfigureAwait(false);
 				}
-			} catch(OperationCanceledException)
+			}
+			catch(OperationCanceledException)
 			{
 			}
 		}, reportingCts.Token);
@@ -194,7 +191,7 @@ public class BackupEngine : IBackupEngine
 		Channel<IBackupItem> persistenceChannel = Channel.CreateBounded<IBackupItem>(
 			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
 
-		result.Status = JobState.Running;
+		state = BackupState.Running;
 		tracker.SetPhase(BackupPhase.Traversing);
 
 		// Instantiate Steps
@@ -361,36 +358,11 @@ public class BackupEngine : IBackupEngine
 		} catch(Exception ex)
 		{
 			// Convert unexpected pipeline exceptions into a failed BackupJobResult
-			tracker.SetPhase(BackupPhase.Completed);
-
-			result.EndTime = DateTime.UtcNow;
-			result.Status = JobState.Failed;
-			result.GlobalErrors.Add($"Pipeline crashed: {ex.Message}");
-			result.GlobalErrors.Add(ex.ToString());
-
-			// Ensure reporting task is stopped and observed
-			try
-			{
-				reportingCts.Cancel();
-				await reportingTask.ConfigureAwait(false);
-			} catch
-			{
-				// ignored
-			}
-
-			// Cleanup MTP session on pipeline crash
-			if(mtpSession != null)
-			{
-				try
-				{
-					mtpSession.Dispose();
-				} catch
-				{
-					/* best effort */
-				}
-			}
-
-			return result;
+			tracker.SetPhase(BackupPhase.None);
+			errors.Add($"Pipeline crashed: {ex.Message}");
+			errors.Add(ex.ToString());
+			state = BackupState.Stopped;
+			stopReason = StopReason.FatalError;
 		}
 
 		// Pipeline completed normally - stop the reporting task
@@ -420,42 +392,46 @@ public class BackupEngine : IBackupEngine
 		// so we must inspect the progress snapshot to determine overall job outcome.
 		BackupProgress finalSnap = tracker.GetSnapshot();
 
-		result.EndTime = DateTime.UtcNow;
-
 		if(ct.IsCancellationRequested)
 		{
-			result.Status = JobState.Cancelled;
-			tracker.SetPhase(BackupPhase.Cancelled);
-		} else if(finalSnap.FilesFailed > 0)
+			state = BackupState.Stopped;
+			stopReason = StopReason.UserCancelled;
+			tracker.SetPhase(BackupPhase.None);
+		}
+		else if(finalSnap.FilesFailed > 0 && stopReason == StopReason.None)
 		{
-			// Mark job as failed when any file failed. Include a short summary in GlobalErrors.
-			result.Status = JobState.Failed;
-			tracker.SetPhase(BackupPhase.Completed);
-			result.GlobalErrors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
-		} else
+			state = BackupState.Stopped;
+			stopReason = StopReason.FatalError;
+			tracker.SetPhase(BackupPhase.None);
+			errors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
+		}
+		else if(stopReason == StopReason.None)
 		{
-			result.Status = JobState.Completed;
-			tracker.SetPhase(BackupPhase.Completed);
+			state = BackupState.Completed;
+			stopReason = StopReason.None;
+			tracker.SetPhase(BackupPhase.None);
 		}
 
 		progress.Report(tracker.GetSnapshot());
-
-		// Populate summary fields from tracker snapshot
-		result.FilesCopied = finalSnap.FilesSucceeded;
-		result.FilesFailed = finalSnap.FilesFailed;
-		result.FilesSkipped = finalSnap.FilesSkipped;
-		result.TotalFilesScanned = finalSnap.FilesDiscovered;
-		result.TotalBytesCopied = finalSnap.BytesProcessed;
 
 		// Final save of session state (skip in DryRun)
 		if(!plan.DryRun)
 		{
 			await _repository.SaveAsync(session, ct).ConfigureAwait(false);
-			_logger.LogInformation("Backup session {SessionId} completed. Files: {Copied}/{Total}, Status: {Status}",
-				sessionId, result.FilesCopied, result.TotalFilesScanned, result.Status);
+			_logger.LogInformation("Backup session {SessionId} completed. Files: {Succeeded}/{Total}, State: {State}",
+				sessionId, finalSnap.FilesSucceeded, finalSnap.FilesDiscovered, state);
 		}
 
-		return result;
+		return new BackupJobResult
+		{
+			JobName = plan.Name,
+			StartTime = startTime,
+			EndTime = DateTimeOffset.UtcNow,
+			State = state,
+			StopReason = stopReason,
+			FinalProgress = finalSnap,
+			Errors = errors
+		};
 	}
 
 	private void ValidateDiskSpace(BackupPlan plan)
@@ -504,9 +480,9 @@ public class BackupEngine : IBackupEngine
 
 	private void ValidateSourceAndOutput(BackupPlan plan)
 	{
-		if (plan.SourceType == SourceType.FileSystem)
+		if(plan.SourceType == SourceType.FileSystem)
 		{
-			if (!Directory.Exists(plan.SourcePath))
+			if(!Directory.Exists(plan.SourcePath))
 			{
 				throw new DirectoryNotFoundException($"Source path not found: {plan.SourcePath}");
 			}
@@ -515,21 +491,19 @@ public class BackupEngine : IBackupEngine
 			try
 			{
 				Directory.EnumerateFileSystemEntries(plan.SourcePath).FirstOrDefault();
-			}
-			catch (Exception ex)
+			} catch(Exception ex)
 			{
 				throw new UnauthorizedAccessException($"No read access to source: {plan.SourcePath}", ex);
 			}
 		}
 
 		DirectoryInfo outputDir = new(plan.OutputPath);
-		if (!outputDir.Exists)
+		if(!outputDir.Exists)
 		{
 			try
 			{
 				outputDir.Create();
-			}
-			catch (Exception ex)
+			} catch(Exception ex)
 			{
 				throw new IOException($"Cannot create output directory: {plan.OutputPath}", ex);
 			}
@@ -540,8 +514,7 @@ public class BackupEngine : IBackupEngine
 			string testFile = Path.Combine(plan.OutputPath, Path.GetRandomFileName());
 			File.WriteAllText(testFile, "test");
 			File.Delete(testFile);
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			throw new UnauthorizedAccessException($"No write access to output: {plan.OutputPath}", ex);
 		}

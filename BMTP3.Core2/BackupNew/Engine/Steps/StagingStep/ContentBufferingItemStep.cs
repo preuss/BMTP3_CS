@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
@@ -26,8 +26,8 @@ public class ContentBufferingItemStep : IBackupItemStep<BackupPlan, bool>
 		_stagingRoot = Path.Combine(Path.GetTempPath(), "bmtp3_staging", Guid.NewGuid().ToString("n"));
 	}
 
-	public string Name => "Content Buffering";
-	public FilePhase Phase => FilePhase.Staging;
+   public string Name => "Content Buffering";
+   public FilePhase Phase => FilePhase.None; // No direct match in new model
 
 	public BackupPlan Context { get; }
 

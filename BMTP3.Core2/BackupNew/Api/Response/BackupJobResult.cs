@@ -1,84 +1,77 @@
+using System;
+using System.Collections.Generic;
 using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Domain.Errors;
-using BMTP3.Core2.BackupNew.Domain.Job;
 
 namespace BMTP3.Core2.BackupNew.Api.Response;
 
 /// <summary>
-///     Represents the summary and outcome of a completed backup job.
+///     The final report of a completed backup job.
+///     Returned by BackupEngine.RunAsync().
 /// </summary>
 public class BackupJobResult
 {
 	/// <summary>
 	///     The name of the job that was executed.
 	/// </summary>
-	public string JobName { get; set; } = string.Empty;
+	public string JobName { get; init; } = string.Empty;
 
 	/// <summary>
-	///     The time when the job execution started.
+	///     When the job started.
 	/// </summary>
-	public DateTime StartTime { get; set; }
-
+	public DateTimeOffset StartTime { get; init; }
 	/// <summary>
-	///     The time when the job execution ended.
+	///     When the job ended.
 	/// </summary>
-	public DateTime EndTime { get; set; }
-
+	public DateTimeOffset EndTime { get; init; }
 	/// <summary>
-	///     The total duration of the job execution.
+	///     Total duration of the job.
 	/// </summary>
 	public TimeSpan Duration => EndTime - StartTime;
 
-	// --- Statistics ---
+	/// <summary>
+	///     How the job ended.
+	/// </summary>
+	public BackupState State { get; init; }
+	/// <summary>
+	///     Why the job stopped. None if Completed.
+	/// </summary>
+	public StopReason StopReason { get; init; }
+	/// <summary>
+	///     The final progress snapshot at the moment the job ended.
+	///     Contains all counters, active files, and recent events.
+	/// </summary>
+	public BackupProgress FinalProgress { get; init; } = new();
 
 	/// <summary>
-	///     Total number of files identified in the source before filtering.
+	///     Critical errors that affected the entire job
+	///     (e.g., destination full, pipeline crash).
 	/// </summary>
-	public int TotalFilesScanned { get; set; }
+	public IReadOnlyList<string> Errors { get; init; } = new List<string>();
+	/// <summary>
+	///     Details of individual files that failed.
+	/// </summary>
+	public IReadOnlyList<ErrorLog> FailedItems { get; init; } = new List<ErrorLog>();
 
 	/// <summary>
-	///     Total number of files considered for processing after filters were applied.
+	///     Total number of files discovered by the scanner.
 	/// </summary>
-	public int TotalFilesConsidered { get; set; }
-
+	public int FilesDiscovered => FinalProgress.FilesDiscovered;
 	/// <summary>
-	///     Number of files successfully copied to the destination.
+	///     Number of files successfully copied.
 	/// </summary>
-	public int FilesCopied { get; set; }
-
+	public int FilesSucceeded => FinalProgress.FilesSucceeded;
 	/// <summary>
-	///     Number of files skipped due to configuration (e.g., already existing, excluded).
+	///     Number of files skipped.
 	/// </summary>
-	public int FilesSkipped { get; set; }
-
+	public int FilesSkipped => FinalProgress.FilesSkipped;
 	/// <summary>
-	///     Number of files that failed to be processed (e.g., read errors, write errors).
+	///     Number of files that failed.
 	/// </summary>
-	public int FilesFailed { get; set; }
-
+	public int FilesFailed => FinalProgress.FilesFailed;
 	/// <summary>
-	///     Total size in bytes of files successfully copied.
+	///     Total bytes processed.
 	/// </summary>
-	public long TotalBytesCopied { get; set; }
-
-	// --- Status & Errors ---
-
-	/// <summary>
-	///     The overall lifecycle state of the job execution (Ready, Running, Completed, Failed, Cancelled).
-	/// </summary>
-	public JobState Status { get; set; }
-
-	/// <summary>
-	///     List of critical errors that affected the entire job (e.g., source disconnected, destination full).
-	/// </summary>
-	public List<string> GlobalErrors { get; set; } = new();
-
-	/// <summary>
-	///     List of file-specific errors encountered during the job.
-	/// </summary>
-	public List<string> FileErrors { get; set; } = new(); // Adding a specific list for file errors for granularity
-
-	public List<ErrorLog?> FailedItems { get; internal set; } = new();
-	public string? GlobalError { get; internal set; }
-	public BackupProgress? FinalProgress { get; internal set; }
+	public long BytesProcessed => FinalProgress.BytesProcessed;
 }

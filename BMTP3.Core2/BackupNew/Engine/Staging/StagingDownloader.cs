@@ -1,5 +1,5 @@
 using BMTP3.Core2.BackupNew.Api;
-using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;

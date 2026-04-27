@@ -1,33 +1,24 @@
-namespace BMTP3.Core2.BackupNew.Api.Enums;
+namespace BMTP3.Core2.BackupNew.Api.Progress.Enums;
 
 /// <summary>
-///     Represents the high-level lifecycle phases of the entire backup job.
+///     The current work phase. Only meaningful when State is Running.
 /// </summary>
 public enum BackupPhase
 {
 	/// <summary>
-	///     The job is initializing and preparing to start.
+	///     No phase (not started).
 	/// </summary>
-	Starting,
-
+	None,
 	/// <summary>
-	///     The scanner is actively running, discovering new files and directories.
-	///     Backup processing occurs concurrently during this phase.
+	///     Initializing the backup job.
+	/// </summary>
+	Initializing,
+	/// <summary>
+	///     Traversing source directories/files.
 	/// </summary>
 	Traversing,
-
 	/// <summary>
-	///     Scanning has finished. The engine is processing the remaining items in the pipeline.
+	///     Transferring files to destination.
 	/// </summary>
-	Transferring,
-
-	/// <summary>
-	///     The job has completed successfully.
-	/// </summary>
-	Completed,
-
-	/// <summary>
-	///     The job was cancelled by the user or a system signal.
-	/// </summary>
-	Cancelled
+	Transferring
 }

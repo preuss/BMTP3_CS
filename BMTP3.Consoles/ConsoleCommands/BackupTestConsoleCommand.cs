@@ -2,6 +2,7 @@ using System.CommandLine;
 using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
@@ -88,7 +89,7 @@ public class BackupTestConsoleCommand : BaseConsoleCommand
 		{
 			BackupJobResult result = await engine.RunAsync(plan, progress, cancellationToken);
 			printer.PrintResult(result);
-			return result.Status == JobState.Completed ? 0 : 1;
+			return result.State == BackupState.Completed ? 0 : 1;
 		}
 		catch (OperationCanceledException)
 		{

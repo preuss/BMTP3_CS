@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
@@ -18,8 +18,8 @@ public class HashItemStep : IBackupItemStep<HashStepContext, HashStepResult>
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
-	public string Name => "Hashing";
-	public FilePhase Phase => FilePhase.Hashing;
+   public string Name => "Hashing";
+   public FilePhase Phase => FilePhase.Comparing; // 'Comparing' is the closest match in the new model
 
 	public HashStepContext Context { get; }
 

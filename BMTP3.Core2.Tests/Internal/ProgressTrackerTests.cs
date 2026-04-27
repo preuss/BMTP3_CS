@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Engine.Internal;
@@ -32,14 +32,14 @@ public class ProgressTrackerTests
 	}
 
 	[Fact]
-	public void SetPhase_Completed_SnapshotReflectsCompletedPhase()
+	public void SetPhase_None_SnapshotReflectsNonePhase()
 	{
 		ProgressTracker tracker = NewTracker();
 
-		tracker.SetPhase(BackupPhase.Completed);
+		tracker.SetPhase(BackupPhase.None);
 		BackupProgress snapshot = tracker.GetSnapshot();
 
-		Assert.Equal(BackupPhase.Completed, snapshot.Phase);
+		Assert.Equal(BackupPhase.None, snapshot.Phase);
 	}
 
 	// ---------------------------------------------------------------
@@ -157,12 +157,12 @@ public class ProgressTrackerTests
 	// ---------------------------------------------------------------
 
 	[Fact]
-	public void GetSnapshot_InitialState_AllCountersAreZeroAndPhaseIsStarting()
+	public void GetSnapshot_InitialState_AllCountersAreZeroAndPhaseIsInitializing()
 	{
 		ProgressTracker tracker = NewTracker();
 		BackupProgress snapshot = tracker.GetSnapshot();
 
-		Assert.Equal(BackupPhase.Starting, snapshot.Phase);
+		Assert.Equal(BackupPhase.Initializing, snapshot.Phase);
 		Assert.Equal(0, snapshot.FilesDiscovered);
 		Assert.Equal(0, snapshot.BytesTotal);
 		Assert.Equal(0, snapshot.FilesSucceeded);
@@ -170,5 +170,4 @@ public class ProgressTrackerTests
 		Assert.Equal(0, snapshot.FilesFailed);
 		Assert.Equal(0, snapshot.FilesProcessed);
 		Assert.Empty(snapshot.ActiveFiles);
-	}
-}
+	}}

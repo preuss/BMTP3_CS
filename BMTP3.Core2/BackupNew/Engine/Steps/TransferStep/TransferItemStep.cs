@@ -1,4 +1,5 @@
 using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Content;
@@ -35,8 +36,8 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
 		_logger = logger;
 	}
 
-	public string Name => "Transfer";
-	public FilePhase Phase => FilePhase.Transferring;
+   public string Name => "Transfer";
+   public FilePhase Phase => FilePhase.Copying;
 	public BackupPlan Context { get; }
 
 	public async Task<OperationResult> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)

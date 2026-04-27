@@ -1,6 +1,6 @@
 using System.Collections.Concurrent;
 using BMTP3.Core2.BackupNew.Api;
-using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Domain.Item;
 // For ItemResultState
@@ -21,7 +21,7 @@ public class ProgressTracker
 	private long _bytesTotal;
 
 	// --- Global Phase ---
-	private volatile BackupPhase _currentPhase = BackupPhase.Starting;
+private volatile BackupPhase _currentPhase = BackupPhase.Initializing;
 
 	// --- Discovery Counters (Interlocked) ---
 	private int _directoriesTraversed;
@@ -62,29 +62,33 @@ public class ProgressTracker
 	public void UpdateItemPhase(string itemId, string sourcePath, string fileName, string relativePath, FilePhase phase,
 		ulong totalBytes)
 	{
-		_activeFiles.AddOrUpdate(itemId,
-			// Add new
-			key => new FileProgress
-			{
-				SourcePath = sourcePath,
-				FileName = fileName,
-				RelativePath = relativePath,
-				Phase = phase,
-				BytesTotal = totalBytes,
-				BytesProcessed = 0
-			},
-			// Update existing
-			(key, existing) =>
-			{
-				existing.Phase = phase;
-				// Ensure total bytes is set if discovered late
-				if (existing.BytesTotal == 0)
-				{
-					existing.BytesTotal = totalBytes;
-				}
-
-				return existing;
-			});
+       _activeFiles.AddOrUpdate(itemId,
+		   // Add new
+		   key => new FileProgress
+		   {
+			   SourcePath = sourcePath,
+			   FileName = fileName,
+			   RelativePath = relativePath,
+			   Phase = phase,
+			   BytesTotal = (long)totalBytes,
+			   BytesProcessed = 0
+		   },
+		   // Update existing
+		   (key, existing) =>
+		   {
+			   // Create a new FileProgress with updated values (immutability for init-only)
+			   return new FileProgress
+			   {
+				   SourcePath = existing.SourcePath,
+				   FileName = existing.FileName,
+				   RelativePath = existing.RelativePath,
+				   Phase = phase,
+				   BytesTotal = existing.BytesTotal == 0 ? (long)totalBytes : existing.BytesTotal,
+				   BytesProcessed = existing.BytesProcessed,
+				   RetryAttempt = existing.RetryAttempt,
+				   StartedAt = existing.StartedAt
+			   };
+		   });
 	}
 
 	/// <summary>
@@ -92,10 +96,22 @@ public class ProgressTracker
 	/// </summary>
 	public void UpdateItemBytes(string itemId, ulong bytesProcessed)
 	{
-		if (_activeFiles.TryGetValue(itemId, out FileProgress? progress))
-		{
-			progress.BytesProcessed = bytesProcessed;
-		}
+       if (_activeFiles.TryGetValue(itemId, out FileProgress? progress))
+	   {
+		   // Replace with a new FileProgress (immutability for init-only)
+		   FileProgress updated = new FileProgress
+		   {
+			   SourcePath = progress.SourcePath,
+			   FileName = progress.FileName,
+			   RelativePath = progress.RelativePath,
+			   Phase = progress.Phase,
+			   BytesTotal = progress.BytesTotal,
+			   BytesProcessed = (long)bytesProcessed,
+			   RetryAttempt = progress.RetryAttempt,
+			   StartedAt = progress.StartedAt
+		   };
+		   _activeFiles[itemId] = updated;
+	   }
 	}
 
 	/// <summary>

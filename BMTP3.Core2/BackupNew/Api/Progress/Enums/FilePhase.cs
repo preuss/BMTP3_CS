@@ -1,33 +1,20 @@
-namespace BMTP3.Core2.BackupNew.Api.Enums;
+namespace BMTP3.Core2.BackupNew.Api.Progress.Enums;
 
 /// <summary>
-///     Represents the specific processing stage of a single file within the backup pipeline.
+///     The current processing phase of the file.
 /// </summary>
 public enum FilePhase
 {
 	/// <summary>
-	///     The file is being downloaded or copied from the source device to a temporary staging area.
+	///     No phase (not started).
 	/// </summary>
-	Staging,
-
+	None,
 	/// <summary>
-	///     Metadata (timestamps, EXIF data) is being extracted or corrected.
+	///     Comparing source and destination files.
 	/// </summary>
-	Metadata,
-
+	Comparing,
 	/// <summary>
-	///     A cryptographic hash (checksum) of the file content is being calculated.
+	///     Copying the file.
 	/// </summary>
-	Hashing,
-
-	/// <summary>
-	///     The engine is determining the destination path and resolving any file collisions (e.g., deciding to rename or
-	///     skip).
-	/// </summary>
-	Planning,
-
-	/// <summary>
-	///     The file is being transferred to its final destination. This includes copy/move operations and cleanup.
-	/// </summary>
-	Transferring
+	Copying
 }

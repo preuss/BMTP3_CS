@@ -1,10 +1,9 @@
 using System.Threading.Channels;
 using BMTP3.Core2.BackupNew.Api;
-using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Response;
-using BMTP3.Core2.BackupNew.Domain.Job;
 
 namespace BMTP3.Consoles.Examples.StreamingBackupExample;
 
@@ -28,7 +27,7 @@ public class ChannelBackupEngine : IBackupEngine
 	public async Task<BackupJobResult> RunAsync(BackupPlan job, IProgress<IBackupProgress> progress,
 		CancellationToken ct)
 	{
-		// Example implementation that writes into the channel while still supporting IProgress for backwards compatibility
+		DateTimeOffset start = DateTimeOffset.UtcNow;
 		for (int i = 0; i < 100; i++)
 		{
 			ct.ThrowIfCancellationRequested();
@@ -40,33 +39,46 @@ public class ChannelBackupEngine : IBackupEngine
 
 			BackupProgress snapshot = new()
 			{
-				Phase = BackupPhase.Starting,
+				State = BackupState.Running,
+				Phase = BackupPhase.Initializing,
+				StartedAt = start,
+				Elapsed = DateTimeOffset.UtcNow - start,
 				DirectoriesTraversed = i + 10,
 				FilesDiscovered = 100,
 				BytesTotal = 100 * 1024L,
-
 				FilesProcessed = processed,
 				FilesSucceeded = succeeded,
 				FilesSkipped = skipped,
 				FilesFailed = failed,
-
 				BytesProcessed = processed * 1024L,
-
-				// Required member on BackupProgress: make a reasonable empty/default active-files list for the example
 				ActiveFiles = new List<FileProgress>()
 			};
 
-			// Try write to channel without awaiting to avoid blocking producer
 			_channel.Writer.TryWrite(snapshot);
-
-			// Keep backwards compatibility by reporting via IProgress
 			progress?.Report(snapshot);
-
 			await Task.Delay(25, ct).ConfigureAwait(false);
 		}
 
 		_channel.Writer.Complete();
-		return new BackupJobResult { Status = JobState.Completed };
+		return new BackupJobResult
+		{
+			JobName = job.Name,
+			StartTime = start,
+			EndTime = DateTimeOffset.UtcNow,
+			State = BackupState.Completed,
+			StopReason = StopReason.None,
+			FinalProgress = new BackupProgress
+			{
+				State = BackupState.Completed,
+				Phase = BackupPhase.None,
+				StartedAt = start,
+				Elapsed = DateTimeOffset.UtcNow - start,
+				FilesDiscovered = 100,
+				FilesProcessed = 100,
+				FilesSucceeded = 100,
+				ActiveFiles = new List<FileProgress>()
+			}
+		};
 	}
 
 	public IAsyncEnumerable<BackupProgress> StreamAsync(CancellationToken ct)

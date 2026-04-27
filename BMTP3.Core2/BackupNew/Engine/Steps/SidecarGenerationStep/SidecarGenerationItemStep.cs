@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using System.Text;
@@ -25,8 +25,8 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
 		_factory = factory ?? throw new ArgumentNullException(nameof(factory));
 	}
 
-	public string Name => "Sidecar Generation";
-	public FilePhase Phase => FilePhase.Metadata;
+   public string Name => "Sidecar Generation";
+   public FilePhase Phase => FilePhase.None; // No direct match in new model
 	public BackupPlan Context { get; }
 
 	/// <summary>

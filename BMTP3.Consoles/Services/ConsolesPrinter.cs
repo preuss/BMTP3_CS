@@ -49,13 +49,13 @@ public class ConsolesPrinter
 
 	public void PrintResult(BackupJobResult result)
 	{
-		_console.MarkupLine($"[bold]Job '[green]{result.JobName}[/]' finished: {result.Status}[/]");
+		_console.MarkupLine($"[bold]Job '[green]{result.JobName}[/]' finished: {result.State}[/]");
 		_console.WriteLine(
-			$"Scanned: {result.TotalFilesScanned} Copied: {result.FilesCopied} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.TotalBytesCopied}");
-		if (result.GlobalErrors?.Count > 0)
+			$"Discovered: {result.FilesDiscovered} Succeeded: {result.FilesSucceeded} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.BytesProcessed}");
+		if (result.Errors?.Count > 0)
 		{
-			_console.MarkupLine("[yellow]Global errors:[/]");
-			foreach (string e in result.GlobalErrors)
+			_console.MarkupLine("[yellow]Errors:[/]");
+			foreach (string e in result.Errors)
 			{
 				_console.MarkupLine($"  [yellow]- {e}[/]");
 			}

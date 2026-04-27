@@ -1,5 +1,6 @@
 ﻿using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
@@ -79,8 +80,8 @@ public class BackupEngineFileSystemIntegrationTests
 			BackupJobResult result = await engine.RunAsync(plan, progress, cts.Token);
 
 			Assert.NotNull(result);
-			Assert.Equal(JobState.Completed, result.Status);
-			Assert.True(result.TotalFilesScanned >= 1, "Expected at least one file discovered.");
+			Assert.Equal(BackupState.Completed, result.State);
+			Assert.True(result.FilesDiscovered >= 1, "Expected at least one file discovered.");
 		}
 		finally
 		{

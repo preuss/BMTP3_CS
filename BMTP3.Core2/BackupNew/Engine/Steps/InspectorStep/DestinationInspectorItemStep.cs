@@ -1,4 +1,4 @@
-using BMTP3.Core2.BackupNew.Api.Enums;
+using BMTP3.Core2.BackupNew.Api.Progress.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Domain.Item;
@@ -23,8 +23,8 @@ public class DestinationInspectorItemStep : IBackupItemStep<BackupPlan, object>
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
-	public string Name => "DestinationInspector";
-	public FilePhase Phase => FilePhase.Hashing; // Reuse Hashing phase for progress semantics
+   public string Name => "DestinationInspector";
+   public FilePhase Phase => FilePhase.Comparing; // Closest match in new model
 
 	public BackupPlan Context { get; }
 
