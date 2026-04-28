@@ -1,0 +1,2107 @@
+diff --git a/BMTP3.Consoles.Tests/BackupConsoleIntegrationTests.cs b/BMTP3.Consoles.Tests/BackupConsoleIntegrationTests.cs
+index 0e4de89..45a6bd1 100644
+--- a/BMTP3.Consoles.Tests/BackupConsoleIntegrationTests.cs
++++ b/BMTP3.Consoles.Tests/BackupConsoleIntegrationTests.cs
+@@ -14,6 +14,7 @@ using System.CommandLine;
+ using BMTP3.Consoles.ConsoleCommands;
+ using BMTP3.Consoles.Services;
+ using Microsoft.Extensions.Logging;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ 
+ namespace BMTP3.Consoles.Tests;
+ 
+@@ -99,19 +100,19 @@ public class BackupConsoleIntegrationTests
+ 			BackupConsoleCommand2 command = backupCommand;
+ 			BackupJobResult? result = await command.TryRunAsync(plan, progress, cts.Token);
+ 
+-			// Log global errors unconditionally so failures are always diagnosable
+-			if (result?.GlobalErrors?.Count > 0)
++			// Log errors unconditionally so failures are always diagnosable
++			if (result?.Errors?.Count > 0)
+ 			{
+-				_output.WriteLine("GlobalErrors:");
+-				foreach (string err in result.GlobalErrors)
++				_output.WriteLine("Errors:");
++				foreach (string err in result.Errors)
+ 				{
+ 					_output.WriteLine($"  {err}");
+ 				}
+ 			}
+ 
+-			_output.WriteLine($"Command run status: {result?.Status}. Files scanned: {result?.TotalFilesScanned}");
++			_output.WriteLine($"Command run state: {result?.State}. Files discovered: {result?.FilesDiscovered}");
+ 			Assert.NotNull(result);
+-			Assert.Equal(JobState.Completed, result.Status);
++			Assert.Equal(BackupState.Completed, result.State);
+ 
+ 			// Ensure something was written to output
+ 			Assert.True(Directory.EnumerateFiles(tempOutput, "*", SearchOption.AllDirectories).Any(),
+diff --git a/BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand2.cs b/BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand2.cs
+index 7e60046..9258fdb 100644
+--- a/BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand2.cs
++++ b/BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand2.cs
+@@ -2,10 +2,10 @@ using System.CommandLine;
+ using BMTP3.Consoles.Services;
+ using BMTP3.Core2.BackupNew.Api;
+ using BMTP3.Core2.BackupNew.Api.Progress;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Api.Request.Enums;
+ using BMTP3.Core2.BackupNew.Api.Response;
+-using BMTP3.Core2.BackupNew.Domain.Job;
+ using Microsoft.Extensions.DependencyInjection;
+ using Microsoft.Extensions.Logging;
+ using Microsoft.Extensions.Logging.Abstractions;
+@@ -92,23 +92,22 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
+ 		try
+ 		{
+ 			BackupJobResult result = await engine.RunAsync(plan, progress, linkedCts.Token);
+-			// Print friendly result for the user and log diagnostics
+ 			consolePrinter?.PrintResult(result);
+-			logger.LogInformation("Job '{JobName}' finished: {Status}", result.JobName, result.Status);
++			logger.LogInformation("Job '{JobName}' finished: {State}", result.JobName, result.State);
+ 			logger.LogInformation(
+-			"Scanned: {Scanned} Copied: {Copied} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}",
+-			result.TotalFilesScanned, result.FilesCopied, result.FilesFailed, result.FilesSkipped,
+-			result.TotalBytesCopied);
+-			if(result.GlobalErrors?.Count > 0)
++			"Discovered: {Discovered} Succeeded: {Succeeded} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}",
++			result.FilesDiscovered, result.FilesSucceeded, result.FilesFailed, result.FilesSkipped,
++			result.BytesProcessed);
++			if(result.Errors?.Count > 0)
+ 			{
+-				logger.LogWarning("Global errors:");
+-				foreach(string e in result.GlobalErrors)
++				logger.LogWarning("Errors:");
++				foreach(string e in result.Errors)
+ 				{
+ 					logger.LogWarning(e);
+ 				}
+ 			}
+ 
+-			return result.Status == JobState.Completed ? 0 : 1;
++			return result.State == BackupState.Completed ? 0 : 1;
+ 		} catch(OperationCanceledException)
+ 		{
+ 			consolePrinter?.PrintStatus("Backup cancelled.");
+@@ -144,8 +143,8 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
+ 	{
+ 		ConsolesPrinter? consolePrinter = ServiceProvider.GetService<ConsolesPrinter>();
+ 		ILogger<BackupConsoleCommand2>? logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand2>>()
+-												 ?? ServiceProvider.GetService<ILoggerFactory>()
+-												 ?.CreateLogger<BackupConsoleCommand2>();
++											 ?? ServiceProvider.GetService<ILoggerFactory>()
++											 ?.CreateLogger<BackupConsoleCommand2>();
+ 
+ 		if(plan == null)
+ 		{
+@@ -157,9 +156,14 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
+ 		{
+ 			BackupJobResult fail = new()
+ 			{
+-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
++				JobName = plan.Name,
++				StartTime = DateTimeOffset.UtcNow,
++				EndTime = DateTimeOffset.UtcNow,
++				State = BackupState.Stopped,
++				StopReason = StopReason.FatalError,
++				Errors = new List<string> { "Backup engine not configured in DI." },
++				FinalProgress = new BackupProgress()
+ 			};
+-			fail.GlobalErrors.Add("Backup engine not configured in DI.");
+ 			logger?.LogError("Backup engine not configured in DI.");
+ 			return fail;
+ 		}
+@@ -170,24 +174,38 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
+ 			await engine.RunAsync(plan, progress ?? new Progress<IBackupProgress>(p => { }), ct);
+ 			return result ?? new BackupJobResult
+ 			{
+-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
++				JobName = plan.Name,
++				StartTime = DateTimeOffset.UtcNow,
++				EndTime = DateTimeOffset.UtcNow,
++				State = BackupState.Stopped,
++				StopReason = StopReason.FatalError,
++				FinalProgress = new BackupProgress()
+ 			};
+ 		} catch(OperationCanceledException)
+ 		{
+ 			logger?.LogInformation("Backup cancelled (TryRunAsync)");
+ 			return new BackupJobResult
+ 			{
+-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Cancelled
++				JobName = plan.Name,
++				StartTime = DateTimeOffset.UtcNow,
++				EndTime = DateTimeOffset.UtcNow,
++				State = BackupState.Stopped,
++				StopReason = StopReason.UserCancelled,
++				FinalProgress = new BackupProgress()
+ 			};
+ 		} catch(Exception ex)
+ 		{
+ 			logger?.LogError(ex, "Unhandled exception during TryRunAsync");
+ 			BackupJobResult r = new()
+ 			{
+-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
++				JobName = plan.Name,
++				StartTime = DateTimeOffset.UtcNow,
++				EndTime = DateTimeOffset.UtcNow,
++				State = BackupState.Stopped,
++				StopReason = StopReason.FatalError,
++				Errors = new List<string> { ex.Message, ex.ToString() },
++				FinalProgress = new BackupProgress()
+ 			};
+-			r.GlobalErrors.Add(ex.Message);
+-			r.GlobalErrors.Add(ex.ToString());
+ 			return r;
+ 		}
+ 	}
+diff --git a/BMTP3.Consoles/ConsoleCommands/BackupTestConsoleCommand.cs b/BMTP3.Consoles/ConsoleCommands/BackupTestConsoleCommand.cs
+index a478181..2395d91 100644
+--- a/BMTP3.Consoles/ConsoleCommands/BackupTestConsoleCommand.cs
++++ b/BMTP3.Consoles/ConsoleCommands/BackupTestConsoleCommand.cs
+@@ -2,6 +2,7 @@ using System.CommandLine;
+ using BMTP3.Consoles.Services;
+ using BMTP3.Core2.BackupNew.Api;
+ using BMTP3.Core2.BackupNew.Api.Progress;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Api.Request.Enums;
+ using BMTP3.Core2.BackupNew.Api.Response;
+@@ -88,7 +89,7 @@ public class BackupTestConsoleCommand : BaseConsoleCommand
+ 		{
+ 			BackupJobResult result = await engine.RunAsync(plan, progress, cancellationToken);
+ 			printer.PrintResult(result);
+-			return result.Status == JobState.Completed ? 0 : 1;
++			return result.State == BackupState.Completed ? 0 : 1;
+ 		}
+ 		catch (OperationCanceledException)
+ 		{
+diff --git a/BMTP3.Consoles/Examples/StreamingBackupExample/ChannelBackupEngine.cs b/BMTP3.Consoles/Examples/StreamingBackupExample/ChannelBackupEngine.cs
+index 527ad92..da0e2be 100644
+--- a/BMTP3.Consoles/Examples/StreamingBackupExample/ChannelBackupEngine.cs
++++ b/BMTP3.Consoles/Examples/StreamingBackupExample/ChannelBackupEngine.cs
+@@ -1,10 +1,9 @@
+ using System.Threading.Channels;
+ using BMTP3.Core2.BackupNew.Api;
+-using BMTP3.Core2.BackupNew.Api.Enums;
+ using BMTP3.Core2.BackupNew.Api.Progress;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Api.Response;
+-using BMTP3.Core2.BackupNew.Domain.Job;
+ 
+ namespace BMTP3.Consoles.Examples.StreamingBackupExample;
+ 
+@@ -28,7 +27,7 @@ public class ChannelBackupEngine : IBackupEngine
+ 	public async Task<BackupJobResult> RunAsync(BackupPlan job, IProgress<IBackupProgress> progress,
+ 		CancellationToken ct)
+ 	{
+-		// Example implementation that writes into the channel while still supporting IProgress for backwards compatibility
++		DateTimeOffset start = DateTimeOffset.UtcNow;
+ 		for (int i = 0; i < 100; i++)
+ 		{
+ 			ct.ThrowIfCancellationRequested();
+@@ -40,33 +39,46 @@ public class ChannelBackupEngine : IBackupEngine
+ 
+ 			BackupProgress snapshot = new()
+ 			{
+-				Phase = BackupPhase.Starting,
++				State = BackupState.Running,
++				Phase = BackupPhase.Initializing,
++				StartedAt = start,
++				Elapsed = DateTimeOffset.UtcNow - start,
+ 				DirectoriesTraversed = i + 10,
+ 				FilesDiscovered = 100,
+ 				BytesTotal = 100 * 1024L,
+-
+ 				FilesProcessed = processed,
+ 				FilesSucceeded = succeeded,
+ 				FilesSkipped = skipped,
+ 				FilesFailed = failed,
+-
+ 				BytesProcessed = processed * 1024L,
+-
+-				// Required member on BackupProgress: make a reasonable empty/default active-files list for the example
+ 				ActiveFiles = new List<FileProgress>()
+ 			};
+ 
+-			// Try write to channel without awaiting to avoid blocking producer
+ 			_channel.Writer.TryWrite(snapshot);
+-
+-			// Keep backwards compatibility by reporting via IProgress
+ 			progress?.Report(snapshot);
+-
+ 			await Task.Delay(25, ct).ConfigureAwait(false);
+ 		}
+ 
+ 		_channel.Writer.Complete();
+-		return new BackupJobResult { Status = JobState.Completed };
++		return new BackupJobResult
++		{
++			JobName = job.Name,
++			StartTime = start,
++			EndTime = DateTimeOffset.UtcNow,
++			State = BackupState.Completed,
++			StopReason = StopReason.None,
++			FinalProgress = new BackupProgress
++			{
++				State = BackupState.Completed,
++				Phase = BackupPhase.None,
++				StartedAt = start,
++				Elapsed = DateTimeOffset.UtcNow - start,
++				FilesDiscovered = 100,
++				FilesProcessed = 100,
++				FilesSucceeded = 100,
++				ActiveFiles = new List<FileProgress>()
++			}
++		};
+ 	}
+ 
+ 	public IAsyncEnumerable<BackupProgress> StreamAsync(CancellationToken ct)
+diff --git a/BMTP3.Consoles/Services/ConsolesPrinter.cs b/BMTP3.Consoles/Services/ConsolesPrinter.cs
+index fdd43f9..676ddbf 100644
+--- a/BMTP3.Consoles/Services/ConsolesPrinter.cs
++++ b/BMTP3.Consoles/Services/ConsolesPrinter.cs
+@@ -49,13 +49,13 @@ public class ConsolesPrinter
+ 
+ 	public void PrintResult(BackupJobResult result)
+ 	{
+-		_console.MarkupLine($"[bold]Job '[green]{result.JobName}[/]' finished: {result.Status}[/]");
++		_console.MarkupLine($"[bold]Job '[green]{result.JobName}[/]' finished: {result.State}[/]");
+ 		_console.WriteLine(
+-			$"Scanned: {result.TotalFilesScanned} Copied: {result.FilesCopied} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.TotalBytesCopied}");
+-		if (result.GlobalErrors?.Count > 0)
++			$"Discovered: {result.FilesDiscovered} Succeeded: {result.FilesSucceeded} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.BytesProcessed}");
++		if (result.Errors?.Count > 0)
+ 		{
+-			_console.MarkupLine("[yellow]Global errors:[/]");
+-			foreach (string e in result.GlobalErrors)
++			_console.MarkupLine("[yellow]Errors:[/]");
++			foreach (string e in result.Errors)
+ 			{
+ 				_console.MarkupLine($"  [yellow]- {e}[/]");
+ 			}
+diff --git a/BMTP3.Core2.Tests/BackupNew/Api/BackupEngineTests.cs b/BMTP3.Core2.Tests/BackupNew/Api/BackupEngineTests.cs
+index 5951041..4e609c9 100644
+--- a/BMTP3.Core2.Tests/BackupNew/Api/BackupEngineTests.cs
++++ b/BMTP3.Core2.Tests/BackupNew/Api/BackupEngineTests.cs
+@@ -1,5 +1,6 @@
+ using BMTP3.Core2.BackupNew.Api;
+ using BMTP3.Core2.BackupNew.Api.Progress;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Api.Request.Enums;
+ using BMTP3.Core2.BackupNew.Api.Response;
+@@ -62,8 +63,8 @@ public class BackupEngineTests
+ 			BackupJobResult result = await engine.RunAsync(plan, progress, cts.Token);
+ 
+ 			Assert.NotNull(result);
+-			Assert.Equal(JobState.Completed, result.Status);
+-			Assert.Equal(0, result.TotalFilesScanned);
++			Assert.Equal(BackupState.Completed, result.State);
++			Assert.Equal(0, result.FilesDiscovered);
+ 		}
+ 		finally
+ 		{
+@@ -248,7 +249,7 @@ public class BackupEngineTests
+ 		{
+ 			BackupJobResult result = await engine.RunAsync(plan, null, CancellationToken.None);
+ 			Assert.NotNull(result);
+-			Assert.Equal(JobState.Completed, result.Status);
++			Assert.Equal(BackupState.Completed, result.State);
+ 		}
+ 		finally
+ 		{
+diff --git a/BMTP3.Core2.Tests/BackupNew/Api/BackupEngine_FileSystemIntegrationTests.cs b/BMTP3.Core2.Tests/BackupNew/Api/BackupEngine_FileSystemIntegrationTests.cs
+index d9f5bcc..fcc538b 100644
+--- a/BMTP3.Core2.Tests/BackupNew/Api/BackupEngine_FileSystemIntegrationTests.cs
++++ b/BMTP3.Core2.Tests/BackupNew/Api/BackupEngine_FileSystemIntegrationTests.cs
+@@ -1,5 +1,6 @@
+ ﻿using BMTP3.Core2.BackupNew.Api;
+ using BMTP3.Core2.BackupNew.Api.Progress;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Api.Request.Enums;
+ using BMTP3.Core2.BackupNew.Api.Response;
+@@ -79,8 +80,8 @@ public class BackupEngineFileSystemIntegrationTests
+ 			BackupJobResult result = await engine.RunAsync(plan, progress, cts.Token);
+ 
+ 			Assert.NotNull(result);
+-			Assert.Equal(JobState.Completed, result.Status);
+-			Assert.True(result.TotalFilesScanned >= 1, "Expected at least one file discovered.");
++			Assert.Equal(BackupState.Completed, result.State);
++			Assert.True(result.FilesDiscovered >= 1, "Expected at least one file discovered.");
+ 		}
+ 		finally
+ 		{
+diff --git a/BMTP3.Core2.Tests/Internal/ProgressTrackerTests.cs b/BMTP3.Core2.Tests/Internal/ProgressTrackerTests.cs
+index 2c399f4..b84d7b1 100644
+--- a/BMTP3.Core2.Tests/Internal/ProgressTrackerTests.cs
++++ b/BMTP3.Core2.Tests/Internal/ProgressTrackerTests.cs
+@@ -1,4 +1,4 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Progress;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+ using BMTP3.Core2.BackupNew.Engine.Internal;
+@@ -32,14 +32,14 @@ public class ProgressTrackerTests
+ 	}
+ 
+ 	[Fact]
+-	public void SetPhase_Completed_SnapshotReflectsCompletedPhase()
++	public void SetPhase_None_SnapshotReflectsNonePhase()
+ 	{
+ 		ProgressTracker tracker = NewTracker();
+ 
+-		tracker.SetPhase(BackupPhase.Completed);
++		tracker.SetPhase(BackupPhase.None);
+ 		BackupProgress snapshot = tracker.GetSnapshot();
+ 
+-		Assert.Equal(BackupPhase.Completed, snapshot.Phase);
++		Assert.Equal(BackupPhase.None, snapshot.Phase);
+ 	}
+ 
+ 	// ---------------------------------------------------------------
+@@ -157,12 +157,12 @@ public class ProgressTrackerTests
+ 	// ---------------------------------------------------------------
+ 
+ 	[Fact]
+-	public void GetSnapshot_InitialState_AllCountersAreZeroAndPhaseIsStarting()
++	public void GetSnapshot_InitialState_AllCountersAreZeroAndPhaseIsInitializing()
+ 	{
+ 		ProgressTracker tracker = NewTracker();
+ 		BackupProgress snapshot = tracker.GetSnapshot();
+ 
+-		Assert.Equal(BackupPhase.Starting, snapshot.Phase);
++		Assert.Equal(BackupPhase.Initializing, snapshot.Phase);
+ 		Assert.Equal(0, snapshot.FilesDiscovered);
+ 		Assert.Equal(0, snapshot.BytesTotal);
+ 		Assert.Equal(0, snapshot.FilesSucceeded);
+@@ -170,5 +170,4 @@ public class ProgressTrackerTests
+ 		Assert.Equal(0, snapshot.FilesFailed);
+ 		Assert.Equal(0, snapshot.FilesProcessed);
+ 		Assert.Empty(snapshot.ActiveFiles);
+-	}
+-}
+\ No newline at end of file
++	}}
+\ No newline at end of file
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/BackupEvent.cs b/BMTP3.Core2/BackupNew/Api/Progress/BackupEvent.cs
+new file mode 100644
+index 0000000..f0e8284
+--- /dev/null
++++ b/BMTP3.Core2/BackupNew/Api/Progress/BackupEvent.cs
+@@ -0,0 +1,36 @@
++using System;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
++
++namespace BMTP3.Core2.BackupNew.Api.Progress;
++
++/// <summary>
++///     Represents a discrete event that occurred during backup.
++///     Used for the "recent activity" display in the UI.
++/// </summary>
++public class BackupEvent
++{
++    /// <summary>
++    ///     When the event occurred.
++    /// </summary>
++    public DateTimeOffset Timestamp { get; init; }
++    /// <summary>
++    ///     The type of event.
++    /// </summary>
++    public BackupEventType Type { get; init; }
++    /// <summary>
++    ///     The file path related to the event (if any).
++    /// </summary>
++    public string FilePath { get; init; } = string.Empty;
++    /// <summary>
++    ///     A message describing the event.
++    /// </summary>
++    public string Message { get; init; } = string.Empty;
++    /// <summary>
++    ///     Error details if the event is an error.
++    /// </summary>
++    public string ErrorDetail { get; init; } = string.Empty;
++    /// <summary>
++    ///     The reason for skipping a file (if applicable).
++    /// </summary>
++    public SkipReason SkipReason { get; init; }
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/BackupProgress.cs b/BMTP3.Core2/BackupNew/Api/Progress/BackupProgress.cs
+index ea71f7a..55b60e6 100644
+--- a/BMTP3.Core2/BackupNew/Api/Progress/BackupProgress.cs
++++ b/BMTP3.Core2/BackupNew/Api/Progress/BackupProgress.cs
+@@ -1,66 +1,96 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using System;
++using System.Collections.Generic;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ 
+ namespace BMTP3.Core2.BackupNew.Api.Progress;
+ 
+ /// <summary>
+-///     Represents the current progress of an ongoing backup job.
+-///     A snapshot of the backup job's current progress.
++///     Immutable snapshot implementing IBackupProgress.
++///     Created by ProgressTracker.GetSnapshot().
+ /// </summary>
+ public class BackupProgress : IBackupProgress
+ {
+ 	/// <summary>
+-	///     The overall phase of the backup job.
++	///     The current lifecycle state of the job.
++	/// </summary>
++	public BackupState State { get; init; }
++	/// <summary>
++	///     The current work phase. Only meaningful when State is Running.
+ 	/// </summary>
+ 	public BackupPhase Phase { get; init; }
+ 
+ 	/// <summary>
+-	///     The total number of directories discovered by the scanner so far.
++	///     When the job started.
+ 	/// </summary>
+-	public int DirectoriesTraversed { get; init; }
++	public DateTimeOffset StartedAt { get; init; }
++	/// <summary>
++	///     Elapsed time since the job started.
++	/// </summary>
++	public TimeSpan Elapsed { get; init; }
+ 
+ 	/// <summary>
+-	///     The total number of files discovered by the scanner so far.
++	///     Number of directories traversed so far.
++	/// </summary>
++	public int DirectoriesTraversed { get; init; }
++	/// <summary>
++	///     The directory currently being scanned. Empty when not scanning.
++	/// </summary>
++	public string CurrentDirectory { get; init; } = string.Empty;
++	/// <summary>
++	///     Total number of files discovered by the scanner.
+ 	/// </summary>
+ 	public int FilesDiscovered { get; init; }
++	/// <summary>
++	///     Number of files excluded by filter rules during scanning.
++	/// </summary>
++	public int FilesExcluded { get; init; }
++	/// <summary>
++	///     Number of directories or files that could not be read during scanning.
++	/// </summary>
++	public int ScanErrors { get; init; }
+ 
+ 	/// <summary>
+-	///     The total size in bytes of all files discovered so far.
++	///     Total bytes to process (known so far — grows during Traversing phase).
+ 	/// </summary>
+ 	public long BytesTotal { get; init; }
++	/// <summary>
++	///     Total bytes processed so far.
++	/// </summary>
++	public long BytesProcessed { get; init; }
+ 
+ 	/// <summary>
+-	///     Number of files processed so far.
+-	///     The total number of files that have finished processing (Success + Skipped + Failed).
++	///     Number of files fully processed (succeeded + skipped + failed).
+ 	/// </summary>
+ 	public int FilesProcessed { get; init; }
+-
+ 	/// <summary>
+-	///     The number of files successfully backed up.
++	///     Number of files successfully copied.
+ 	/// </summary>
+ 	public int FilesSucceeded { get; init; }
+-
+ 	/// <summary>
+-	///     The number of files skipped (e.g., due to existing files or filters).
++	///     Number of files skipped.
+ 	/// </summary>
+ 	public int FilesSkipped { get; init; }
+-
+ 	/// <summary>
+-	///     The number of files that failed processing.
++	///     Number of files that failed.
+ 	/// </summary>
+ 	public int FilesFailed { get; init; }
+ 
+ 	/// <summary>
+-	///     The total number of bytes successfully processed (moved/copied/skipped).
++	///     Current transfer speed in bytes per second.
+ 	/// </summary>
+-	public long BytesProcessed { get; init; }
+-
++	public long BytesPerSecond { get; init; }
+ 	/// <summary>
+-	///     Percentage of completion.
++	///     Overall completion percentage (0–100).
+ 	/// </summary>
+-	public double PercentageComplete => FilesDiscovered > 0 ? (double)FilesProcessed / FilesDiscovered * 100 : 0;
++	public double PercentageComplete { get; init; }
+ 
+ 	/// <summary>
+-	///     A list of files currently being processed (active in the pipeline).
++	///     Files currently being processed by the pipeline.
++	/// </summary>
++	public IReadOnlyList<FileProgress> ActiveFiles { get; init; } = new List<FileProgress>();
++	/// <summary>
++	///     A rolling window of recent events for display in the UI.
++	///     Oldest events are dropped as new ones arrive.
+ 	/// </summary>
+-	public required IReadOnlyList<FileProgress> ActiveFiles { get; init; }
+-}
+\ No newline at end of file
++	public IReadOnlyList<BackupEvent> RecentEvents { get; init; } = new List<BackupEvent>();
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupEventType.cs b/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupEventType.cs
+new file mode 100644
+index 0000000..85aa1f1
+--- /dev/null
++++ b/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupEventType.cs
+@@ -0,0 +1,48 @@
++namespace BMTP3.Core2.BackupNew.Api.Progress.Enums;
++
++/// <summary>
++///     The type of event that occurred during backup.
++/// </summary>
++public enum BackupEventType
++{
++    /// <summary>
++    ///     Scanning started.
++    /// </summary>
++    ScanStarted,
++    /// <summary>
++    ///     Error while scanning directory.
++    /// </summary>
++    ScanDirectoryError,
++    /// <summary>
++    ///     Scanning completed.
++    /// </summary>
++    ScanCompleted,
++    /// <summary>
++    ///     File copy started.
++    /// </summary>
++    FileCopyStarted,
++    /// <summary>
++    ///     File copy completed.
++    /// </summary>
++    FileCopyCompleted,
++    /// <summary>
++    ///     File was skipped.
++    /// </summary>
++    FileSkipped,
++    /// <summary>
++    ///     File copy failed.
++    /// </summary>
++    FileFailed,
++    /// <summary>
++    ///     Retrying file copy.
++    /// </summary>
++    FileRetrying,
++    /// <summary>
++    ///     Backup phase changed.
++    /// </summary>
++    PhaseChanged,
++    /// <summary>
++    ///     Warning event.
++    /// </summary>
++    Warning
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupPhase.cs b/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupPhase.cs
+index c3cbb5a..3032a27 100644
+--- a/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupPhase.cs
++++ b/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupPhase.cs
+@@ -1,33 +1,24 @@
+-namespace BMTP3.Core2.BackupNew.Api.Enums;
++namespace BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ 
+ /// <summary>
+-///     Represents the high-level lifecycle phases of the entire backup job.
++///     The current work phase. Only meaningful when State is Running.
+ /// </summary>
+ public enum BackupPhase
+ {
+ 	/// <summary>
+-	///     The job is initializing and preparing to start.
++	///     No phase (not started).
+ 	/// </summary>
+-	Starting,
+-
+-	/// <summary>
+-	///     The scanner is actively running, discovering new files and directories.
+-	///     Backup processing occurs concurrently during this phase.
+-	/// </summary>
+-	Traversing,
+-
++	None,
+ 	/// <summary>
+-	///     Scanning has finished. The engine is processing the remaining items in the pipeline.
++	///     Initializing the backup job.
+ 	/// </summary>
+-	Transferring,
+-
++	Initializing,
+ 	/// <summary>
+-	///     The job has completed successfully.
++	///     Traversing source directories/files.
+ 	/// </summary>
+-	Completed,
+-
++	Traversing,
+ 	/// <summary>
+-	///     The job was cancelled by the user or a system signal.
++	///     Transferring files to destination.
+ 	/// </summary>
+-	Cancelled
+-}
+\ No newline at end of file
++	Transferring
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupState.cs b/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupState.cs
+new file mode 100644
+index 0000000..6fd5091
+--- /dev/null
++++ b/BMTP3.Core2/BackupNew/Api/Progress/Enums/BackupState.cs
+@@ -0,0 +1,24 @@
++namespace BMTP3.Core2.BackupNew.Api.Progress.Enums;
++
++/// <summary>
++///     The current lifecycle state of the job.
++/// </summary>
++public enum BackupState
++{
++    /// <summary>
++    ///     The job is ready to start.
++    /// </summary>
++    Ready,
++    /// <summary>
++    ///     The job is currently running.
++    /// </summary>
++    Running,
++    /// <summary>
++    ///     The job completed successfully.
++    /// </summary>
++    Completed,
++    /// <summary>
++    ///     The job was stopped (cancelled or failed).
++    /// </summary>
++    Stopped
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/Enums/FilePhase.cs b/BMTP3.Core2/BackupNew/Api/Progress/Enums/FilePhase.cs
+index d807438..45f929b 100644
+--- a/BMTP3.Core2/BackupNew/Api/Progress/Enums/FilePhase.cs
++++ b/BMTP3.Core2/BackupNew/Api/Progress/Enums/FilePhase.cs
+@@ -1,33 +1,20 @@
+-namespace BMTP3.Core2.BackupNew.Api.Enums;
++namespace BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ 
+ /// <summary>
+-///     Represents the specific processing stage of a single file within the backup pipeline.
++///     The current processing phase of the file.
+ /// </summary>
+ public enum FilePhase
+ {
+ 	/// <summary>
+-	///     The file is being downloaded or copied from the source device to a temporary staging area.
++	///     No phase (not started).
+ 	/// </summary>
+-	Staging,
+-
+-	/// <summary>
+-	///     Metadata (timestamps, EXIF data) is being extracted or corrected.
+-	/// </summary>
+-	Metadata,
+-
++	None,
+ 	/// <summary>
+-	///     A cryptographic hash (checksum) of the file content is being calculated.
++	///     Comparing source and destination files.
+ 	/// </summary>
+-	Hashing,
+-
+-	/// <summary>
+-	///     The engine is determining the destination path and resolving any file collisions (e.g., deciding to rename or
+-	///     skip).
+-	/// </summary>
+-	Planning,
+-
++	Comparing,
+ 	/// <summary>
+-	///     The file is being transferred to its final destination. This includes copy/move operations and cleanup.
++	///     Copying the file.
+ 	/// </summary>
+-	Transferring
+-}
+\ No newline at end of file
++	Copying
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/Enums/SkipReason.cs b/BMTP3.Core2/BackupNew/Api/Progress/Enums/SkipReason.cs
+new file mode 100644
+index 0000000..ba0d231
+--- /dev/null
++++ b/BMTP3.Core2/BackupNew/Api/Progress/Enums/SkipReason.cs
+@@ -0,0 +1,32 @@
++namespace BMTP3.Core2.BackupNew.Api.Progress.Enums;
++
++/// <summary>
++///     The reason a file was skipped.
++/// </summary>
++public enum SkipReason
++{
++    /// <summary>
++    ///     No skip reason.
++    /// </summary>
++    None,
++    /// <summary>
++    ///     File was unchanged.
++    /// </summary>
++    Unchanged,
++    /// <summary>
++    ///     File was excluded by filter.
++    /// </summary>
++    ExcludedByFilter,
++    /// <summary>
++    ///     File was too large.
++    /// </summary>
++    TooLarge,
++    /// <summary>
++    ///     File was locked by another process.
++    /// </summary>
++    LockedByProcess,
++    /// <summary>
++    ///     Other reason.
++    /// </summary>
++    Other
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/Enums/StopReason.cs b/BMTP3.Core2/BackupNew/Api/Progress/Enums/StopReason.cs
+new file mode 100644
+index 0000000..f5fc578
+--- /dev/null
++++ b/BMTP3.Core2/BackupNew/Api/Progress/Enums/StopReason.cs
+@@ -0,0 +1,20 @@
++namespace BMTP3.Core2.BackupNew.Api.Progress.Enums;
++
++/// <summary>
++///     Why the job stopped. None if Completed.
++/// </summary>
++public enum StopReason
++{
++    /// <summary>
++    ///     No stop reason (job completed normally).
++    /// </summary>
++    None,
++    /// <summary>
++    ///     The job was cancelled by the user.
++    /// </summary>
++    UserCancelled,
++    /// <summary>
++    ///     The job stopped due to a fatal error.
++    /// </summary>
++    FatalError
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/FileProgress.cs b/BMTP3.Core2/BackupNew/Api/Progress/FileProgress.cs
+index ef72bf7..39f627b 100644
+--- a/BMTP3.Core2/BackupNew/Api/Progress/FileProgress.cs
++++ b/BMTP3.Core2/BackupNew/Api/Progress/FileProgress.cs
+@@ -1,40 +1,47 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using System;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ 
+-namespace BMTP3.Core2.BackupNew.Api;
++namespace BMTP3.Core2.BackupNew.Api.Progress;
+ 
+ /// <summary>
+-///     Represents the progress and status of a single file currently being processed.
++///     Represents the progress of a single file currently being processed.
+ /// </summary>
+ public class FileProgress
+ {
+ 	/// <summary>
+ 	///     The name of the file (e.g., "photo.jpg").
+ 	/// </summary>
+-	public string FileName { get; set; } = string.Empty;
+-
++	public string FileName { get; init; } = string.Empty;
+ 	/// <summary>
+-	///     The relative path of the file from the source root (e.g., "DCIM/Camera/photo.jpg").
+-	///     Useful for display in the UI.
++	///     The relative path from the source root (e.g., "DCIM/Camera/photo.jpg").
+ 	/// </summary>
+-	public string RelativePath { get; set; } = string.Empty;
+-
++	public string RelativePath { get; init; } = string.Empty;
+ 	/// <summary>
+-	///     The full path or unique identifier of the source file.
++	///     The full source path or unique identifier.
+ 	/// </summary>
+-	public string SourcePath { get; set; } = string.Empty;
+-
++	public string SourcePath { get; init; } = string.Empty;
+ 	/// <summary>
+ 	///     The current processing phase of the file.
+ 	/// </summary>
+-	public FilePhase Phase { get; set; }
+-
++	public FilePhase Phase { get; init; }
+ 	/// <summary>
+ 	///     The total size of the file in bytes.
+ 	/// </summary>
+-	public ulong BytesTotal { get; set; }
+-
++	public long BytesTotal { get; init; }
++	/// <summary>
++	///     The number of bytes processed so far.
++	/// </summary>
++	public long BytesProcessed { get; init; }
++	/// <summary>
++	///     Completion percentage (0–100).
++	/// </summary>
++	public double Percent => BytesTotal > 0 ? (double)BytesProcessed / BytesTotal * 100.0 : 0;
++	/// <summary>
++	///     Which retry attempt this is. 0 = first attempt.
++	/// </summary>
++	public int RetryAttempt { get; init; }
+ 	/// <summary>
+-	///     The number of bytes processed so far for the current operation.
++	///     When processing of this file started.
+ 	/// </summary>
+-	public ulong BytesProcessed { get; set; }
+-}
+\ No newline at end of file
++	public DateTimeOffset StartedAt { get; init; }
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Progress/IBackupProgress.cs b/BMTP3.Core2/BackupNew/Api/Progress/IBackupProgress.cs
+index 3e34737..3a371ad 100644
+--- a/BMTP3.Core2/BackupNew/Api/Progress/IBackupProgress.cs
++++ b/BMTP3.Core2/BackupNew/Api/Progress/IBackupProgress.cs
+@@ -1,65 +1,97 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using System;
++using System.Collections.Generic;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ 
+ namespace BMTP3.Core2.BackupNew.Api.Progress;
+ 
+ /// <summary>
+-///     Represents the current progress of an ongoing backup job.
+-///     A snapshot of the backup job's current progress.
++///     Represents a point-in-time snapshot of a running backup job.
++///     This is a live dashboard — not the final report.
+ /// </summary>
+ public interface IBackupProgress
+ {
+ 	/// <summary>
+-	///     The overall phase of the backup job.
++	///     The current lifecycle state of the job.
++	/// </summary>
++	BackupState State { get; }
++	/// <summary>
++	///     The current work phase. Only meaningful when State is Running.
+ 	/// </summary>
+ 	BackupPhase Phase { get; }
+ 
+ 	/// <summary>
+-	///     The total number of directories discovered by the scanner so far.
++	///     When the job started.
+ 	/// </summary>
+-	int DirectoriesTraversed { get; }
++	DateTimeOffset StartedAt { get; }
++	/// <summary>
++	///     Elapsed time since the job started.
++	/// </summary>
++	TimeSpan Elapsed { get; }
+ 
+ 	/// <summary>
+-	///     The total number of files discovered by the scanner so far.
++	///     Number of directories traversed so far.
++	/// </summary>
++	int DirectoriesTraversed { get; }
++	/// <summary>
++	///     The directory currently being scanned. Empty when not scanning.
++	/// </summary>
++	string CurrentDirectory { get; }
++	/// <summary>
++	///     Total number of files discovered by the scanner.
+ 	/// </summary>
+ 	int FilesDiscovered { get; }
++	/// <summary>
++	///     Number of files excluded by filter rules during scanning.
++	/// </summary>
++	int FilesExcluded { get; }
++	/// <summary>
++	///     Number of directories or files that could not be read during scanning.
++	/// </summary>
++	int ScanErrors { get; }
+ 
+ 	/// <summary>
+-	///     The total size in bytes of all files discovered so far.
++	///     Total bytes to process (known so far — grows during Traversing phase).
+ 	/// </summary>
+ 	long BytesTotal { get; }
++	/// <summary>
++	///     Total bytes processed so far.
++	/// </summary>
++	long BytesProcessed { get; }
+ 
+ 	/// <summary>
+-	///     Number of files processed so far (Success + Skipped + Failed).
++	///     Number of files fully processed (succeeded + skipped + failed).
+ 	/// </summary>
+ 	int FilesProcessed { get; }
+-
+ 	/// <summary>
+-	///     The number of files successfully backed up.
++	///     Number of files successfully copied.
+ 	/// </summary>
+ 	int FilesSucceeded { get; }
+-
+ 	/// <summary>
+-	///     The number of files skipped (e.g., due to existing files or filters).
++	///     Number of files skipped.
+ 	/// </summary>
+ 	int FilesSkipped { get; }
+-
+ 	/// <summary>
+-	///     The number of files that failed processing.
++	///     Number of files that failed.
+ 	/// </summary>
+ 	int FilesFailed { get; }
+ 
+ 	/// <summary>
+-	///     The total number of bytes successfully processed (moved/copied/skipped).
++	///     Current transfer speed in bytes per second.
+ 	/// </summary>
+-	long BytesProcessed { get; }
+-
++	long BytesPerSecond { get; }
+ 	/// <summary>
+-	///     Percentage of completion (0..100).
++	///     Overall completion percentage (0–100).
+ 	/// </summary>
+ 	double PercentageComplete { get; }
+ 
+ 	/// <summary>
+-	///     A read-only list of files currently being processed (active in the pipeline).
++	///     Files currently being processed by the pipeline.
+ 	/// </summary>
+ 	IReadOnlyList<FileProgress> ActiveFiles { get; }
+-}
+\ No newline at end of file
++
++	/// <summary>
++	///     A rolling window of recent events for display in the UI.
++	///     Oldest events are dropped as new ones arrive.
++	/// </summary>
++	IReadOnlyList<BackupEvent> RecentEvents { get; }
++}
+diff --git a/BMTP3.Core2/BackupNew/Api/Response/BackupJobResult.cs b/BMTP3.Core2/BackupNew/Api/Response/BackupJobResult.cs
+index f96cebb..359dc50 100644
+--- a/BMTP3.Core2/BackupNew/Api/Response/BackupJobResult.cs
++++ b/BMTP3.Core2/BackupNew/Api/Response/BackupJobResult.cs
+@@ -1,84 +1,77 @@
++using System;
++using System.Collections.Generic;
+ using BMTP3.Core2.BackupNew.Api.Progress;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Domain.Errors;
+-using BMTP3.Core2.BackupNew.Domain.Job;
+ 
+ namespace BMTP3.Core2.BackupNew.Api.Response;
+ 
+ /// <summary>
+-///     Represents the summary and outcome of a completed backup job.
++///     The final report of a completed backup job.
++///     Returned by BackupEngine.RunAsync().
+ /// </summary>
+ public class BackupJobResult
+ {
+ 	/// <summary>
+ 	///     The name of the job that was executed.
+ 	/// </summary>
+-	public string JobName { get; set; } = string.Empty;
++	public string JobName { get; init; } = string.Empty;
+ 
+ 	/// <summary>
+-	///     The time when the job execution started.
++	///     When the job started.
+ 	/// </summary>
+-	public DateTime StartTime { get; set; }
+-
++	public DateTimeOffset StartTime { get; init; }
+ 	/// <summary>
+-	///     The time when the job execution ended.
++	///     When the job ended.
+ 	/// </summary>
+-	public DateTime EndTime { get; set; }
+-
++	public DateTimeOffset EndTime { get; init; }
+ 	/// <summary>
+-	///     The total duration of the job execution.
++	///     Total duration of the job.
+ 	/// </summary>
+ 	public TimeSpan Duration => EndTime - StartTime;
+ 
+-	// --- Statistics ---
+-
+ 	/// <summary>
+-	///     Total number of files identified in the source before filtering.
++	///     How the job ended.
+ 	/// </summary>
+-	public int TotalFilesScanned { get; set; }
+-
++	public BackupState State { get; init; }
+ 	/// <summary>
+-	///     Total number of files considered for processing after filters were applied.
++	///     Why the job stopped. None if Completed.
+ 	/// </summary>
+-	public int TotalFilesConsidered { get; set; }
+-
++	public StopReason StopReason { get; init; }
+ 	/// <summary>
+-	///     Number of files successfully copied to the destination.
++	///     The final progress snapshot at the moment the job ended.
++	///     Contains all counters, active files, and recent events.
+ 	/// </summary>
+-	public int FilesCopied { get; set; }
++	public BackupProgress FinalProgress { get; init; } = new();
+ 
+ 	/// <summary>
+-	///     Number of files skipped due to configuration (e.g., already existing, excluded).
++	///     Critical errors that affected the entire job
++	///     (e.g., destination full, pipeline crash).
+ 	/// </summary>
+-	public int FilesSkipped { get; set; }
+-
++	public IReadOnlyList<string> Errors { get; init; } = new List<string>();
+ 	/// <summary>
+-	///     Number of files that failed to be processed (e.g., read errors, write errors).
++	///     Details of individual files that failed.
+ 	/// </summary>
+-	public int FilesFailed { get; set; }
++	public IReadOnlyList<ErrorLog> FailedItems { get; init; } = new List<ErrorLog>();
+ 
+ 	/// <summary>
+-	///     Total size in bytes of files successfully copied.
++	///     Total number of files discovered by the scanner.
+ 	/// </summary>
+-	public long TotalBytesCopied { get; set; }
+-
+-	// --- Status & Errors ---
+-
++	public int FilesDiscovered => FinalProgress.FilesDiscovered;
+ 	/// <summary>
+-	///     The overall lifecycle state of the job execution (Ready, Running, Completed, Failed, Cancelled).
++	///     Number of files successfully copied.
+ 	/// </summary>
+-	public JobState Status { get; set; }
+-
++	public int FilesSucceeded => FinalProgress.FilesSucceeded;
+ 	/// <summary>
+-	///     List of critical errors that affected the entire job (e.g., source disconnected, destination full).
++	///     Number of files skipped.
+ 	/// </summary>
+-	public List<string> GlobalErrors { get; set; } = new();
+-
++	public int FilesSkipped => FinalProgress.FilesSkipped;
+ 	/// <summary>
+-	///     List of file-specific errors encountered during the job.
++	///     Number of files that failed.
+ 	/// </summary>
+-	public List<string> FileErrors { get; set; } = new(); // Adding a specific list for file errors for granularity
+-
+-	public List<ErrorLog?> FailedItems { get; internal set; } = new();
+-	public string? GlobalError { get; internal set; }
+-	public BackupProgress? FinalProgress { get; internal set; }
+-}
+\ No newline at end of file
++	public int FilesFailed => FinalProgress.FilesFailed;
++	/// <summary>
++	///     Total bytes processed.
++	/// </summary>
++	public long BytesProcessed => FinalProgress.BytesProcessed;
++}
+diff --git a/BMTP3.Core2/BackupNew/Engine/BackupEngine.cs b/BMTP3.Core2/BackupNew/Engine/BackupEngine.cs
+index 6c0f6b0..45c13ab 100644
+--- a/BMTP3.Core2/BackupNew/Engine/BackupEngine.cs
++++ b/BMTP3.Core2/BackupNew/Engine/BackupEngine.cs
+@@ -1,7 +1,6 @@
+ using System.Diagnostics;
+ using System.Threading.Channels;
+ using BMTP3.Core2.BackupNew.Api;
+-using BMTP3.Core2.BackupNew.Api.Enums;
+ using BMTP3.Core2.BackupNew.Api.Progress;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Api.Request.Enums;
+@@ -26,6 +25,7 @@ using BMTP3.Core2.BackupNew.Engine.Traversal;
+ using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
+ using Microsoft.Extensions.Logging;
+ using Microsoft.Extensions.Options;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ 
+ namespace BMTP3.Core2.BackupNew.Engine;
+ 
+@@ -89,13 +89,7 @@ public class BackupEngine : IBackupEngine
+ 	{
+ 		ArgumentNullException.ThrowIfNull(plan);
+ 
+-		// TODO: I am trying to make this not nullable, but for now just in case, use null-coalescing assignment to ensure it's not null. We can remove this once we are sure all callers provide a non-null progress instance.
+ 		progress ??= new Progress<IBackupProgress>();
+-
+-		// Adapter: forwards BackupProgress snapshots to the caller's IProgress<IBackupProgress>.
+-		// ContentBufferingItemStep (and StagingDownloader) report per-file staging updates using
+-		// BackupProgress. We bridge those into the same outer progress channel so callers see
+-		// staging activity without needing to know about the internal type.
+ 		IProgress<BackupProgress> stagingProgress = new Progress<BackupProgress>(p => progress.Report(p));
+ 
+ 		// 0. Pre-flight Validation
+@@ -120,27 +114,29 @@ public class BackupEngine : IBackupEngine
+ 		if(!plan.DryRun)
+ 		{
+ 			await _repository.SaveAsync(session, ct).ConfigureAwait(false);
+-			_logger.LogInformation("Backup session {SessionId} started. Output: {OutputPath}", sessionId,
+-				plan.OutputPath);
++			_logger.LogInformation("Backup session {SessionId} started. Output: {OutputPath}", sessionId, plan.OutputPath);
+ 		}
+ 
+ 		// Prepare result
+ 		ProgressTracker tracker = new();
+-		tracker.SetPhase(BackupPhase.Starting);
++		tracker.SetPhase(BackupPhase.Initializing);
+ 
+-		BackupJobResult result = new()
+-		{
+-			JobName = plan.Name,
+-			StartTime = DateTime.UtcNow,
+-			Status = JobState.Ready
+-		};
++		DateTimeOffset startTime = DateTimeOffset.UtcNow;
++		BackupState state = BackupState.Ready;
++		StopReason stopReason = StopReason.None;
++		List<string> errors = new();
+ 
+ 		if(ct.IsCancellationRequested)
+ 		{
+-			result.EndTime = DateTime.UtcNow;
+-			result.Status = JobState.Cancelled;
+-			result.GlobalErrors.Add("Cancelled before start");
+-			return result;
++			return new BackupJobResult
++			{
++				JobName = plan.Name,
++				StartTime = startTime,
++				EndTime = DateTimeOffset.UtcNow,
++				State = BackupState.Stopped,
++				StopReason = StopReason.UserCancelled,
++				FinalProgress = tracker.GetSnapshot()
++			};
+ 		}
+ 
+ 		// reportingTask should be cancellable independently so we can stop it when the pipeline completes
+@@ -154,7 +150,8 @@ public class BackupEngine : IBackupEngine
+ 					progress.Report(tracker.GetSnapshot());
+ 					await Task.Delay(250, reportingCts.Token).ConfigureAwait(false);
+ 				}
+-			} catch(OperationCanceledException)
++			}
++			catch(OperationCanceledException)
+ 			{
+ 			}
+ 		}, reportingCts.Token);
+@@ -194,7 +191,7 @@ public class BackupEngine : IBackupEngine
+ 		Channel<IBackupItem> persistenceChannel = Channel.CreateBounded<IBackupItem>(
+ 			new BoundedChannelOptions(opts.ProcessingChannelCapacity) { SingleWriter = false, SingleReader = true });
+ 
+-		result.Status = JobState.Running;
++		state = BackupState.Running;
+ 		tracker.SetPhase(BackupPhase.Traversing);
+ 
+ 		// Instantiate Steps
+@@ -361,36 +358,11 @@ public class BackupEngine : IBackupEngine
+ 		} catch(Exception ex)
+ 		{
+ 			// Convert unexpected pipeline exceptions into a failed BackupJobResult
+-			tracker.SetPhase(BackupPhase.Completed);
+-
+-			result.EndTime = DateTime.UtcNow;
+-			result.Status = JobState.Failed;
+-			result.GlobalErrors.Add($"Pipeline crashed: {ex.Message}");
+-			result.GlobalErrors.Add(ex.ToString());
+-
+-			// Ensure reporting task is stopped and observed
+-			try
+-			{
+-				reportingCts.Cancel();
+-				await reportingTask.ConfigureAwait(false);
+-			} catch
+-			{
+-				// ignored
+-			}
+-
+-			// Cleanup MTP session on pipeline crash
+-			if(mtpSession != null)
+-			{
+-				try
+-				{
+-					mtpSession.Dispose();
+-				} catch
+-				{
+-					/* best effort */
+-				}
+-			}
+-
+-			return result;
++			tracker.SetPhase(BackupPhase.None);
++			errors.Add($"Pipeline crashed: {ex.Message}");
++			errors.Add(ex.ToString());
++			state = BackupState.Stopped;
++			stopReason = StopReason.FatalError;
+ 		}
+ 
+ 		// Pipeline completed normally - stop the reporting task
+@@ -420,42 +392,46 @@ public class BackupEngine : IBackupEngine
+ 		// so we must inspect the progress snapshot to determine overall job outcome.
+ 		BackupProgress finalSnap = tracker.GetSnapshot();
+ 
+-		result.EndTime = DateTime.UtcNow;
+-
+ 		if(ct.IsCancellationRequested)
+ 		{
+-			result.Status = JobState.Cancelled;
+-			tracker.SetPhase(BackupPhase.Cancelled);
+-		} else if(finalSnap.FilesFailed > 0)
++			state = BackupState.Stopped;
++			stopReason = StopReason.UserCancelled;
++			tracker.SetPhase(BackupPhase.None);
++		}
++		else if(finalSnap.FilesFailed > 0 && stopReason == StopReason.None)
+ 		{
+-			// Mark job as failed when any file failed. Include a short summary in GlobalErrors.
+-			result.Status = JobState.Failed;
+-			tracker.SetPhase(BackupPhase.Completed);
+-			result.GlobalErrors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
+-		} else
++			state = BackupState.Stopped;
++			stopReason = StopReason.FatalError;
++			tracker.SetPhase(BackupPhase.None);
++			errors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
++		}
++		else if(stopReason == StopReason.None)
+ 		{
+-			result.Status = JobState.Completed;
+-			tracker.SetPhase(BackupPhase.Completed);
++			state = BackupState.Completed;
++			stopReason = StopReason.None;
++			tracker.SetPhase(BackupPhase.None);
+ 		}
+ 
+ 		progress.Report(tracker.GetSnapshot());
+ 
+-		// Populate summary fields from tracker snapshot
+-		result.FilesCopied = finalSnap.FilesSucceeded;
+-		result.FilesFailed = finalSnap.FilesFailed;
+-		result.FilesSkipped = finalSnap.FilesSkipped;
+-		result.TotalFilesScanned = finalSnap.FilesDiscovered;
+-		result.TotalBytesCopied = finalSnap.BytesProcessed;
+-
+ 		// Final save of session state (skip in DryRun)
+ 		if(!plan.DryRun)
+ 		{
+ 			await _repository.SaveAsync(session, ct).ConfigureAwait(false);
+-			_logger.LogInformation("Backup session {SessionId} completed. Files: {Copied}/{Total}, Status: {Status}",
+-				sessionId, result.FilesCopied, result.TotalFilesScanned, result.Status);
++			_logger.LogInformation("Backup session {SessionId} completed. Files: {Succeeded}/{Total}, State: {State}",
++				sessionId, finalSnap.FilesSucceeded, finalSnap.FilesDiscovered, state);
+ 		}
+ 
+-		return result;
++		return new BackupJobResult
++		{
++			JobName = plan.Name,
++			StartTime = startTime,
++			EndTime = DateTimeOffset.UtcNow,
++			State = state,
++			StopReason = stopReason,
++			FinalProgress = finalSnap,
++			Errors = errors
++		};
+ 	}
+ 
+ 	private void ValidateDiskSpace(BackupPlan plan)
+@@ -504,9 +480,9 @@ public class BackupEngine : IBackupEngine
+ 
+ 	private void ValidateSourceAndOutput(BackupPlan plan)
+ 	{
+-		if (plan.SourceType == SourceType.FileSystem)
++		if(plan.SourceType == SourceType.FileSystem)
+ 		{
+-			if (!Directory.Exists(plan.SourcePath))
++			if(!Directory.Exists(plan.SourcePath))
+ 			{
+ 				throw new DirectoryNotFoundException($"Source path not found: {plan.SourcePath}");
+ 			}
+@@ -515,21 +491,19 @@ public class BackupEngine : IBackupEngine
+ 			try
+ 			{
+ 				Directory.EnumerateFileSystemEntries(plan.SourcePath).FirstOrDefault();
+-			}
+-			catch (Exception ex)
++			} catch(Exception ex)
+ 			{
+ 				throw new UnauthorizedAccessException($"No read access to source: {plan.SourcePath}", ex);
+ 			}
+ 		}
+ 
+ 		DirectoryInfo outputDir = new(plan.OutputPath);
+-		if (!outputDir.Exists)
++		if(!outputDir.Exists)
+ 		{
+ 			try
+ 			{
+ 				outputDir.Create();
+-			}
+-			catch (Exception ex)
++			} catch(Exception ex)
+ 			{
+ 				throw new IOException($"Cannot create output directory: {plan.OutputPath}", ex);
+ 			}
+@@ -540,8 +514,7 @@ public class BackupEngine : IBackupEngine
+ 			string testFile = Path.Combine(plan.OutputPath, Path.GetRandomFileName());
+ 			File.WriteAllText(testFile, "test");
+ 			File.Delete(testFile);
+-		}
+-		catch (Exception ex)
++		} catch(Exception ex)
+ 		{
+ 			throw new UnauthorizedAccessException($"No write access to output: {plan.OutputPath}", ex);
+ 		}
+diff --git a/BMTP3.Core2/BackupNew/Engine/Internal/ProgressTracker.cs b/BMTP3.Core2/BackupNew/Engine/Internal/ProgressTracker.cs
+index 4a57728..51291b9 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Internal/ProgressTracker.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Internal/ProgressTracker.cs
+@@ -1,6 +1,6 @@
+ using System.Collections.Concurrent;
+ using BMTP3.Core2.BackupNew.Api;
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Progress;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+ // For ItemResultState
+@@ -21,7 +21,7 @@ public class ProgressTracker
+ 	private long _bytesTotal;
+ 
+ 	// --- Global Phase ---
+-	private volatile BackupPhase _currentPhase = BackupPhase.Starting;
++private volatile BackupPhase _currentPhase = BackupPhase.Initializing;
+ 
+ 	// --- Discovery Counters (Interlocked) ---
+ 	private int _directoriesTraversed;
+@@ -62,29 +62,33 @@ public class ProgressTracker
+ 	public void UpdateItemPhase(string itemId, string sourcePath, string fileName, string relativePath, FilePhase phase,
+ 		ulong totalBytes)
+ 	{
+-		_activeFiles.AddOrUpdate(itemId,
+-			// Add new
+-			key => new FileProgress
+-			{
+-				SourcePath = sourcePath,
+-				FileName = fileName,
+-				RelativePath = relativePath,
+-				Phase = phase,
+-				BytesTotal = totalBytes,
+-				BytesProcessed = 0
+-			},
+-			// Update existing
+-			(key, existing) =>
+-			{
+-				existing.Phase = phase;
+-				// Ensure total bytes is set if discovered late
+-				if (existing.BytesTotal == 0)
+-				{
+-					existing.BytesTotal = totalBytes;
+-				}
+-
+-				return existing;
+-			});
++       _activeFiles.AddOrUpdate(itemId,
++		   // Add new
++		   key => new FileProgress
++		   {
++			   SourcePath = sourcePath,
++			   FileName = fileName,
++			   RelativePath = relativePath,
++			   Phase = phase,
++			   BytesTotal = (long)totalBytes,
++			   BytesProcessed = 0
++		   },
++		   // Update existing
++		   (key, existing) =>
++		   {
++			   // Create a new FileProgress with updated values (immutability for init-only)
++			   return new FileProgress
++			   {
++				   SourcePath = existing.SourcePath,
++				   FileName = existing.FileName,
++				   RelativePath = existing.RelativePath,
++				   Phase = phase,
++				   BytesTotal = existing.BytesTotal == 0 ? (long)totalBytes : existing.BytesTotal,
++				   BytesProcessed = existing.BytesProcessed,
++				   RetryAttempt = existing.RetryAttempt,
++				   StartedAt = existing.StartedAt
++			   };
++		   });
+ 	}
+ 
+ 	/// <summary>
+@@ -92,10 +96,22 @@ public class ProgressTracker
+ 	/// </summary>
+ 	public void UpdateItemBytes(string itemId, ulong bytesProcessed)
+ 	{
+-		if (_activeFiles.TryGetValue(itemId, out FileProgress? progress))
+-		{
+-			progress.BytesProcessed = bytesProcessed;
+-		}
++       if (_activeFiles.TryGetValue(itemId, out FileProgress? progress))
++	   {
++		   // Replace with a new FileProgress (immutability for init-only)
++		   FileProgress updated = new FileProgress
++		   {
++			   SourcePath = progress.SourcePath,
++			   FileName = progress.FileName,
++			   RelativePath = progress.RelativePath,
++			   Phase = progress.Phase,
++			   BytesTotal = progress.BytesTotal,
++			   BytesProcessed = (long)bytesProcessed,
++			   RetryAttempt = progress.RetryAttempt,
++			   StartedAt = progress.StartedAt
++		   };
++		   _activeFiles[itemId] = updated;
++	   }
+ 	}
+ 
+ 	/// <summary>
+diff --git a/BMTP3.Core2/BackupNew/Engine/SequentialBackupEngine.cs b/BMTP3.Core2/BackupNew/Engine/SequentialBackupEngine.cs
+new file mode 100644
+index 0000000..a1bde20
+--- /dev/null
++++ b/BMTP3.Core2/BackupNew/Engine/SequentialBackupEngine.cs
+@@ -0,0 +1,425 @@
++using System.Diagnostics;
++using BMTP3.Core2.BackupNew.Api;
++using BMTP3.Core2.BackupNew.Api.Progress;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
++using BMTP3.Core2.BackupNew.Api.Request;
++using BMTP3.Core2.BackupNew.Api.Request.Enums;
++using BMTP3.Core2.BackupNew.Api.Response;
++using BMTP3.Core2.BackupNew.Domain.Item;
++using BMTP3.Core2.BackupNew.Domain.Job;
++using BMTP3.Core2.BackupNew.Domain.Repositories;
++using BMTP3.Core2.BackupNew.Engine.Hashing;
++using BMTP3.Core2.BackupNew.Engine.Internal;
++using BMTP3.Core2.BackupNew.Engine.Orchestration;
++using BMTP3.Core2.BackupNew.Engine.Staging;
++using BMTP3.Core2.BackupNew.Engine.Steps.HashStep;
++using BMTP3.Core2.BackupNew.Engine.Steps.InspectorStep;
++using BMTP3.Core2.BackupNew.Engine.Steps.MetadataExtractionStep;
++using BMTP3.Core2.BackupNew.Engine.Steps.SidecarGenerationStep;
++using BMTP3.Core2.BackupNew.Engine.Steps.StagingStep;
++using BMTP3.Core2.BackupNew.Engine.Steps.TimestampCorrectionStep;
++using BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
++using BMTP3.Core2.BackupNew.Engine.Strategies;
++using BMTP3.Core2.BackupNew.Engine.Transfers;
++using BMTP3.Core2.BackupNew.Engine.Traversal;
++using BMTP3.Core2.BackupNew.Infrastructure.Repositories;
++using Microsoft.Extensions.Logging;
++using Microsoft.Extensions.Options;
++
++namespace BMTP3.Core2.BackupNew.Engine;
++
++/// <summary>
++///     Sequential BackupEngine — processes each item through the full pipeline one at a time.
++/// </summary>
++public class SequentialBackupEngine : IBackupEngine
++{
++    private readonly IBackupScanner _backupScanner;
++    private readonly ICollisionResolver _collisionResolver;
++    private readonly IDestinationInspector _destinationInspector;
++    private readonly IFileTransfer _fileTransfer;
++    private readonly IHashGenerator _hashGenerator;
++    private readonly IItemHasher _itemHasher;
++    private readonly ILogger<SequentialBackupEngine> _logger;
++    private readonly ILoggerFactory _loggerFactory;
++    private readonly IMetadataReader _metadataReader;
++    private readonly IOptions<BackupEngineOptions> _options;
++    private readonly IPathGenerator _pathGenerator;
++    private readonly IBackupRepository _repository;
++    private readonly ISidecarGeneratorFactory _sidecarGeneratorFactory;
++    private readonly IStagingDownloader _stagingDownloader;
++    private readonly IJobValidator _validator;
++
++    public SequentialBackupEngine(
++        IBackupScanner backupScanner,
++        IStagingDownloader stagingDownloader,
++        IMetadataReader metadataReader,
++        IItemHasher itemHasher,
++        IPathGenerator pathGenerator,
++        ICollisionResolver collisionResolver,
++        IFileTransfer fileTransfer,
++        IHashGenerator hashGenerator,
++        IBackupRepository repository,
++        ISidecarGeneratorFactory sidecarGeneratorFactory,
++        IJobValidator validator,
++        IOptions<BackupEngineOptions> options,
++        ILoggerFactory loggerFactory,
++        IDestinationInspector destinationInspector
++    )
++    {
++        _backupScanner = backupScanner ?? throw new ArgumentNullException(nameof(backupScanner));
++        _stagingDownloader = stagingDownloader ?? throw new ArgumentNullException(nameof(stagingDownloader));
++        _metadataReader = metadataReader ?? throw new ArgumentNullException(nameof(metadataReader));
++        _itemHasher = itemHasher ?? throw new ArgumentNullException(nameof(itemHasher));
++        _hashGenerator = hashGenerator ?? throw new ArgumentNullException(nameof(hashGenerator));
++        _pathGenerator = pathGenerator ?? throw new ArgumentNullException(nameof(pathGenerator));
++        _collisionResolver = collisionResolver ?? throw new ArgumentNullException(nameof(collisionResolver));
++        _fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
++        _repository = repository ?? throw new ArgumentNullException(nameof(repository));
++        _sidecarGeneratorFactory = sidecarGeneratorFactory ?? throw new ArgumentNullException(nameof(sidecarGeneratorFactory));
++        _validator = validator ?? throw new ArgumentNullException(nameof(validator));
++        _options = options ?? throw new ArgumentNullException(nameof(options));
++        _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
++        _logger = _loggerFactory.CreateLogger<SequentialBackupEngine>();
++        _destinationInspector = destinationInspector ?? throw new ArgumentNullException(nameof(destinationInspector));
++    }
++
++    public async Task<BackupJobResult> RunAsync(BackupPlan plan, IProgress<IBackupProgress> progress, CancellationToken ct)
++    {
++        ArgumentNullException.ThrowIfNull(plan);
++
++        progress ??= new Progress<IBackupProgress>();
++        IProgress<BackupProgress> stagingProgress = new Progress<BackupProgress>(p => progress.Report(p));
++
++        // 0. Pre-flight Validation
++        await _validator.ValidateAsync(plan, ct);
++
++        // 0b. Runtime validation: disk space
++        ValidateDiskSpace(plan);
++
++        // 0c. Pre-flight: validate source and output
++        ValidateSourceAndOutput(plan);
++
++        // 0d. Initialize backup session for resume support
++        Guid sessionId = Guid.NewGuid();
++        BackupSessionEntity session = new()
++        {
++            SessionId = sessionId,
++            Plan = plan,
++            Records = new List<BackupResumeRecord>()
++        };
++
++        if (!plan.DryRun)
++        {
++            await _repository.SaveAsync(session, ct).ConfigureAwait(false);
++            _logger.LogInformation("Backup session {SessionId} started. Output: {OutputPath}", sessionId, plan.OutputPath);
++        }
++
++        // Prepare tracking
++        ProgressTracker tracker = new();
++        tracker.SetPhase(BackupPhase.Initializing);
++
++        DateTimeOffset startTime = DateTimeOffset.UtcNow;
++        BackupState state = BackupState.Ready;
++        StopReason stopReason = StopReason.None;
++        List<string> errors = new();
++
++        if (ct.IsCancellationRequested)
++        {
++            return new BackupJobResult
++            {
++                JobName = plan.Name,
++                StartTime = startTime,
++                EndTime = DateTimeOffset.UtcNow,
++                State = BackupState.Stopped,
++                StopReason = StopReason.UserCancelled,
++                FinalProgress = tracker.GetSnapshot()
++            };
++        }
++
++        // Periodic progress reporting task
++        CancellationTokenSource reportingCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
++        Task reportingTask = Task.Run(async () =>
++        {
++            try
++            {
++                while (!reportingCts.Token.IsCancellationRequested)
++                {
++                    progress.Report(tracker.GetSnapshot());
++                    await Task.Delay(250, reportingCts.Token).ConfigureAwait(false);
++                }
++            }
++            catch (OperationCanceledException)
++            {
++            }
++        }, reportingCts.Token);
++
++        // Instantiate steps
++        ContentBufferingItemStep bufferingStep = new(_stagingDownloader, stagingProgress, plan);
++        MetadataExtractionItemStep metadataStep = new(_metadataReader, plan);
++        TimestampCorrectionItemStep timestampStep = new(plan);
++
++        HashStepContext hashStepContext = new()
++        {
++            HashTypes = plan.HashTypes.ToList(),
++            ForceRecompute = false
++        };
++        HashItemStep hashStep = new(hashStepContext, _itemHasher, _loggerFactory.CreateLogger<HashItemStep>());
++
++        TransferItemStep transferStep = new(plan, _pathGenerator, _collisionResolver, _fileTransfer, _itemHasher);
++        DestinationInspectorItemStep inspectorStep = new(_destinationInspector, _hashGenerator, plan,
++            _loggerFactory.CreateLogger<DestinationInspectorItemStep>());
++        SidecarGenerationItemStep sidecarStep = new(plan, _sidecarGeneratorFactory);
++
++        state = BackupState.Running;
++        tracker.SetPhase(BackupPhase.Traversing);
++
++        // Open MTP session if needed
++        IMtpDeviceSession? mtpSession = null;
++        if (plan.SourceType == SourceType.MediaDevice && _backupScanner is IMtpCapableScanner mtpScanner)
++        {
++            mtpSession = mtpScanner.OpenSession(plan);
++        }
++
++        try
++        {
++            int itemsSinceLastSave = 0;
++            const int saveInterval = 10;
++
++            await foreach (IBackupItem item in _backupScanner.ScanAsync(plan, ct))
++            {
++                ct.ThrowIfCancellationRequested();
++
++                // Track discovery
++                ulong length = 0;
++                if (item.Metadata.Has(MetadataKey.Length))
++                {
++                    length = item.Metadata.Get<ulong>(MetadataKey.Length);
++                }
++                tracker.AddDiscovery(false, (long)length);
++
++                // Run all steps sequentially for this item
++                try
++                {
++                    tracker.SetPhase(BackupPhase.Transferring);
++
++                    // 1. Content buffering (staging)
++                    IProgress<ulong> stepProgress = new Progress<ulong>();
++
++                    await bufferingStep.ExecuteAsync(item, stepProgress, ct);
++                    await metadataStep.ExecuteAsync(item, stepProgress, ct);
++                    await timestampStep.ExecuteAsync(item, stepProgress, ct);
++                    await hashStep.ExecuteAsync(item, stepProgress, ct);
++                    await transferStep.ExecuteAsync(item, stepProgress, ct);
++                    await inspectorStep.ExecuteAsync(item, stepProgress, ct);
++                    await sidecarStep.ExecuteAsync(item, stepProgress, ct);
++                }
++                catch (OperationCanceledException)
++                {
++                    throw; // Propagate cancellation
++                }
++                catch (Exception ex)
++                {
++                    _logger.LogError(ex, "Failed to process item {ItemId}", item.Id);
++                    // The item's ResultState should already be set to failed by the step that threw.
++                    // If not, we can't easily set it here without knowing the step API —
++                    // but the tracker will record the failure below.
++                }
++
++                // Track completion
++                ulong size = item.Metadata.Has(MetadataKey.Length)
++                    ? item.Metadata.Get<ulong>(MetadataKey.Length)
++                    : 0;
++
++                tracker.CompleteItem(item.Id, item.ResultState, (long)size);
++
++                // Persist item state for resume support
++                if (!plan.DryRun)
++                {
++                    await _repository.PersistItemStateAsync(item, ct).ConfigureAwait(false);
++                    itemsSinceLastSave++;
++
++                    if (itemsSinceLastSave >= saveInterval)
++                    {
++                        await _repository.SaveAsync(session, ct).ConfigureAwait(false);
++                        itemsSinceLastSave = 0;
++                    }
++                }
++            }
++        }
++        catch (OperationCanceledException)
++        {
++            // Cancellation requested
++        }
++        catch (Exception ex)
++        {
++            tracker.SetPhase(BackupPhase.None);
++            errors.Add($"Pipeline crashed: {ex.Message}");
++            errors.Add(ex.ToString());
++            state = BackupState.Stopped;
++            stopReason = StopReason.FatalError;
++        }
++        finally
++        {
++            // Dispose MTP session
++            if (mtpSession != null)
++            {
++                try
++                {
++                    mtpSession.Dispose();
++                }
++                catch
++                {
++                    /* best effort */
++                }
++            }
++        }
++
++        // Stop reporting
++        try
++        {
++            reportingCts.Cancel();
++            await reportingTask.ConfigureAwait(false);
++        }
++        catch
++        {
++            // ignored
++        }
++
++        // Determine final status
++        BackupProgress finalSnap = tracker.GetSnapshot();
++
++        if (ct.IsCancellationRequested)
++        {
++            state = BackupState.Stopped;
++            stopReason = StopReason.UserCancelled;
++            tracker.SetPhase(BackupPhase.None);
++        }
++        else if (finalSnap.FilesFailed > 0 && stopReason == StopReason.None)
++        {
++            state = BackupState.Stopped;
++            stopReason = StopReason.FatalError;
++            tracker.SetPhase(BackupPhase.None);
++            errors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
++        }
++        else if (stopReason == StopReason.None)
++        {
++            state = BackupState.Completed;
++            stopReason = StopReason.None;
++            tracker.SetPhase(BackupPhase.None);
++        }
++
++        progress.Report(tracker.GetSnapshot());
++
++        if (!plan.DryRun)
++        {
++            await _repository.SaveAsync(session, ct).ConfigureAwait(false);
++            _logger.LogInformation("Backup session {SessionId} completed. Files: {Succeeded}/{Total}, State: {State}",
++                sessionId, finalSnap.FilesSucceeded, finalSnap.FilesDiscovered, state);
++        }
++
++        return new BackupJobResult
++        {
++            JobName = plan.Name,
++            StartTime = startTime,
++            EndTime = DateTimeOffset.UtcNow,
++            State = state,
++            StopReason = stopReason,
++            FinalProgress = finalSnap,
++            Errors = errors
++        };
++    }
++
++    private void ValidateDiskSpace(BackupPlan plan)
++    {
++        DirectoryInfo outputDir = new(plan.OutputPath);
++        if (!outputDir.Exists)
++        {
++            outputDir.Create();
++        }
++
++        const long oneMb = 1024 * 1024;
++        const long oneGb = 1024 * oneMb;
++
++        long freeSpace = GetFreeSpace(outputDir.FullName);
++        long freeSpaceMb = freeSpace / oneMb;
++        long freeSpaceGb = freeSpace / oneGb;
++
++        const long oneHundredMb = 100 * oneMb;
++        const long tenGb = 10 * oneGb;
++
++        if (freeSpace <= oneHundredMb)
++        {
++            throw new IOException(
++                $"Insufficient disk space on output drive '{outputDir.Root}'. Available: {freeSpaceMb} MB.");
++        }
++
++        if (freeSpace <= oneGb)
++        {
++            _logger.LogWarning("Low disk space on output drive '{Drive}': {FreeSpace} MB. Backup may fail.",
++                outputDir.Root, freeSpaceMb);
++        }
++        else if (freeSpace <= tenGb)
++        {
++            _logger.LogInformation("Disk space on output drive '{Drive}': {FreeSpace} GB available.", outputDir.Root,
++                freeSpaceGb);
++        }
++    }
++
++    private void ValidateSourceAndOutput(BackupPlan plan)
++    {
++        if (plan.SourceType == SourceType.FileSystem)
++        {
++            if (!Directory.Exists(plan.SourcePath))
++            {
++                throw new DirectoryNotFoundException($"Source path not found: {plan.SourcePath}");
++            }
++
++            try
++            {
++                Directory.EnumerateFileSystemEntries(plan.SourcePath).FirstOrDefault();
++            }
++            catch (Exception ex)
++            {
++                throw new UnauthorizedAccessException($"No read access to source: {plan.SourcePath}", ex);
++            }
++        }
++
++        DirectoryInfo outputDir = new(plan.OutputPath);
++        if (!outputDir.Exists)
++        {
++            try
++            {
++                outputDir.Create();
++            }
++            catch (Exception ex)
++            {
++                throw new IOException($"Cannot create output directory: {plan.OutputPath}", ex);
++            }
++        }
++
++        try
++        {
++            string testFile = Path.Combine(plan.OutputPath, Path.GetRandomFileName());
++            File.WriteAllText(testFile, "test");
++            File.Delete(testFile);
++        }
++        catch (Exception ex)
++        {
++            throw new UnauthorizedAccessException($"No write access to output: {plan.OutputPath}", ex);
++        }
++    }
++
++    private long GetFreeSpace(string path)
++    {
++        try
++        {
++            string root = Path.GetPathRoot(path) ?? path;
++            DriveInfo drive = new(root);
++            return drive.AvailableFreeSpace;
++        }
++        catch (Exception)
++        {
++            return 0;
++        }
++    }
++}
+diff --git a/BMTP3.Core2/BackupNew/Engine/Staging/StagingDownloader.cs b/BMTP3.Core2/BackupNew/Engine/Staging/StagingDownloader.cs
+index bc3a69c..2c4072b 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Staging/StagingDownloader.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Staging/StagingDownloader.cs
+@@ -1,5 +1,5 @@
+ using BMTP3.Core2.BackupNew.Api;
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Progress;
+ using BMTP3.Core2.BackupNew.Content;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/AbstractPipelineStage.cs b/BMTP3.Core2/BackupNew/Engine/Steps/AbstractPipelineStage.cs
+index a466f81..0154704 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/AbstractPipelineStage.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/AbstractPipelineStage.cs
+@@ -1,5 +1,5 @@
+ using System.Threading.Channels;
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+ using BMTP3.Core2.BackupNew.Engine.Internal;
+ using Microsoft.Extensions.Logging;
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/HashStep/HashItemStep.cs b/BMTP3.Core2/BackupNew/Engine/Steps/HashStep/HashItemStep.cs
+index 04d6b2f..b1c108d 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/HashStep/HashItemStep.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/HashStep/HashItemStep.cs
+@@ -1,4 +1,4 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request.Enums;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+ using BMTP3.Core2.BackupNew.Engine.Strategies;
+@@ -18,8 +18,8 @@ public class HashItemStep : IBackupItemStep<HashStepContext, HashStepResult>
+ 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+ 	}
+ 
+-	public string Name => "Hashing";
+-	public FilePhase Phase => FilePhase.Hashing;
++   public string Name => "Hashing";
++   public FilePhase Phase => FilePhase.Comparing; // 'Comparing' is the closest match in the new model
+ 
+ 	public HashStepContext Context { get; }
+ 
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/IBackupItemStep.cs b/BMTP3.Core2/BackupNew/Engine/Steps/IBackupItemStep.cs
+index 2014f71..06ba02c 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/IBackupItemStep.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/IBackupItemStep.cs
+@@ -1,4 +1,4 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+ 
+ namespace BMTP3.Core2.BackupNew.Engine.Steps;
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/InspectorStep/DestinationInspectorItemStep.cs b/BMTP3.Core2/BackupNew/Engine/Steps/InspectorStep/DestinationInspectorItemStep.cs
+index 2d00a56..3b6ffeb 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/InspectorStep/DestinationInspectorItemStep.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/InspectorStep/DestinationInspectorItemStep.cs
+@@ -1,4 +1,4 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Api.Request.Enums;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+@@ -23,8 +23,8 @@ public class DestinationInspectorItemStep : IBackupItemStep<BackupPlan, object>
+ 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+ 	}
+ 
+-	public string Name => "DestinationInspector";
+-	public FilePhase Phase => FilePhase.Hashing; // Reuse Hashing phase for progress semantics
++   public string Name => "DestinationInspector";
++   public FilePhase Phase => FilePhase.Comparing; // Closest match in new model
+ 
+ 	public BackupPlan Context { get; }
+ 
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/MetadataExtractionStep/MetadataExtractionItemStep.cs b/BMTP3.Core2/BackupNew/Engine/Steps/MetadataExtractionStep/MetadataExtractionItemStep.cs
+index 3b52656..87d8330 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/MetadataExtractionStep/MetadataExtractionItemStep.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/MetadataExtractionStep/MetadataExtractionItemStep.cs
+@@ -1,4 +1,4 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+ using BMTP3.Core2.BackupNew.Engine.Strategies;
+@@ -18,8 +18,8 @@ public class MetadataExtractionItemStep : IBackupItemStep<BackupPlan, bool>
+ 		Context = context ?? throw new ArgumentNullException(nameof(context));
+ 	}
+ 
+-	public string Name => "Metadata Extraction";
+-	public FilePhase Phase => FilePhase.Metadata;
++   public string Name => "Metadata Extraction";
++   public FilePhase Phase => FilePhase.None; // No direct match in new model
+ 
+ 	public BackupPlan Context { get; }
+ 
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/SidecarGenerationStep/SidecarGenerationItemStep.cs b/BMTP3.Core2/BackupNew/Engine/Steps/SidecarGenerationStep/SidecarGenerationItemStep.cs
+index 3d16a7f..4c660b4 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/SidecarGenerationStep/SidecarGenerationItemStep.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/SidecarGenerationStep/SidecarGenerationItemStep.cs
+@@ -1,4 +1,4 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+ using System.Text;
+@@ -25,8 +25,8 @@ public class SidecarGenerationItemStep : IBackupItemStep<BackupPlan, bool>
+ 		_factory = factory ?? throw new ArgumentNullException(nameof(factory));
+ 	}
+ 
+-	public string Name => "Sidecar Generation";
+-	public FilePhase Phase => FilePhase.Metadata;
++   public string Name => "Sidecar Generation";
++   public FilePhase Phase => FilePhase.None; // No direct match in new model
+ 	public BackupPlan Context { get; }
+ 
+ 	/// <summary>
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/StagingStep/ContentBufferingItemStep.cs b/BMTP3.Core2/BackupNew/Engine/Steps/StagingStep/ContentBufferingItemStep.cs
+index ba10007..fd8334b 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/StagingStep/ContentBufferingItemStep.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/StagingStep/ContentBufferingItemStep.cs
+@@ -1,4 +1,4 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Progress;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+@@ -26,8 +26,8 @@ public class ContentBufferingItemStep : IBackupItemStep<BackupPlan, bool>
+ 		_stagingRoot = Path.Combine(Path.GetTempPath(), "bmtp3_staging", Guid.NewGuid().ToString("n"));
+ 	}
+ 
+-	public string Name => "Content Buffering";
+-	public FilePhase Phase => FilePhase.Staging;
++   public string Name => "Content Buffering";
++   public FilePhase Phase => FilePhase.None; // No direct match in new model
+ 
+ 	public BackupPlan Context { get; }
+ 
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/TimestampCorrectionStep/TimestampCorrectionItemStep.cs b/BMTP3.Core2/BackupNew/Engine/Steps/TimestampCorrectionStep/TimestampCorrectionItemStep.cs
+index 213bda1..d7534a5 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/TimestampCorrectionStep/TimestampCorrectionItemStep.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/TimestampCorrectionStep/TimestampCorrectionItemStep.cs
+@@ -1,4 +1,4 @@
+-using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Content;
+ using BMTP3.Core2.BackupNew.Domain.Item;
+@@ -20,8 +20,8 @@ public class TimestampCorrectionItemStep : IBackupItemStep<BackupPlan, bool>
+ 		Context = context ?? throw new ArgumentNullException(nameof(context));
+ 	}
+ 
+-	public string Name => "Timestamp Correction";
+-	public FilePhase Phase => FilePhase.Metadata;
++   public string Name => "Timestamp Correction";
++   public FilePhase Phase => FilePhase.None; // No direct match in new model
+ 	public BackupPlan Context { get; }
+ 
+ 	public Task<bool> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
+diff --git a/BMTP3.Core2/BackupNew/Engine/Steps/TransferStep/TransferItemStep.cs b/BMTP3.Core2/BackupNew/Engine/Steps/TransferStep/TransferItemStep.cs
+index e1fa990..daed27c 100644
+--- a/BMTP3.Core2/BackupNew/Engine/Steps/TransferStep/TransferItemStep.cs
++++ b/BMTP3.Core2/BackupNew/Engine/Steps/TransferStep/TransferItemStep.cs
+@@ -1,4 +1,5 @@
+ using BMTP3.Core2.BackupNew.Api.Enums;
++using BMTP3.Core2.BackupNew.Api.Progress.Enums;
+ using BMTP3.Core2.BackupNew.Api.Request;
+ using BMTP3.Core2.BackupNew.Api.Request.Enums;
+ using BMTP3.Core2.BackupNew.Content;
+@@ -35,8 +36,8 @@ public class TransferItemStep : IBackupItemStep<BackupPlan, OperationResult>
+ 		_logger = logger;
+ 	}
+ 
+-	public string Name => "Transfer";
+-	public FilePhase Phase => FilePhase.Transferring;
++   public string Name => "Transfer";
++   public FilePhase Phase => FilePhase.Copying;
+ 	public BackupPlan Context { get; }
+ 
+ 	public async Task<OperationResult> ExecuteAsync(IBackupItem item, IProgress<ulong> progress, CancellationToken ct)
+diff --git a/Directory.Build.props b/Directory.Build.props
+index dcdad7c..cde55e5 100644
+--- a/Directory.Build.props
++++ b/Directory.Build.props
+@@ -3,7 +3,7 @@
+ 		<Major>0</Major>
+ 		<Minor>3</Minor>
+ 		<Patch>6</Patch>
+-		<BuildNumber>394</BuildNumber>
++		<BuildNumber>416</BuildNumber>
+ 		<ReleaseChannel>beta</ReleaseChannel>
+ 		<ReleaseChannelNumber>0</ReleaseChannelNumber>
+ 	<!--
