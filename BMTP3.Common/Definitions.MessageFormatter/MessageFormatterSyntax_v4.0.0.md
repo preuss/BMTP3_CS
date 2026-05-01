@@ -9,6 +9,22 @@ eval expressions (conditional logic), nested placeholders, and escape rules.
 For available FormatTypes, FormatStyles, CustomPatterns, and Functions,
 see the separate **MessageFormatter Function Reference** document.
 
+### 1.1. Message Format Expression
+
+    ${name[.function()]* [, FormatType [, FormatStyle]] [: CustomPattern]}
+    #{index[.function()]* [, FormatType [, FormatStyle]] [: CustomPattern]}
+
+FormatStyle and CustomPattern are **mutually exclusive** — only one can be used.
+
+### 1.2. Message Eval Expression
+
+    ${name[.function()]* § EvalType, EvalPattern}
+    #{index[.function()]* § EvalType, EvalPattern}
+
+The eval separator is `§` (U+00A7) or `¶` (U+00B6, Alt+0182). Both are equivalent.
+
+
+
 ---
 
 ## 2. Terminology
@@ -34,40 +50,33 @@ There are two main categories of placeholder expressions:
 
 Used for value formatting (functions, type conversion, style/pattern output).
 
-&#x20;   ${name\[.function()]\* \[, FormatType \[, FormatStyle]] \[: CustomPattern]}
-#{index\[.function()]\* \[, FormatType \[, FormatStyle]] \[: CustomPattern]}
-
-
+    ${name[.function()]* [, FormatType [, FormatStyle]] [: CustomPattern]}
+    #{index[.function()]* [, FormatType [, FormatStyle]] [: CustomPattern]}
 
 **Rule:** FormatStyle and CustomPattern are **mutually exclusive** — you cannot use both.
 
 Valid combinations:
 
-&#x20;   ${name}
-${name.function()}
-${name, FormatType}
-${name, FormatType, FormatStyle}
-${name : CustomPattern}
-${name, FormatType : CustomPattern}
-${name.function(), FormatType, FormatStyle}
-${name.function() : CustomPattern}
-
-
+    ${name}
+    ${name.function()}
+    ${name, FormatType}
+    ${name, FormatType, FormatStyle}
+    ${name : CustomPattern}
+    ${name, FormatType : CustomPattern}
+    ${name.function(), FormatType, FormatStyle}
+    ${name.function() : CustomPattern}
 
 ### 3.2. Eval Expression
 
 Used for conditional/selection logic based on the variable's value.
 
-&#x20;   ${name\[.function()]\* § EvalType, EvalPattern}
-#{index\[.function()]\* § EvalType, EvalPattern}
-
-
+    ${name[.function()]* § EvalType, EvalPattern}
+    #{index[.function()]* § EvalType, EvalPattern}
 
 The eval separator is `§` (section sign) or `¶` (pilcrow sign, Alt+0182). Both are equivalent.
 
-&#x20;   ${name § EvalType, EvalPattern}
-${name ¶ EvalType, EvalPattern}
-
+    ${name § EvalType, EvalPattern}
+    ${name ¶ EvalType, EvalPattern}
 
 
 ---
@@ -76,64 +85,70 @@ ${name ¶ EvalType, EvalPattern}
 
 When a placeholder is evaluated, the following steps occur in order:
 
-&#x20;   Variable (arg)
-→ \[Type Resolution] (determine runtime type)
-→ \[Functions] (execute chained functions on current type; type may change)
-→ \[FormatType cast/convert] (optional type conversion)
-→ \[FormatStyle OR CustomPattern] (format to string — never both)
-→ Output (string)
+### Format Expression
 
+    [Variable] → [Type Resolution] → [Functions] → [FormatType] → [FormatStyle|CustomPattern] → [String]
 
+Detailed:
 
-For Eval Expressions:
+    Variable (arg)
+      → [Type Resolution] (determine runtime type)
+      → [Functions] (execute chained functions on current type; type may change)
+      → [FormatType cast/convert] (optional type conversion)
+      → [FormatStyle OR CustomPattern] (format to string — never both)
+      → Output (string)
 
-&#x20;   Variable (arg)
-→ \[Type Resolution] (determine runtime type)
-→ \[Functions] (execute chained functions on current type; type may change)
-→ \[EvalType + EvalPattern] (evaluate condition, select output segment)
-→ Output (string, may contain nested placeholders)
+### Eval Expression
 
+    [Variable] → [Type Resolution] → [Functions] → [EvalType + EvalPattern] → [String]
+
+Detailed:
+
+    Variable (arg)
+      → [Type Resolution] (determine runtime type)
+      → [Functions] (execute chained functions on current type; type may change)
+      → [EvalType + EvalPattern] (evaluate condition, select output segment)
+      → Output (string, may contain nested placeholders)
 
 
 ---
 
 ## 5. Placeholders
 
+A placeholder is a marker in a text string that gets replaced with a value at runtime.
+The placeholder syntax defines how the formatter identifies which value to insert.
+
+Every placeholder value has a **type** determined at runtime (e.g., String, Number, DateTime, Boolean).
+The type controls which functions, FormatTypes, FormatStyles, and CustomPatterns are available.
+Functions may change the type, and FormatType can convert it to another type before formatting.
+
 ### 5.1. Named Placeholder
 
-References a variable by name.
+A named placeholder references a variable by name. When the message is formatted,
+the placeholder is replaced with the value of the variable that matches the name.
 
-&#x20;   ${name}
+    ${name}
 
-
-
-* `name` is an identifier: starts with `a-z`, `A-Z`, or `\\\_`, followed by `a-z`, `A-Z`, `0-9`, or `\\\_`.
-* Whitespace inside the braces is allowed and ignored: `${ name }` is equivalent to `${name}`.
+- `name` is an identifier: starts with `a-z`, `A-Z`, or `_`, followed by `a-z`, `A-Z`, `0-9`, or `_`.
+- Whitespace inside the braces is allowed and ignored: `${ name }` is equivalent to `${name}`.
 
 **Example:**
 
-&#x20;   ${filename} → "photo.jpg"
-${userName} → "John"
-
-
+    "Hello ${userName}" → "Hello John"
 
 ### 5.2. Indexed Placeholder
 
-References a variable by positional index.
+An indexed placeholder references a variable by its position in the argument list.
+When the message is formatted, the placeholder is replaced with the value at that position.
 
-&#x20;   #{index}
+    #{index}
 
-
-
-* `index` is a zero-based positive integer.
-* Whitespace inside the braces is allowed and ignored: `#{ 0 }` is equivalent to `#{0}`.
+- `index` is a zero-based positive integer.
+- Whitespace inside the braces is allowed and ignored: `#{ 0 }` is equivalent to `#{0}`.
 
 **Example:**
 
-&#x20;   #{0} → "photo.jpg" (if argument at index 0 is "photo.jpg")
-#{1} → "1024" (if argument at index 1 is "1024")
-
-
+    "File #{0} is #{1} bytes" → "File photo.jpg is 1024 bytes"
 
 ### 5.3. Nested Placeholders
 
@@ -142,67 +157,149 @@ to reference other variables.
 
 **Example:**
 
-&#x20;   ${date : yyyy-MM-dd ${filename}} → "2025-04-17 photo.jpg"
-
+    ${date : yyyy-MM-dd ${filename}} → "2025-04-17 photo.jpg"
 
 
 ---
 
 ## 6. Functions
 
-Functions are registered operations that can be called on a variable's current type.
-Multiple functions can be chained. Each function executes on the result of the previous one.
+Functions are registered operations that can be called on a variable's resolved value.
+Multiple functions can be chained, where each function executes on the result of the
+previous one.
 
 ### 6.1. Syntax
 
-&#x20;   .functionName()
-.functionName(arg1)
-.functionName(arg1, arg2)
+    ${variable.functionName()}
+    ${variable.functionName(arg1)}
+    ${variable.functionName(arg1, arg2)}
+    ${variable .functionName()}
+    ${variable. functionName()}
+    ${variable.functionName ()}
 
+- Function names follow identifier rules: starts with a letter (a-z, A-Z) or underscore,
+  followed by letters, digits, or underscores.
+- Whitespace is allowed:
+  - Between the variable name and `.` (dot)
+  - Between `.` (dot) and the function name
+  - Between the function name and `(` (opening parenthesis)
+- Arguments inside parentheses are passed to the function.
+- Arguments are separated by `,` (comma).
+- `)` (closing parenthesis) ends the argument list.
+- Functions execute before FormatType conversion and before FormatStyle/CustomPattern/EvalType.
 
+### 6.2. Arguments
 
-* Function names follow identifier rules.
-* Arguments inside parentheses are passed to the function.
-* Arguments are separated by commas.
-* Functions execute **before** FormatType conversion and **before** FormatStyle/CustomPattern/EvalType.
+An argument is either **quoted** or **unquoted**. These cannot be mixed —
+if quotes do not enclose the entire argument, it is a syntax error.
 
-### 6.2. Chaining
+#### 6.2.1. Unquoted Arguments
+
+- Leading and trailing whitespace is trimmed.
+- `,` (comma) separates arguments.
+- `)` (closing parenthesis) ends the argument list.
+- Use `\` (backslash) to escape special characters.
+
+**Examples:**
+
+    .function(hello world)              → "hello world"
+    .function( hello world )            → "hello world"
+    .function( hello world , second )   → "hello world", "second"
+    .function(hello\, world)            → "hello, world"
+    .function(hello\) world)            → "hello) world"
+    .function(path\\to\\file)           → "path\to\file"
+
+#### 6.2.2. Quoted Arguments
+
+The entire argument must be enclosed in `"..."` (double quotes) or `'...'` (single quotes).
+Whitespace is preserved exactly as written. `,` (comma) and `)` (closing parenthesis)
+inside quotes are treated as plain text.
+
+**Examples:**
+
+    .function("hello world")            → "hello world"
+    .function(" hello world ")          → " hello world "
+    .function('hello, world')           → "hello, world"
+    .function("hello) world")           → "hello) world"
+    .function("hello world", 'second')  → "hello world", "second"
+
+#### 6.2.3. Escape Sequences
+
+A `\` (backslash) followed by a character that is not in the allowed list is a syntax error.
+This ensures forward compatibility — new escape sequences can be added later without
+breaking existing templates.
+
+**In unquoted arguments, allowed escapes:**
+
+| Escape | Result                  |
+|--------|-------------------------|
+| `\\`   | literal `\` (backslash) |
+| `\,`   | literal `,` (comma)     |
+| `\)`   | literal `)` (closing parenthesis) |
+| `\"`   | literal `"` (double quote) |
+| `\'`   | literal `'` (single quote) |
+
+**In double-quoted arguments (`"..."`), allowed escapes:**
+
+| Escape | Result                  |
+|--------|-------------------------|
+| `\\`   | literal `\` (backslash) |
+| `\"`   | literal `"` (double quote) |
+
+Note: `'` (single quote) does not need escaping inside double quotes.
+
+**In single-quoted arguments (`'...'`), allowed escapes:**
+
+| Escape | Result                  |
+|--------|-------------------------|
+| `\\`   | literal `\` (backslash) |
+| `\'`   | literal `'` (single quote) |
+
+Note: `"` (double quote) does not need escaping inside single quotes.
+
+**Invalid escapes:**
+
+    .function(hello\a world)   → Error: invalid escape sequence '\a'
+    .function("hello\n")       → Error: invalid escape sequence '\n'
+
+#### 6.2.4. Invalid Argument Syntax
+
+    .function("hello" world)   → Error: quotes must enclose the entire argument
+    .function('hello' world)   → Error: quotes must enclose the entire argument
+
+### 6.3. Chaining
 
 Functions are called in sequence, left to right. The return type of each function
 determines what functions are available next.
 
-&#x20;   ${name.function1().function2().function3()}
+    ${variable.function1().function2().function3()}
 
+**Examples:**
 
+    ${filename.trim().toUpper()}   → "PHOTO.JPG"
+    ${amount.abs().toString()}     → "1024"
 
-**Example:**
+### 6.4. Type Safety
 
-&#x20;   ${filename.trim().toUpper()} → "PHOTO.JPG"
-${amount.abs().toString()} → "1024"
+Every value has a type determined at runtime. A function can only be called if it is
+registered for the current type of the value. If not, a runtime error occurs.
 
+**Examples:**
 
+    ${filename.toUpper()}   → "PHOTO.JPG"
+        (toUpper is registered for string)
 
-### 6.3. Type Safety
+    ${count.toUpper()}      → Error: function 'toUpper' is not registered for type 'integer'
 
-A function can only be called if it is registered for the current type of the value.
-If a function is not available for the current type, a runtime error occurs.
+### 6.5. Type-Changing Functions
 
-**Example:**
-
-&#x20;   ${filename.toUpper()} → "PHOTO.JPG" (toUpper is registered for string)
-${count.toUpper()} → Error: "Function 'toUpper' is not registered for type 'integer'"
-
-
-
-### 6.4. Type-Changing Functions
-
-Some functions change the type of the value. Subsequent functions must be
-registered for the new type.
+Some functions change the type of the value. Subsequent functions in the chain
+must be registered for the new type.
 
 **Example:**
 
-&#x20;   ${count.toString().padLeft(5)} → "  100"
-(count is integer → toString() returns string → padLeft is registered for string)
+    ${count.toString().padLeft(5)}   → "  100"
+        (count is integer → toString() returns string → padLeft is registered for string)
 
 
 
@@ -210,37 +307,74 @@ registered for the new type.
 
 ## 7. FormatType
 
-FormatType declares what type the value should be treated as after functions have executed.
-If the current value is not already of this type, a cast or conversion is attempted.
+FormatType declares what type the value is expected to be. It is not a conversion —
+it is an assertion. The runtime value must already be compatible with the declared
+FormatType. If it is not, a runtime error occurs.
+
+FormatType determines which FormatStyles and CustomPattern handlers are available
+for the value.
 
 ### 7.1. Syntax
 
-&#x20;   ${name, FormatType}
+    ${name, FormatType}
+    ${name, FormatType, FormatStyle}
+    ${name, FormatType : CustomPattern}
 
+- FormatType follows identifier rules: starts with a letter (a-z, A-Z) or underscore,
+  followed by letters, digits, or underscores.
+- Whitespace is allowed before and after `,` (comma) and is ignored.
+- FormatType is **case insensitive**.
 
+### 7.2. Available FormatTypes
 
-* FormatType is an identifier (e.g., `integer`, `float`, `date`, `time`, `datetime`, `bool`, `string`).
-* FormatType determines which FormatStyles and CustomPattern handlers are available.
-* If the value cannot be converted to the specified FormatType, a runtime error occurs.
+| FormatType | Accepts | Description |
+|------------|---------|-------------|
+| `number`   | integer, float/double | Numeric values |
+| `date`     | date, datetime        | Date values (date portion) |
+| `time`     | time, datetime        | Time values (time portion) |
 
-**Example:**
+If no FormatType is specified, no FormatStyles or CustomPatterns are available —
+the value is converted directly to its default string representation.
 
-&#x20;   ${size, integer} → "1024"
-${price, float} → "19.99"
-${created, date} → "2025-04-17"
+### 7.3. Assertion, Not Conversion
 
+FormatType does **not** convert the value. It asserts that the value is already
+of a compatible type. If you need to convert a value, use Functions.
 
+**Valid — value matches FormatType:**
 
-### 7.2. Implicit Type
+    ${price, number}           → price is a double, number accepts double ✓
+    ${count, number}           → count is an integer, number accepts integer ✓
+    ${created, date}           → created is a date ✓
+    ${created, time}           → created is a datetime, time accepts datetime ✓
 
-If no FormatType is specified, the runtime type of the value (after functions) is used
-to determine available CustomPattern handlers.
+**Invalid — value does not match FormatType:**
 
-**Example:**
+    ${name, number}            → Error: 'name' is string, expected number
+    ${count, date}             → Error: 'count' is integer, expected date or datetime
 
-&#x20;   ${date : yyyy-MM-dd} → "2025-04-17"
-(variable 'date' is already DateTime at runtime, so date CustomPattern handler is used)
+**Conversion via Functions instead:**
 
+    ${count.toString()}        → converts integer to string via function
+    ${text.toNumber()}         → converts string to number via function
+
+### 7.4. FormatType Without FormatStyle or CustomPattern
+
+FormatType can be used alone. This asserts the type but uses the default
+string representation for that type.
+
+    ${price, number}           → "1234.56" (default number-to-string)
+    ${created, date}           → "2025-04-17" (default date-to-string)
+
+### 7.5. Implicit Type (No FormatType)
+
+If no FormatType is specified, the value's runtime type (after functions) determines
+the output. The value is converted to its default string representation.
+No FormatStyles or CustomPatterns are available without a FormatType declaration.
+
+    ${name}                    → "John" (string, default representation)
+    ${count}                   → "1024" (integer, default representation)
+    ${created}                 → "2025-04-17 16:23:45" (datetime, default representation)
 
 
 ---
