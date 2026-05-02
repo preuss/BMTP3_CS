@@ -1255,16 +1255,25 @@ public async Task FullBackup_WithCollisionHandling_RenamesExistingFiles() {
 
 ### Test Doubles (Fake Implementations)
 
-Reusable across all tests:
+Reusable across all tests (located in `BMTP3.Core3.Tests/Fakes/` folder):
 
 ```csharp
-public class FakeFileSystemScanner : IBackupScanner { /* ... */ }
-public class InMemoryFileStorage : IFileTransfer { /* ... */ }
-public class FakeHashGenerator : IHashGenerator { /* ... */ }
+public class FakeBackupScanner : IBackupScanner { /* ... */ }
+public class FakeFileTransfer : IFileTransfer { /* ... */ }
+public class FakeItemHasher : IItemHasher { /* ... */ }
 public class FakeMetadataReader : IMetadataReader { /* ... */ }
-public class NonSeekableStreamWrapper : Stream { /* ... */ }
-public class ProgressCapture : IProgress<IBackupProgress> { /* ... */ }
+public class FakeSidecarGenerator : ISidecarGenerator { /* ... */ }
+public class TestBackupItemBuilder { /* Builder for test items */ }
 ```
+
+**Location**: `BMTP3.Core3.Tests/Fakes/`
+**Namespace**: `BMTP3.Core3.Tests.Fakes`
+
+These are simple, self-documenting implementations that replace real services in tests. Better than mocks because they:
+- Show intent clearly (FakeX = deterministic test implementation)
+- Are reusable across all test classes
+- Can catch real integration bugs
+- Easy to add behavior (e.g., `FakeFileTransfer.ShouldFail = true`)
 
 ---
 
