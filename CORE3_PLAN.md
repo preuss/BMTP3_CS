@@ -709,152 +709,577 @@ BMTP3.Core3/
 
 ---
 
-## Testing Strategy
+## Testing Strategy (Comprehensive)
 
-### Philosophy: Test Doubles Over Mocks
+**Philosophy**: Professional test-driven development with edge cases, unit tests, integration tests, and test doubles.
 
-**Why?** Mocks are brittle and don't catch real bugs. Test doubles (fake implementations) are:
-- ✓ Reusable across tests
-- ✓ Self-documenting (code does what it says)
-- ✓ Actually catch integration issues
-- ✗ Takes slight more setup code initially
+---
 
-### Test Double Examples
+### Level 1: Unit Tests (Isolated Components)
 
-**FakeFileSystemScanner** (in-memory, for unit tests)
-```csharp
-public class FakeFileSystemScanner : IBackupScanner {
-    private readonly List<BackupItem> _items;
-    
-    public FakeFileSystemScanner(params string[] fileNames) {
-        _items = fileNames.Select(n => new BackupItem { 
-            Name = n,
-            SourcePath = $"/fake/{n}",
-            SizeInBytes = 1024
-        }).ToList();
-    }
-    
-    public Task<IEnumerable<BackupItem>> ScanAsync(string source, CancellationToken ct) {
-        return Task.FromResult(_items.AsEnumerable());
-    }
-}
-```
+Each service tested independently with test doubles.
 
-**InMemoryFileStorage** (in-memory file storage)
-```csharp
-public class InMemoryFileStorage : IFileTransfer {
-    private readonly Dictionary<string, byte[]> _storage = new();
-    
-    public Task CopyAsync(BackupItem item, string destination, CancellationToken ct) {
-        _storage[destination] = new byte[item.SizeInBytes];
-        return Task.CompletedTask;
-    }
-    
-    public bool FileExists(string path) => _storage.ContainsKey(path);
-}
-```
+**Pattern**: Arrange → Act → Assert
 
-### Test Examples
+#### A. Scanner Tests (FileSystemScanner, DeviceScanner)
 
-**Unit Test: Scan Step**
+**Normal Cases:**
 ```csharp
 [Fact]
-public async Task Scan_WithThreeFiles_ReturnsThreeItems() {
+public async Task FileSystemScanner_WithEmptyDirectory_ReturnsEmptyList() {
+    var dir = CreateEmptyDirectory();
+    var scanner = new FileSystemScanner();
+    
+    var result = await scanner.ScanAsync(dir, CancellationToken.None);
+    
+    Assert.Empty(result);
+}
+
+[Fact]
+public async Task FileSystemScanner_WithMultipleFiles_ReturnsAllItems() {
+    var dir = CreateDirectoryWithFiles("file1.jpg", "file2.jpg", "file3.jpg");
+    var scanner = new FileSystemScanner();
+    
+    var result = await scanner.ScanAsync(dir, CancellationToken.None);
+    
+    Assert.Equal(3, result.Count());
+    Assert.Contains(result, item => item.Name == "file1.jpg");
+}
+
+[Fact]
+public async Task FileSystemScanner_WithNestedFolders_ReturnsRecursiveItems() {
+    var dir = CreateDirectoryWithStructure(
+        "file1.jpg",
+        "folder1/file2.jpg",
+        "folder1/folder2/file3.jpg"
+    );
+    var scanner = new FileSystemScanner();
+    
+    var result = await scanner.ScanAsync(dir, CancellationToken.None);
+    
+    Assert.Equal(3, result.Count());
+}
+```
+
+**Edge Cases:**
+```csharp
+[Fact]
+public async Task FileSystemScanner_WithNonExistentPath_ThrowsFileNotFoundException() {
+    var scanner = new FileSystemScanner();
+    
+    var ex = await Assert.ThrowsAsync<FileNotFoundException>(
+        () => scanner.ScanAsync("/nonexistent/path", CancellationToken.None)
+    );
+    
+    Assert.Contains("/nonexistent/path", ex.Message);
+}
+
+[Fact]
+public async Task FileSystemScanner_WithSpecialCharactersInFileName_ReturnsItem() {
+    var dir = CreateDirectoryWithFiles("file-#1_[test].jpg");
+    var scanner = new FileSystemScanner();
+    
+    var result = await scanner.ScanAsync(dir, CancellationToken.None);
+    
+    Assert.Single(result);
+    Assert.Equal("file-#1_[test].jpg", result.First().Name);
+}
+
+[Fact]
+public async Task FileSystemScanner_WithSymlinks_HandlesCorrectly() {
+    var dir = CreateDirectoryWithSymlink("file1.jpg", "link_to_file1.jpg");
+    var scanner = new FileSystemScanner();
+    
+    var result = await scanner.ScanAsync(dir, CancellationToken.None);
+    
+    // Should return both or handle symlink according to config
+    Assert.NotEmpty(result);
+}
+
+[Fact]
+public async Task FileSystemScanner_WithVeryDeepNesting_ReturnsAllItems() {
+    var dir = CreateDirectoryWithDeepNesting(depth: 50, filesPerLevel: 2);
+    var scanner = new FileSystemScanner();
+    
+    var result = await scanner.ScanAsync(dir, CancellationToken.None);
+    
+    Assert.Equal(100, result.Count());  // 50 levels × 2 files
+}
+
+[Fact]
+public async Task FileSystemScanner_WithCancellation_StopsEarly() {
+    var dir = CreateDirectoryWithFiles(Enumerable.Range(0, 1000).Select(i => $"file{i}.jpg").ToArray());
+    var scanner = new FileSystemScanner();
+    var cts = new CancellationTokenSource();
+    
+    var task = Task.Run(async () => {
+        await Task.Delay(10);  // Let it scan a bit
+        cts.Cancel();
+        return await scanner.ScanAsync(dir, cts.Token);
+    });
+    
+    var ex = await Assert.ThrowsAsync<OperationCanceledException>(() => task);
+}
+```
+
+#### B. Transfer Tests (File Copy)
+
+**Normal Cases:**
+```csharp
+[Fact]
+public async Task SimpleFileTransfer_WithSingleFile_CopiesSuccessfully() {
+    var sourceFile = CreateTestFile("test.jpg", sizeInBytes: 1024);
+    var destDir = CreateEmptyDirectory();
+    var item = new BackupItem { Name = "test.jpg", SourcePath = sourceFile, SizeInBytes = 1024 };
+    var transfer = new SimpleFileTransfer();
+    
+    await transfer.CopyAsync(item, destDir, CancellationToken.None);
+    
+    Assert.True(File.Exists(Path.Combine(destDir, "test.jpg")));
+    Assert.Equal(1024, new FileInfo(Path.Combine(destDir, "test.jpg")).Length);
+}
+
+[Fact]
+public async Task SimpleFileTransfer_WithProgress_ReportsBytes() {
+    var sourceFile = CreateTestFile("test.jpg", sizeInBytes: 10_000_000);  // 10 MB
+    var destDir = CreateEmptyDirectory();
+    var item = new BackupItem { Name = "test.jpg", SourcePath = sourceFile, SizeInBytes = 10_000_000 };
+    var transfer = new SimpleFileTransfer();
+    var progressReports = new List<long>();
+    var progress = new Progress<long>(bytes => progressReports.Add(bytes));
+    
+    await transfer.CopyAsync(item, destDir, progress, CancellationToken.None);
+    
+    Assert.NotEmpty(progressReports);
+    Assert.Equal(10_000_000, progressReports.Last());  // Final report = total bytes
+}
+```
+
+**Edge Cases:**
+```csharp
+[Fact]
+public async Task SimpleFileTransfer_WithDestinationFull_ThrowsIOException() {
+    var sourceFile = CreateTestFile("test.jpg", sizeInBytes: 1024);
+    var destDir = CreateFullDirectory();  // No space
+    var item = new BackupItem { Name = "test.jpg", SourcePath = sourceFile, SizeInBytes = 1024 };
+    var transfer = new SimpleFileTransfer();
+    
+    var ex = await Assert.ThrowsAsync<IOException>(
+        () => transfer.CopyAsync(item, destDir, CancellationToken.None)
+    );
+}
+
+[Fact]
+public async Task SimpleFileTransfer_WithReadOnlySource_ThrowsUnauthorizedAccessException() {
+    var sourceFile = CreateTestFile("test.jpg", sizeInBytes: 1024);
+    File.SetAttributes(sourceFile, FileAttributes.ReadOnly);
+    var destDir = CreateEmptyDirectory();
+    var item = new BackupItem { Name = "test.jpg", SourcePath = sourceFile, SizeInBytes = 1024 };
+    var transfer = new SimpleFileTransfer();
+    
+    // Should either succeed (we can read read-only files) or handle gracefully
+    // Depending on implementation
+    var result = await transfer.CopyAsync(item, destDir, CancellationToken.None);
+    // Verify based on actual behavior
+}
+
+[Fact]
+public async Task SimpleFileTransfer_WithLargeFile_TransferCompletesSuccessfully() {
+    var largeFile = CreateTestFile("large.bin", sizeInBytes: 1_000_000_000);  // 1 GB
+    var destDir = CreateEmptyDirectory();
+    var item = new BackupItem { Name = "large.bin", SourcePath = largeFile, SizeInBytes: 1_000_000_000 };
+    var transfer = new SimpleFileTransfer();
+    
+    var stopwatch = Stopwatch.StartNew();
+    await transfer.CopyAsync(item, destDir, CancellationToken.None);
+    stopwatch.Stop();
+    
+    Assert.True(File.Exists(Path.Combine(destDir, "large.bin")));
+    // Verify reasonable performance (not spending >30s for in-memory test)
+    Assert.True(stopwatch.ElapsedMilliseconds < 30_000);
+}
+
+[Fact]
+public async Task SimpleFileTransfer_WithCancellation_StopsTransfer() {
+    var largeFile = CreateTestFile("large.bin", sizeInBytes: 100_000_000);  // 100 MB
+    var destDir = CreateEmptyDirectory();
+    var item = new BackupItem { Name = "large.bin", SourcePath = largeFile, SizeInBytes: 100_000_000 };
+    var transfer = new SimpleFileTransfer();
+    var cts = new CancellationTokenSource();
+    
+    var task = Task.Run(async () => {
+        await Task.Delay(5);  // Let transfer start
+        cts.Cancel();
+        return await transfer.CopyAsync(item, destDir, cts.Token);
+    });
+    
+    var ex = await Assert.ThrowsAsync<OperationCanceledException>(() => task);
+}
+```
+
+#### C. Hash Generation Tests (All 9 Algorithms)
+
+**Normal Cases - Each Algorithm:**
+```csharp
+[Fact]
+public async Task StreamHashGenerator_ComputesSHA256Correctly() {
+    var stream = CreateStreamWithContent("test content");
+    var generator = new StreamHashGenerator(logger);
+    
+    var result = await generator.ComputeHashesAsync(
+        stream,
+        new[] { HashType.SHA2_256 },
+        progress: null,
+        CancellationToken.None
+    );
+    
+    Assert.Single(result);
+    Assert.Equal("9f86d081884c7d6d9ffa37d8ac3c1e8e3b8eab6b3d8e8c0c0d0e0f0e0f0f0f0f", result[HashType.SHA2_256]);
+}
+
+[Fact]
+public async Task StreamHashGenerator_ComputesMD5Correctly() {
+    var stream = CreateStreamWithContent("test");
+    var generator = new StreamHashGenerator(logger);
+    
+    var result = await generator.ComputeHashesAsync(
+        stream,
+        new[] { HashType.MD5_128 },
+        progress: null,
+        CancellationToken.None
+    );
+    
+    Assert.Equal("098f6bcd4621d373cade4e832627b4f6", result[HashType.MD5_128]);
+}
+
+[Fact]
+public async Task StreamHashGenerator_ComputesBLAKE3Correctly() {
+    var stream = CreateStreamWithContent("test");
+    var generator = new StreamHashGenerator(logger);
+    
+    var result = await generator.ComputeHashesAsync(
+        stream,
+        new[] { HashType.BLAKE3_256 },
+        progress: null,
+        CancellationToken.None
+    );
+    
+    Assert.NotNull(result[HashType.BLAKE3_256]);
+    Assert.Equal(64, result[HashType.BLAKE3_256].Length);  // 256 bits = 64 hex chars
+}
+```
+
+**Edge Cases - Hash Generation:**
+```csharp
+[Fact]
+public async Task StreamHashGenerator_WithAllNineTypes_ComputesInSinglePass() {
+    var stream = CreateStreamWithLargeContent(100_000_000);  // 100 MB
+    var generator = new StreamHashGenerator(logger);
+    var allTypes = new[] {
+        HashType.SHA2_256, HashType.SHA2_512,
+        HashType.SHA3_256_FIPS202, HashType.SHA3_512_FIPS202,
+        HashType.SHA3_256_KECCAK, HashType.SHA3_512_KECCAK,
+        HashType.MD5_128,
+        HashType.BLAKE3_256, HashType.BLAKE3_512
+    };
+    
+    var stopwatch = Stopwatch.StartNew();
+    var result = await generator.ComputeHashesAsync(stream, allTypes, null, CancellationToken.None);
+    stopwatch.Stop();
+    
+    Assert.Equal(9, result.Count);
+    // Should be ~1 file read, not 9 × file read
+    Assert.True(stopwatch.ElapsedMilliseconds < 5000);  // 100 MB in <5 sec
+}
+
+[Fact]
+public async Task StreamHashGenerator_WithEmptyStream_ComputesZeroHash() {
+    var stream = CreateEmptyStream();
+    var generator = new StreamHashGenerator(logger);
+    
+    var result = await generator.ComputeHashesAsync(
+        stream,
+        new[] { HashType.SHA2_256 },
+        progress: null,
+        CancellationToken.None
+    );
+    
+    // SHA256 of empty = e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    Assert.Equal("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855", result[HashType.SHA2_256]);
+}
+
+[Fact]
+public async Task StreamHashGenerator_WithNonSeekableStream_ComputesCorrectly() {
+    var nonSeekableStream = new NonSeekableStreamWrapper(CreateStreamWithContent("test"));
+    var generator = new StreamHashGenerator(logger);
+    
+    var result = await generator.ComputeHashesAsync(
+        nonSeekableStream,
+        new[] { HashType.SHA2_256 },
+        progress: null,
+        CancellationToken.None
+    );
+    
+    Assert.NotNull(result[HashType.SHA2_256]);
+}
+
+[Fact]
+public async Task StreamHashGenerator_WithCancellation_StopsComputation() {
+    var largeStream = CreateStreamWithLargeContent(500_000_000);  // 500 MB
+    var generator = new StreamHashGenerator(logger);
+    var cts = new CancellationTokenSource();
+    
+    var task = Task.Run(async () => {
+        await Task.Delay(10);
+        cts.Cancel();
+        return await generator.ComputeHashesAsync(
+            largeStream,
+            new[] { HashType.SHA2_256 },
+            null,
+            cts.Token
+        );
+    });
+    
+    var ex = await Assert.ThrowsAsync<OperationCanceledException>(() => task);
+}
+```
+
+#### D. Metadata Extraction Tests
+
+**Normal Cases:**
+```csharp
+[Fact]
+public async Task FileMetadataReader_ExtractsTimestamps() {
+    var file = CreateTestFile("test.jpg", modifiedAt: DateTime(2024, 5, 1, 10, 30, 0));
+    var reader = new FileMetadataReader();
+    
+    var metadata = await reader.ReadAsync(file, CancellationToken.None);
+    
+    Assert.Equal(DateTime(2024, 5, 1, 10, 30, 0), metadata.ModifiedAt);
+}
+
+[Fact]
+public async Task FileMetadataReader_WithImageFile_ExtractsEXIF() {
+    var imageFile = CreateTestImageWithEXIF("photo.jpg", width: 1920, height: 1080);
+    var reader = new FileMetadataReader();
+    
+    var metadata = await reader.ReadAsync(imageFile, CancellationToken.None);
+    
+    Assert.Equal(1920, metadata.ImageWidth);
+    Assert.Equal(1080, metadata.ImageHeight);
+}
+```
+
+**Edge Cases:**
+```csharp
+[Fact]
+public async Task FileMetadataReader_WithCorruptedImageFile_HandlesGracefully() {
+    var corruptedFile = CreateCorruptedImageFile("broken.jpg");
+    var reader = new FileMetadataReader();
+    
+    var metadata = await reader.ReadAsync(corruptedFile, CancellationToken.None);
+    
+    // Should not throw, return partial metadata
+    Assert.NotNull(metadata);
+    Assert.Null(metadata.ImageWidth);  // Can't read EXIF
+}
+
+[Fact]
+public async Task FileMetadataReader_WithNoReadPermission_ThrowsUnauthorizedAccessException() {
+    var file = CreateTestFile("test.jpg");
+    File.SetAttributes(file, FileAttributes.Hidden | FileAttributes.ReadOnly);
+    var reader = new FileMetadataReader();
+    
+    var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+        () => reader.ReadAsync(file, CancellationToken.None)
+    );
+}
+```
+
+---
+
+### Level 2: Integration Tests (Multiple Components)
+
+Test 2-3 components together with real file system.
+
+```csharp
+[Fact]
+public async Task BackupEngine_ScanAndTransfer_CreatesFilesWithCorrectContent() {
     // Arrange
-    var scanner = new FakeFileSystemScanner("file1.jpg", "file2.jpg", "file3.jpg");
-    var engine = new BackupEngine(scanner, /*...*/);
-    var plan = new BackupPlan { Source = "/fake", Destination = "/temp" };
+    var sourceDir = CreateDirectoryWithFiles("file1.jpg", "file2.jpg");
+    var destDir = CreateEmptyDirectory();
+    var plan = new BackupPlan { Source = sourceDir, Destination = destDir, DryRun = false };
+    
+    var scanner = new FileSystemScanner();
+    var transfer = new SimpleFileTransfer();
+    var engine = new BackupEngine(scanner, transfer, /*...*/);
     
     // Act
     var result = await engine.RunAsync(plan, new Progress<IBackupProgress>(), CancellationToken.None);
     
     // Assert
-    Assert.Equal(3, result.TotalItems);
     Assert.True(result.Success);
+    Assert.Equal(2, result.SuccessfulItems);
+    Assert.True(File.Exists(Path.Combine(destDir, "file1.jpg")));
+    Assert.True(File.Exists(Path.Combine(destDir, "file2.jpg")));
+}
+
+[Fact]
+public async Task BackupEngine_WithHashGeneration_ComputesAllNineHashTypes() {
+    var sourceDir = CreateDirectoryWithFiles("photo.jpg");
+    var destDir = CreateEmptyDirectory();
+    var plan = new BackupPlan {
+        Source = sourceDir,
+        Destination = destDir,
+        HashTypes = new() {
+            SHA2_256, SHA2_512, SHA3_256_FIPS202, SHA3_512_FIPS202,
+            SHA3_256_KECCAK, SHA3_512_KECCAK, MD5_128, BLAKE3_256, BLAKE3_512
+        }
+    };
+    
+    var engine = new BackupEngine(/*all services*/);
+    
+    var result = await engine.RunAsync(plan, new Progress<IBackupProgress>(), CancellationToken.None);
+    
+    Assert.True(result.Success);
+    var item = result.Items.First();
+    Assert.Equal(9, item.Hashes.Count);
+    Assert.Contains(HashType.SHA2_256, item.Hashes.Keys);
+    Assert.Contains(HashType.BLAKE3_512, item.Hashes.Keys);
+}
+
+[Fact]
+public async Task BackupEngine_SidecarGeneration_IncludesAllHashTypes() {
+    var sourceDir = CreateDirectoryWithFiles("photo.jpg");
+    var destDir = CreateEmptyDirectory();
+    var plan = new BackupPlan {
+        Source = sourceDir,
+        Destination = destDir,
+        HashTypes = new() { SHA2_256, SHA3_256_FIPS202, BLAKE3_256 }
+    };
+    
+    var engine = new BackupEngine(/*all services*/);
+    var result = await engine.RunAsync(plan, new Progress<IBackupProgress>(), CancellationToken.None);
+    
+    var sidecarFile = Path.Combine(destDir, "photo.jpg.sidecar");
+    Assert.True(File.Exists(sidecarFile));
+    
+    var sidecarContent = File.ReadAllText(sidecarFile);
+    Assert.Contains("SHA2_256=", sidecarContent);
+    Assert.Contains("SHA3_256_FIPS202=", sidecarContent);
+    Assert.Contains("BLAKE3_256=", sidecarContent);
 }
 ```
 
-**Integration Test: End-to-End with Real Filesystem**
+---
+
+### Level 3: End-to-End Tests (Full Backup Workflow)
+
+Complete backup from scan to sidecar generation.
+
 ```csharp
 [Fact]
-public async Task BackupEngine_WithSmallDataset_CreatesCorrectFiles() {
-    // Arrange
-    var sourceDir = CreateTestDirectory(10);  // 10 test files
-    var destDir = Path.Combine(Path.GetTempPath(), $"bmtp3-test-{Guid.NewGuid()}");
+public async Task FullBackup_WithMixedFileTypes_CompletesSuccessfully() {
+    var sourceDir = CreateDirectoryWithFiles(
+        "photo1.jpg",
+        "photo2.png",
+        "document.pdf",
+        "video.mp4",
+        "archive.zip"
+    );
+    var destDir = CreateEmptyDirectory();
+    var plan = new BackupPlan {
+        Source = sourceDir,
+        Destination = destDir,
+        HashTypes = new() { SHA2_256, BLAKE3_256 }
+    };
+    
+    var engine = new BackupEngine(/*all services*/);
+    var progressReports = new List<IBackupProgress>();
+    var progress = new Progress<IBackupProgress>(p => progressReports.Add(p));
+    
+    var result = await engine.RunAsync(plan, progress, CancellationToken.None);
+    
+    Assert.True(result.Success);
+    Assert.Equal(5, result.SuccessfulItems);
+    Assert.NotEmpty(progressReports);
+    Assert.Contains(progressReports, p => p.Phase == BackupPhase.Scanning);
+    Assert.Contains(progressReports, p => p.Phase == BackupPhase.Transferring);
+    Assert.Contains(progressReports, p => p.Phase == BackupPhase.GeneratingHashes);
+    
+    // Verify all files + sidecars exist
+    Assert.Equal(10, Directory.GetFiles(destDir).Length);  // 5 files + 5 sidecars
+}
+
+[Fact]
+public async Task FullBackup_DryRun_DoesNotCreateFiles() {
+    var sourceDir = CreateDirectoryWithFiles("file1.jpg", "file2.jpg");
+    var destDir = CreateEmptyDirectory();
+    var plan = new BackupPlan {
+        Source = sourceDir,
+        Destination = destDir,
+        DryRun = true
+    };
+    
+    var engine = new BackupEngine(/*all services*/);
+    var result = await engine.RunAsync(plan, new Progress<IBackupProgress>(), CancellationToken.None);
+    
+    Assert.True(result.Success);
+    Assert.Equal(2, result.TotalItems);
+    Assert.Empty(Directory.GetFiles(destDir));  // No files actually written
+}
+
+[Fact]
+public async Task FullBackup_WithCollisionHandling_RenamesExistingFiles() {
+    var sourceDir = CreateDirectoryWithFiles("photo.jpg");
+    var destDir = CreateEmptyDirectory();
+    var existingFile = Path.Combine(destDir, "photo.jpg");
+    File.WriteAllBytes(existingFile, new byte[1024]);
     
     var plan = new BackupPlan {
         Source = sourceDir,
         Destination = destDir,
-        DryRun = false
+        Collision = CollisionStrategy.Rename
     };
     
-    var engine = new BackupEngine(
-        new FileSystemScanner(),
-        new SimpleFileTransfer(),
-        new SHA256Generator(),
-        /*...*/
-    );
-    
-    // Act
+    var engine = new BackupEngine(/*all services*/);
     var result = await engine.RunAsync(plan, new Progress<IBackupProgress>(), CancellationToken.None);
     
-    // Assert
     Assert.True(result.Success);
-    Assert.Equal(10, result.SuccessfulItems);
-    Assert.Empty(result.Errors);
-    
-    // Verify files exist in destination
-    var filesInDest = Directory.GetFiles(destDir);
-    Assert.Equal(10, filesInDest.Length);
-    
-    // Verify sidecars exist
-    var sidecars = Directory.GetFiles(destDir, "*.sidecar");
-    Assert.Equal(10, sidecars.Length);
-    
-    // Cleanup
-    Directory.Delete(destDir, true);
+    Assert.True(File.Exists(existingFile));
+    Assert.True(File.Exists(Path.Combine(destDir, "photo_1.jpg")));  // Renamed
 }
 ```
 
-### Test Organization
+---
 
-```
-BMTP3.Core3.Tests/
-├── BackupEngineTests.cs           (Main workflow)
-├── Scanning/
-│   ├── FileSystemScannerTests.cs
-│   └── FakeFileSystemScanner.cs   (Test double)
-├── Transfer/
-│   ├── SimpleFileTransferTests.cs
-│   └── InMemoryFileStorage.cs     (Test double)
-├── Hashing/
-│   └── SHA256GeneratorTests.cs
-├── Integration/
-│   └── EndToEndBackupTests.cs     (Real files, real flow)
-└── Fixtures/
-    └── TestDataBuilder.cs          (Helper to create test data)
+### Test Doubles (Fake Implementations)
+
+Reusable across all tests:
+
+```csharp
+public class FakeFileSystemScanner : IBackupScanner { /* ... */ }
+public class InMemoryFileStorage : IFileTransfer { /* ... */ }
+public class FakeHashGenerator : IHashGenerator { /* ... */ }
+public class FakeMetadataReader : IMetadataReader { /* ... */ }
+public class NonSeekableStreamWrapper : Stream { /* ... */ }
+public class ProgressCapture : IProgress<IBackupProgress> { /* ... */ }
 ```
 
-### Key Testing Principles
+---
 
-1. **No Mocks for Domain Logic**
-   - ✗ DON'T: `var mockEngine = new Mock<IBackupEngine>();`
-   - ✓ DO: Use real BackupEngine with test doubles
+### Test Coverage Goals
 
-2. **Test Doubles for External Dependencies**
-   - ✓ DO: FakeFileSystemScanner instead of real filesystem
-   - ✓ DO: InMemoryFileStorage instead of real disk
-   - ✓ DO: FakeDeviceScanner instead of real MTP device
+| Component | Unit Tests | Integration Tests | E2E Tests | Edge Cases |
+|-----------|-----------|-----------------|-----------|-----------|
+| **Scanner** | ✓ | ✓ | ✓ | ✓ (symlinks, deep nesting, permissions) |
+| **Transfer** | ✓ | ✓ | ✓ | ✓ (cancellation, large files, full disk) |
+| **Hash** | ✓ | ✓ | ✓ | ✓ (all 9 types, empty stream, cancellation) |
+| **Metadata** | ✓ | ✓ | ✓ | ✓ (corrupted files, no permissions) |
+| **Sidecar** | ✓ | ✓ | ✓ | ✓ (write failures, disk full) |
+| **BackupEngine** | ✓ | ✓ | ✓ | ✓ (dry-run, collisions, mixed types) |
 
-3. **Integration Tests with Real Filesystem**
-   - ✓ DO: End-to-end tests with temporary files
-   - ✓ DO: Verify files actually copied, sidecars created
-   - ✓ DO: Use cleanup to avoid disk pollution
 
-4. **Test Explicit Behaviors**
-   - ✓ DO: "Transfer with dry-run doesn't write files"
-   - ✓ DO: "Metadata extraction failure doesn't stop backup"
-   - ✓ DO: "Progress reports correct phase"
 
 ---
 
