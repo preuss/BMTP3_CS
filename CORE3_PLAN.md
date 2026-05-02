@@ -460,13 +460,20 @@ private async Task<List<BackupItem>> GenerateHashes(
                 CurrentFile = item.Name,
             });
             
-            var hash = await _hashGenerator.GenerateAsync(item, ct);
-            results.Add(item.WithHash(hash));
+            // IMPORTANT: Compute ALL hash types in single pass
+            var hashes = await _itemHasher.ComputeHashesAsync(
+                item,
+                _backupPlan.HashTypes,  // All configured hash types
+                progress,
+                ct
+            );
+            
+            results.Add(item.WithHashes(hashes));  // Dictionary<HashType, string>
         }
         catch (Exception ex) {
             // Non-critical: log and continue
             _logger.LogWarning(ex, $"Hash generation failed for {item.Name}");
-            results.Add(item);  // Add item even without hash
+            results.Add(item);  // Add item even without hashes
         }
     }
     
@@ -479,6 +486,81 @@ private async Task<List<BackupItem>> GenerateHashes(
 - ✓ Testable: `await GenerateHashes(testItems, progress, ct)` - no mocking
 - ✓ Clear error handling: decide per-method if error is critical or non-critical
 - ✓ Composable: methods chain naturally
+
+## Multiple Hash Types (Core Requirement)
+
+**From Core2, Core3 Must Support All Hash Algorithms in Single Pass:**
+
+```csharp
+public enum HashType {
+    SHA3_512_FIPS202,    // SHA-3 512 (FIPS 202)
+    SHA3_256_FIPS202,    // SHA-3 256 (FIPS 202)
+    SHA3_512_KECCAK,     // SHA-3 512 (Keccak original)
+    SHA3_256_KECCAK,     // SHA-3 256 (Keccak original)
+    SHA2_256,            // SHA-256
+    SHA2_512,            // SHA-512
+    MD5_128,             // MD5 (legacy, but supported)
+    BLAKE3_256,          // BLAKE3 256-bit
+    BLAKE3_512           // BLAKE3 512-bit
+}
+```
+
+**Hash Generation Contract:**
+```csharp
+public interface IItemHasher {
+    /// Compute ALL requested hash types for item in SINGLE pass through file
+    Task<Dictionary<HashType, string>> ComputeHashesAsync(
+        BackupItem item,
+        List<HashType> hashTypes,
+        IProgress<ulong> progress,
+        CancellationToken ct
+    );
+}
+
+public interface IHashGenerator {
+    /// Compute multiple hashes from stream efficiently
+    Task<Dictionary<HashType, string>> ComputeHashesAsync(
+        Stream stream,
+        IEnumerable<HashType> hashTypes,
+        IProgress<ulong> progress,
+        CancellationToken ct
+    );
+}
+```
+
+**Key Design Points:**
+- **Single-pass hashing**: Read file once, compute all hashes simultaneously
+- **Efficient**: 9 algorithms × 1 file read = better than 9 file reads
+- **Progress**: Report bytes processed, not per-algorithm
+- **Configuration**: BackupPlan specifies which hash types to compute
+
+**BackupPlan Extension:**
+```csharp
+public class BackupPlan {
+    public string Source { get; init; }
+    public string Destination { get; init; }
+    public bool DryRun { get; init; }
+    public List<HashType> HashTypes { get; init; } = new() {
+        HashType.SHA2_256,
+        HashType.SHA3_256_FIPS202,
+        HashType.BLAKE3_256
+    };  // Default: 3 hash types, user can configure
+}
+```
+
+**Sidecar Format (Includes All Hashes):**
+```ini
+[Metadata]
+FileName=photo.jpg
+SourcePath=/phone/DCIM/photo.jpg
+TransferredAt=2026-05-02T15:20:00Z
+FileSize=5242880
+
+[Hashes]
+SHA2_256=abc123def456...
+SHA3_256_FIPS202=def789ghi012...
+BLAKE3_256=xyz789abc123...
+```
 
 ---
 
@@ -506,9 +588,22 @@ BMTP3.Core3/
 │   ├── SimpleFileTransfer.cs
 │   └── TransferProgress.cs
 │
-├── Hashing/                           (Hash generation, can parallelize)
+## Hashing/                           (Hash generation, can parallelize)
 │   ├── IHashGenerator.cs
-│   └── SHA256Generator.cs
+│   ├── IItemHasher.cs
+│   ├── HashType.cs                    (Enum: SHA2_256, SHA3, MD5, BLAKE3, etc.)
+│   ├── StreamHashGenerator.cs         (Compute multiple hashes in single pass)
+│   ├── ItemHasher.cs
+│   └── Crypto/                        (Algorithm implementations)
+│       ├── SHA256Algorithm.cs
+│       ├── SHA512Algorithm.cs
+│       ├── MD5Algorithm.cs
+│       ├── SHA3_256Keccak.cs
+│       ├── SHA3_512Keccak.cs
+│       ├── SHA3_256FIPS202.cs
+│       ├── SHA3_512FIPS202.cs
+│       ├── BLAKE3_256Algorithm.cs
+│       └── BLAKE3_512Algorithm.cs
 │
 ├── Metadata/                          (Metadata extraction)
 │   ├── IMetadataReader.cs
@@ -549,9 +644,9 @@ BMTP3.Core3/
 | **Scan** | Filesystem + MTP/PTP device traversal |
 | **Transfer** | Copy files with progress reporting, conflict detection |
 | **Metadata** | Extract timestamps, file properties, EXIF |
-| **Hashing** | SHA-256 (can parallelize per-file) |
+| **Hashing** | **ALL 9 hash types** (SHA2, SHA3, MD5, BLAKE3) computed in single file pass |
 | **Timestamp** | Restore original modification times |
-| **Sidecar** | Generate metadata + hash verification files |
+| **Sidecar** | Generate metadata + **all hash types** in sidecar file |
 | **Progress** | Explicit phases (Scanning, Transferring, Hashing, etc.) |
 | **Error Handling** | Fail-fast on transfer, tolerate non-critical failures |
 | **Logging** | Microsoft.Extensions.Logging throughout |
@@ -801,10 +896,12 @@ public void ConfigureServices(IServiceCollection services)
 ### Phase 2: Infrastructure Services
 - [ ] Implement FileSystemScanner
 - [ ] Implement SimpleFileTransfer
-- [ ] Implement SHA256Generator
+- [ ] **Implement HashType enum (9 types from Core2)**
+- [ ] **Implement IHashGenerator - single-pass multi-hash computation**
+- [ ] **Implement IItemHasher - wraps IHashGenerator for files**
+- [ ] **Implement 9 hash algorithm classes (SHA2, SHA3, MD5, BLAKE3 variants)**
 - [ ] Implement FileMetadataReader
-- [ ] Implement SimpleSidecarGenerator
-- [ ] (Later: DeviceScanner for MTP/PTP)
+- [ ] Implement SimpleSidecarGenerator (with all hash types)
 
 ### Phase 3: BackupEngine Orchestrator
 - [ ] Implement BackupEngine class (~300 lines)
