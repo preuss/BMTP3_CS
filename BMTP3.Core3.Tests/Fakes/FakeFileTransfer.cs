@@ -9,10 +9,17 @@ public class FakeFileTransfer : IFileTransfer
 {
 	public List<(BackupItem Item, string Destination)> CopiedItems { get; } = new();
 	public bool ShouldFail { get; set; }
+	public string? FailureNamePattern { get; set; }
 
 	public Task CopyAsync(BackupItem item, string destination, IProgress<long>? progress, CancellationToken ct = default)
 	{
 		ct.ThrowIfCancellationRequested();
+
+		// Check for pattern-based failure
+		if (!string.IsNullOrEmpty(FailureNamePattern) && item.Name.Contains(FailureNamePattern))
+		{
+			throw new InvalidOperationException($"Fake transfer failure for pattern: {FailureNamePattern}");
+		}
 
 		if (ShouldFail)
 		{

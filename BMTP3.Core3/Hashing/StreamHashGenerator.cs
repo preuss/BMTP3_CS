@@ -1,11 +1,14 @@
 using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Digests;
 
 namespace BMTP3.Core3.Hashing;
 
 /// <summary>
 /// Stream-based hash generator that computes multiple hash types in a single pass.
 /// Efficiently handles all 9 hash algorithms simultaneously.
+/// Uses .NET built-in for SHA2 and MD5, BouncyCastle for SHA3 and BLAKE3.
 /// </summary>
 public class StreamHashGenerator : IHashGenerator
 {
@@ -32,15 +35,32 @@ public class StreamHashGenerator : IHashGenerator
 			return new Dictionary<HashType, string>();
 		}
 
-		var algorithms = new Dictionary<HashType, HashAlgorithm>();
 		var results = new Dictionary<HashType, string>();
+		var digesters = new Dictionary<HashType, IDigest>();
+		var hashAlgorithms = new Dictionary<HashType, HashAlgorithm>();
 
 		try
 		{
-			// Initialize all algorithms
+			// Initialize all digesters and algorithms
 			foreach (var hashType in requested)
 			{
-				algorithms[hashType] = CreateAlgorithm(hashType);
+				var digest = CreateDigest(hashType);
+				if (digest != null)
+				{
+					digesters[hashType] = digest;
+				}
+				else
+				{
+					var algo = CreateHashAlgorithm(hashType);
+					if (algo != null)
+					{
+						hashAlgorithms[hashType] = algo;
+					}
+					else
+					{
+						throw new NotImplementedException($"Hash algorithm not implemented: {hashType}");
+					}
+				}
 			}
 
 			// Single pass: read stream and feed to all algorithms
@@ -53,15 +73,30 @@ public class StreamHashGenerator : IHashGenerator
 				totalBytesRead += (ulong)bytesRead;
 				progress?.Report(totalBytesRead);
 
-				foreach (var algo in algorithms.Values)
+				// Feed to BouncyCastle digesters
+				foreach (var digest in digesters.Values)
+				{
+					digest.BlockUpdate(buffer, 0, bytesRead);
+				}
+
+				// Feed to .NET hash algorithms
+				foreach (var algo in hashAlgorithms.Values)
 				{
 					algo.TransformBlock(buffer, 0, bytesRead, buffer, 0);
 				}
 			}
 
-			// Finalize and convert to hex
+			// Finalize BouncyCastle digesters
 			ct.ThrowIfCancellationRequested();
-			foreach (var kvp in algorithms)
+			foreach (var kvp in digesters)
+			{
+				var output = new byte[kvp.Value.GetDigestSize()];
+				kvp.Value.DoFinal(output, 0);
+				results[kvp.Key] = BitConverter.ToString(output).Replace("-", "").ToLower();
+			}
+
+			// Finalize .NET hash algorithms
+			foreach (var kvp in hashAlgorithms)
 			{
 				kvp.Value.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 				results[kvp.Key] = Convert.ToHexString(kvp.Value.Hash!).ToLower();
@@ -82,23 +117,72 @@ public class StreamHashGenerator : IHashGenerator
 		}
 		finally
 		{
-			foreach (var algo in algorithms.Values)
+			foreach (var algo in hashAlgorithms.Values)
 			{
 				algo?.Dispose();
 			}
 		}
 	}
 
-	private static HashAlgorithm CreateAlgorithm(HashType hashType)
+	/// <summary>
+	/// Create a BouncyCastle digest for algorithms requiring it (SHA3, BLAKE3).
+	/// Returns null if this algorithm is handled by .NET built-ins.
+	/// </summary>
+	private static IDigest? CreateDigest(HashType hashType)
+	{
+		return hashType switch
+		{
+			HashType.SHA3_256_FIPS202 => new Sha3Digest(256),
+			HashType.SHA3_512_FIPS202 => new Sha3Digest(512),
+			HashType.SHA3_256_KECCAK => new KeccakDigest(256),
+			HashType.SHA3_512_KECCAK => new KeccakDigest(512),
+			HashType.BLAKE3_256 => new Blake3Digest(256),
+			HashType.BLAKE3_512 => new Blake3Digest(512),
+			_ => null
+		};
+	}
+
+	/// <summary>
+	/// Create a .NET HashAlgorithm for SHA2 and MD5.
+	/// Returns null if this algorithm should use BouncyCastle instead.
+	/// </summary>
+	private static HashAlgorithm? CreateHashAlgorithm(HashType hashType)
 	{
 		return hashType switch
 		{
 			HashType.SHA2_256 => SHA256.Create(),
 			HashType.SHA2_512 => SHA512.Create(),
 			HashType.MD5_128 => MD5.Create(),
-			_ => throw new NotImplementedException($"Hash algorithm not implemented: {hashType}")
+			_ => null
 		};
 	}
+}
+
+/// <summary>
+/// BouncyCastle BLAKE3 Digest implementation wrapper.
+/// BLAKE3 is not in .NET standard library, so we use BouncyCastle.
+/// </summary>
+internal class Blake3Digest : IDigest
+{
+	private readonly Org.BouncyCastle.Crypto.Digests.Blake3Digest _digest;
+	private readonly int _outputLength;
+
+	public Blake3Digest(int outputBits)
+	{
+		_outputLength = outputBits / 8;
+		_digest = new Org.BouncyCastle.Crypto.Digests.Blake3Digest();
+	}
+
+	public string AlgorithmName => $"BLAKE3-{_outputLength * 8}";
+	public int GetDigestSize() => _outputLength;
+	public int GetByteLength() => 64;
+
+	public void BlockUpdate(byte[] input, int inOff, int length) => _digest.BlockUpdate(input, inOff, length);
+	public void BlockUpdate(ReadOnlySpan<byte> input) => _digest.BlockUpdate(input);
+	public void Update(byte input) => _digest.Update(input);
+	public int DoFinal(byte[] output, int outOff) => _digest.DoFinal(output, outOff);
+	public int DoFinal(Span<byte> output) => _digest.DoFinal(output);
+	public void Reset() => _digest.Reset();
 }
 
 /// <summary>
@@ -144,3 +228,4 @@ public class ItemHasher : IItemHasher
 		}
 	}
 }
+

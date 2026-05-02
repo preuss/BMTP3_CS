@@ -9,26 +9,26 @@ using BMTP3.Core3.Sidecar;
 namespace BMTP3.Core3;
 
 /// <summary>
-/// Main backup engine orchestrator.
-/// Single-threaded, immutable data flow pipeline:
+/// Sequential backup engine orchestrator - single-threaded implementation.
+/// Immutable data flow pipeline:
 /// Scan → Transfer+Sidecar → ExtractMetadata → GenerateHashes → CorrectTimestamps → Result
 /// </summary>
-public class BackupEngine : IBackupEngine
+public class BackupEngineSequential : IBackupEngine
 {
 	private readonly IBackupScanner _scanner;
 	private readonly IFileTransfer _fileTransfer;
 	private readonly IItemHasher _itemHasher;
 	private readonly IMetadataReader _metadataReader;
 	private readonly ISidecarGenerator _sidecarGenerator;
-	private readonly ILogger<BackupEngine> _logger;
+	private readonly ILogger<BackupEngineSequential> _logger;
 
-	public BackupEngine(
+	public BackupEngineSequential(
 		IBackupScanner scanner,
 		IFileTransfer fileTransfer,
 		IItemHasher itemHasher,
 		IMetadataReader metadataReader,
 		ISidecarGenerator sidecarGenerator,
-		ILogger<BackupEngine> logger)
+		ILogger<BackupEngineSequential> logger)
 	{
 		_scanner = scanner ?? throw new ArgumentNullException(nameof(scanner));
 		_fileTransfer = fileTransfer ?? throw new ArgumentNullException(nameof(fileTransfer));
@@ -132,6 +132,10 @@ public class BackupEngine : IBackupEngine
 				{
 					await _fileTransfer.CopyAsync(item, plan.Destination, null, ct);
 				}
+
+				// Update item with destination path (may have been renamed due to collision)
+				var destPath = Path.Combine(plan.Destination, item.Name);
+				item = item.WithDestinationPath(destPath);
 
 				// Generate sidecar immediately (non-critical: tolerate failure)
 				try
@@ -261,11 +265,10 @@ public class BackupEngine : IBackupEngine
 
 			try
 			{
-				var destPath = Path.Combine(item.DestinationPath);
-				if (File.Exists(destPath))
+				if (File.Exists(item.DestinationPath))
 				{
-					File.SetCreationTime(destPath, item.CreatedAt);
-					File.SetLastWriteTime(destPath, item.ModifiedAt);
+					File.SetCreationTime(item.DestinationPath, item.CreatedAt);
+					File.SetLastWriteTime(item.DestinationPath, item.ModifiedAt);
 				}
 			}
 			catch (Exception ex)

@@ -32,7 +32,7 @@ public class SimpleFileTransfer : IFileTransfer
 			throw new DirectoryNotFoundException($"Destination directory not found: {destinationDirectory}");
 		}
 
-		var destPath = Path.Combine(destinationDirectory, item.Name);
+		var destPath = ResolveDestinationPath(destinationDirectory, item.Name);
 
 		_logger.LogDebug("Copying {SourcePath} → {DestPath}", item.SourcePath, destPath);
 
@@ -72,5 +72,37 @@ public class SimpleFileTransfer : IFileTransfer
 			}
 			throw;
 		}
+	}
+
+	/// <summary>
+	/// Resolve the destination path, handling collisions by renaming.
+	/// If file exists, renames to filename_1.ext, filename_2.ext, etc.
+	/// </summary>
+	private static string ResolveDestinationPath(string destinationDirectory, string fileName)
+	{
+		var destPath = Path.Combine(destinationDirectory, fileName);
+
+		// If file doesn't exist, use as-is
+		if (!File.Exists(destPath))
+		{
+			return destPath;
+		}
+
+		// File exists, need to rename with _N suffix
+		var name = Path.GetFileNameWithoutExtension(fileName);
+		var ext = Path.GetExtension(fileName);
+
+		for (int i = 1; i <= 10000; i++)
+		{
+			var newName = $"{name}_{i}{ext}";
+			var newPath = Path.Combine(destinationDirectory, newName);
+
+			if (!File.Exists(newPath))
+			{
+				return newPath;
+			}
+		}
+
+		throw new InvalidOperationException($"Cannot resolve destination path for {fileName}: too many collisions");
 	}
 }

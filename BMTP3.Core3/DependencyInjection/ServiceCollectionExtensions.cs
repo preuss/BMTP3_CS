@@ -17,7 +17,7 @@ public static class ServiceCollectionExtensions
 		ArgumentNullException.ThrowIfNull(services);
 
 		// Register main entry point
-		services.AddSingleton<IBackupEngine, BackupEngine>();
+		services.AddSingleton<IBackupEngine, BackupEngineSequential>();
 
 		// Register scanners
 		services.AddSingleton<IBackupScanner, FileSystemScanner>();

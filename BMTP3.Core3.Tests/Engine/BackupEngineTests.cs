@@ -5,17 +5,17 @@ using Xunit;
 namespace BMTP3.Core3.Tests.Engine;
 
 /// <summary>
-/// Unit tests for BackupEngine orchestrator.
+/// Unit tests for BackupEngineSequential orchestrator.
 /// Tests the main pipeline: Scan → Transfer → Metadata → Hashes → Timestamps → Result
 /// </summary>
-public class BackupEngineTests
+public class BackupEngineSequentialTests
 {
-	private readonly ILogger<BackupEngine> _logger;
+	private readonly ILogger<BackupEngineSequential> _logger;
 
-	public BackupEngineTests()
+	public BackupEngineSequentialTests()
 	{
 		var factory = new LoggerFactory();
-		_logger = factory.CreateLogger<BackupEngine>();
+		_logger = factory.CreateLogger<BackupEngineSequential>();
 	}
 
 	[Fact]
@@ -27,7 +27,7 @@ public class BackupEngineTests
 		var hasher = new FakeItemHasher();
 		var metadata = new FakeMetadataReader();
 		var sidecar = new FakeSidecarGenerator();
-		var engine = new BackupEngine(scanner, transfer, hasher, metadata, sidecar, _logger);
+		var engine = new BackupEngineSequential(scanner, transfer, hasher, metadata, sidecar, _logger);
 
 		var plan = new BackupPlan
 		{
@@ -60,7 +60,7 @@ public class BackupEngineTests
 		var hasher = new FakeItemHasher();
 		var metadata = new FakeMetadataReader();
 		var sidecar = new FakeSidecarGenerator();
-		var engine = new BackupEngine(scanner, transfer, hasher, metadata, sidecar, _logger);
+		var engine = new BackupEngineSequential(scanner, transfer, hasher, metadata, sidecar, _logger);
 
 		var plan = new BackupPlan
 		{
@@ -96,7 +96,7 @@ public class BackupEngineTests
 		var hasher = new FakeItemHasher();
 		var metadata = new FakeMetadataReader();
 		var sidecar = new FakeSidecarGenerator();
-		var engine = new BackupEngine(scanner, transfer, hasher, metadata, sidecar, _logger);
+		var engine = new BackupEngineSequential(scanner, transfer, hasher, metadata, sidecar, _logger);
 
 		var plan = new BackupPlan
 		{
@@ -129,7 +129,7 @@ public class BackupEngineTests
 		var hasher = new FakeItemHasher();
 		var metadata = new FakeMetadataReader();
 		var sidecar = new FakeSidecarGenerator();
-		var engine = new BackupEngine(scanner, transfer, hasher, metadata, sidecar, _logger);
+		var engine = new BackupEngineSequential(scanner, transfer, hasher, metadata, sidecar, _logger);
 
 		var plan = new BackupPlan { Source = "/source", Destination = "/dest" };
 		var cts = new CancellationTokenSource();
@@ -150,7 +150,7 @@ public class BackupEngineTests
 		var hasher = new FakeItemHasher();
 		var metadata = new FakeMetadataReader();
 		var sidecar = new FakeSidecarGenerator();
-		var engine = new BackupEngine(scanner, transfer, hasher, metadata, sidecar, _logger);
+		var engine = new BackupEngineSequential(scanner, transfer, hasher, metadata, sidecar, _logger);
 
 		var plan = new BackupPlan { Source = "/source", Destination = "/dest" };
 
