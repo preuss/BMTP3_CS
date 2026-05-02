@@ -52,6 +52,12 @@ public class TestBackupItemBuilder
 		return this;
 	}
 
+	public TestBackupItemBuilder WithSidecarPath(string sidecarPath)
+	{
+		_sidecarPath = sidecarPath;
+		return this;
+	}
+
 	public TestBackupItemBuilder WithType(BackupItemType type)
 	{
 		_type = type;

@@ -11,7 +11,7 @@ public class FakeFileTransfer : IFileTransfer
 	public bool ShouldFail { get; set; }
 	public string? FailureNamePattern { get; set; }
 
-	public Task CopyAsync(BackupItem item, string destination, IProgress<long>? progress, CancellationToken ct = default)
+   public Task<string> CopyAsync(BackupItem item, string destination, IProgress<long>? progress, CancellationToken ct = default)
 	{
 		ct.ThrowIfCancellationRequested();
 
@@ -28,6 +28,6 @@ public class FakeFileTransfer : IFileTransfer
 
 		CopiedItems.Add((item, destination));
 		progress?.Report(item.SizeInBytes);
-		return Task.CompletedTask;
+      return Task.FromResult(Path.Combine(destination, item.Name));
 	}
 }

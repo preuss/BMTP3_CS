@@ -13,5 +13,6 @@ public interface IFileTransfer
 	/// <param name="destinationDirectory">Directory where file will be copied.</param>
 	/// <param name="progress">Progress reporter for bytes transferred.</param>
 	/// <param name="ct">Cancellation token.</param>
-	Task CopyAsync(BackupItem item, string destinationDirectory, IProgress<long>? progress, CancellationToken ct);
+  /// <returns>Resolved destination path of the copied file.</returns>
+	Task<string> CopyAsync(BackupItem item, string destinationDirectory, IProgress<long>? progress, CancellationToken ct);
 }

@@ -6,10 +6,11 @@ namespace BMTP3.Core3;
 /// </summary>
 public enum BackupPhase
 {
-    Scanning,
+   Scanning,
     Transferring,
     ExtractingMetadata,
     GeneratingHashes,
     CorrectingTimestamps,
+    GeneratingSidecars,
     Complete
 }

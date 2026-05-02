@@ -72,6 +72,11 @@ public record BackupItem
 	public BackupItem WithDestinationPath(string newPath) => this with { DestinationPath = newPath };
 
 	/// <summary>
+	/// Helper: create a new BackupItem with updated name.
+	/// </summary>
+	public BackupItem WithName(string newName) => this with { Name = newName };
+
+	/// <summary>
 	/// Helper: create a new BackupItem with metadata.
 	/// </summary>
 	public BackupItem WithMetadata(Dictionary<string, object> metadata) => this with { Metadata = metadata };

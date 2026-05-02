@@ -39,7 +39,7 @@ public class BackupJobResult
 
 	/// <summary>
 	/// List of errors that occurred during backup.
-	/// Empty if Success is true.
+   /// May contain non-critical errors even if Success is true.
 	/// </summary>
 	public List<BackupError> Errors { get; init; } = new();
 

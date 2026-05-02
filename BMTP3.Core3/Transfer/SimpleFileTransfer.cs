@@ -16,7 +16,7 @@ public class SimpleFileTransfer : IFileTransfer
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
-	public async Task CopyAsync(BackupItem item, string destinationDirectory, IProgress<long>? progress, CancellationToken ct)
+  public async Task<string> CopyAsync(BackupItem item, string destinationDirectory, IProgress<long>? progress, CancellationToken ct)
 	{
 		ArgumentNullException.ThrowIfNull(item);
 		ArgumentNullException.ThrowIfNullOrWhiteSpace(destinationDirectory);
@@ -32,7 +32,7 @@ public class SimpleFileTransfer : IFileTransfer
 			throw new DirectoryNotFoundException($"Destination directory not found: {destinationDirectory}");
 		}
 
-		var destPath = ResolveDestinationPath(destinationDirectory, item.Name);
+     string destPath = ResolveDestinationPath(destinationDirectory, item.Name);
 
 		_logger.LogDebug("Copying {SourcePath} → {DestPath}", item.SourcePath, destPath);
 
@@ -52,7 +52,8 @@ public class SimpleFileTransfer : IFileTransfer
 				progress?.Report(totalBytesRead);
 			}
 
-			_logger.LogDebug("Transfer complete: {SourcePath} ({BytesCopied} bytes)", item.SourcePath, totalBytesRead);
+         _logger.LogDebug("Transfer complete: {SourcePath} ({BytesCopied} bytes)", item.SourcePath, totalBytesRead);
+			return destPath;
 		}
 		catch (OperationCanceledException)
 		{
@@ -80,7 +81,7 @@ public class SimpleFileTransfer : IFileTransfer
 	/// </summary>
 	private static string ResolveDestinationPath(string destinationDirectory, string fileName)
 	{
-		var destPath = Path.Combine(destinationDirectory, fileName);
+        string destPath = Path.Combine(destinationDirectory, fileName);
 
 		// If file doesn't exist, use as-is
 		if (!File.Exists(destPath))
@@ -89,13 +90,13 @@ public class SimpleFileTransfer : IFileTransfer
 		}
 
 		// File exists, need to rename with _N suffix
-		var name = Path.GetFileNameWithoutExtension(fileName);
-		var ext = Path.GetExtension(fileName);
+      string name = Path.GetFileNameWithoutExtension(fileName);
+		string ext = Path.GetExtension(fileName);
 
 		for (int i = 1; i <= 10000; i++)
 		{
-			var newName = $"{name}_{i}{ext}";
-			var newPath = Path.Combine(destinationDirectory, newName);
+           string newName = $"{name}_{i}{ext}";
+			string newPath = Path.Combine(destinationDirectory, newName);
 
 			if (!File.Exists(newPath))
 			{

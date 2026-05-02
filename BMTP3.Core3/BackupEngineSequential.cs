@@ -11,7 +11,7 @@ namespace BMTP3.Core3;
 /// <summary>
 /// Sequential backup engine orchestrator - single-threaded implementation.
 /// Immutable data flow pipeline:
-/// Scan → Transfer+Sidecar → ExtractMetadata → GenerateHashes → CorrectTimestamps → Result
+/// Scan → Transfer → ExtractMetadata → GenerateHashes → CorrectTimestamps → GenerateSidecar → Result
 /// </summary>
 public class BackupEngineSequential : IBackupEngine
 {
@@ -48,7 +48,7 @@ public class BackupEngineSequential : IBackupEngine
 		ArgumentNullException.ThrowIfNull(plan);
 		ct.ThrowIfCancellationRequested();
 
-		Stopwatch stopwatch = Stopwatch.StartNew();
+		System.Diagnostics.Stopwatch stopwatch = System.Diagnostics.Stopwatch.StartNew();
 		List<BackupError> errors = new();
 		List<BackupItem> items = new();
 
@@ -59,35 +59,37 @@ public class BackupEngineSequential : IBackupEngine
 			// Step 1: Scan
 			items = await Scan(plan, progress, ct);
 
-			// Step 2: Transfer + Sidecar (per-file operation)
-			items = await TransferAndGenerateSidecars(items, plan, progress, ct);
+			// Step 2: Transfer (per-file operation)
+			items = await Transfer(items, plan, progress, ct);
 
 			// Step 3: Extract Metadata (non-critical failures)
-			items = await ExtractMetadata(items, plan, progress, ct);
+			items = await ExtractMetadata(items, plan, progress, errors, ct);
 
 			// Step 4: Generate Hashes (non-critical failures)
-			items = await GenerateHashes(items, plan, progress, ct);
+			items = await GenerateHashes(items, plan, progress, errors, ct);
 
 			// Step 5: Correct Timestamps (non-critical failures)
-			items = await CorrectTimestamps(items, plan, progress, ct);
+			items = await CorrectTimestamps(items, plan, progress, errors, ct);
 
-			stopwatch.Stop();
+			// Step 6: Generate Sidecars (non-critical failures)
+			items = await GenerateSidecars(items, plan, progress, errors, ct);
 
 			_logger.LogInformation("Backup complete: {ItemCount} items in {Duration}ms", items.Count, stopwatch.ElapsedMilliseconds);
 
-			return BuildSuccessResult(items, stopwatch.Elapsed);
+			return BuildSuccessResult(items, errors, stopwatch.Elapsed);
 		} catch(OperationCanceledException ex)
 		{
-			stopwatch.Stop();
 			_logger.LogWarning("Backup cancelled after {Duration}ms", stopwatch.ElapsedMilliseconds);
 			errors.Add(new BackupError { ItemName = "Backup", Message = "Operation cancelled", Exception = ex });
 			return BuildFailureResult(items, errors, stopwatch.Elapsed);
 		} catch(Exception ex)
 		{
-			stopwatch.Stop();
 			_logger.LogError(ex, "Backup failed after {Duration}ms", stopwatch.ElapsedMilliseconds);
 			errors.Add(new BackupError { ItemName = "Backup", Message = ex.Message, Exception = ex });
 			return BuildFailureResult(items, errors, stopwatch.Elapsed);
+		} finally
+		{
+			stopwatch.Stop();
 		}
 	}
 
@@ -112,16 +114,14 @@ public class BackupEngineSequential : IBackupEngine
 		return items;
 	}
 
-	private async Task<List<BackupItem>> TransferAndGenerateSidecars(
-		List<BackupItem> items,
-		BackupPlan plan,
-		IProgress<IBackupProgress>? progress,
-		CancellationToken ct
-	)
+	private async Task<List<BackupItem>> Transfer(
+		 List<BackupItem> items,
+		 BackupPlan plan,
+		 IProgress<IBackupProgress>? progress,
+		 CancellationToken ct
+	 )
 	{
-		_logger.LogInformation("Phase: Transfer (with sidecars)");
-
-		List<BackupItem> results = new();
+		_logger.LogInformation("Phase: Transfer");
 
 		for(int i = 0; i < items.Count; i++)
 		{
@@ -129,66 +129,50 @@ public class BackupEngineSequential : IBackupEngine
 
 			BackupItem item = items[i];
 
-			progress?.Report(new BackupProgress
-			{
-				Phase = BackupPhase.Transferring,
-				CurrentFile = item.Name,
-				FilesProcessed = i + 1,
-				FilesTotal = items.Count
-			});
+			ReportProgress(progress, BackupPhase.Transferring, item.Name, i + 1, items.Count);
 
 			try
 			{
 				if(!plan.DryRun)
 				{
 					// Transfer file (critical: fail if this fails)
-					await _fileTransfer.CopyAsync(item, plan.Destination, null, ct);
-
-					// Update destination path - may differ from source name due to collision resolution
-					string destPath = Path.Combine(plan.Destination, item.Name);
-					item = item.WithDestinationPath(destPath).WithSuccess();
-
-					// Generate sidecar immediately after transfer (non-critical: tolerate failure)
-					try
-					{
-						await _sidecarGenerator.GenerateAsync(item, plan.Destination, ct);
-						item = item.WithSidecarPath(Path.Combine(plan.Destination, $"{item.Name}.sidecar"));
-					} catch(OperationCanceledException)
-					{
-						throw;
-					} catch(Exception ex)
-					{
-						_logger.LogWarning(ex, "Sidecar generation failed for {ItemName}", item.Name);
-					}
+					string destPath = await _fileTransfer.CopyAsync(item, plan.Destination, null, ct);
+					string destName = Path.GetFileName(destPath);
+					item = item
+						.WithDestinationPath(destPath)
+						.WithName(destName)
+						.WithSuccess();
+				} else
+				{
+					string plannedDestinationPath = Path.Combine(plan.Destination, item.Name);
+					item = item.WithDestinationPath(plannedDestinationPath).WithSuccess();
 				}
 
-				// DryRun: item remains Pending, DestinationPath is not set
-
-				results.Add(item);
+				items[i] = item;
 			} catch(OperationCanceledException)
 			{
 				throw;
 			} catch(Exception ex)
 			{
+				items[i] = item.WithFailure();
 				_logger.LogError(ex, "Transfer failed for {ItemName}", item.Name);
-				throw;  // Critical error: stop backup
+				throw;
 			}
 		}
 
-		_logger.LogInformation("Transfer complete: {ItemCount} items", results.Count);
-		return results;
+		_logger.LogInformation("Transfer complete: {ItemCount} items", items.Count);
+		return items;
 	}
 
 	private async Task<List<BackupItem>> ExtractMetadata(
 		List<BackupItem> items,
 		BackupPlan plan,
 		IProgress<IBackupProgress>? progress,
+		List<BackupError> errors,
 		CancellationToken ct
 	)
 	{
 		_logger.LogInformation("Phase: Extracting metadata");
-
-		List<BackupItem> results = new();
 
 		for(int i = 0; i < items.Count; i++)
 		{
@@ -196,20 +180,14 @@ public class BackupEngineSequential : IBackupEngine
 
 			BackupItem item = items[i];
 
-			progress?.Report(new BackupProgress
-			{
-				Phase = BackupPhase.ExtractingMetadata,
-				CurrentFile = item.Name,
-				FilesProcessed = i + 1,
-				FilesTotal = items.Count
-			});
+			ReportProgress(progress, BackupPhase.ExtractingMetadata, item.Name, i + 1, items.Count);
 
 			try
 			{
 				// Skip metadata extraction in dry run - file does not exist on disk
 				if(!plan.DryRun)
 				{
-					string destPath = Path.Combine(item.DestinationPath);
+					string destPath = item.DestinationPath;
 					if(File.Exists(destPath))
 					{
 						Dictionary<string, object> metadata = await _metadataReader.ReadAsync(destPath, ct);
@@ -222,26 +200,25 @@ public class BackupEngineSequential : IBackupEngine
 			} catch(Exception ex)
 			{
 				_logger.LogWarning(ex, "Metadata extraction failed for {ItemName}", item.Name);
-				// Non-critical: continue
+				AddNonCriticalError(errors, item.Name, ex);
 			}
 
-			results.Add(item);
+			items[i] = item;
 		}
 
-		_logger.LogInformation("Metadata extraction complete: {ItemCount} items", results.Count);
-		return results;
+		_logger.LogInformation("Metadata extraction complete: {ItemCount} items", items.Count);
+		return items;
 	}
 
 	private async Task<List<BackupItem>> GenerateHashes(
 		List<BackupItem> items,
 		BackupPlan plan,
 		IProgress<IBackupProgress>? progress,
+		List<BackupError> errors,
 		CancellationToken ct
 	)
 	{
 		_logger.LogInformation("Phase: Generating hashes ({HashCount} types)", plan.HashTypes.Count);
-
-		List<BackupItem> results = new();
 
 		for(int i = 0; i < items.Count; i++)
 		{
@@ -249,13 +226,7 @@ public class BackupEngineSequential : IBackupEngine
 
 			BackupItem item = items[i];
 
-			progress?.Report(new BackupProgress
-			{
-				Phase = BackupPhase.GeneratingHashes,
-				CurrentFile = item.Name,
-				FilesProcessed = i + 1,
-				FilesTotal = items.Count
-			});
+			ReportProgress(progress, BackupPhase.GeneratingHashes, item.Name, i + 1, items.Count);
 
 			try
 			{
@@ -271,26 +242,25 @@ public class BackupEngineSequential : IBackupEngine
 			} catch(Exception ex)
 			{
 				_logger.LogWarning(ex, "Hash generation failed for {ItemName}", item.Name);
-				// Non-critical: continue
+				AddNonCriticalError(errors, item.Name, ex);
 			}
 
-			results.Add(item);
+			items[i] = item;
 		}
 
-		_logger.LogInformation("Hash generation complete: {ItemCount} items", results.Count);
-		return results;
+		_logger.LogInformation("Hash generation complete: {ItemCount} items", items.Count);
+		return items;
 	}
 
 	private async Task<List<BackupItem>> CorrectTimestamps(
 		List<BackupItem> items,
 		BackupPlan plan,
 		IProgress<IBackupProgress>? progress,
+		List<BackupError> errors,
 		CancellationToken ct
 	)
 	{
 		_logger.LogInformation("Phase: Correcting timestamps");
-
-		List<BackupItem> results = new();
 
 		for(int i = 0; i < items.Count; i++)
 		{
@@ -298,27 +268,18 @@ public class BackupEngineSequential : IBackupEngine
 
 			BackupItem item = items[i];
 
-			progress?.Report(new BackupProgress
-			{
-				Phase = BackupPhase.CorrectingTimestamps,
-				CurrentFile = item.Name,
-				FilesProcessed = i + 1,
-				FilesTotal = items.Count
-			});
+			ReportProgress(progress, BackupPhase.CorrectingTimestamps, item.Name, i + 1, items.Count);
 
 			try
 			{
 				// Skip timestamp correction in dry run - file does not exist on disk
 				if(!plan.DryRun)
 				{
-					string destPath = Path.Combine(item.DestinationPath);
+					string destPath = item.DestinationPath;
 					if(File.Exists(destPath))
 					{
-						await Task.Run(() =>
-						{
-							File.SetCreationTime(destPath, item.CreatedAt);
-							File.SetLastWriteTime(destPath, item.ModifiedAt);
-						}, ct);
+						File.SetCreationTime(destPath, item.CreatedAt);
+						File.SetLastWriteTime(destPath, item.ModifiedAt);
 					}
 				}
 			} catch(OperationCanceledException)
@@ -327,38 +288,99 @@ public class BackupEngineSequential : IBackupEngine
 			} catch(Exception ex)
 			{
 				_logger.LogWarning(ex, "Timestamp correction failed for {ItemName}", item.Name);
-				// Non-critical: continue
+				AddNonCriticalError(errors, item.Name, ex);
 			}
 
-			results.Add(item);
+			items[i] = item;
 		}
 
-		_logger.LogInformation("Timestamp correction complete: {ItemCount} items", results.Count);
-		return results;
+		_logger.LogInformation("Timestamp correction complete: {ItemCount} items", items.Count);
+		return items;
 	}
 
-	private static BackupJobResult BuildSuccessResult(List<BackupItem> items, TimeSpan duration)
+	private async Task<List<BackupItem>> GenerateSidecars(
+		List<BackupItem> items,
+		BackupPlan plan,
+		IProgress<IBackupProgress>? progress,
+		List<BackupError> errors,
+		CancellationToken ct
+	)
 	{
-		return new BackupJobResult
+		_logger.LogInformation("Phase: Generating sidecars");
+
+		for(int i = 0; i < items.Count; i++)
 		{
-			Success = true,
-			TotalItems = items.Count,
-			SuccessfulItems = items.Count(i => i.ResultState == BackupItemResultState.Success),
-			FailedItems = items.Count(i => i.ResultState == BackupItemResultState.Failed),
-			TotalBytes = items
-				.Where(i => i.ResultState == BackupItemResultState.Success)
-				.Sum(i => i.SizeInBytes),
-			Duration = duration,
-			Errors = new(),
-			Items = items
-		};
+			ct.ThrowIfCancellationRequested();
+
+			BackupItem item = items[i];
+
+			ReportProgress(progress, BackupPhase.GeneratingSidecars, item.Name, i + 1, items.Count);
+
+			try
+			{
+				if(!plan.DryRun)
+				{
+					await _sidecarGenerator.GenerateAsync(item, plan.Destination, ct);
+					item = item.WithSidecarPath(Path.Combine(plan.Destination, $"{item.Name}.sidecar"));
+				}
+			} catch(OperationCanceledException)
+			{
+				throw;
+			} catch(Exception ex)
+			{
+				_logger.LogWarning(ex, "Sidecar generation failed for {ItemName}", item.Name);
+				AddNonCriticalError(errors, item.Name, ex);
+			}
+
+			items[i] = item;
+		}
+
+		_logger.LogInformation("Sidecar generation complete: {ItemCount} items", items.Count);
+		return items;
+	}
+
+	private static void AddNonCriticalError(List<BackupError> errors, string itemName, Exception ex)
+	{
+		errors.Add(new BackupError
+		{
+			ItemName = itemName,
+			Message = ex.Message,
+			Exception = ex
+		});
+	}
+
+	private static void ReportProgress(
+		IProgress<IBackupProgress>? progress,
+		BackupPhase phase,
+		string currentFile,
+		int filesProcessed,
+		int filesTotal
+	)
+	{
+		progress?.Report(new BackupProgress
+		{
+			Phase = phase,
+			CurrentFile = currentFile,
+			FilesProcessed = filesProcessed,
+			FilesTotal = filesTotal
+		});
+	}
+
+	private static BackupJobResult BuildSuccessResult(List<BackupItem> items, List<BackupError> errors, TimeSpan duration)
+	{
+		return BuildResult(true, items, errors, duration);
 	}
 
 	private static BackupJobResult BuildFailureResult(List<BackupItem> items, List<BackupError> errors, TimeSpan duration)
 	{
+		return BuildResult(false, items, errors, duration);
+	}
+
+	private static BackupJobResult BuildResult(bool success, List<BackupItem> items, List<BackupError> errors, TimeSpan duration)
+	{
 		return new BackupJobResult
 		{
-			Success = false,
+			Success = success,
 			TotalItems = items.Count,
 			SuccessfulItems = items.Count(i => i.ResultState == BackupItemResultState.Success),
 			FailedItems = items.Count(i => i.ResultState == BackupItemResultState.Failed),

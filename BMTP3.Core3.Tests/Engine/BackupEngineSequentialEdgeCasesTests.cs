@@ -81,6 +81,7 @@ public class BackupEngineSequentialEdgeCasesTests
 		Assert.NotNull(result);
 		// Hash failure should not fail the entire backup
 		Assert.True(result.Success);
+      Assert.NotEmpty(result.Errors);
 		Assert.NotEmpty(result.Items);
 	}
 
@@ -139,6 +140,7 @@ public class BackupEngineSequentialEdgeCasesTests
 
 		// Assert
 		Assert.True(result.Success);
+        Assert.NotEmpty(result.Errors);
 		Assert.Single(result.Items);
 	}
 
