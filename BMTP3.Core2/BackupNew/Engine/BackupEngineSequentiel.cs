@@ -194,6 +194,25 @@ public class BackupEngineSequentiel : IBackupEngine
 		int itemsSinceLastSave = 0;
 		const int saveInterval = 10; // Save every 10 items
 
+		// Create pipeline with all steps
+		var pipelineSteps = new[]
+		{
+			new PipelineStep("Buffering", FilePhase.Staging,
+				(item, prog, ct) => bufferingStep.ExecuteAsync(item, prog, ct)),
+			new PipelineStep("Metadata", FilePhase.Metadata,
+				(item, prog, ct) => metadataStep.ExecuteAsync(item, prog, ct)),
+			new PipelineStep("Timestamp", FilePhase.Metadata,
+				(item, prog, ct) => timestampStep.ExecuteAsync(item, prog, ct)),
+			new PipelineStep("Hashing", FilePhase.Hashing,
+				(item, prog, ct) => hashStep.ExecuteAsync(item, prog, ct)),
+			new PipelineStep("Planning", FilePhase.Planning,
+				(item, prog, ct) => transferStep.ExecuteAsync(item, prog, ct)),
+			new PipelineStep("Inspector", FilePhase.Transferring,
+				(item, prog, ct) => inspectorStep.ExecuteAsync(item, prog, ct)),
+			new PipelineStep("Sidecar", FilePhase.Transferring,
+				(item, prog, ct) => sidecarStep.ExecuteAsync(item, prog, ct))
+		};
+
 		try
 		{
 			// Sequential scanner loop
@@ -222,15 +241,6 @@ public class BackupEngineSequentiel : IBackupEngine
 					string fileName = item.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "";
 					string relativePath = item.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? "";
 
-					// Execute steps sequentially - steps handle errors internally and set item.ResultState
-					// We do NOT catch exceptions from steps; they convert errors to item failures.
-					
-					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Staging, length);
-					await bufferingStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
-
-					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Metadata, length);
-					await metadataStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
-
 					// After metadata extraction, length should be set
 					if(!item.Metadata.Has(MetadataKey.Length) && length == 0)
 					{
@@ -240,23 +250,10 @@ public class BackupEngineSequentiel : IBackupEngine
 						}
 					}
 
-					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Metadata, length);
-					await timestampStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
-
-					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Hashing, length);
-					await hashStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
-
-					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Planning, length);
-					await transferStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
-
-					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Transferring, length);
-					await inspectorStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
-
-					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Transferring, length);
-					await sidecarStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
-
-					// Only CompleteItem() once, after ALL steps
-					tracker.CompleteItem(item.Id, item.ResultState, (long)length);
+					// Process item through pipeline
+					var pipeline = new SequentialItemPipeline(tracker, pipelineSteps, itemProgress);
+					await pipeline.ProcessItemAsync(item, sourcePath, fileName, relativePath, length, ct)
+						.ConfigureAwait(false);
 				}
 				catch(OperationCanceledException)
 				{
@@ -348,36 +345,9 @@ public class BackupEngineSequentiel : IBackupEngine
 			}
 		}
 
-		// Decide final status based on cancellation and per-item failures
-		BackupProgress finalSnap = tracker.GetSnapshot();
-
-		result.EndTime = DateTime.UtcNow;
-
-		if(ct.IsCancellationRequested)
-		{
-			result.Status = JobState.Cancelled;
-			tracker.SetPhase(BackupPhase.Cancelled);
-		}
-		else if(finalSnap.FilesFailed > 0)
-		{
-			result.Status = JobState.Failed;
-			tracker.SetPhase(BackupPhase.Completed);
-			result.GlobalErrors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
-		}
-		else
-		{
-			result.Status = JobState.Completed;
-			tracker.SetPhase(BackupPhase.Completed);
-		}
-
+		// Compile final result
+		CompileResult(result, tracker, ct);
 		progress.Report(tracker.GetSnapshot());
-
-		// Populate summary fields from tracker snapshot
-		result.FilesCopied = finalSnap.FilesSucceeded;
-		result.FilesFailed = finalSnap.FilesFailed;
-		result.FilesSkipped = finalSnap.FilesSkipped;
-		result.TotalFilesScanned = finalSnap.FilesDiscovered;
-		result.TotalBytesCopied = finalSnap.BytesProcessed;
 
 		// Final save of session state (skip in DryRun)
 		if(!plan.DryRun)
@@ -494,5 +464,37 @@ public class BackupEngineSequentiel : IBackupEngine
 			// This is safer than returning MaxValue which could skip the check
 			return 0;
 		}
+	}
+
+	private void CompileResult(BackupJobResult result, ProgressTracker tracker, CancellationToken ct)
+	{
+		// Decide final status based on cancellation and per-item failures
+		BackupProgress finalSnap = tracker.GetSnapshot();
+
+		result.EndTime = DateTime.UtcNow;
+
+		if(ct.IsCancellationRequested)
+		{
+			result.Status = JobState.Cancelled;
+			tracker.SetPhase(BackupPhase.Cancelled);
+		}
+		else if(finalSnap.FilesFailed > 0)
+		{
+			result.Status = JobState.Failed;
+			tracker.SetPhase(BackupPhase.Completed);
+			result.GlobalErrors.Add($"{finalSnap.FilesFailed} file(s) failed during the run.");
+		}
+		else
+		{
+			result.Status = JobState.Completed;
+			tracker.SetPhase(BackupPhase.Completed);
+		}
+
+		// Populate summary fields from tracker snapshot
+		result.FilesCopied = finalSnap.FilesSucceeded;
+		result.FilesFailed = finalSnap.FilesFailed;
+		result.FilesSkipped = finalSnap.FilesSkipped;
+		result.TotalFilesScanned = finalSnap.FilesDiscovered;
+		result.TotalBytesCopied = finalSnap.BytesProcessed;
 	}
 }
