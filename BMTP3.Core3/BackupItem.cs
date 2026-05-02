@@ -62,28 +62,41 @@ public record BackupItem
 	public string? SidecarPath { get; init; }
 
 	/// <summary>
+	/// Result state of this item after processing.
+	/// </summary>
+	public BackupItemResultState ResultState { get; init; } = BackupItemResultState.Pending;
+
+	/// <summary>
 	/// Helper: create a new BackupItem with resolved destination path (for collision handling).
 	/// </summary>
-	public BackupItem WithDestinationPath(string newPath) =>
-		this with { DestinationPath = newPath };
+	public BackupItem WithDestinationPath(string newPath) => this with { DestinationPath = newPath };
 
 	/// <summary>
 	/// Helper: create a new BackupItem with metadata.
 	/// </summary>
-	public BackupItem WithMetadata(Dictionary<string, object> metadata) =>
-		this with { Metadata = metadata };
+	public BackupItem WithMetadata(Dictionary<string, object> metadata) => this with { Metadata = metadata };
 
 	/// <summary>
 	/// Helper: create a new BackupItem with hashes.
 	/// </summary>
-	public BackupItem WithHashes(Dictionary<HashType, string> hashes) =>
-		this with { Hashes = hashes };
+	public BackupItem WithHashes(Dictionary<HashType, string> hashes) => this with { Hashes = hashes };
 
 	/// <summary>
 	/// Helper: create a new BackupItem with sidecar path.
 	/// </summary>
-	public BackupItem WithSidecarPath(string sidecarPath) =>
-		this with { SidecarPath = sidecarPath };
+	public BackupItem WithSidecarPath(string sidecarPath) => this with { SidecarPath = sidecarPath };
+
+	/// <summary>
+	/// Helper: create a new BackupItem marked as successful.
+	/// </summary>
+	public BackupItem WithSuccess() =>
+		this with { ResultState = BackupItemResultState.Success };
+
+	/// <summary>
+	/// Helper: create a new BackupItem marked as failed.
+	/// </summary>
+	public BackupItem WithFailure() =>
+		this with { ResultState = BackupItemResultState.Failed };
 }
 
 /// <summary>
@@ -93,4 +106,14 @@ public enum BackupItemType
 {
 	File = 0,
 	Folder = 1
+}
+
+/// <summary>
+/// Result state of a backup item.
+/// </summary>
+public enum BackupItemResultState
+{
+	Pending = 0,
+	Success = 1,
+	Failed = 2
 }

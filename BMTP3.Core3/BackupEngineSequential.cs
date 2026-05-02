@@ -46,9 +46,9 @@ public class BackupEngineSequential : IBackupEngine
 		ArgumentNullException.ThrowIfNull(plan);
 		ct.ThrowIfCancellationRequested();
 
-		var stopwatch = Stopwatch.StartNew();
-		var errors = new List<BackupError>();
-		var items = new List<BackupItem>();
+		Stopwatch stopwatch = Stopwatch.StartNew();
+		List<BackupError> errors = new List<BackupError>();
+		List<BackupItem> items = new List<BackupItem>();
 
 		try
 		{
@@ -96,8 +96,8 @@ public class BackupEngineSequential : IBackupEngine
 		_logger.LogInformation("Phase: Scanning");
 		progress?.Report(new BackupProgress { Phase = BackupPhase.Scanning, CurrentFile = plan.Source, FilesTotal = 0 });
 
-		var scannedItems = await _scanner.ScanAsync(plan.Source, ct);
-		var items = scannedItems.ToList();
+		IEnumerable<BackupItem> scannedItems = await _scanner.ScanAsync(plan.Source, ct);
+		List<BackupItem> items = scannedItems.ToList();
 
 		_logger.LogInformation("Scan complete: {ItemCount} items found", items.Count);
 		return items;
@@ -111,11 +111,11 @@ public class BackupEngineSequential : IBackupEngine
 	{
 		_logger.LogInformation("Phase: Transfer (with sidecars)");
 
-		var results = new List<BackupItem>();
+		List<BackupItem> results = new List<BackupItem>();
 
 		for (int i = 0; i < items.Count; i++)
 		{
-			var item = items[i];
+			BackupItem item = items[i];
 
 			progress?.Report(new BackupProgress
 			{
@@ -134,7 +134,7 @@ public class BackupEngineSequential : IBackupEngine
 				}
 
 				// Update item with destination path (may have been renamed due to collision)
-				var destPath = Path.Combine(plan.Destination, item.Name);
+				string destPath = Path.Combine(plan.Destination, item.Name);
 				item = item.WithDestinationPath(destPath);
 
 				// Generate sidecar immediately (non-critical: tolerate failure)
@@ -168,11 +168,11 @@ public class BackupEngineSequential : IBackupEngine
 	{
 		_logger.LogInformation("Phase: Extracting metadata");
 
-		var results = new List<BackupItem>();
+		List<BackupItem> results = new();
 
 		for (int i = 0; i < items.Count; i++)
 		{
-			var item = items[i];
+			BackupItem item = items[i];
 
 			progress?.Report(new BackupProgress
 			{
@@ -184,10 +184,10 @@ public class BackupEngineSequential : IBackupEngine
 
 			try
 			{
-				var destPath = Path.Combine(item.DestinationPath);
+				string destPath = Path.Combine(item.DestinationPath);
 				if (File.Exists(destPath))
 				{
-					var metadata = await _metadataReader.ReadAsync(destPath, ct);
+					Dictionary<string, object> metadata = await _metadataReader.ReadAsync(destPath, ct);
 					item = item.WithMetadata(metadata);
 				}
 			}
@@ -211,12 +211,11 @@ public class BackupEngineSequential : IBackupEngine
 	{
 		_logger.LogInformation("Phase: Generating hashes ({HashCount} types)", plan.HashTypes.Count);
 
-		var results = new List<BackupItem>();
+		List<BackupItem> results = new();
 
 		for (int i = 0; i < items.Count; i++)
 		{
-			var item = items[i];
-
+			BackupItem item = items[i];
 			progress?.Report(new BackupProgress
 			{
 				Phase = BackupPhase.GeneratingHashes,
@@ -227,7 +226,7 @@ public class BackupEngineSequential : IBackupEngine
 
 			try
 			{
-				var hashes = await _itemHasher.ComputeHashesAsync(item, plan.HashTypes, null, ct);
+				Dictionary<HashType, string> hashes = await _itemHasher.ComputeHashesAsync(item, plan.HashTypes, null, ct);
 				item = item.WithHashes(hashes);
 			}
 			catch (Exception ex)
@@ -245,15 +244,18 @@ public class BackupEngineSequential : IBackupEngine
 	private async Task<List<BackupItem>> CorrectTimestamps(
 		List<BackupItem> items,
 		IProgress<IBackupProgress>? progress,
-		CancellationToken ct)
+		CancellationToken ct
+	)
 	{
 		_logger.LogInformation("Phase: Correcting timestamps");
 
-		var results = new List<BackupItem>();
+		List<BackupItem> results = new();
 
 		for (int i = 0; i < items.Count; i++)
 		{
-			var item = items[i];
+			ct.ThrowIfCancellationRequested();
+
+			BackupItem item = items[i];
 
 			progress?.Report(new BackupProgress
 			{
@@ -267,8 +269,11 @@ public class BackupEngineSequential : IBackupEngine
 			{
 				if (File.Exists(item.DestinationPath))
 				{
-					File.SetCreationTime(item.DestinationPath, item.CreatedAt);
-					File.SetLastWriteTime(item.DestinationPath, item.ModifiedAt);
+					await Task.Run(() =>
+					{
+						File.SetCreationTime(item.DestinationPath, item.CreatedAt);
+						File.SetLastWriteTime(item.DestinationPath, item.ModifiedAt);
+					}, ct);
 				}
 			}
 			catch (Exception ex)
@@ -280,6 +285,7 @@ public class BackupEngineSequential : IBackupEngine
 			results.Add(item);
 		}
 
+		_logger.LogInformation("Timestamp correction complete: {ItemCount} items", results.Count);
 		return results;
 	}
 
@@ -304,8 +310,8 @@ public class BackupEngineSequential : IBackupEngine
 		{
 			Success = false,
 			TotalItems = items.Count,
-			SuccessfulItems = items.Count(i => i.DestinationPath != null),
-			FailedItems = items.Count(i => i.DestinationPath == null),
+			SuccessfulItems = items.Count(i => i.ResultState == BackupItemResultState.Success),
+			FailedItems = items.Count(i => i.ResultState == BackupItemResultState.Failed),
 			TotalBytes = items.Sum(i => i.SizeInBytes),
 			Duration = duration,
 			Errors = errors,
