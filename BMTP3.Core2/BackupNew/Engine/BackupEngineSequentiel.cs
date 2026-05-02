@@ -209,58 +209,58 @@ public class BackupEngineSequentiel : IBackupEngine
 
 				tracker.AddDiscovery(false, (long)length);
 
+				// Create progress reporter for this item
+				IProgress<ulong> itemProgress = new Progress<ulong>(bytes =>
+				{
+					tracker.UpdateItemBytes(item.Id, bytes);
+				});
+
 				try
 				{
-					// Create progress reporter for this item
-					IProgress<ulong> itemProgress = new Progress<ulong>(bytes =>
-					{
-						tracker.UpdateItemBytes(item.Id, bytes);
-					});
+					// Extract item metadata for phase tracking
+					string sourcePath = item.Metadata.Get<string>(MetadataKey.SourceFullPath) ?? "";
+					string fileName = item.Metadata.Get<string>(MetadataKey.SourceFileName) ?? "";
+					string relativePath = item.Metadata.Get<string>(MetadataKey.SourceRelativePath) ?? "";
 
-					// Execute steps sequentially
+					// Execute steps sequentially - steps handle errors internally and set item.ResultState
+					// We do NOT catch exceptions from steps; they convert errors to item failures.
+					
+					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Staging, length);
 					await bufferingStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
 
+					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Metadata, length);
 					await metadataStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
 
+					// After metadata extraction, length should be set
+					if(!item.Metadata.Has(MetadataKey.Length) && length == 0)
+					{
+						if(item.Metadata.Has(MetadataKey.Length))
+						{
+							length = item.Metadata.Get<ulong>(MetadataKey.Length);
+						}
+					}
+
+					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Metadata, length);
 					await timestampStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
 
+					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Hashing, length);
 					await hashStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
 
+					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Planning, length);
 					await transferStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
 
+					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Transferring, length);
 					await inspectorStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
 
+					tracker.UpdateItemPhase(item.Id, sourcePath, fileName, relativePath, FilePhase.Transferring, length);
 					await sidecarStep.ExecuteAsync(item, itemProgress, ct).ConfigureAwait(false);
 
-					// Mark item as complete
-					if(item.Metadata.Has(MetadataKey.Length))
-					{
-						ulong size = item.Metadata.Get<ulong>(MetadataKey.Length);
-						tracker.CompleteItem(item.Id, item.ResultState, (long)size);
-					}
-					else
-					{
-						tracker.CompleteItem(item.Id, item.ResultState, 0);
-					}
+					// Only CompleteItem() once, after ALL steps
+					tracker.CompleteItem(item.Id, item.ResultState, (long)length);
 				}
 				catch(OperationCanceledException)
 				{
 					throw;
-				}
-				catch(Exception ex)
-				{
-					_logger.LogError("Error processing item {ItemId}: {Error}", item.Id, ex.Message);
-					item.AddLog($"Error: {ex.Message}", "Pipeline");
-
-					if(item.Metadata.Has(MetadataKey.Length))
-					{
-						ulong size = item.Metadata.Get<ulong>(MetadataKey.Length);
-						tracker.CompleteItem(item.Id, item.ResultState, (long)size);
-					}
-					else
-					{
-						tracker.CompleteItem(item.Id, item.ResultState, 0);
-					}
 				}
 
 				// Persist item state for resume support (skip in DryRun)
@@ -277,6 +277,9 @@ public class BackupEngineSequentiel : IBackupEngine
 					}
 				}
 			}
+
+			// Set phase to Transferring after scanning completes
+			tracker.SetPhase(BackupPhase.Transferring);
 		}
 		catch(OperationCanceledException)
 		{
