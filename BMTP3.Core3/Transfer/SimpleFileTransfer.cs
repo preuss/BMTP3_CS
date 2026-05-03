@@ -16,58 +16,72 @@ public class SimpleFileTransfer : IFileTransfer
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
-  public async Task<string> CopyAsync(BackupItem item, string destinationDirectory, IProgress<long>? progress, CancellationToken ct)
+	public async Task<string> CopyAsync(
+		BackupItem item,
+		string destinationDirectory,
+		CollisionStrategy collisionStrategy,
+		IProgress<long>? progress,
+		CancellationToken ct
+	)
 	{
 		ArgumentNullException.ThrowIfNull(item);
 		ArgumentNullException.ThrowIfNullOrWhiteSpace(destinationDirectory);
 		ct.ThrowIfCancellationRequested();
 
-		if (!File.Exists(item.SourcePath))
+		if(!File.Exists(item.SourcePath))
 		{
 			throw new FileNotFoundException($"Source file not found: {item.SourcePath}");
 		}
 
-		if (!Directory.Exists(destinationDirectory))
+		if(!Directory.Exists(destinationDirectory))
 		{
 			throw new DirectoryNotFoundException($"Destination directory not found: {destinationDirectory}");
 		}
 
-     string destPath = ResolveDestinationPath(destinationDirectory, item.Name);
+		string destPath = ResolveDestinationPath(destinationDirectory, item.Name, collisionStrategy);
+		bool isOverwrite = collisionStrategy == CollisionStrategy.Overwrite && File.Exists(destPath);
+
+		if(isOverwrite)
+		{
+			_logger.LogInformation("Overwriting existing file: {DestPath}", destPath);
+		}
 
 		_logger.LogDebug("Copying {SourcePath} → {DestPath}", item.SourcePath, destPath);
 
 		try
 		{
-			using var sourceStream = new FileStream(item.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, useAsync: true);
-			using var destStream = new FileStream(destPath, FileMode.Create, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+			FileMode destinationFileMode = collisionStrategy == CollisionStrategy.Overwrite
+				? FileMode.Create
+				: FileMode.CreateNew;
 
-			var buffer = new byte[BufferSize];
+			using FileStream sourceStream = new(item.SourcePath, FileMode.Open, FileAccess.Read, FileShare.Read, BufferSize, useAsync: true);
+			using FileStream destStream = new(destPath, destinationFileMode, FileAccess.Write, FileShare.None, BufferSize, useAsync: true);
+
+			byte[] buffer = new byte[BufferSize];
 			int bytesRead;
 			long totalBytesRead = 0;
 
-			while ((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
+			while((bytesRead = await sourceStream.ReadAsync(buffer, 0, buffer.Length, ct).ConfigureAwait(false)) > 0)
 			{
 				await destStream.WriteAsync(buffer, 0, bytesRead, ct).ConfigureAwait(false);
 				totalBytesRead += bytesRead;
 				progress?.Report(totalBytesRead);
 			}
 
-         _logger.LogDebug("Transfer complete: {SourcePath} ({BytesCopied} bytes)", item.SourcePath, totalBytesRead);
+			_logger.LogDebug("Transfer complete: {SourcePath} ({BytesCopied} bytes)", item.SourcePath, totalBytesRead);
 			return destPath;
-		}
-		catch (OperationCanceledException)
+		} catch(OperationCanceledException)
 		{
 			_logger.LogWarning("Transfer cancelled: {SourcePath}", item.SourcePath);
-			if (File.Exists(destPath))
+			if(File.Exists(destPath))
 			{
 				File.Delete(destPath);  // Clean up incomplete file
 			}
 			throw;
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			_logger.LogError(ex, "Transfer failed: {SourcePath}", item.SourcePath);
-			if (File.Exists(destPath))
+			if(File.Exists(destPath))
 			{
 				File.Delete(destPath);  // Clean up incomplete file
 			}
@@ -76,34 +90,47 @@ public class SimpleFileTransfer : IFileTransfer
 	}
 
 	/// <summary>
-	/// Resolve the destination path, handling collisions by renaming.
-	/// If file exists, renames to filename_1.ext, filename_2.ext, etc.
+	/// Resolve destination path based on collision strategy.
 	/// </summary>
-	private static string ResolveDestinationPath(string destinationDirectory, string fileName)
+	private static string ResolveDestinationPath(string destinationDirectory, string fileName, CollisionStrategy collisionStrategy)
 	{
-        string destPath = Path.Combine(destinationDirectory, fileName);
+		string destPath = Path.Combine(destinationDirectory, fileName);
 
-		// If file doesn't exist, use as-is
-		if (!File.Exists(destPath))
+		if(!File.Exists(destPath))
 		{
 			return destPath;
 		}
 
-		// File exists, need to rename with _N suffix
-      string name = Path.GetFileNameWithoutExtension(fileName);
-		string ext = Path.GetExtension(fileName);
-
-		for (int i = 1; i <= 10000; i++)
+		switch(collisionStrategy)
 		{
-           string newName = $"{name}_{i}{ext}";
-			string newPath = Path.Combine(destinationDirectory, newName);
+			case CollisionStrategy.Overwrite:
+				return destPath;
 
-			if (!File.Exists(newPath))
-			{
-				return newPath;
-			}
+			case CollisionStrategy.Rename:
+				string name = Path.GetFileNameWithoutExtension(fileName);
+				string ext = Path.GetExtension(fileName);
+
+				for(int i = 1; i <= 10000; i++)
+				{
+					string newName = $"{name}_{i}{ext}";
+					string newPath = Path.Combine(destinationDirectory, newName);
+
+					if(!File.Exists(newPath))
+					{
+						return newPath;
+					}
+				}
+
+				throw new InvalidOperationException($"Cannot resolve destination path for {fileName}: too many collisions");
+
+			case CollisionStrategy.Skip:
+				throw new IOException($"Destination file already exists and strategy is Skip: {destPath}");
+
+			case CollisionStrategy.Error:
+				throw new IOException($"Destination file already exists and strategy is Error: {destPath}");
+
+			default:
+				throw new ArgumentOutOfRangeException(nameof(collisionStrategy), collisionStrategy, "Unknown collision strategy");
 		}
-
-		throw new InvalidOperationException($"Cannot resolve destination path for {fileName}: too many collisions");
 	}
 }

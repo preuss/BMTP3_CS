@@ -50,8 +50,11 @@ public enum CollisionStrategy
 	/// Skip conflicting file and continue backup
 	Skip = 1,
 
+	/// Overwrite existing destination file
+	Overwrite = 2,
+
 	/// Treat as error and stop backup
-	Error = 2
+	Error = 3
 }
 
 /// <summary>

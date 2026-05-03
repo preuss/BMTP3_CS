@@ -24,12 +24,12 @@ public class ConsolesPrinter
 	/// </summary>
 	public void PrintOptionsModel(params BaseOptionsModel[] optionsModels)
 	{
-		foreach (BaseOptionsModel optionsModel in optionsModels)
+		foreach(BaseOptionsModel optionsModel in optionsModels)
 		{
 			string header = $"{optionsModel.GetType().Name}:";
 			_console.MarkupLine($"[bold]{header}[/]");
 			_console.WriteLine(new string('=', header.Length));
-			foreach (string line in optionsModel.GetOptionPropertyValues())
+			foreach(string line in optionsModel.GetOptionPropertyValues())
 			{
 				_console.WriteLine("  " + line);
 			}
@@ -47,15 +47,21 @@ public class ConsolesPrinter
 			$"{progress.Phase}: discovered={progress.FilesDiscovered} succeeded={progress.FilesSucceeded} failed={progress.FilesFailed}");
 	}
 
+	public void PrintProgress(BMTP3.Core3.IBackupProgress progress)
+	{
+		_console.WriteLine(
+			$"{progress.Phase}: file={progress.CurrentFile} processed={progress.FilesProcessed}/{progress.FilesTotal} bytes={progress.BytesTransferred}");
+	}
+
 	public void PrintResult(BackupJobResult result)
 	{
 		_console.MarkupLine($"[bold]Job '[green]{result.JobName}[/]' finished: {result.Status}[/]");
 		_console.WriteLine(
 			$"Scanned: {result.TotalFilesScanned} Copied: {result.FilesCopied} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.TotalBytesCopied}");
-		if (result.GlobalErrors?.Count > 0)
+		if(result.GlobalErrors?.Count > 0)
 		{
 			_console.MarkupLine("[yellow]Global errors:[/]");
-			foreach (string e in result.GlobalErrors)
+			foreach(string e in result.GlobalErrors)
 			{
 				_console.MarkupLine($"  [yellow]- {e}[/]");
 			}

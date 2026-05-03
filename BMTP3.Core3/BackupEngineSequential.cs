@@ -135,8 +135,21 @@ public class BackupEngineSequential : IBackupEngine
 			{
 				if(!plan.DryRun)
 				{
+					if (plan.Collision == CollisionStrategy.Overwrite)
+					{
+						string overwriteTargetPath = Path.Combine(plan.Destination, item.Name);
+						if (File.Exists(overwriteTargetPath))
+						{
+							File.Delete(overwriteTargetPath);
+							_logger.LogDebug(
+								"Overwrite enabled. Deleted existing destination file: {DestinationPath}",
+								overwriteTargetPath
+							);
+						}
+					}
+
 					// Transfer file (critical: fail if this fails)
-					string destPath = await _fileTransfer.CopyAsync(item, plan.Destination, null, ct);
+					string destPath = await _fileTransfer.CopyAsync(item, plan.Destination, plan.Collision, null, ct);
 					string destName = Path.GetFileName(destPath);
 					item = item
 						.WithDestinationPath(destPath)
