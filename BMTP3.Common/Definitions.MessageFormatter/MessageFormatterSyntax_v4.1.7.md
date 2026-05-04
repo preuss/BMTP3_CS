@@ -11,15 +11,19 @@ For available FormatTypes, FormatStyles, CustomPatterns, and Functions, see the 
 
 ### 1.1. Message Format Expression
 
+```
     ${name[.function()]* [, FormatType [, FormatStyle]] [: CustomPattern]}
     #{index[.function()]* [, FormatType [, FormatStyle]] [: CustomPattern]}
+```
 
 FormatStyle and CustomPattern are **mutually exclusive** — only one can be used.
 
 ### 1.2. Message Eval Expression
 
+```
     ${name[.function()]* § EvalType, EvalPattern}
     #{index[.function()]* § EvalType, EvalPattern}
+```
 
 The eval separator is `§` (U+00A7) or `¶` (U+00B6, Alt+0182). Both are equivalent.
 
@@ -27,16 +31,16 @@ The eval separator is `§` (U+00A7) or `¶` (U+00B6, Alt+0182). Both are equival
 
 ## 2. Terminology
 
-| Term | Description |
-|------|-------------|
-| **Placeholder** | An expression inside a message that gets replaced with a value at runtime |
-| **Variable** | The runtime value referenced by a placeholder's name or index |
-| **Function** | A registered operation that transforms a variable's value |
-| **FormatType** | A type assertion that declares the expected type of the value and determines available FormatStyles and CustomPatterns |
-| **FormatStyle** | A predefined named formatter registered for a specific FormatType (produces string) |
-| **CustomPattern** | A user-defined formatting pattern supported by the FormatType (produces string) |
-| **EvalType** | A type of evaluation expression (`if`, `plural`, `select`) |
-| **EvalPattern** | The pattern/rules used by the EvalType to select output |
+| Term              | Description                                                                                                            |
+|-------------------|------------------------------------------------------------------------------------------------------------------------|
+| **Placeholder**   | An expression inside a message that gets replaced with a value at runtime                                              |
+| **Variable**      | The runtime value referenced by a placeholder's name or index                                                          |
+| **Function**      | A registered operation that transforms a variable's value                                                              |
+| **FormatType**    | A type assertion that declares the expected type of the value and determines available FormatStyles and CustomPatterns |
+| **FormatStyle**   | A predefined named formatter registered for a specific FormatType (produces string)                                    |
+| **CustomPattern** | A user-defined formatting pattern supported by the FormatType (produces string)                                        |
+| **EvalType**      | A type of evaluation expression (`if`, `plural`, `select`)                                                             |
+| **EvalPattern**   | The pattern/rules used by the EvalType to select output                                                                |
 
 ---
 
@@ -48,8 +52,10 @@ There are two main categories of placeholder expressions:
 
 Used for value formatting (functions, type assertion, style/pattern output).
 
+```
     ${name[.function()]* [, FormatType [, FormatStyle]] [: CustomPattern]}
     #{index[.function()]* [, FormatType [, FormatStyle]] [: CustomPattern]}
+```
 
 **Rule:**
 FormatStyle and CustomPattern are **mutually exclusive** — you cannot use both.
@@ -57,6 +63,7 @@ CustomPattern **requires** FormatType to be specified.
 
 Valid combinations:
 
+```
     ${name}
     ${name.function()}
     ${name, FormatType}
@@ -64,20 +71,25 @@ Valid combinations:
     ${name, FormatType : CustomPattern}
     ${name.function(), FormatType, FormatStyle}
     ${name.function(), FormatType : CustomPattern}
+```
 
 
 ### 3.2. Eval Expression
 
 Used for conditional/selection logic based on the variable's value.
 
+```
     ${name[.function()]* § EvalType, EvalPattern}
     #{index[.function()]* § EvalType, EvalPattern}
+```
 
 The eval separator is `§` (section sign) or `¶` (pilcrow sign, Alt+0182). Both are
 equivalent.
 
+```
     ${name § EvalType, EvalPattern}
     ${name ¶ EvalType, EvalPattern}
+```
 
 ---
 
@@ -189,12 +201,14 @@ previous one.
 
 ### 6.1. Syntax
 
+```
     ${variable.functionName()}
     ${variable.functionName(arg1)}
     ${variable.functionName(arg1, arg2)}
     ${variable .functionName()}
     ${variable. functionName()}
     ${variable.functionName ()}
+```
 
 - Function names follow identifier rules: starts with a letter (a-z, A-Z) or underscore,
   followed by letters, digits, or underscores.
@@ -221,12 +235,14 @@ if quotes do not enclose the entire argument, it is a syntax error.
 
 **Examples:**
 
+```
     .function(hello world)              → "hello world"
     .function( hello world )            → "hello world"
     .function( hello world , second )   → "hello world", "second"
     .function(hello\, world)            → "hello, world"
     .function(hello\) world)            → "hello) world"
     .function(path\\to\\file)           → "path\to\file"
+```
 
 #### 6.2.2. Quoted Arguments
 
@@ -236,11 +252,13 @@ inside quotes are treated as plain text.
 
 **Examples:**
 
+```
     .function("hello world")            → "hello world"
     .function(" hello world ")          → " hello world "
     .function('hello, world')           → "hello, world"
     .function("hello) world")           → "hello) world"
     .function("hello world", 'second')  → "hello world", "second"
+```
 
 #### 6.2.3. Escape Sequences
 
@@ -250,53 +268,61 @@ breaking existing templates.
 
 **In unquoted arguments, allowed escapes:**
 
-| Escape | Result                  |
-|--------|-------------------------|
-| `\\`   | literal `\` (backslash) |
-| `\,`   | literal `,` (comma)     |
+| Escape | Result                            |
+|--------|-----------------------------------|
+| `\\`   | literal `\` (backslash)           |
+| `\,`   | literal `,` (comma)               |
 | `\)`   | literal `)` (closing parenthesis) |
-| `\"`   | literal `"` (double quote) |
-| `\'`   | literal `'` (single quote) |
+| `\"`   | literal `"` (double quote)        |
+| `\'`   | literal `'` (single quote)        |
 
 **In double-quoted arguments (`"..."`), allowed escapes:**
 
-| Escape | Result                  |
-|--------|-------------------------|
-| `\\`   | literal `\` (backslash) |
+| Escape | Result                     |
+|--------|----------------------------|
+| `\\`   | literal `\` (backslash)    |
 | `\"`   | literal `"` (double quote) |
 
 Note: `'` (single quote) does not need escaping inside double quotes.
 
 **In single-quoted arguments (`'...'`), allowed escapes:**
 
-| Escape | Result                  |
-|--------|-------------------------|
-| `\\`   | literal `\` (backslash) |
+| Escape | Result                     |
+|--------|----------------------------|
+| `\\`   | literal `\` (backslash)    |
 | `\'`   | literal `'` (single quote) |
 
 Note: `"` (double quote) does not need escaping inside single quotes.
 
 **Invalid escapes:**
 
+```
     .function(hello\a world)   → Error: invalid escape sequence '\a'
     .function("hello\n")       → Error: invalid escape sequence '\n'
+```
 
 #### 6.2.4. Invalid Argument Syntax
 
+```
     .function("hello" world)   → Error: quotes must enclose the entire argument
     .function('hello' world)   → Error: quotes must enclose the entire argument
+```
 
 ### 6.3. Chaining
 
 Functions are called in sequence, left to right. The return type of each function
 determines what functions are available next.
 
+```
     ${variable.function1().function2().function3()}
+```
 
 **Examples:**
 
+```
     ${filename.trim().toUpper()}   → "PHOTO.JPG"
     ${amount.abs().toString()}     → "1024"
+```
 
 ### 6.4. Type Safety
 
@@ -305,10 +331,12 @@ registered for the current type of the value. If not, a runtime error occurs.
 
 **Examples:**
 
+```
     ${filename.toUpper()}   → "PHOTO.JPG"
         (toUpper is registered for string)
 
     ${count.toUpper()}      → Error: function 'toUpper' is not registered for type 'integer'
+```
 
 ### 6.5. Type-Changing Functions
 
@@ -317,8 +345,10 @@ must be registered for the new type.
 
 **Example:**
 
+```
     ${count.toString().padLeft(5)}   → "  100"
         (count is integer → toString() returns string → padLeft is registered for string)
+```
 
 ---
 
@@ -333,9 +363,11 @@ for the value.
 
 ### 7.1. Syntax
 
+```
     ${name, FormatType}
     ${name, FormatType, FormatStyle}
     ${name, FormatType : CustomPattern}
+```
 
 - FormatType follows identifier rules: starts with a letter (a-z, A-Z) or underscore,
   followed by letters, digits, or underscores.
@@ -346,7 +378,7 @@ for the value.
 
 | FormatType   | Accepts        | Description                  |
 |--------------|----------------|------------------------------|
-| `number`     | integer, float/double | Numeric values          |
+| `number`     | integer, float/double | Numeric values        |
 | `date`       | date           | Date values (date only)      |
 | `datetime`   | datetime       | Date and time values         |
 | `time`       | time           | Time values (time only)      |
@@ -362,23 +394,29 @@ of a compatible type. If you need to convert a value, use Functions.
 
 **Valid — value matches FormatType:**
 
+```
     ${price, number}           → price is a double, number accepts double ✓
     ${count, number}           → count is an integer, number accepts integer ✓
     ${birthday, date}          → birthday is a date ✓
     ${created, datetime}       → created is a datetime ✓
     ${now, time}               → now is a time ✓
+```
 
 **Invalid — value does not match FormatType:**
 
+```
     ${name, number}            → Error: 'name' is string, expected number
     ${count, date}             → Error: 'count' is integer, expected date
     ${birthday, datetime}      → Error: 'birthday' is date, expected datetime
     ${created, time}           → Error: 'created' is datetime, expected time
+```
 
 **Conversion via Functions instead:**
 
+```
     ${count.toString()}        → converts integer to string via function
     ${text.toNumber()}         → converts string to number via function
+```
 
 
 ### 7.4. FormatType Without FormatStyle or CustomPattern
@@ -386,10 +424,12 @@ of a compatible type. If you need to convert a value, use Functions.
 FormatType can be used alone. This asserts the type but uses the default
 string representation for that type.
 
+```
     ${price, number}           → "1234.56" (default number-to-string)
     ${birthday, date}          → "2025-04-17" (default date-to-string)
     ${created, datetime}       → "2025-04-17 16:23:45" (default datetime-to-string)
     ${now, time}               → "16:23:45" (default time-to-string)
+```
 
 
 ### 7.5. Implicit Type (No FormatType)
@@ -398,9 +438,11 @@ If no FormatType is specified, the value's runtime type (after functions) determ
 the output. The value is converted to its default string representation.
 No FormatStyles or CustomPatterns are available without a FormatType declaration.
 
+```
     ${name}                    → "John" (string, default representation)
     ${count}                   → "1024" (integer, default representation)
     ${created}                 → "2025-04-17 16:23:45" (datetime, default representation)
+```
 
 
 ---
@@ -412,7 +454,9 @@ It always produces a string as output.
 
 ### 8.1. Syntax
 
+```
     ${name, FormatType, FormatStyle}
+```
 
 - FormatStyle follows identifier rules: starts with a letter (a-z, A-Z) or underscore,
   followed by letters, digits, or underscores.
@@ -454,19 +498,19 @@ Note: The `currency` FormatStyle always displays exactly 2 decimal places.
 
 #### `datetime` FormatStyles
 
-| FormatStyle | Description                    | Example (2025-04-17 16:23:45)       |
-|-------------|--------------------------------|-------------------------------------|
-| `short`     | Short date + short time        | `17.04.25 16:23`                    |
-| `medium`    | Medium date + medium time      | `17. apr. 2025 16:23:45`            |
-| `long`      | Long date + long time          | `17. april 2025 16:23:45 CET`      |
+| FormatStyle | Description                    | Example (2025-04-17 16:23:45)                           |
+|-------------|--------------------------------|---------------------------------------------------------|
+| `short`     | Short date + short time        | `17.04.25 16:23`                                        |
+| `medium`    | Medium date + medium time      | `17. apr. 2025 16:23:45`                                |
+| `long`      | Long date + long time          | `17. april 2025 16:23:45 CET`                           |
 | `full`      | Full date + full time          | `torsdag 17. april 2025 16:23:45 Central European Time` |
-| `iso`       | ISO 8601                       | `2025-04-17T16:23:45`               |
+| `iso`       | ISO 8601                       | `2025-04-17T16:23:45`                                   |
 
 #### `time` FormatStyles
 
 | FormatStyle | Description              | Example (16:23:45)                     |
 |-------------|--------------------------|----------------------------------------|
-| `short`     | Hours and minutes        | `16:23` / `4:23 PM`                   |
+| `short`     | Hours and minutes        | `16:23` / `4:23 PM`                    |
 | `medium`    | Hours, minutes, seconds  | `16:23:45`                             |
 | `long`      | With timezone            | `16:23:45 CET`                         |
 | `full`      | Full time (locale)       | `16:23:45 Central European Time`       |
@@ -782,14 +826,14 @@ instantiated with. If no locale was specified, the system locale is used.
 
 #### Count Rules
 
-| Rule type         | Description                                    | Example              |
-|-------------------|------------------------------------------------|----------------------|
-| Exact number      | Matches specific value                         | `0`, `1`, `2`        |
+| Rule type         | Description                                    | Example                             |
+|-------------------|------------------------------------------------|-------------------------------------|
+| Exact number      | Matches specific value                         | `0`, `1`, `2`                       |
 | CLDR category     | Language-specific plural category              | `one`, `two`, `few`, `many`, `zero` |
-| Range (inclusive) | Matches values within range (inclusive bounds) | `[0;10]`             |
-| Range (exclusive) | Matches values within range (exclusive bounds) | `]0;10[`             |
-| Range (mixed)     | Inclusive/exclusive combination                | `[0;10[`, `]0;10]`   |
-| `other`           | Naming convention for last-entry fallback       | `other`              |
+| Range (inclusive) | Matches values within range (inclusive bounds) | `[0;10]`                            |
+| Range (exclusive) | Matches values within range (exclusive bounds) | `]0;10[`                            |
+| Range (mixed)     | Inclusive/exclusive combination                | `[0;10[`, `]0;10]`                  |
+| `other`           | Naming convention for last-entry fallback      | `other`                             |
 
 #### Examples
 
