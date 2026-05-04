@@ -1,3 +1,4 @@
+using ParserFormatter = BMTP3.Common.MessageFormatterParser.MessageFormatter;
 using BMTP3.Common.MessageFormatterParser;
 
 namespace BMTP3.Common.Tests.MessageFormatterParser;
@@ -14,7 +15,7 @@ public class MoreEvalEdgeTests
 			{ "name", "several" }
 		};
 
-		string result = new MessageFormatter().Format(template, values);
+		string result = new ParserFormatter().Format(template, values);
 		Assert.Equal("Items: several items", result);
 	}
 
@@ -27,7 +28,7 @@ public class MoreEvalEdgeTests
 			{ "count", 0.0 }
 		};
 
-		string result = new MessageFormatter().Format(template, values);
+		string result = new ParserFormatter().Format(template, values);
 		Assert.Equal("Count: none", result);
 	}
 }

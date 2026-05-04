@@ -1,3 +1,4 @@
+using ParserFormatter = BMTP3.Common.MessageFormatterParser.MessageFormatter;
 using BMTP3.Common.MessageFormatterParser;
 using BMTP3.Common.MessageFormatterParser.Nodes;
 
@@ -64,7 +65,7 @@ public class ParserAndTypeCheckerTests
 			{ "other", "two" }
 		};
 
-		string result = new MessageFormatter().Format(template, values);
+		string result = new ParserFormatter().Format(template, values);
 
 		Assert.Equal("Files: two files", result);
 	}

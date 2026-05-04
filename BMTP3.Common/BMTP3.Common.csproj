@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BMTP3.MessageFormatter\BMTP3.MessageFormatter.csproj" />
+  </ItemGroup>
+
 </Project>

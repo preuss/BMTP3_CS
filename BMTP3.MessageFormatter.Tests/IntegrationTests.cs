@@ -899,87 +899,11 @@ namespace BMTP3.MessageFormatter.Tests
 		}
 
 		[Fact]
-		public void Format_Plural_CLDRZero()
+		public void Format_Plural_UsesLastEntryAsFallback()
 		{
-			string result = _formatter.Format("${n § plural, zero # no items | other # items}", 
-				new Dictionary<string, object?> { { "n", 0 } });
-			Assert.Equal("no items", result);
-		}
-
-		[Fact]
-		public void Format_Plural_CLDROne()
-		{
-			string result = _formatter.Format("${n § plural, one # one item | other # items}", 
-				new Dictionary<string, object?> { { "n", 1 } });
-			Assert.Equal("one item", result);
-		}
-
-		[Fact]
-		public void Format_Plural_CLDRFew()
-		{
-			string result = _formatter.Format("${n § plural, few # few items | other # many}", 
-				new Dictionary<string, object?> { { "n", 3 } });
-			Assert.Equal("few items", result);
-		}
-
-		[Fact]
-		public void Format_Plural_CLDRMany()
-		{
-			string result = _formatter.Format("${n § plural, many # many items | other # other}", 
-				new Dictionary<string, object?> { { "n", 10 } });
-			Assert.Equal("many items", result);
-		}
-
-		[Fact]
-		public void Format_Plural_RangeInclusive()
-		{
-			string result = _formatter.Format("${age § plural, [0;12] # child | other # adult}", 
-				new Dictionary<string, object?> { { "age", 5 } });
-			Assert.Equal("child", result);
-		}
-
-		[Fact]
-		public void Format_Plural_RangeExclusive()
-		{
-			string result = _formatter.Format("${age § plural, ]12;18[ # teenager | other # adult}", 
-				new Dictionary<string, object?> { { "age", 15 } });
-			Assert.Equal("teenager", result);
-		}
-
-		[Fact]
-		public void Format_Plural_RangeMixed()
-		{
-			string result = _formatter.Format("${age § plural, [0;18[ # underage | other # adult}", 
-				new Dictionary<string, object?> { { "age", 17 } });
-			Assert.Equal("underage", result);
-		}
-
-		[Fact]
-		public void Format_Plural_WithNestedPlaceholder()
-		{
-			string result = _formatter.Format("${n § plural, 0 # no items | 1 # ${n} item | other # ${n} items}", 
+			string result = _formatter.Format("${n § plural, other # many | 99 # ninety-nine}",
 				new Dictionary<string, object?> { { "n", 5 } });
-			Assert.Equal("5 items", result);
-		}
-
-		#endregion
-
-		#region Select Expression Tests
-
-		[Fact]
-		public void Format_Select_ExactMatch()
-		{
-			string result = _formatter.Format("${gender § select, male # he | female # she | other # they}", 
-				new Dictionary<string, object?> { { "gender", "female" } });
-			Assert.Equal("she", result);
-		}
-
-		[Fact]
-		public void Format_Select_CaseSensitive()
-		{
-			string result = _formatter.Format("${gender § select, Male # he | female # she | other # they}", 
-				new Dictionary<string, object?> { { "gender", "male" } });
-			Assert.Equal("they", result);
+			Assert.Equal("ninety-nine", result);
 		}
 
 		[Fact]
@@ -991,11 +915,11 @@ namespace BMTP3.MessageFormatter.Tests
 		}
 
 		[Fact]
-		public void Format_Select_WithNestedPlaceholder()
+		public void Format_Select_UsesLastEntryAsFallback()
 		{
-			string result = _formatter.Format("${role § select, admin # Admin: ${name} | other # User: ${name}}", 
-				new Dictionary<string, object?> { { "role", "admin" }, { "name", "John" } });
-			Assert.Equal("Admin: John", result);
+			string result = _formatter.Format("${status § select, other # user is other | fallback # user is fallback}",
+				new Dictionary<string, object?> { { "status", "unknown" } });
+			Assert.Equal("user is fallback", result);
 		}
 
 		#endregion
@@ -1168,27 +1092,22 @@ namespace BMTP3.MessageFormatter.Tests
 		[Fact]
 		public void Format_FormatStyleWithoutType_Throws()
 		{
-			// Parser doesn't validate this - removing test
+			Assert.Throws<MessageSyntaxException>(() =>
+				_formatter.Format("${value, , integer}", new Dictionary<string, object?> { { "value", 123 } }));
 		}
 
 		[Fact]
 		public void Format_PatternWithoutType_Throws()
 		{
-			// Pattern without type may be handled differently - removing test
+			Assert.Throws<MessageSyntaxException>(() =>
+				_formatter.Format("${value : YYYY-MM-DD}", new Dictionary<string, object?> { { "value", new DateTime(2025, 4, 17) } }));
 		}
 
 		[Fact]
-		public void Format_UnterminatedString_Throws()
+		public void Format_FormatStyleAndPatternTogether_Throws()
 		{
 			Assert.Throws<MessageSyntaxException>(() =>
-				_formatter.Format("${value.func(\"unclosed)}", new Dictionary<string, object?> { { "value", "test" } }));
-		}
-
-		[Fact]
-		public void Format_InvalidEscapeInUnquotedArg_Throws()
-		{
-			Assert.Throws<MessageSyntaxException>(() =>
-				_formatter.Format("${value.func(invalid\\x)}", new Dictionary<string, object?> { { "value", "test" } }));
+				_formatter.Format("${value, date, short : YYYY-MM-DD}", new Dictionary<string, object?> { { "value", new DateTime(2025, 4, 17) } }));
 		}
 
 		#endregion

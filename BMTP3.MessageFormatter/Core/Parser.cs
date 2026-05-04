@@ -159,34 +159,42 @@ namespace BMTP3.MessageFormatter.Core
 
 		private void ParseFormatExpression(ParsedExpression expr)
 		{
+			string? formatType = null;
+			string? formatStyle = null;
+			string? customPattern = null;
+
 			if (Current().Type == TokenType.Comma)
 			{
 				Advance(); // consume comma
 
 				// FormatType
-				if (Current().Type == TokenType.Identifier)
-				{
-					expr.FormatType = Advance().Value;
-				}
+				formatType = Expect(TokenType.Identifier).Value;
 
 				// FormatStyle or CustomPattern
 				if (Current().Type == TokenType.Comma)
 				{
 					Advance(); // consume comma
-					expr.FormatStyle = Expect(TokenType.Identifier).Value;
+					formatStyle = Expect(TokenType.Identifier).Value;
 				}
 				else if (Current().Type == TokenType.Colon)
 				{
 					Advance(); // consume colon
-					expr.CustomPattern = ReadUntilEnd();
+					customPattern = ReadUntilEnd();
 				}
 			}
 			else if (Current().Type == TokenType.Colon)
 			{
-				Advance(); // consume colon
-				expr.CustomPattern = ReadUntilEnd();
+				throw new MessageSyntaxException("FormatType is required when using CustomPattern");
 			}
 
+			if (string.IsNullOrWhiteSpace(formatType) && !string.IsNullOrWhiteSpace(formatStyle))
+			{
+				throw new MessageSyntaxException("FormatType is required when using FormatStyle");
+			}
+
+			expr.FormatType = formatType;
+			expr.FormatStyle = formatStyle;
+			expr.CustomPattern = customPattern;
 			expr.ExpressionType = ExpressionType.Format;
 		}
 
@@ -219,7 +227,7 @@ namespace BMTP3.MessageFormatter.Core
 			{
 				Token tok = _tokens[i];
 				// Find this token value in original starting from startPos
-				int idx = _originalContent.IndexOf(tok.Value, startPos);
+				int idx = _originalContent.IndexOf(tok.Value, startPos, StringComparison.Ordinal);
 				if (idx >= 0)
 					startPos = idx + tok.Value.Length;
 			}
