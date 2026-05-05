@@ -49,7 +49,7 @@ namespace BMTP3.MessageFormatter.Core
 
 			if (expression.ExpressionType == ExpressionType.Format)
 			{
-				return EvaluateFormatExpression(value, currentType, expression);
+				return EvaluateFormatExpression(value, currentType, expression, context);
 			}
 
 			if (expression.ExpressionType == ExpressionType.Eval)
@@ -85,7 +85,7 @@ namespace BMTP3.MessageFormatter.Core
 			return function!.Execute(value, call.Arguments);
 		}
 
-		private string EvaluateFormatExpression(object? value, string currentType, ParsedExpression expr)
+		private string EvaluateFormatExpression(object? value, string currentType, ParsedExpression expr, EvaluationContext context)
 		{
 			if (!string.IsNullOrEmpty(expr.FormatType))
 			{
@@ -99,7 +99,15 @@ namespace BMTP3.MessageFormatter.Core
 
 				if (!string.IsNullOrEmpty(expr.CustomPattern))
 				{
-					return formatType.FormatWithPattern(value, expr.CustomPattern);
+					string protectedPattern = ProtectNestedPlaceholders(expr.CustomPattern, out Dictionary<string, string> placeholders);
+					string formatted = formatType.FormatWithPattern(value, protectedPattern);
+					formatted = RestoreProtectedPlaceholders(formatted, placeholders);
+					if (formatted.Contains("${", StringComparison.Ordinal) || formatted.Contains("#{", StringComparison.Ordinal))
+					{
+						return EvaluateNestedPlaceholders(formatted, context);
+					}
+
+					return formatted;
 				}
 
 				return formatType.FormatDefault(value);
@@ -112,13 +120,37 @@ namespace BMTP3.MessageFormatter.Core
 		{
 			string evalType = expr.EvalType?.ToLowerInvariant() ?? "if";
 
-			return evalType switch
+			if (evalType == "if")
 			{
-				"if" => EvaluateIfExpression(value, expr.EvalPattern!, context),
-				"plural" => EvaluatePluralExpression(value, expr.EvalPattern!, context),
-				"select" => EvaluateSelectExpression(value, expr.EvalPattern!, context),
-				_ => throw new MessageEvaluationException($"Unknown eval type: {evalType}")
-			};
+				if (!IsNumeric(value))
+				{
+					throw new MessageEvaluationException("'if' requires a numeric value");
+				}
+
+				return EvaluateIfExpression(value, expr.EvalPattern!, context);
+			}
+
+			if (evalType == "plural")
+			{
+				if (!IsNumeric(value))
+				{
+					throw new MessageEvaluationException("'plural' requires a numeric value");
+				}
+
+				return EvaluatePluralExpression(value, expr.EvalPattern!, context);
+			}
+
+			if (evalType == "select")
+			{
+				if (value is not string)
+				{
+					throw new MessageEvaluationException("'select' requires a string value");
+				}
+
+				return EvaluateSelectExpression(value, expr.EvalPattern!, context);
+			}
+
+			throw new MessageEvaluationException($"EvalType '{evalType}' is not recognized");
 		}
 
 		private string EvaluateIfExpression(object? value, string pattern, EvaluationContext context)
@@ -137,29 +169,19 @@ namespace BMTP3.MessageFormatter.Core
 
 			bool conditionMet = EvaluateCondition(value, condition);
 			string selectedValue = conditionMet ? trueValue : falseValue;
-			if (selectedValue.Contains("${", StringComparison.Ordinal) || selectedValue.Contains("#{", StringComparison.Ordinal))
-			{
-				return EvaluateNestedPlaceholders(selectedValue, context);
-			}
-
-			return selectedValue;
+			return FinalizeEvalOutput(selectedValue, context);
 		}
 
 		private string EvaluatePluralExpression(object? value, string pattern, EvaluationContext context)
 		{
-			if (!(value is int || value is long || value is double || value is decimal))
-			{
-				throw new MessageEvaluationException("Plural expressions require numeric values");
-			}
-
 			double numValue = Convert.ToDouble(value);
-			List<string> rules = pattern.Split('|').Select(static r => r.Trim()).Where(static r => r.Length > 0).ToList();
+			List<string> rules = SplitTopLevel(pattern, '|');
 			string? fallbackValue = null;
 
 			for (int i = 0; i < rules.Count; i++)
 			{
 				string rule = rules[i];
-				int hashPos = rule.IndexOf('#');
+				int hashPos = IndexOfTopLevel(rule, '#');
 				if (hashPos < 0)
 				{
 					continue;
@@ -175,23 +197,13 @@ namespace BMTP3.MessageFormatter.Core
 
 				if (MatchesPluralRule(numValue, ruleType))
 				{
-					if (ruleValue.Contains("${", StringComparison.Ordinal) || ruleValue.Contains("#{", StringComparison.Ordinal))
-					{
-						return EvaluateNestedPlaceholders(ruleValue, context);
-					}
-
-					return ruleValue;
+					return FinalizeEvalOutput(ruleValue, context);
 				}
 			}
 
 			if (fallbackValue != null)
 			{
-				if (fallbackValue.Contains("${", StringComparison.Ordinal) || fallbackValue.Contains("#{", StringComparison.Ordinal))
-				{
-					return EvaluateNestedPlaceholders(fallbackValue, context);
-				}
-
-				return fallbackValue;
+				return FinalizeEvalOutput(fallbackValue, context);
 			}
 
 			throw new MessageEvaluationException($"No matching plural rule for value {numValue} and no fallback entry");
@@ -199,14 +211,14 @@ namespace BMTP3.MessageFormatter.Core
 
 		private string EvaluateSelectExpression(object? value, string pattern, EvaluationContext context)
 		{
-			string stringValue = value?.ToString() ?? string.Empty;
-			List<string> rules = pattern.Split('|').Select(static r => r.Trim()).Where(static r => r.Length > 0).ToList();
+			string stringValue = (string)value!;
+			List<string> rules = SplitTopLevel(pattern, '|');
 			string? fallbackValue = null;
 
 			for (int i = 0; i < rules.Count; i++)
 			{
 				string rule = rules[i];
-				int hashPos = rule.IndexOf('#');
+				int hashPos = IndexOfTopLevel(rule, '#');
 				if (hashPos < 0)
 				{
 					continue;
@@ -221,23 +233,13 @@ namespace BMTP3.MessageFormatter.Core
 
 				if (category == stringValue)
 				{
-					if (categoryValue.Contains("${", StringComparison.Ordinal) || categoryValue.Contains("#{", StringComparison.Ordinal))
-					{
-						return EvaluateNestedPlaceholders(categoryValue, context);
-					}
-
-					return categoryValue;
+					return FinalizeEvalOutput(categoryValue, context);
 				}
 			}
 
 			if (fallbackValue != null)
 			{
-				if (fallbackValue.Contains("${", StringComparison.Ordinal) || fallbackValue.Contains("#{", StringComparison.Ordinal))
-				{
-					return EvaluateNestedPlaceholders(fallbackValue, context);
-				}
-
-				return fallbackValue;
+				return FinalizeEvalOutput(fallbackValue, context);
 			}
 
 			throw new MessageEvaluationException($"No matching select rule for value '{stringValue}' and no fallback entry");
@@ -245,49 +247,51 @@ namespace BMTP3.MessageFormatter.Core
 
 		private bool EvaluateCondition(object? value, string condition)
 		{
+			double numericValue = Convert.ToDouble(value);
+
 			if (condition.StartsWith("eq", StringComparison.Ordinal))
 			{
-				int expected = int.Parse(condition[2..]);
-				return Convert.ToInt32(value) == expected;
+				double expected = double.Parse(condition[2..], System.Globalization.CultureInfo.InvariantCulture);
+				return numericValue == expected;
 			}
-			else if (condition.StartsWith("ne", StringComparison.Ordinal))
+			if (condition.StartsWith("ne", StringComparison.Ordinal))
 			{
-				int expected = int.Parse(condition[2..]);
-				return Convert.ToInt32(value) != expected;
+				double expected = double.Parse(condition[2..], System.Globalization.CultureInfo.InvariantCulture);
+				return numericValue != expected;
 			}
-			else if (condition.StartsWith("gte", StringComparison.Ordinal))
+			if (condition.StartsWith("gte", StringComparison.Ordinal))
 			{
-				int expected = int.Parse(condition[3..]);
-				return Convert.ToInt32(value) >= expected;
+				double expected = double.Parse(condition[3..], System.Globalization.CultureInfo.InvariantCulture);
+				return numericValue >= expected;
 			}
-			else if (condition.StartsWith("gt", StringComparison.Ordinal))
+			if (condition.StartsWith("gt", StringComparison.Ordinal))
 			{
-				int expected = int.Parse(condition[2..]);
-				return Convert.ToInt32(value) > expected;
+				double expected = double.Parse(condition[2..], System.Globalization.CultureInfo.InvariantCulture);
+				return numericValue > expected;
 			}
-			else if (condition.StartsWith("lte", StringComparison.Ordinal))
+			if (condition.StartsWith("lte", StringComparison.Ordinal))
 			{
-				int expected = int.Parse(condition[3..]);
-				return Convert.ToInt32(value) <= expected;
+				double expected = double.Parse(condition[3..], System.Globalization.CultureInfo.InvariantCulture);
+				return numericValue <= expected;
 			}
-			else if (condition.StartsWith("lt", StringComparison.Ordinal))
+			if (condition.StartsWith("lt", StringComparison.Ordinal))
 			{
-				int expected = int.Parse(condition[2..]);
-				return Convert.ToInt32(value) < expected;
+				double expected = double.Parse(condition[2..], System.Globalization.CultureInfo.InvariantCulture);
+				return numericValue < expected;
 			}
-			else if (condition.StartsWith("in(", StringComparison.Ordinal))
+			if (condition.StartsWith("in(", StringComparison.Ordinal))
 			{
 				int closePos = condition.LastIndexOf(')');
 				string listStr = condition[3..closePos];
-				int[] list = listStr.Split(',').Select(static x => int.Parse(x.Trim())).ToArray();
-				return list.Contains(Convert.ToInt32(value));
+				double[] list = listStr.Split(',').Select(static x => double.Parse(x.Trim(), System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+				return list.Contains(numericValue);
 			}
-			else if (condition.StartsWith("nin(", StringComparison.Ordinal))
+			if (condition.StartsWith("nin(", StringComparison.Ordinal))
 			{
 				int closePos = condition.LastIndexOf(')');
 				string listStr = condition[4..closePos];
-				int[] list = listStr.Split(',').Select(static x => int.Parse(x.Trim())).ToArray();
-				return !list.Contains(Convert.ToInt32(value));
+				double[] list = listStr.Split(',').Select(static x => double.Parse(x.Trim(), System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+				return !list.Contains(numericValue);
 			}
 
 			throw new MessageEvaluationException($"Unknown condition: {condition}");
@@ -346,6 +350,21 @@ namespace BMTP3.MessageFormatter.Core
 			}
 
 			return false;
+		}
+
+		private static bool IsNumeric(object? value)
+		{
+			return value is int || value is long || value is double || value is decimal || value is float || value is short || value is byte;
+		}
+
+		private string FinalizeEvalOutput(string value, EvaluationContext context)
+		{
+			if (value.Contains("${", StringComparison.Ordinal) || value.Contains("#{", StringComparison.Ordinal))
+			{
+				return EvaluateNestedPlaceholders(value, context);
+			}
+
+			return value.Replace("}}", "}", StringComparison.Ordinal).Replace("{{", "{", StringComparison.Ordinal);
 		}
 
 		private string EvaluateNestedPlaceholders(string text, EvaluationContext context)
@@ -421,6 +440,167 @@ namespace BMTP3.MessageFormatter.Core
 			}
 
 			return value.GetType().Name.ToLowerInvariant();
+		}
+
+		private static List<string> SplitTopLevel(string input, char separator)
+		{
+			List<string> parts = new();
+			StringBuilder current = new();
+			int nestedPlaceholderDepth = 0;
+
+			for (int i = 0; i < input.Length; i++)
+			{
+				char ch = input[i];
+
+				if ((ch == '$' || ch == '#') && i + 1 < input.Length && input[i + 1] == '{')
+				{
+					nestedPlaceholderDepth++;
+					current.Append(ch);
+					current.Append('{');
+					i++;
+					continue;
+				}
+
+				if (ch == '{' && i + 1 < input.Length && input[i + 1] == '{')
+				{
+					current.Append("{{");
+					i++;
+					continue;
+				}
+
+				if (ch == '}' && i + 1 < input.Length && input[i + 1] == '}')
+				{
+					current.Append("}}");
+					i++;
+					continue;
+				}
+
+				if (ch == '}' && nestedPlaceholderDepth > 0)
+				{
+					nestedPlaceholderDepth--;
+					current.Append(ch);
+					continue;
+				}
+
+				if (ch == separator && nestedPlaceholderDepth == 0)
+				{
+					string part = current.ToString().Trim();
+					if (part.Length > 0)
+					{
+						parts.Add(part);
+					}
+
+					current.Clear();
+					continue;
+				}
+
+				current.Append(ch);
+			}
+
+			string last = current.ToString().Trim();
+			if (last.Length > 0)
+			{
+				parts.Add(last);
+			}
+
+			return parts;
+		}
+
+		private static int IndexOfTopLevel(string input, char target)
+		{
+			int nestedPlaceholderDepth = 0;
+
+			for (int i = 0; i < input.Length; i++)
+			{
+				char ch = input[i];
+
+				if ((ch == '$' || ch == '#') && i + 1 < input.Length && input[i + 1] == '{')
+				{
+					nestedPlaceholderDepth++;
+					i++;
+					continue;
+				}
+
+				if (ch == '{' && i + 1 < input.Length && input[i + 1] == '{')
+				{
+					i++;
+					continue;
+				}
+
+				if (ch == '}' && i + 1 < input.Length && input[i + 1] == '}')
+				{
+					i++;
+					continue;
+				}
+
+				if (ch == '}' && nestedPlaceholderDepth > 0)
+				{
+					nestedPlaceholderDepth--;
+					continue;
+				}
+
+				if (ch == target && nestedPlaceholderDepth == 0)
+				{
+					return i;
+				}
+			}
+
+			return -1;
+		}
+
+		private static string ProtectNestedPlaceholders(string pattern, out Dictionary<string, string> placeholders)
+		{
+			placeholders = new Dictionary<string, string>();
+			StringBuilder sb = new();
+			int i = 0;
+			int index = 0;
+
+			while (i < pattern.Length)
+			{
+				if ((pattern[i] == '$' || pattern[i] == '#') && i + 1 < pattern.Length && pattern[i + 1] == '{')
+				{
+					int start = i;
+					i += 2;
+					int depth = 1;
+					while (i < pattern.Length && depth > 0)
+					{
+						if ((pattern[i] == '$' || pattern[i] == '#') && i + 1 < pattern.Length && pattern[i + 1] == '{')
+						{
+							depth++;
+							i += 2;
+							continue;
+						}
+
+						if (pattern[i] == '}')
+						{
+							depth--;
+						}
+
+						i++;
+					}
+
+					string placeholder = pattern[start..i];
+					string key = $"§PH{index++}§";
+					placeholders[key] = placeholder;
+					sb.Append(key);
+					continue;
+				}
+
+				sb.Append(pattern[i]);
+				i++;
+			}
+
+			return sb.ToString();
+		}
+
+		private static string RestoreProtectedPlaceholders(string value, Dictionary<string, string> placeholders)
+		{
+			foreach (KeyValuePair<string, string> pair in placeholders)
+			{
+				value = value.Replace(pair.Key, pair.Value, StringComparison.Ordinal);
+			}
+
+			return value;
 		}
 	}
 }

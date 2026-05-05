@@ -439,9 +439,11 @@ namespace BMTP3.MessageFormatter.Tests
 		}
 
 		[Fact]
-		public void Format_NumberPattern_WithZeroFormatting()
+		public void Format_NumberPattern_ZeroToEmpty()
 		{
-			// Number pattern zero formatting is simplified - removing this test
+			// Number pattern zero formatting follows framework behavior for pattern "0"
+			string result = _formatter.Format("${value, number : 0}", new Dictionary<string, object?> { { "value", 0 } });
+			Assert.Equal("0", result);
 		}
 
 		[Fact]
@@ -1054,7 +1056,7 @@ namespace BMTP3.MessageFormatter.Tests
 		[Fact]
 		public void Format_LongTemplate()
 		{
-			var args = new Dictionary<string, object?>();
+			Dictionary<string, object?> args = new();
 			for (int i = 0; i < 100; i++)
 				args[$"v{i}"] = i;
 			
@@ -1079,7 +1081,8 @@ namespace BMTP3.MessageFormatter.Tests
 		[Fact]
 		public void Format_UnbalancedBrace_Throws()
 		{
-			// Unclosed placeholders may be handled differently - removing test
+			Assert.Throws<MessageSyntaxException>(() =>
+				_formatter.Format("Hello ${name", new Dictionary<string, object?> { { "name", "John" } }));
 		}
 
 		[Fact]
@@ -1111,5 +1114,158 @@ namespace BMTP3.MessageFormatter.Tests
 		}
 
 		#endregion
+
+		[Fact]
+		public void Format_Plural_WithNestedPlaceholderContainingPipe_IsParsedCorrectly()
+		{
+			string result = _formatter.Format("${n § plural, 1 # ${txt} | other # fallback}",
+				new Dictionary<string, object?>
+				{
+					{ "n", 1 },
+					{ "txt", "A|B" }
+				});
+			Assert.Equal("A|B", result);
+		}
+
+		[Fact]
+		public void Format_Select_WithNestedPlaceholderContainingHash_IsParsedCorrectly()
+		{
+			string result = _formatter.Format("${kind § select, a # ${txt} | other # fallback}",
+				new Dictionary<string, object?>
+				{
+					{ "kind", "a" },
+					{ "txt", "X#Y" }
+				});
+			Assert.Equal("X#Y", result);
+		}
+
+		[Fact]
+		public void Format_Function_Unquoted_EscapedComma_IsSupported()
+		{
+			string result = _formatter.Format("${value.replace(hello\\, world, hi)}",
+				new Dictionary<string, object?> { { "value", "hello, world" } });
+			Assert.Equal("hi", result);
+		}
+
+		[Fact]
+		public void Format_Function_Unquoted_EscapedCloseParen_IsSupported()
+		{
+			string result = _formatter.Format("${value.replace(\\), !)}",
+				new Dictionary<string, object?> { { "value", ")" } });
+			Assert.Equal("!", result);
+		}
+
+		[Fact]
+		public void Format_Function_Unquoted_EscapedOpenParen_IsSupported()
+		{
+			string result = _formatter.Format("${value.replace(\\(, [)}",
+				new Dictionary<string, object?> { { "value", "(" } });
+			Assert.Equal("[", result);
+		}
+
+		[Fact]
+		public void Format_Function_Unquoted_EscapedOpenBrace_IsSupported()
+		{
+			string result = _formatter.Format("${value.replace(\\{, [)}",
+				new Dictionary<string, object?> { { "value", "{" } });
+			Assert.Equal("[", result);
+		}
+
+		[Fact]
+		public void Format_Function_Unquoted_EscapedCloseBrace_IsSupported()
+		{
+			string result = _formatter.Format("${value.replace(\\}, ])}",
+				new Dictionary<string, object?> { { "value", "}" } });
+			Assert.Equal("]", result);
+		}
+
+		[Fact]
+		public void Format_Function_Unquoted_EscapedBackslash_IsSupported()
+		{
+			string result = _formatter.Format("${value.replace(\\\\, /)}",
+				new Dictionary<string, object?> { { "value", "path\\to\\file" } });
+			Assert.Equal("path/to/file", result);
+		}
+
+		[Fact]
+		public void Format_Function_InvalidEscapeSequence_Throws()
+		{
+			Assert.Throws<MessageSyntaxException>(() =>
+				_formatter.Format("${value.replace(hello\\a, x)}", new Dictionary<string, object?> { { "value", "hello" } }));
+		}
+
+		[Fact]
+		public void Format_Function_QuotedArgumentMustEncloseEntireArgument_Throws_DoubleQuote()
+		{
+			Assert.Throws<MessageSyntaxException>(() =>
+				_formatter.Format("${value.replace(\"hello\" world, x)}", new Dictionary<string, object?> { { "value", "hello world" } }));
+		}
+
+		[Fact]
+		public void Format_Function_QuotedArgumentMustEncloseEntireArgument_Throws_SingleQuote()
+		{
+			Assert.Throws<MessageSyntaxException>(() =>
+				_formatter.Format("${value.replace('hello' world, x)}", new Dictionary<string, object?> { { "value", "hello world" } }));
+		}
+
+		[Fact]
+		public void Format_NestedPlaceholder_InPattern_IsEvaluated()
+		{
+			string result = _formatter.Format("${created, datetime : YYYY-MM-DD ${filename}}",
+				new Dictionary<string, object?>
+				{
+					{ "created", new DateTime(2025, 4, 17, 8, 5, 3) },
+					{ "filename", "photo.jpg" }
+				});
+			Assert.Equal("2025-04-17 photo.jpg", result);
+		}
+
+		[Fact]
+		public void Format_Eval_If_BraceEscape_IsApplied()
+		{
+			string result = _formatter.Format("${count § if, eq0 ? no {{files}} : has files}",
+				new Dictionary<string, object?> { { "count", 0 } });
+			Assert.Equal("no {files}", result);
+		}
+
+		[Fact]
+		public void Format_UnknownEvalType_ThrowsExpectedMessage()
+		{
+			MessageEvaluationException ex = Assert.Throws<MessageEvaluationException>(() =>
+				_formatter.Format("${count § unknown, something}", new Dictionary<string, object?> { { "count", 1 } }));
+			Assert.Equal("EvalType 'unknown' is not recognized", ex.Message);
+		}
+
+		[Fact]
+		public void Format_EvalIf_WithNonNumericValue_ThrowsExpectedMessage()
+		{
+			MessageEvaluationException ex = Assert.Throws<MessageEvaluationException>(() =>
+				_formatter.Format("${name § if, eq0 ? yes : no}", new Dictionary<string, object?> { { "name", "john" } }));
+			Assert.Equal("'if' requires a numeric value", ex.Message);
+		}
+
+		[Fact]
+		public void Format_EvalPlural_WithNonNumericValue_ThrowsExpectedMessage()
+		{
+			MessageEvaluationException ex = Assert.Throws<MessageEvaluationException>(() =>
+				_formatter.Format("${name § plural, 0 # zero | 1 # one | other # many}", new Dictionary<string, object?> { { "name", "john" } }));
+			Assert.Equal("'plural' requires a numeric value", ex.Message);
+		}
+
+		[Fact]
+		public void Format_EvalSelect_WithNonStringValue_ThrowsExpectedMessage()
+		{
+			MessageEvaluationException ex = Assert.Throws<MessageEvaluationException>(() =>
+				_formatter.Format("${count § select, 1 # one | 2 # two | other # many}", new Dictionary<string, object?> { { "count", 1 } }));
+			Assert.Equal("'select' requires a string value", ex.Message);
+		}
+
+		[Fact]
+		public void Format_Function_UnbalancedCloseParen_ThrowsExpectedMessage()
+		{
+			MessageSyntaxException ex = Assert.Throws<MessageSyntaxException>(() =>
+				_formatter.Format("${value.replace(hello, x}", new Dictionary<string, object?> { { "value", "hello" } }));
+			Assert.Equal("Unbalanced ')' in function arguments", ex.Message);
+		}
 	}
 }

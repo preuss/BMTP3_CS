@@ -167,17 +167,24 @@ namespace BMTP3.MessageFormatter.Core
 			{
 				Advance(); // consume comma
 
-				// FormatType
+				// FormatType is required after comma in format-expression context
 				formatType = Expect(TokenType.Identifier).Value;
 
-				// FormatStyle or CustomPattern
+				// FormatStyle
 				if (Current().Type == TokenType.Comma)
 				{
 					Advance(); // consume comma
 					formatStyle = Expect(TokenType.Identifier).Value;
 				}
-				else if (Current().Type == TokenType.Colon)
+
+				// CustomPattern
+				if (Current().Type == TokenType.Colon)
 				{
+					if (!string.IsNullOrWhiteSpace(formatStyle))
+					{
+						throw new MessageSyntaxException("FormatStyle and CustomPattern cannot be used together");
+					}
+
 					Advance(); // consume colon
 					customPattern = ReadUntilEnd();
 				}
@@ -211,6 +218,11 @@ namespace BMTP3.MessageFormatter.Core
 			expr.EvalPattern = ReadUntilEnd();
 
 			expr.ExpressionType = ExpressionType.Eval;
+
+			if (!string.IsNullOrWhiteSpace(expr.FormatType) || !string.IsNullOrWhiteSpace(expr.FormatStyle) || !string.IsNullOrWhiteSpace(expr.CustomPattern))
+			{
+				throw new MessageSyntaxException("Eval expression and Format expression cannot be used together");
+			}
 		}
 
 		private string ReadUntilEnd()

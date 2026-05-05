@@ -84,27 +84,40 @@ namespace BMTP3.MessageFormatter.Core
 			Expect('$');
 			Expect('{');
 
-			int placeholderStart = _pos;
 			int depth = 1;
 			StringBuilder content = new();
 
 			while (depth > 0 && !IsAtEnd())
 			{
-				if (Current() == '{' && Peek() == '{')
+				if (Current() == '\\' && (Peek() == '{' || Peek() == '}'))
 				{
-					// Escaped opening brace
 					content.Append(Current());
 					_pos++;
 					content.Append(Current());
 					_pos++;
 				}
-				else if (Current() == '}' && Peek() == '}')
+				else if (Current() == '{' && Peek() == '{')
 				{
-					// Escaped closing brace
 					content.Append(Current());
 					_pos++;
 					content.Append(Current());
 					_pos++;
+				}
+				else if (Current() == '}' && Peek() == '}' && depth == 1)
+				{
+					if (!HasClosingBraceAhead(_pos + 2))
+					{
+						content.Append('}');
+						_pos += 2;
+						depth--;
+					}
+					else
+					{
+						content.Append(Current());
+						_pos++;
+						content.Append(Current());
+						_pos++;
+					}
 				}
 				else if (Current() == '{')
 				{
@@ -125,6 +138,9 @@ namespace BMTP3.MessageFormatter.Core
 					_pos++;
 				}
 			}
+
+			if (depth != 0)
+				throw new MessageSyntaxException("Unbalanced '}' in expression", start, _input);
 
 			return new Token(TokenType.NamedPlaceholder, content.ToString(), start);
 		}
@@ -140,21 +156,35 @@ namespace BMTP3.MessageFormatter.Core
 
 			while (depth > 0 && !IsAtEnd())
 			{
-				if (Current() == '{' && Peek() == '{')
+				if (Current() == '\\' && (Peek() == '{' || Peek() == '}'))
 				{
-					// Escaped opening brace
 					content.Append(Current());
 					_pos++;
 					content.Append(Current());
 					_pos++;
 				}
-				else if (Current() == '}' && Peek() == '}')
+				else if (Current() == '{' && Peek() == '{')
 				{
-					// Escaped closing brace
 					content.Append(Current());
 					_pos++;
 					content.Append(Current());
 					_pos++;
+				}
+				else if (Current() == '}' && Peek() == '}' && depth == 1)
+				{
+					if (!HasClosingBraceAhead(_pos + 2))
+					{
+						content.Append('}');
+						_pos += 2;
+						depth--;
+					}
+					else
+					{
+						content.Append(Current());
+						_pos++;
+						content.Append(Current());
+						_pos++;
+					}
 				}
 				else if (Current() == '{')
 				{
@@ -176,7 +206,23 @@ namespace BMTP3.MessageFormatter.Core
 				}
 			}
 
+			if (depth != 0)
+				throw new MessageSyntaxException("Unbalanced '}' in expression", start, _input);
+
 			return new Token(TokenType.IndexedPlaceholder, content.ToString(), start);
+		}
+
+		private bool HasClosingBraceAhead(int fromIndex)
+		{
+			for (int i = fromIndex; i < _input.Length; i++)
+			{
+				if (_input[i] == '}')
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 
 		private char Current() => _pos < _input.Length ? _input[_pos] : '\0';
@@ -214,6 +260,8 @@ namespace BMTP3.MessageFormatter.Core
 			List<Token> tokens = new();
 			int loopCount = 0;
 			const int maxLoops = 10000;
+			bool inFunctionArguments = false;
+			bool expectingFunctionArgument = false;
 
 			SkipWhitespace();
 
@@ -223,64 +271,260 @@ namespace BMTP3.MessageFormatter.Core
 				SkipWhitespace();
 
 				if (IsAtEnd())
+				{
 					break;
+				}
+
+				if (inFunctionArguments && expectingFunctionArgument)
+				{
+					if (Current() == ')')
+					{
+						tokens.Add(new Token(TokenType.CloseParen, ")", _pos++));
+						inFunctionArguments = false;
+						expectingFunctionArgument = false;
+						continue;
+					}
+
+					tokens.Add(ReadFunctionArgumentToken());
+					expectingFunctionArgument = false;
+					continue;
+				}
 
 				char ch = Current();
 
 				if (char.IsLetter(ch) || ch == '_')
+				{
 					tokens.Add(ReadIdentifier());
+				}
 				else if (ch == '.')
+				{
 					tokens.Add(new Token(TokenType.Dot, ".", _pos++));
+				}
 				else if (ch == ',')
+				{
 					tokens.Add(new Token(TokenType.Comma, ",", _pos++));
+					if (inFunctionArguments)
+					{
+						expectingFunctionArgument = true;
+					}
+				}
 				else if (ch == ':')
+				{
 					tokens.Add(new Token(TokenType.Colon, ":", _pos++));
+				}
 				else if (ch == '|')
+				{
 					tokens.Add(new Token(TokenType.Pipe, "|", _pos++));
+				}
 				else if (ch == '/')
+				{
 					tokens.Add(new Token(TokenType.Slash, "/", _pos++));
+				}
 				else if (ch == '#')
+				{
 					tokens.Add(new Token(TokenType.Hash, "#", _pos++));
+				}
 				else if (ch == '(')
+				{
 					tokens.Add(new Token(TokenType.OpenParen, "(", _pos++));
+					inFunctionArguments = true;
+					expectingFunctionArgument = true;
+				}
 				else if (ch == ')')
+				{
 					tokens.Add(new Token(TokenType.CloseParen, ")", _pos++));
+					inFunctionArguments = false;
+					expectingFunctionArgument = false;
+				}
 				else if (ch == '{')
+				{
 					tokens.Add(new Token(TokenType.OpenBrace, "{", _pos++));
+				}
 				else if (ch == '}')
+				{
 					tokens.Add(new Token(TokenType.CloseBrace, "}", _pos++));
+				}
 				else if (ch == '[')
+				{
 					tokens.Add(new Token(TokenType.OpenBracket, "[", _pos++));
+				}
 				else if (ch == ']')
+				{
 					tokens.Add(new Token(TokenType.CloseBracket, "]", _pos++));
+				}
 				else if (ch == '?')
+				{
 					tokens.Add(new Token(TokenType.Question, "?", _pos++));
+				}
 				else if (ch == '"' || ch == '\'')
+				{
 					tokens.Add(ReadString());
+				}
 				else if (ch == '-')
 				{
 					if (_pos + 1 < _input.Length && char.IsDigit(_input[_pos + 1]))
+					{
 						tokens.Add(ReadNumber());
+					}
 					else
+					{
 						tokens.Add(new Token(TokenType.Dash, "-", _pos++));
+					}
 				}
 				else if (char.IsDigit(ch))
+				{
 					tokens.Add(ReadNumber());
+				}
 				else if (ch == '§' || ch == '¶')
+				{
 					tokens.Add(new Token(TokenType.EvalSeparator, ch.ToString(), _pos++));
+				}
 				else if (ch == ';')
+				{
 					tokens.Add(new Token(TokenType.Semicolon, ";", _pos++));
-				else if (ch == '$' || ch == '#')
+				}
+				else if (ch == '$')
+				{
 					tokens.Add(new Token(TokenType.Text, ch.ToString(), _pos++));
+				}
 				else
+				{
 					throw new MessageSyntaxException($"Unexpected character '{ch}'", _pos, _input);
+				}
 			}
 
 			if (loopCount >= maxLoops)
+			{
 				throw new Exception($"PlaceholderTokenizer infinite loop detected: loopCount={loopCount}, pos={_pos}, length={_input.Length}");
+			}
+
+			if (inFunctionArguments)
+			{
+				throw new MessageSyntaxException("Unbalanced ')' in function arguments", _pos, _input);
+			}
 
 			tokens.Add(new Token(TokenType.Eof, string.Empty, _pos));
 			return tokens;
+		}
+
+		private Token ReadFunctionArgumentToken()
+		{
+			if (Current() == '"' || Current() == '\'')
+			{
+				return ReadFunctionQuotedArgument();
+			}
+
+			return ReadFunctionUnquotedArgument();
+		}
+
+		private Token ReadFunctionUnquotedArgument()
+		{
+			int start = _pos;
+			StringBuilder sb = new();
+
+			while (!IsAtEnd())
+			{
+				char ch = Current();
+				if (ch == ',' || ch == ')')
+				{
+					break;
+				}
+
+				if (ch == '\\')
+				{
+					if (_pos + 1 >= _input.Length)
+					{
+						throw new MessageSyntaxException("Invalid escape sequence '\\'", _pos, _input);
+					}
+
+					char escaped = _input[_pos + 1];
+					if (escaped == '\\' || escaped == ',' || escaped == ')' || escaped == '"' || escaped == '\'' || escaped == '(' || escaped == '{' || escaped == '}')
+					{
+						sb.Append(escaped);
+						_pos += 2;
+						continue;
+					}
+
+					throw new MessageSyntaxException($"Invalid escape sequence '\\{escaped}'", _pos, _input);
+				}
+
+				if (ch == '(' || ch == '{' || ch == '}')
+				{
+					throw new MessageSyntaxException($"Invalid character '{ch}' in unquoted argument. Escape it with '\\{ch}'", _pos, _input);
+				}
+
+				sb.Append(ch);
+				_pos++;
+			}
+
+			string value = sb.ToString().Trim();
+			return new Token(TokenType.String, value, start);
+		}
+
+		private Token ReadFunctionQuotedArgument()
+		{
+			int start = _pos;
+			char quote = Current();
+			_pos++;
+			StringBuilder sb = new();
+
+			while (!IsAtEnd() && Current() != quote)
+			{
+				if (Current() == '\\')
+				{
+					if (_pos + 1 >= _input.Length)
+					{
+						throw new MessageSyntaxException("Unterminated string", start, _input);
+					}
+
+					char escaped = _input[_pos + 1];
+					if (escaped == '\\')
+					{
+						sb.Append('\\');
+						_pos += 2;
+						continue;
+					}
+
+					if (quote == '"' && escaped == '"')
+					{
+						sb.Append('"');
+						_pos += 2;
+						continue;
+					}
+
+					if (quote == '\'' && escaped == '\'')
+					{
+						sb.Append('\'');
+						_pos += 2;
+						continue;
+					}
+
+					throw new MessageSyntaxException($"Invalid escape sequence '\\{escaped}'", _pos, _input);
+				}
+
+				sb.Append(Current());
+				_pos++;
+			}
+
+			if (IsAtEnd())
+			{
+				throw new MessageSyntaxException("Unterminated string", start, _input);
+			}
+
+			_pos++; // consume closing quote
+
+			int checkPos = _pos;
+			while (checkPos < _input.Length && char.IsWhiteSpace(_input[checkPos]))
+			{
+				checkPos++;
+			}
+
+			if (checkPos < _input.Length && _input[checkPos] != ',' && _input[checkPos] != ')')
+			{
+				throw new MessageSyntaxException("quotes must enclose the entire argument", checkPos, _input);
+			}
+
+			return new Token(TokenType.String, sb.ToString(), start);
 		}
 
 		private Token ReadIdentifier()
@@ -346,7 +590,9 @@ namespace BMTP3.MessageFormatter.Core
 			}
 
 			if (IsAtEnd())
-				throw new MessageSyntaxException($"Unterminated string", start, _input);
+			{
+				throw new MessageSyntaxException("Unterminated string", start, _input);
+			}
 
 			_pos++; // consume closing quote
 
@@ -356,6 +602,12 @@ namespace BMTP3.MessageFormatter.Core
 		private char Current() => _pos < _input.Length ? _input[_pos] : '\0';
 		private char Peek() => _pos + 1 < _input.Length ? _input[_pos + 1] : '\0';
 		private bool IsAtEnd() => _pos >= _input.Length;
-		private void SkipWhitespace() { while (!IsAtEnd() && char.IsWhiteSpace(Current())) _pos++; }
+		private void SkipWhitespace()
+		{
+			while (!IsAtEnd() && char.IsWhiteSpace(Current()))
+			{
+				_pos++;
+			}
+		}
 	}
 }
