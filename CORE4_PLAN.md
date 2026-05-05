@@ -1810,7 +1810,526 @@ Re-hash alle files efter backup for at sikre integritet.
 
 ---
 
-## Implementation Strategy
+## Implementation Prioritization (Tier-Based)
+
+### Hvad betyder det?
+
+Vi har **MANGE** features og componenter i Core4. Men vi kan ikke lave alt på samme tid. **Prioritering betyder:**
+
+- **Tier 1 (FUNDAMENTAL):** Uden disse funktionerer backup IKKE. Blocking for MTP.
+- **Tier 2 (IMPORTANT):** Vigtig UX eller brugbar backup. Ikke blocking.
+- **Tier 3 (NICE-TO-HAVE):** Optimering og avanceret features.
+- **Tier 4 (LEAST IMPORTANT):** Performance-tuning, parallel execution, fancy stuff.
+
+**Vigtig filosofi:** Vi bygger fra **grundlaget op**, ikke fra **toppen ned**.
+
+---
+
+### TIER 1: FUNDAMENTAL (MUST HAVE)
+
+**Uden disse: INGEN BACKUP virker. Især MTP-support falder bort.**
+
+#### Engine Infrastructure
+- ✅ `IBackupEngine` interface - Entry point
+- ✅ `SequentialBackupEngine` implementation - Single-threaded, stable
+- ✅ `BackupEngine` abstract base - Orchestration
+- ✅ `ProgressTracker` - Thread-safe progress aggregation
+
+**Why:** Uden engine kan vi ikke orkestrere backup.
+
+#### Scanning
+- ✅ `IBackupScanner` interface
+- ✅ `FilesystemItemScanner` - Lokale filer
+- ✅ `MTPItemScanner` - **CRITICAL for MTP support**
+
+**Why:** Uden scanner kan vi ikke finde filer at backup'e.
+
+#### Transfer
+- ✅ `IFileTransfer` interface  
+- ✅ `FilesystemFileTransfer` - Kopier lokale filer
+- ✅ `MTPFileTransfer` - **CRITICAL for MTP support**
+
+**Why:** Uden transfer kan vi ikke kopiere filer.
+
+#### Data Models
+- ✅ `BackupPlan` record - Configuration
+- ✅ `IBackupItem` interface - Item flow
+- ✅ `BackupJobResult` record - Final result
+- ✅ `BackupProgress` record - Progress snapshot
+- ✅ `IBackupProgress` interface - Progress reporting
+- ✅ Error records: `BackupError`, `TransferResult`
+- ✅ Enums: `BackupPhase`, `BackupItemStatus`, `BackupErrorCode`
+
+**Why:** Uden data structures har vi intet at arbejde med.
+
+#### Sidecar Generation (MINIMAL)
+- ✅ `ISidecarGenerator` interface
+- ✅ `JsonSidecarGenerator` - Minimal sidecar for hver fil
+
+**Why:** Sidecar er critical for at kunne audit/verify backup senere. Uden det har vi ingen dokumentation.
+
+#### Dependency Injection
+- ✅ `ServiceCollectionExtensions.AddBMTP3Core4()` - DI setup
+- ✅ `BackupEngineFactory` - Engine selection (Sequential vs Parallel)
+
+**Why:** DI enables testability og flexibility.
+
+#### Error Handling
+- ✅ Graceful error handling - Log, mark failed, continue
+- ✅ Cancellation support - CancellationToken throughout
+
+**Why:** Robust backup som ikke crasher.
+
+#### Testing Infrastructure
+- ✅ Test implementations: `TestItemScanner`, `TestFileTransfer`
+
+**Why:** Uden tests kan vi ikke være sikre på stabilitet.
+
+**DELIVERABLE (Tier 1):**
+```
+✅ Core4 can backup from filesystem to output directory
+✅ Core4 can backup from MTP device to output directory
+✅ Sidecars generated for each file
+✅ Errors logged and handled gracefully
+✅ Progress reported correctly
+✅ 30+ unit tests passing
+✅ 20+ integration tests passing
+✅ CLI integration working
+```
+
+---
+
+### TIER 2: IMPORTANT (SHOULD HAVE)
+
+**Vigtige for brugbar backup, men backup virker uden dem. Implementer efter Tier 1.**
+
+#### Progress & Notifications
+- ✅ `IProgressNotifier` interface - Event-driven feedback
+- ✅ `SpectreProgressNotifier` - Spectre.Console integration
+- ✅ Enhanced IBackupProgress - Throughput (MB/s), ETA, ActiveWorkerCount
+
+**Why:** UX matters. Users need feedback about what's happening.
+
+#### Sidecar Enrichment
+- ✅ Enhanced sidecar generation - Add hashes, metadata, verification status later
+
+**Why:** Documentation of backup quality is important.
+
+#### Output Structure Options
+- ✅ `OutputStructure` enum - Flat vs Hierarchical
+- ✅ Relative path preservation - Keep folder structure
+
+**Why:** Users want to control output layout. Core3 lost directory structure (bug!).
+
+#### Collision Handling
+- ✅ `CollisionResolution` enum - Append/Replace/Skip on name conflicts
+- ✅ Name conflict resolution - Handle duplicate filenames
+
+**Why:** Real-world backups have filename collisions.
+
+#### Dry-Run Mode
+- ✅ `BackupPlan.DryRun` flag - Scan without transferring
+- ✅ Proper dry-run implementation - Don't actually copy files
+
+**Why:** Users want to preview backup before running it.
+
+#### Exit Strategies
+- ✅ `BackupPlan.StopOnError` flag - Stop on first error or continue?
+- ✅ `BackupPlan.SkipExisting` flag - Skip files that already exist?
+
+**Why:** Users need control over behavior.
+
+**DELIVERABLE (Tier 2):**
+```
+✅ Rich progress output with Spectre formatting
+✅ Sidecars enriched with all available metadata
+✅ Output structure control (Flat/Hierarchical)
+✅ Collision resolution strategies
+✅ Proper dry-run implementation
+✅ Configurable error handling strategies
+✅ 50+ integration tests passing
+✅ Konsoles integration with progress display
+```
+
+---
+
+### TIER 3: NICE-TO-HAVE (COULD HAVE)
+
+**Avanceret features som forbedrer backup, men prioritet efter Tier 1+2.**
+
+#### Hashing (SHA256, BLAKE3, etc.)
+- ✅ `IItemHasher` interface
+- ✅ `SHA256Hasher` - SHA256 hashing
+- ✅ Optional hash types - Multiple algorithms
+- ✅ Hash control - Enable/disable via `BackupPlan.HashTypes`
+
+**Why:** Integrity verification. Optional feature.
+
+**Cost:** 30-40% slower backup. Users can disable.
+
+#### Metadata Extraction
+- ✅ `IMetadataReader` interface
+- ✅ `ExifMetadataReader` - Extract EXIF from photos
+- ✅ `BasicMetadataReader` - File attributes only
+- ✅ Optional metadata - Enable/disable via `BackupPlan.ExtractMetadata`
+
+**Why:** Photo backup needs EXIF. Optional feature.
+
+#### Integrity Verification
+- ✅ `IIntegrityVerifier` interface
+- ✅ Compare hashes after transfer - Detect corruption
+
+**Why:** Verify backup quality. Optional feature.
+
+**Cost:** 50%+ slower backup. Users can disable.
+
+#### Timestamp Correction
+- ✅ `ITimestampCorrector` interface
+- ✅ Restore original timestamps from EXIF/attributes
+- ✅ Fix the "all files have today's date" problem
+
+**Why:** Photo/document backups need original dates. Optional feature.
+
+#### Limited Parallelism (Filesystem ONLY)
+- ✅ `LimitedParallelBackupEngine` - Parallel worker pool
+- ✅ Worker pool - N concurrent transfers (default: 4 workers)
+- ✅ Configurable parallelism - `BackupPlan.MaxDegreeOfParallelism`
+- ✅ Thread-safe progress aggregation
+
+**Why:** Filesystem backups are faster with parallelism. MTP stays sequential.
+
+**Important:** Parallel is NEVER used for MTP. Always sequential for device stability.
+
+#### Sidecar Enrichment Phases
+- ✅ Hashing phase - Add hashes to sidecar
+- ✅ Metadata extraction phase - Add extracted metadata
+- ✅ Verification phase - Add verification results
+- ✅ Timestamp correction phase - Record timestamp changes
+
+**Why:** Complete documentation of everything done.
+
+**DELIVERABLE (Tier 3):**
+```
+✅ Optional hashing (SHA256, BLAKE3, etc.)
+✅ Optional metadata extraction (EXIF)
+✅ Optional integrity verification
+✅ Optional timestamp correction
+✅ Sidecar enrichment with all features
+✅ Limited parallelism for filesystem (4 workers default)
+✅ Sequential always for MTP
+✅ 100+ integration tests passing
+```
+
+---
+
+### TIER 4: LEAST IMPORTANT (NICE-TO-HAVE+)
+
+**Performance tuning, fancy optimization. Implement LAST (eller skip hvis ikke tid).**
+
+#### Aggressive Parallelism Tuning
+- ⚠️ Worker pool sizing - Fine-tune beyond "default 4"
+- ⚠️ Queue buffer sizing - Optimize channel sizes
+- ⚠️ I/O batching - Combine small writes
+
+**Why:** Micro-optimization. Low ROI.
+
+**Note:** Core2 spent lots of time on this. Core4 philosophy: "Simple first, optimize later."
+
+#### Resume on Crash
+- ⚠️ `IBackupRepository` interface - Persist session state
+- ⚠️ Resume support - Continue where backup left off
+- ⚠️ Item tracking - Database of processed items
+
+**Why:** Nice-to-have. Most users just re-run backup.
+
+**Cost:** Adds persistence complexity. Core3 doesn't have it. Core2's implementation doesn't work properly.
+
+#### Advanced Features (Phase 2+)
+- ⚠️ Backup scheduling - "Backup every day at 22:00"
+- ⚠️ SQLite database of backups - Track all backup runs
+- ⚠️ Verify mode - Re-hash all files after backup
+- ⚠️ Incremental backup - Only copy changed files
+- ⚠️ Rate limiting - Limit backup speed to X MB/s
+
+**Why:** These are nice but not core to backup functionality.
+
+#### Full Parallelism Everywhere
+- ❌ **NOT recommended for MTP**
+- ❌ **NOT a goal for Core4**
+- ❌ Only use Sequential for MTP devices
+
+**Why:** Core2's biggest mistake. Parallel access to MTP devices causes random failures.
+
+**Core4 philosophy:** "Sequential for stability, Parallel for speed." Not "Parallel everywhere."
+
+#### GUI Implementation
+- ⚠️ WPF/WinForms UI
+- ⚠️ Real-time progress visualization
+
+**Why:** CLI-first. GUI comes later.
+
+**DELIVERABLE (Tier 4):**
+```
+⚠️ Fine-tuned parallel worker pool
+⚠️ Optional: Backup repository/resume support
+⚠️ Optional: Scheduling + database tracking
+⚠️ NOT: Full parallelism for MTP
+⚠️ NOT: GUI (Phase 2+)
+```
+
+---
+
+## Summary: Implementation Order
+
+**PHASE 1: Build Tier 1 (Core Backup)**
+- Goal: Stable, working backup (filesystem + MTP)
+- Time: 2-3 sprints
+- Deliverable: 50+ tests, CLI integration
+- When done: Users can backup, basic features work
+
+**PHASE 2: Build Tier 2 (Important Features)**
+- Goal: Rich UX, proper feature control
+- Time: 1-2 sprints
+- Deliverable: 100+ tests, Spectre integration
+- When done: Users love the experience
+
+**PHASE 3: Build Tier 3 (Advanced Features)**
+- Goal: Complete feature set (hashing, metadata, verification)
+- Time: 2-3 sprints
+- Deliverable: 150+ tests, all features optional
+- When done: Professional backup tool
+
+**PHASE 4+: Tier 4 & Polish**
+- Goal: Performance tuning, nice-to-haves
+- Time: Ongoing optimization
+- When done: Production-ready
+
+---
+
+## What Blocks What?
+
+**MTP Support Blockers:**
+- ❌ Can't backup MTP without: IBackupEngine, SequentialBackupEngine, MTPItemScanner, MTPFileTransfer
+- ❌ Parallel execution BREAKS MTP (use Sequential always)
+
+**Filesystem Support Blockers:**
+- ❌ Can't backup filesystem without: IBackupEngine, FilesystemItemScanner, FilesystemFileTransfer
+
+**Usable Backup Blockers:**
+- ❌ Can't have decent UX without: IProgressNotifier, Spectre integration
+- ❌ Can't audit backup without: Sidecars (minimal)
+
+**Optional (Non-Blocking):**
+- ✅ Hashing - Works without it (slower verification)
+- ✅ Metadata - Works without it (loses EXIF)
+- ✅ Verification - Works without it (no integrity check)
+- ✅ Timestamps - Works without it (files have today's date)
+- ✅ Parallelism - Works without it (single-threaded is slower but stable)
+- ✅ Resume - Works without it (manual re-run works)
+
+---
+
+## Decision Point for You
+
+**Two strategies:**
+
+**Strategy A: Build Minimum Viable Core (MVP)**
+- Implement Tier 1 + Tier 2 first
+- Get to working, usable backup ASAP
+- Add Tier 3 features incrementally
+- Result: Shippable product quickly
+
+**Strategy B: Build Everything at Once**
+- Implement all 4 tiers
+- Takes longer to get first version
+- But all features available from day 1
+- Result: Feature-complete from start
+
+**Recommendation:** Strategy A (MVP first). Build working core, then add features. Core2 failed because it tried everything at once and became too complex.
+
+---
+
+## Implementation Pyramid (Visual)
+
+```
+                          ┌─────────────────────┐
+                          │   TIER 4 (Least)    │
+                          │  Performance, GUI   │
+                          │     Resume, etc     │
+                          └─────────────────────┘
+                        ┌──────────────────────────┐
+                        │  TIER 3 (Nice-to-Have)   │
+                        │   Hash, Metadata, EXIF   │
+                        │  Verification, Parallel  │
+                        └──────────────────────────┘
+                      ┌────────────────────────────────┐
+                      │   TIER 2 (Important)           │
+                      │  Progress, Output Control      │
+                      │ Dry-Run, Error Strategies      │
+                      └────────────────────────────────┘
+                    ┌──────────────────────────────────────┐
+                    │   TIER 1 (Fundamental)               │
+                    │   MTP + FS Scanning & Transfer       │
+                    │   Sequential Engine + Sidecars       │
+                    │   Core DI + Error Handling + Tests   │
+                    └──────────────────────────────────────┘
+```
+
+**Build from bottom up, not top down.**
+
+---
+
+## Component Checklist by Tier
+
+### TIER 1: Fundamental (35 components)
+
+**Engine (3):**
+- [ ] IBackupEngine interface
+- [ ] BackupEngine abstract base
+- [ ] SequentialBackupEngine
+
+**Progress Tracking (1):**
+- [ ] ProgressTracker (thread-safe)
+
+**Scanning (3):**
+- [ ] IBackupScanner interface
+- [ ] FilesystemItemScanner
+- [ ] MTPItemScanner
+
+**Transfer (3):**
+- [ ] IFileTransfer interface
+- [ ] FilesystemFileTransfer
+- [ ] MTPFileTransfer
+
+**Data Models (7):**
+- [ ] BackupPlan record
+- [ ] IBackupItem interface
+- [ ] BackupJobResult record
+- [ ] BackupProgress record
+- [ ] IBackupProgress interface
+- [ ] BackupError record
+- [ ] TransferResult record
+
+**Enums (6):**
+- [ ] BackupPhase enum
+- [ ] BackupItemStatus enum
+- [ ] BackupJobStatus enum
+- [ ] BackupErrorCode enum
+- [ ] BackupOutputStructure enum
+- [ ] CollisionResolution enum
+
+**Sidecar (1):**
+- [ ] ISidecarGenerator interface
+- [ ] JsonSidecarGenerator
+
+**DI + Infrastructure (2):**
+- [ ] ServiceCollectionExtensions
+- [ ] BackupEngineFactory
+
+**Context Records (3):**
+- [ ] ScanContext
+- [ ] TransferContext
+- [ ] SidecarContext
+
+**Test Infrastructure (2):**
+- [ ] TestItemScanner
+- [ ] TestFileTransfer
+
+**Total Tier 1 Components:** 35
+
+**Estimated effort:** 10-15 days (experienced dev)
+
+---
+
+### TIER 2: Important (10 components)
+
+**Progress & Notifications (2):**
+- [ ] IProgressNotifier interface
+- [ ] SpectreProgressNotifier
+
+**Features (2):**
+- [ ] DryRun implementation
+- [ ] OutputStructure implementation
+
+**Sidecar Enrichment (3):**
+- [ ] Hashing phase integration
+- [ ] Metadata extraction phase
+- [ ] Verification phase integration
+
+**Support (3):**
+- [ ] ConsolesPrinter integration
+- [ ] Enhanced IBackupProgress (throughput, ETA)
+- [ ] Error strategy handling
+
+**Total Tier 2 Components:** 10
+
+**Estimated effort:** 5-8 days
+
+---
+
+### TIER 3: Nice-to-Have (12 components)
+
+**Hashing (2):**
+- [ ] IItemHasher interface
+- [ ] SHA256Hasher
+
+**Metadata (2):**
+- [ ] IMetadataReader interface
+- [ ] ExifMetadataReader
+
+**Verification (2):**
+- [ ] IIntegrityVerifier interface
+- [ ] IntegrityVerifier implementation
+
+**Timestamps (2):**
+- [ ] ITimestampCorrector interface
+- [ ] TimestampCorrector implementation
+
+**Parallelism (2):**
+- [ ] LimitedParallelBackupEngine
+- [ ] Worker pool + queue management
+
+**Sidecar (0 - already in Tier 1):**
+
+**Total Tier 3 Components:** 12
+
+**Estimated effort:** 8-12 days
+
+---
+
+### TIER 4: Least Important (5+ components)
+
+**Resume/Persistence (2):**
+- [ ] IBackupRepository interface
+- [ ] FileSystemRepository / SQLiteRepository
+
+**Logging Infrastructure (1):**
+- [ ] Structured logging integration
+
+**Performance Tuning (2+):**
+- [ ] Worker pool optimization
+- [ ] Buffer sizing tuning
+- [ ] I/O batching (optional)
+
+**Total Tier 4 Components:** 5+ (many optional)
+
+**Estimated effort:** 10+ days (ongoing)
+
+---
+
+## Summary Statistics
+
+| Tier | Components | Effort | Status | MTP Blocking |
+|------|-----------|--------|--------|-------------|
+| 1 | 35 | 10-15 days | Critical | ✅ YES |
+| 2 | 10 | 5-8 days | Important | ❌ No |
+| 3 | 12 | 8-12 days | Nice | ❌ No |
+| 4 | 5+ | 10+ days | Polish | ❌ No |
+| **TOTAL** | **62+** | **33-45 days** | | |
+
+---
+
+
 
 ### Hvad betyder "Implementation Strategy"?
 
@@ -1954,6 +2473,171 @@ Vi gør det **ikke** som at lave alt på én gang og håbe det virker.
 - Sidecar contains all backup metadata
 - Enable restore without re-reading source
 - Enable audit trail + forensics
+
+---
+
+## UI/Progress Strategy
+
+### Hvorfor er dette vigtig?
+
+Vi har gennemgået hvordan **Core** og **Core2** håndterer progress-rapportering til bruger:
+
+- **Core:** Gammel `ConsoleProgressBar` klasse - hårdkodet til Console, ikke testbar, basalt ASCII-bar
+- **Core2:** `IBackupProgress` interface - enkel, men minimalistisk (kun fase + tal)
+- **Core3:** Lidt bedre `IBackupProgress` - viser currentFile, men stadig ikke nok til moderne UI
+
+**Core4 skal gøre det LANGT bedre:**
+
+### Core4 Progress Revolution
+
+**Hvad Core4 tilføjer som Core2/Core3 mangler:**
+
+1. **Real-time throughput (MB/s)** - ikke bare "X files done"
+2. **ETA (Estimated Time Remaining)** - "5 minutes left"
+3. **Active worker count** - viser parallelisme
+4. **Phase transitions** - "Now in Verification phase"
+5. **File-level detail** - "Processing: vacation_photos/sunset.jpg (2.5 MB)"
+6. **Error events** - ikke bare final report
+7. **Spectre.Console integration** - rich colors, tables, progress bars
+
+### IBackupProgress: Enhanced vs Core2/Core3
+
+```
+Core2 IBackupProgress:
+  ✅ Phase
+  ✅ FilesDiscovered, FilesSucceeded, FilesFailed
+  ✅ PercentageComplete
+  ✅ ActiveFiles (liste)
+  ❌ Throughput
+  ❌ ETA
+  ❌ ActiveWorkerCount
+
+Core3 IBackupProgress:
+  ✅ Phase
+  ✅ CurrentFile, FilesProcessed/Total
+  ✅ BytesTransferred
+  ❌ Throughput calculation
+  ❌ ETA
+  ❌ Activefiles list
+  ❌ Directories traversed
+
+Core4 IBackupProgress (NEW):
+  ✅ Phase
+  ✅ FilesDiscovered, FilesSucceeded, FilesFailed
+  ✅ BytesProcessed (complete tracking)
+  ✅ CurrentFilePath (specific file detail)
+  ✅ PercentageComplete
+  ✅ BytesPerSecond (✨ NEW)
+  ✅ EstimatedTimeRemaining (✨ NEW)
+  ✅ ActiveWorkerCount (✨ NEW)
+  ✅ ElapsedTime (✨ NEW)
+```
+
+### IProgressNotifier: NEW Interface (Core4 Innovation)
+
+Core2/Core3 bruger **passive observation** via `IProgress<T>` callback - UI må selv dechifrer progress-objektet.
+
+Core4 tilføjer **active event notification** via `IProgressNotifier`:
+
+```csharp
+IProgressNotifier events:
+  • OnPhaseChanged(oldPhase, newPhase)
+    → "Switching from Transfer to Hashing..."
+  
+  • OnFileStarted(item)
+    → "Now processing: sunset.jpg (2.5 MB)"
+  
+  • OnFileCompleted(item, status)
+    → "✅ sunset.jpg copied"
+    → "❌ corrupted.jpg - Access Denied"
+  
+  • OnError(error)
+    → "⚠️ Disk Full - Only 50 MB free"
+    → Backup continues with remaining files
+  
+  • OnCompleted(result)
+    → Final report with summary
+```
+
+### Spectre.Console Integration (Konsoles Best Practice)
+
+Core4 skal være **UI-framework agnostic** men med **built-in Spectre support**:
+
+```csharp
+// Example: How Core4 reports progress in CLI
+Progress<IBackupProgress> progress = new(p =>
+{
+    // UI renders this however it wants
+    // With Spectre, this could be:
+    //   [Cyan]Phase:[/] Transfer
+    //   [Green]Progress:[/] [████████░] 80%
+    //   [Yellow]Speed:[/] 45.2 MB/s
+    //   [Blue]ETA:[/] 2 minutes 15 seconds
+    //   [Gray]Workers:[/] 4 active
+});
+
+IProgressNotifier notifier = new SpectreProgressNotifier(console);
+```
+
+### Konsoles Improvement Plan
+
+Current `ConsolesPrinter.PrintProgress()` fra Consoles:
+
+**Core2:**
+```csharp
+$"{progress.Phase}: discovered={progress.FilesDiscovered} 
+  succeeded={progress.FilesSucceeded} failed={progress.FilesFailed}"
+```
+→ Output: "Transfer: discovered=500 succeeded=450 failed=5"
+
+**Core3:**
+```csharp
+$"{progress.Phase}: file={progress.CurrentFile} 
+  processed={progress.FilesProcessed}/{progress.FilesTotal}"
+```
+→ Output: "Transfer: file=vacation.jpg processed=450/500"
+
+**Core4 (Proposed Spectre-based):**
+```csharp
+// Render in Spectre.Console with colors:
+// [Cyan]Phase:[/] [Green]Transfer[/]
+// [Yellow]Progress:[/] [████████░░] 80%
+// [Blue]Current:[/] vacation_photos/sunset.jpg (2.5 MB)
+// [Green]Speed:[/] 45.2 MB/s    [Magenta]ETA:[/] 2m 15s
+// [Cyan]Workers:[/] 4 active
+
+// Render error real-time:
+// [Red]❌ Error:[/] [Yellow]corrupted.jpg[/] - Access Denied
+// → Backup continues...
+```
+
+### Implementation Requirements for Phase 1
+
+**Core4 Progress MUST support:**
+
+1. ✅ `IBackupProgress` with throughput + ETA properties
+2. ✅ `IProgressNotifier` interface for events
+3. ✅ `ProgressTracker` that calculates throughput + ETA
+4. ✅ Integration point in `BackupEngine.RunAsync()`
+5. ✅ Spectre-compatible output from `ConsolesPrinter`
+
+**Not in Phase 1:**
+- GUI implementation (beyond Spectre CLI)
+- Real-time rendering with cursor control
+- Per-file progress bars
+
+**Phase 2+:**
+- Full Spectre tables with active files list
+- Per-file progress visualization
+- GUI implementation (WPF/WinForms)
+
+### Why This Matters
+
+1. **User Experience:** Progress gives confidence backup is working
+2. **Debugging:** Throughput + ETA help identify bottlenecks
+3. **Mobile/GUI:** Both can now consume IBackupProgress + IProgressNotifier events
+4. **Testing:** Events are testable (unlike Console output)
+5. **Logging:** Event-based reporting enables structured logging
 
 ---
 
