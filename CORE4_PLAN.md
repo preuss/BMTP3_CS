@@ -195,6 +195,85 @@ Under review af Core2 blev der fundet **5 kritiske threading-issues** som Core4 
 6. **Device management is tricky** - MTP sessions need explicit lifecycle management
 7. **Test with real devices** - Don't rely on mocks, test actual MTP stability
 
+### 🔍 13 Detailed Spidsfindigheder (Edge Cases & Design Quirks)
+
+Nedenfor er en lista af 13 specifikke problemer Core2 har, som Core4 skal undgå:
+
+**1. Multiple Writers to Bounded Channels (DEADLOCK RISK)**
+- Core2 creates channels with `SingleWriter=false`, men 4+ worker threads skriver samtidigt
+- Hvis kanalen er fuld → writers blocker
+- Hvis reader også blocker andre steder → circular deadlock
+- **Core4 Fix:** Enten enkelt writer per kanal ELLER helt undgå kanaler
+
+**2. ProgressTracker Race Condition (DATA CORRUPTION)**
+- ProgressTracker deles blandt alle worker threads
+- Ingen synchronization på läsninger/skrivninger
+- Resultat: Inkonsistent progress snapshots (f.eks. 150% done)
+- **Core4 Fix:** Thread-safe collections (ConcurrentDictionary) eller locks
+
+**3. MTP Session Lifecycle Fragile (DISCONNECT RISK)**
+- Session holdes åben kun til bufferingTask slutter
+- Hvis der er delay mellem buffering og senere brug af temp files → fejl
+- Hvis device unplugging under buffering → ingen explicit error handling
+- **Core4 Fix:** Explicit guards og timeout management
+
+**4. Manual Pipeline Dependency Tracking (DEBUGGING NIGHTMARE)**
+- 9 tasks, dependencies implicit via channels
+- Hvis én task hænger → hele pipeline hænger, men Task.WhenAll ser intet problem
+- Debugging requires understanding channel topology, ikke task graph
+- **Core4 Fix:** Simple sequential orchestration eller eksplicit dependency tracking
+
+**5. Generic Exception Handling (ERROR CONTEXT LOST)**
+- Exceptions converted to strings i GlobalErrors
+- Original exception context lost for downstream processing
+- **Core4 Fix:** Structured error logging med exception objects
+
+**6. Implicit Error Policies Per Stage (INCONSISTENT BEHAVIOR)**
+- Hvad hvis metadata extraction fejler? → implicitly skip og continue
+- Hvad hvis transfer fejler? → implicitly mark failed og continue
+- User kan ikke configure dette
+- **Core4 Fix:** Explicit ErrorStrategy enum per operation
+
+**7. DryRun Incomplete (WASTED RESOURCES)**
+- DryRun skips I/O persistence men KUN det
+- Stadig downloader fra MTP, computing 7 hashes, reading metadata
+- Resultat: DryRun næsten lige så langsomt som real run
+- **Core4 Fix:** Skip expensive operations når DryRun=true
+
+**8. Items Mutable Despite "Immutable" Design (CONFUSING API)**
+- Items documented som immutable flow
+- Men items er mutable references shared across pipeline
+- Downstream stages se modifications fra upstream stages
+- **Core4 Fix:** Document at items er mutable ELLER gør dem virkelig immutable
+
+**9. Redundant Result Fields (API CONFUSION)**
+- BackupJobResult has både GlobalErrors (List<string>) og GlobalError (string?)
+- Begge exists, unclear which is used when
+- **Core4 Fix:** Single GlobalError field eller List<string> GlobalErrors, not both
+
+**10. FileErrors vs FailedItems Confusion (INCONSISTENT POPULATION)**
+- FileErrors: List<string> descriptions
+- FailedItems: List<ErrorLog?> structured errors
+- Unclear when each is populated and by whom
+- **Core4 Fix:** Single structured error collection
+
+**11. Channel Capacity Tuning Mystery (OOM RISK)**
+- Alle channels default til capacity=128
+- Hvis file count er 10,000 OK; hvis hver file er 100MB → 12.8GB buffered, OOM
+- Configuration options exist but undocumented
+- **Core4 Fix:** Document capacity tuning eller make adaptive
+
+**12. Inconsistent Cancellation Patterns (MAINTENANCE BURDEN)**
+- Blandet brug af `ct.ThrowIfCancellationRequested()`, `catch(OperationCanceledException)`, `if(ct.IsCancellationRequested)`
+- Tre patterns i samme codebase er error-prone
+- **Core4 Fix:** Pick ONE pattern, use consistently everywhere
+
+**13. Resume Infrastructure Incomplete (FEATURE DOESN'T WORK)**
+- Session state saved til repository for resume support
+- Men ingen kode til faktisk at resume fra saved state
+- Hvis backup crashes → restart from scratch
+- **Core4 Fix:** Implement fully eller remove helt
+
 ---
 
 ## Executive Summary
@@ -274,31 +353,7 @@ Extended Pipeline (hvis aktivt):
 BackupJobResult (Output)
 ```
 
-### Overordnet Flow
 
-```
-BackupPlan (Input)
-    ↓
-[Source Detection] (MTP vs. Filesystem?)
-    ↓
-┌─────────────────────────────────────┐
-│   If MTP → Sequential Strategy      │
-│   If Filesystem → Limited Parallel   │
-└─────────────────────────────────────┘
-    ↓
-Core Pipeline:
-  1. ScanPhase → Enumerate items
-  2. TransferPhase → Copy files to output
-  3. GenerateSidecarPhase → Create metadata files
-    ↓
-Extended Pipeline (hvis aktivt):
-  4. GenerateHashesPhase → SHA256 per file
-  5. ExtractMetadataPhase → EXIF, tags, etc.
-  6. VerifyIntegrityPhase → Tjek hashes mod sidecar
-  7. CorrectTimestampsPhase → Gendan original timestamps
-    ↓
-BackupJobResult (Output)
-```
 
 ### Hvad er de forskellige faser?
 
@@ -364,7 +419,330 @@ Flere filer samtidigt. Hurtigere, men kontrolleret. Filesystem kan håndtere det
 
 ---
 
-## Komponenter & Ansvar (High-Level)
+---
+
+## Core4 API Specifications (Must-Have for Implementation)
+
+### Enumerations & Types
+
+**Source Type Detection:**
+```csharp
+public enum SourceType
+{
+    Filesystem,      // Local folder or network drive
+    MediaDevice      // MTP device (iPhone, Android, camera)
+}
+
+public enum BackupPhase
+{
+    NotStarted = 0,
+    Initializing = 1,
+    Scanning = 2,
+    Transferring = 3,
+    Hashing = 4,
+    MetadataExtraction = 5,
+    Verification = 6,
+    TimestampCorrection = 7,
+    Completed = 100,
+    Failed = 101,
+    Cancelled = 102
+}
+
+public enum BackupJobStatus
+{
+    NotStarted,
+    Running,
+    Completed,
+    PartialSuccess,  // Some files failed
+    Failed,
+    Cancelled
+}
+
+public enum ErrorHandlingStrategy
+{
+    StopOnError,     // Single error stops entire backup
+    SkipOnError,     // Skip failed item, continue
+    RetryOnError     // Retry N times before skipping
+}
+
+public enum BackupErrorCode
+{
+    // Scan errors (1000-1999)
+    ScanDirectoryNotFound = 1001,
+    ScanAccessDenied = 1002,
+    ScanPathInvalid = 1003,
+    ScanIOError = 1004,
+    
+    // Transfer errors (2000-2999)
+    TransferSourceNotFound = 2001,
+    TransferDestinationFull = 2002,
+    TransferAccessDenied = 2003,
+    TransferIOError = 2004,
+    TransferTimeout = 2005,
+    
+    // MTP-specific (3000-3999)
+    MTPDeviceNotFound = 3001,
+    MTPDeviceDisconnected = 3002,
+    MTPSessionTimeout = 3003,
+    MTPAuthenticationFailed = 3004,
+    
+    // System errors (9000+)
+    OutOfMemory = 9001,
+    DiskFull = 9002,
+    UserCancelled = 9003
+}
+```
+
+### Core Interfaces & Records
+
+**IBackupItem (What flows through pipeline):**
+```csharp
+public interface IBackupItem
+{
+    string Id { get; }                              // Unique ID within backup
+    string SourcePath { get; }                      // Original path
+    string RelativePath { get; }                    // Relative to source root
+    long Size { get; }                              // File size in bytes
+    DateTime ModifiedDate { get; }                  // Original modified time
+    Dictionary<string, object>? Metadata { get; }   // Dynamic metadata container
+    BackupItemStatus Status { get; set; }           // Processing status
+    List<BackupError>? Errors { get; }              // Per-item errors
+}
+
+public enum BackupItemStatus
+{
+    Pending,       // Discovered, awaiting transfer
+    Transferred,   // Successfully copied
+    Failed,        // Transfer/processing failed
+    Skipped,       // Intentionally skipped
+    Verified       // Post-transfer verification passed
+}
+
+public record BackupError(
+    BackupErrorCode Code,
+    string Message,
+    string? Details = null,
+    Exception? Exception = null
+);
+```
+
+**Contexts (Parameter objects for phases):**
+```csharp
+public record ScanContext(
+    string SourcePath,
+    bool Recursive,
+    List<string>? IncludePatterns,
+    List<string>? ExcludePatterns
+);
+
+public record TransferContext(
+    string OutputDirectory,
+    CollisionResolutionType CollisionResolution,
+    RenameStrategy? RenameStrategy
+);
+
+public record SidecarContext(
+    string OutputDirectory,
+    SidecarFormat Format = SidecarFormat.Json,
+    bool IncludeHashes = false,
+    bool IncludeMetadata = false,
+    bool IncludeVerification = false
+);
+
+public enum SidecarFormat { Json, Xml }
+public enum CollisionResolutionType { Skip, Rename, Overwrite, Error }
+public enum RenameStrategy { Increment, Timestamp, Guid }
+```
+
+**BackupProgress (Progress snapshot):**
+```csharp
+public record BackupProgress(
+    // Scanning metrics
+    int DirectoriesScanned,
+    int FilesDiscovered,
+    long BytesTotal,
+    
+    // Processing metrics
+    int FilesProcessed,
+    int FilesSucceeded,
+    int FilesFailed,
+    int FilesSkipped,
+    long BytesProcessed,
+    
+    // Current work
+    string? CurrentFilePath,
+    long CurrentFileBytes,
+    long CurrentFileBytesProcessed,
+    
+    // Calculated metrics
+    double PercentageComplete => 
+        FilesDiscovered > 0 ? (double)FilesProcessed / FilesDiscovered * 100 : 0,
+    double BytesPerSecond => 
+        ElapsedMs > 0 ? (BytesProcessed * 1000) / ElapsedMs : 0,
+    TimeSpan EstimatedTimeRemaining =>
+        BytesPerSecond > 0 ? TimeSpan.FromSeconds((BytesTotal - BytesProcessed) / BytesPerSecond) : TimeSpan.Zero,
+    
+    // Status
+    BackupPhase CurrentPhase,
+    long ElapsedMs
+);
+```
+
+**BackupJobResult (Final output):**
+```csharp
+public record BackupJobResult(
+    bool Success,
+    BackupJobStatus Status,
+    string JobName,
+    DateTime StartTime,
+    DateTime EndTime,
+    
+    // Statistics
+    int TotalFilesScanned,
+    int FilesSucceeded,
+    int FilesFailed,
+    int FilesSkipped,
+    long TotalBytesScanned,
+    long TotalBytesTransferred,
+    
+    // Errors
+    List<string>? GlobalErrors,              // Fatal errors
+    Dictionary<string, List<string>>? FileErrors,  // Per-file errors
+    
+    // Completion
+    double PercentageComplete,
+    double AvgTransferSpeedMBps,
+    BackupPhase FinalPhase
+)
+{
+    public TimeSpan Duration => EndTime - StartTime;
+    public bool IsPartialSuccess => FilesSucceeded > 0 && FilesFailed > 0;
+}
+```
+
+### DryRun Behavior Specification
+
+```
+DryRun Mode Details:
+
+Operation                  | Executes? | Notes
+──────────────────────────────────────────────────────────
+File scanning              | YES       | User must know scope
+Directory enumeration      | YES       | Need to find files
+File size calculation      | YES       | For progress/warnings
+Directory structure create | SIMULATED | Logged but not created
+File transfer              | NO        | Don't modify user filesystem
+Sidecar creation           | SIMULATED | Logged but not written
+Hash computation           | NO        | Expensive, no point
+Metadata extraction        | NO        | Expensive, no point
+Verification               | NO        | No transferred files
+Database persistence       | NO        | Don't save state
+
+Result: User sees "Would backup 500 files, 2.5 GB" without I/O
+Benefits: Verify settings before real backup, estimate time/storage
+```
+
+### Error Handling Strategy
+
+```
+Error Policy Per Phase:
+
+┌─ Scan Phase
+│  ├─ Directory not found → Log warning, skip directory
+│  ├─ Permission denied → Log warning, skip directory
+│  └─ Action: Continue scanning remaining directories
+│
+├─ Transfer Phase
+│  ├─ Source file deleted → Log error, mark failed, continue
+│  ├─ Destination disk full → Log error, mark failed, continue
+│  ├─ Permission denied → Log error, mark failed, continue
+│  └─ Action: Mark item failed, continue with next file
+│
+├─ Optional Phases (Hashing, Metadata, Verification)
+│  ├─ Timeout → Log warning, skip enhancement
+│  ├─ Parse error → Log warning, skip enhancement
+│  └─ Action: Continue, item still usable
+│
+└─ Engine Level
+   ├─ On any critical error → Return BackupJobStatus.Failed
+   ├─ On per-file errors → Return BackupJobStatus.PartialSuccess
+   └─ On user cancel → Return BackupJobStatus.Cancelled
+
+Collection:
+├─ GlobalErrors: List<string> - Fatal errors stopping backup
+├─ FileErrors: Dictionary<itemId, List<string>> - Per-file errors
+└─ Detailed logging via ILogger<T>
+```
+
+### MTP Session Lifecycle
+
+```
+MTP Device Management:
+
+OpenSession(plan)
+  ├─ Verify device connected (timeout: 30 sec)
+  ├─ Authenticate if needed
+  ├─ Validate device accessible
+  └─ Return IMtpDeviceSession
+
+ScanPhase:
+  ├─ Keep session alive (periodic keep-alive ping)
+  ├─ Enumerate device contents
+  └─ On disconnect: Log error, abort scan
+
+TransferPhase:
+  ├─ Open file handle on device
+  ├─ Stream content to temp file
+  ├─ On MTP timeout: Retry with exponential backoff (3 attempts)
+  └─ On device disconnect: Abort item, mark failed, continue
+
+CloseSession():
+  ├─ Disconnect gracefully
+  ├─ Cleanup temp files
+  └─ Finally block ensures cleanup on any error
+
+Timeout Strategy:
+├─ Per-operation timeout: 60 seconds (configurable)
+├─ Session keep-alive: Every 30 seconds
+└─ Retry: 3 attempts with 1s, 2s, 4s backoff
+```
+
+### Parallelism Strategy (Limited Parallel)
+
+```
+Thread Pool Configuration (Filesystem only):
+
+MaxWorkers = Math.Min(4, Environment.ProcessorCount / 2)
+QueueDepthLimit = 50                      // Backpressure control
+TransferBufferSize = 1 MB                 // Chunk size
+ProgressUpdateInterval = 500 ms           // How often to report
+
+Pipeline Stages (Worker Threads):
+├─ Scanner (1 thread) → produces items
+├─ Transferor (N threads) → reads from TransferQueue
+├─ SidecarGenerator (N threads) → reads items, creates sidecars
+├─ [Optional] Hasher (N threads) → computes hashes
+├─ [Optional] Metadata (N threads) → extracts metadata
+└─ [Optional] Verifier (N threads) → checks integrity
+
+Synchronization:
+├─ Queue<IBackupItem> for thread-safe handoff
+├─ SemaphoreSlim(maxWorkers) to limit active threads
+└─ ConcurrentDictionary for progress (thread-safe)
+
+Deadlock Prevention:
+├─ No circular dependencies between stages
+├─ Unbounded queues (not bounded channels like Core2)
+├─ Timeout on queue operations (prevents hanging)
+└─ All stages have explicit error handling
+
+Backpressure:
+├─ If TransferQueue > 50 items, Scanner waits
+├─ Prevents buffering large files in memory
+└─ Balances producer/consumer speed
+```
+
+---
 
 ### Oversigt: Hvad der skal laves
 
@@ -1687,14 +2065,259 @@ BMTP3.Core4/
 
 ---
 
+---
+
+## Cancellation & Thread-Safety Patterns (CONSISTENT)
+
+### Cancellation Pattern (Use This Everywhere)
+
+```csharp
+// ✅ CORRECT PATTERN - Use consistently
+public async Task SomeOperationAsync(CancellationToken ct)
+{
+    try
+    {
+        while (hasMoreWork)
+        {
+            ct.ThrowIfCancellationRequested();  // Check at loop start
+            
+            var result = await DoWorkAsync(ct);  // Pass ct to async calls
+            ProcessResult(result);
+        }
+    }
+    catch (OperationCanceledException)
+    {
+        // Only catch at outer level
+        // Log cancellation if needed
+        throw;  // Re-throw to propagate
+    }
+    finally
+    {
+        // Cleanup happens here, not in catch
+        CleanupResources();
+    }
+}
+
+// ❌ AVOID - Inconsistent patterns
+// - ct.IsCancellationRequested without throw
+// - catch(OperationCanceledException) in inner methods
+// - Not checking ct in loops
+```
+
+### Thread-Safety Rules (LIMITED PARALLEL)
+
+```
+1. NO shared mutable state across threads
+   ├─ Each thread processes its own item
+   └─ No global variables/caches without locks
+
+2. Progress tracking is thread-safe
+   ├─ Use ConcurrentDictionary<string, object>
+   ├─ OR use lock(syncObject) for small critical sections
+   └─ Never use += on shared int without synchronization
+
+3. Queue operations are atomic
+   ├─ Queue<T>.Enqueue/Dequeue are thread-safe
+   └─ Use Queue, not List, for multi-threaded access
+
+4. Logging is thread-safe
+   ├─ ILogger<T> is thread-safe (use it)
+   └─ Don't share StreamWriter without locks
+
+5. Resource cleanup
+   ├─ Each thread manages its own streams/handles
+   ├─ Dispose in try/finally or using statement
+   └─ Don't share file handles across threads
+```
+
+### Logging Strategy
+
+```
+Logging Configuration:
+
+Logger: ILogger<T> (Microsoft.Extensions.Logging)
+
+Log Levels:
+├─ DEBUG: Detailed activity per file
+│  └─ "Scanning file: C:\Pictures\vacation.jpg (2.5 MB)"
+│  └─ "Transferring vacation.jpg to D:\Backup"
+│  └─ "Generated sidecar for vacation.jpg"
+│
+├─ INFO: Phase transitions + milestones
+│  └─ "Scan complete: Found 500 files, 2.5 GB total"
+│  └─ "Transfer phase started"
+│  └─ "Transfer phase complete: 450 succeeded, 50 skipped"
+│
+├─ WARNING: Recoverable errors
+│  └─ "Skipping C:\System Volume Information (Access Denied)"
+│  └─ "Hash computation timeout for large_file.bin, skipping"
+│
+└─ ERROR: Failures
+   └─ "Transfer failed for vacation.jpg: Disk full"
+   └─ "Device disconnected during transfer"
+
+Structured Properties (every log includes):
+├─ ItemId: "img_1234"
+├─ Phase: BackupPhase.Transferring
+├─ ElapsedMs: 1500
+├─ ErrorCode: BackupErrorCode.TransferIOError (if error)
+```
+
+---
+
+## Constraints, Assumptions & Limitations
+
+### Environment Constraints
+
+```
+Target Framework:
+├─ .NET 8.0 minimum (.net8.0-windows)
+├─ Windows only (MTP/WPD support)
+└─ Visual Studio 2022 or dotnet CLI
+
+External Dependencies:
+├─ MediaDevices.dll (for MTP)
+├─ System.Text.Json (built-in)
+└─ Microsoft.Extensions.* (built-in)
+```
+
+### Filesystem Constraints
+
+```
+Path Handling:
+├─ Max path length: 260 characters (Windows limitation)
+└─ Longer paths require Windows API workaround or network paths
+
+File Locking:
+├─ During transfer: Source file read-locked
+├─ Destination: Write-locked until transfer complete
+└─ Cannot transfer file while it's open/modified
+
+Directory Handling:
+├─ Recursive enumeration follows all subdirectories
+├─ Symbolic links: Ignored (not followed)
+└─ Junction points: Ignored (not followed)
+
+Permissions:
+├─ Source must be readable
+├─ Destination parent must be writable
+└─ If access denied → skip with warning
+```
+
+### MTP Constraints
+
+```
+Device Limitations:
+├─ Single device per backup (multi-device in Phase 3+)
+├─ Device must stay connected during entire backup
+├─ Device must have sufficient free space for temp
+└─ Some devices require authentication
+
+Stability:
+├─ Parallel access causes device disconnects/corruption
+├─ Must use Sequential strategy for MTP
+└─ Timeout: Device may go to sleep after 60 sec idle
+
+Content Limitations:
+├─ MTP exposes limited hierarchy (varies by device)
+├─ Some files may be system-protected
+└─ EXIF data only available on image files
+```
+
+### Performance Expectations
+
+```
+Transfer Speed:
+├─ Filesystem → Filesystem: 100+ MB/s (SSD to SSD)
+├─ Filesystem → USB external: 30-50 MB/s
+├─ MTP (iPhone): 10-20 MB/s
+└─ MTP (Android): 5-15 MB/s
+
+Scaling:
+├─ Scanning 10,000 files: ~2 seconds
+├─ Transferring 10,000 small files: 2-3 minutes
+├─ Computing SHA256 for 10,000 files: 1-2 minutes
+└─ Large files (1+ GB): Linear time (no optimization)
+
+Memory:
+├─ Base engine: ~20-30 MB
+├─ Per item in progress: ~1-2 MB
+├─ With 50-item queue: ~50-100 MB additional
+└─ Total for 10,000 item backup: ~200-300 MB
+
+Disk:
+├─ Temp staging (MTP): Requires download to disk first
+├─ Sidecars: ~1 KB per file
+└─ For 10,000 files: ~10 MB sidecar overhead
+```
+
+### Phase 1 Limitations (Intentional)
+
+```
+NOT Implemented (saved for Phase 2+):
+├─ ❌ Hash computation (optional anyway)
+├─ ❌ EXIF metadata extraction
+├─ ❌ Timestamp correction
+├─ ❌ Parallel transfer (Sequential only)
+├─ ❌ MTP device support (Filesystem only)
+├─ ❌ Incremental/delta backup
+├─ ❌ Compression
+├─ ❌ Encryption
+└─ ❌ Bandwidth throttling
+
+These are intentionally deferred to keep Phase 1 scope small and testable.
+```
+
+### Testing Limitations
+
+```
+Unit Testing:
+├─ Scanner: Test with in-memory test doubles
+├─ Transfer: Use temp directories (never real I/O in unit tests)
+├─ Sidecar: Serialize/deserialize, compare JSON
+└─ Progress: Mock IProgress<T>
+
+Integration Testing:
+├─ Use temp directories for all tests
+├─ Create test files dynamically
+├─ Clean up after each test
+└─ No real device testing in Phase 1 (will add Phase 3)
+
+Performance Testing:
+├─ Measure transfer speed with various file sizes
+├─ Measure parallelism speedup
+└─ Profile memory usage
+```
+
+---
+
 ## Afsluttende Notater
 
 Core4 er designet til at være:
-- **Simple nok** til at vedligehold
-- **Fleksibel nok** til at udvide
-- **Robust nok** til production
-- **Testbar nok** til høj test-coverage
+- **Simple nok** til at vedligehold (single-threaded first)
+- **Fleksibel nok** til at udvide (DI + interfaces everywhere)
+- **Robust nok** til production (error handling + testing)
+- **Testbar nok** til høj test-coverage (100+ integration tests)
 
-Start med Fase 1 (Core engine), få det virket, så udvid i Fase 2+.
+### Key Principles (Apply Always)
 
-SUCCESS = Fungerende, vedligeholdt, udvidbar backup engine. 🎯
+1. **Explicit over implicit** - Every decision is documented, no magic
+2. **Fail gracefully** - Log errors, return partial success, don't crash
+3. **Cancellable** - Every async operation respects CancellationToken
+4. **Testable** - All components mockable, clear responsibilities
+5. **Observable** - Logging + progress reporting + detailed results
+6. **Immutable data** - Items flow through pipeline unchanged (new objects)
+
+### Starting Out
+
+Start with **Fase 1 (Core Engine)**:
+1. Get filesystem scanning working
+2. Get file transfer working
+3. Generate minimal sidecars
+4. Handle errors gracefully
+5. Report progress
+6. Write 50+ integration tests
+
+Once Fase 1 passes all tests and integrates with CLI, you have a **working backup engine**. Then expand in Fase 2 & 3.
+
+SUCCESS = **Fungerende, vedligeholdt, udvidbar backup engine.** 🎯
