@@ -861,7 +861,7 @@ A scanner returns an "async enumerable" - this means you can get files one-by-on
 - Return device-path, size, device-timestamps
 - Handle device-disconnect gracefully
 
-**MemoryItemScanner**: Test double
+**MemoryItemScanner**: Test fake
 - Used in unit-tests
 - Return hardcoded test-data
 - No I/O, super fast
@@ -919,7 +919,7 @@ Returns a TransferResult containing:
 - Move temp to final location
 - Handle device-disconnect
 
-**TestFileTransfer**: Test double
+**TestFileTransfer**: Test fake
 - Fake copying without I/O
 - Return predictable results
 
@@ -1068,7 +1068,7 @@ Returns a HashResult with:
 - Feed to SHA256
 - Return hex-string
 
-**TestHasher**: Test double
+**TestHasher**: Test fake
 - Return predictable hashes
 - No I/O
 
@@ -2563,7 +2563,7 @@ These are intentionally deferred to keep Phase 1 scope small and testable.
 
 ```
 Unit Testing:
-├─ Scanner: Test with in-memory test doubles
+├─ Scanner: Test with in-memory test fakes
 ├─ Transfer: Use temp directories (never real I/O in unit tests)
 ├─ Sidecar: Serialize/deserialize, compare JSON
 └─ Progress: Mock IProgress<T>

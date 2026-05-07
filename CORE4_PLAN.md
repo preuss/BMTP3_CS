@@ -865,7 +865,7 @@ En scanner returnerer en "async enumerable" - det betyder du kan få filerne en-
 - Return device-path, size, device-timestamps
 - Handle device-disconnect gracefully
 
-**`MemoryItemScanner`**: Test double
+**`MemoryItemScanner`**: Test fake
 - Bruges i unit-tests
 - Return hardkodet test-data
 - Ingen I/O, super hurtig
@@ -950,7 +950,7 @@ Returnerer en `TransferResult` der indeholder:
 - Move temp til final location
 - Handle device-disconnect
 
-**`TestFileTransfer`**: Test double
+**`TestFileTransfer`**: Test fake
 - Fake kopiering uden I/O
 - Return predictable results
 
@@ -1076,7 +1076,7 @@ Task<SidecarContent> GenerateAsync(
 - Mere verbose, men nogle foretrækker XML
 - Samme information som JSON
 
-**`TestSidecarGenerator`**: Test double
+**`TestSidecarGenerator`**: Test fake
 - Return dummy sidecar
 - Ingen I/O
 
@@ -1149,7 +1149,7 @@ Returnerer en `HashResult` med:
 - Feeds til SHA256
 - Return hex-string
 
-**`TestHasher`**: Test double
+**`TestHasher`**: Test fake
 - Return predictable hashes
 - Ingen I/O
 
@@ -2956,7 +2956,7 @@ These are intentionally deferred to keep Phase 1 scope small and testable.
 
 ```
 Unit Testing:
-├─ Scanner: Test with in-memory test doubles
+├─ Scanner: Test with in-memory test fakes
 ├─ Transfer: Use temp directories (never real I/O in unit tests)
 ├─ Sidecar: Serialize/deserialize, compare JSON
 └─ Progress: Mock IProgress<T>

@@ -993,7 +993,7 @@ public interface ISidecarGenerator
 **Who implements:**
 - `JsonSidecarGenerator` - JSON format
 - `XmlSidecarGenerator` - XML format
-- `TestSidecarGenerator` - Test double
+- `TestSidecarGenerator` - Test fakes
 
 **Who uses:** IBackupEngine, optional feature phases
 
@@ -1373,7 +1373,7 @@ public record SidecarContext(
 **Usage:**
 - Each pipeline stage receives and passes context forward
 - Carries configuration, tools, progress tracker
-- Enables testing by injecting test doubles
+- Enables testing by injecting test fakes
 
 ---
 
@@ -2135,7 +2135,7 @@ async Task<bool> GenerateAsync(
 **Transfer Classes (3):**
 1. `FilesystemFileTransfer` - Filesystem copy
 2. `MTPFileTransfer` - Device copy
-3. `TestFileTransfer` - Test double
+3. `TestFileTransfer` - Test fake
 
 **Feature Classes (5):**
 1. `SHA256Hasher` - File hashing
