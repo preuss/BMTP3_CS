@@ -4,36 +4,93 @@ using BMTP3.Core4.Models.Enums;
 namespace BMTP3.Core4.Engine.State;
 
 /// <summary>
-/// Represents the internal runtime state of a single backup execution.
-/// This state is the single source of truth for what the backup engine
-/// knows about the current session.
+/// Represents the internal in-memory state of a single backup session.
+/// The state owns the known backup items and is the source of truth
+/// for what the engine knows about the session.
 /// </summary>
 internal sealed class BackupSessionState
 {
-	public BackupSessionState(BackupPlan plan)
+	private readonly List<BackupItem> items = new();
+
+	public BackupSessionState(string sessionId, string sourceIdentity)
 	{
-		Plan = plan ?? throw new ArgumentNullException(nameof(plan));
+		if(string.IsNullOrWhiteSpace(sessionId))
+		{
+			throw new ArgumentException("Session id is required.", nameof(sessionId));
+		}
+
+		if(string.IsNullOrWhiteSpace(sourceIdentity))
+		{
+			throw new ArgumentException("Source identity is required.", nameof(sourceIdentity));
+		}
+
+		SessionId = sessionId;
+		SourceIdentity = sourceIdentity;
 		Phase = BackupPhase.Starting;
 	}
 
 	/// <summary>
-	/// The immutable backup plan for this session.
+	/// Unique identifier for this backup session.
 	/// </summary>
-	public BackupPlan Plan { get; }
+	public string SessionId { get; }
+
+	/// <summary>
+	/// Identity of the source this session state belongs to.
+	/// </summary>
+	public string SourceIdentity { get; }
 
 	/// <summary>
 	/// The current high-level phase of the backup job.
 	/// </summary>
-	public BackupPhase Phase { get; set; }
+	public BackupPhase Phase { get; private set; }
 
 	/// <summary>
 	/// All items known to the backup session.
-	/// This collection represents the complete scope of the backup.
 	/// </summary>
-	public IList<BackupItem> Items { get; } = new List<BackupItem>();
+	public IReadOnlyList<BackupItem> Items => items;
 
 	/// <summary>
 	/// Optional terminal failure reason if the backup ends in Failed state.
 	/// </summary>
-	public BackupErrorCode? FailureReason { get; set; }
+	public BackupErrorCode? FailureReason { get; private set; }
+
+	public void SetPhase(BackupPhase phase)
+	{
+		Phase = phase;
+	}
+
+	public void Fail(BackupErrorCode failureReason)
+	{
+		Phase = BackupPhase.Failed;
+		FailureReason = failureReason;
+	}
+
+	public void Cancel()
+	{
+		Phase = BackupPhase.Cancelled;
+		FailureReason = null;
+	}
+
+	public void Complete()
+	{
+		Phase = BackupPhase.Completed;
+		FailureReason = null;
+	}
+
+	public void AddItem(BackupItem item)
+	{
+		ArgumentNullException.ThrowIfNull(item);
+
+		if(items.Any(existing => existing.Id == item.Id))
+		{
+			throw new InvalidOperationException($"A backup item with id '{item.Id}' already exists.");
+		}
+
+		items.Add(item);
+	}
+
+	public IEnumerable<BackupItem> GetPendingItems()
+	{
+		return items.Where(item => item.Status == BackupItemStatus.Pending);
+	}
 }
