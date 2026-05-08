@@ -3,44 +3,43 @@
 namespace BMTP3.Core4.Models;
 
 /// <summary>
-/// Represents an internal Core4 model describing a single item
-/// participating in a backup job.
+/// Represents a single item known to a backup session.
 /// </summary>
-internal interface IBackupItem
+internal sealed class BackupItem
 {
 	/// <summary>
-	/// Unique identifier for this item within the current backup job.
+	/// Unique identifier for this item within the backup session.
 	/// </summary>
-	string Id { get; }
+	public string Id { get; init; } = string.Empty;
 
 	/// <summary>
 	/// The original source path of the item.
 	/// </summary>
-	string SourcePath { get; }
+	public string SourcePath { get; init; } = string.Empty;
 
 	/// <summary>
 	/// The path of the item relative to the configured backup source.
 	/// </summary>
-	string RelativePath { get; }
+	public string RelativePath { get; init; } = string.Empty;
 
 	/// <summary>
 	/// The resolved destination path for this item.
 	/// Null until the destination path has been determined.
 	/// </summary>
-	string? DestinationPath { get; set; }
+	public string? DestinationPath { get; set; }
 
 	/// <summary>
 	/// The size of the item in bytes, if known.
 	/// </summary>
-	long? SizeBytes { get; }
+	public long? SizeBytes { get; init; }
 
 	/// <summary>
 	/// The original last modified timestamp of the item, if known.
 	/// </summary>
-	DateTimeOffset? ModifiedAt { get; }
+	public DateTimeOffset? ModifiedAt { get; init; }
 
 	/// <summary>
-	/// The current processing status of the item.
+	/// The current backup status of the item.
 	/// </summary>
-	BackupItemStatus Status { get; set; }
+	public BackupItemStatus Status { get; set; } = BackupItemStatus.Pending;
 }
