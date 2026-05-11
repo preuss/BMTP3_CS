@@ -1,5 +1,6 @@
 # Copilot instructions for BMTP3_CS_KI_Edition
 
+
 This repo is a Windows-focused .NET 8 solution for backing up media from devices (MTP/PTP) and drives (MSC), with a CLI front-end and two co-existing core implementations.
 
 > **DO NOT EDIT `BMTP3.Core`**
@@ -7,6 +8,13 @@ This repo is a Windows-focused .NET 8 solution for backing up media from devices
 > `BMTP3.Core` is the **legacy/original** implementation (it used to contain both CLI + backup logic).
 > It is **not used anymore** and should **not be fixed or extended**.
 > Treat it as **reference/inspiration only**. New work belongs in `BMTP3.Consoles` (CLI) and/or `BMTP3.Core2` (engine).
+
+## How to interact
+Newer talk about breath.
+Newer talk about vejret.
+Always speak danish to me.
+Code is english.
+Code comments is english.
 
 ## Build, test (and run) commands
 
