@@ -1,904 +1,1609 @@
 # Core4 – Skeleton Implementation TODO
-## Detaljeret fil-for-fil guide til en udvikler
+## Detaljeret fil-for-fil guide til en (begynder) udvikler
 
-Dette dokument er en præcis, handlingsrettet liste over hvad der skal implementeres i Core4.
-Hvert punkt angiver: fil, formål, hvad der MÅ gøres, og hvilke fejl fra Core/Core2/Core3 der fixes.
+> **Hvad er dette dokument?**
+> En præcis, handlingsrettet liste over HVAD der skal implementeres, HVORFOR det er nødvendigt,
+> og HVORDAN det hænger sammen. Hvert punkt angiver fil, formål, signatur og specifikke regler.
+>
+> **Baseret på:** CORE4_PLAN_en.md, CORE4_ARCHITECTURE_en.md, CORE3_PLAN.md,
+> CORE_LEARNING.md, CORE2_LEARNING.md, CORE3_LEARNING.md, CORE4_LEARNING.md
 
-**Konventioner:**
+---
+
+## LÆSEVEJLEDNING FOR BEGYNDERE
+
+### Hvad betyder de forskellige symboler?
 - `[ ]` = Ikke startet
-- `[x]` = Implementeret
-- `[~]` = Delvist/skeleton oprettet (mangler krop)
-- ⚠️ = Kritisk rettelse fra tidligere Core (ikke glem dette)
-- 🚫 = Eksplicit forbud (lær fra Core2-fejl)
+- `[x]` = Fuldt implementeret
+- `[~]` = Skeleton oprettet, men kroppen mangler
+- ⚠️ = Kritisk rettelse fra Core3-bug eller Core2-fejl — MÅ implementeres korrekt
+- 🚫 = Eksplicit forbud — lær af Core2's fejl
+- 💡 = Begynder-tip — forklaring af "hvorfor"
 
----
+### Hvad er arkitekturen kort fortalt?
 
-## STATUS PÅ NUVÆRENDE KODEBASE
-
-Følgende filer eksisterer allerede og er **fuldstændigt implementerede** (behøver ikke røres):
-
-- `Models/Enums/BackupPhase.cs` ✅
-- `Models/Enums/BackupItemStatus.cs` ✅
-- `Models/Enums/BackupErrorCode.cs` ✅
-- `Models/Enums/BackupSourceType.cs` ✅
-- `Models/Enums/CollisionStreategy.cs` ✅ *(note: filnavn har stavefejl – se TODO nedenfor)*
-- `Models/Enums/OutputStructure.cs` ✅
-- `Models/BackupPlan.cs` ✅
-- `Models/BackupItem.cs` ✅ *(men se mangler nedenfor)*
-- `Models/BackupResult.cs` ✅
-- `Api/IBackupEngine.cs` ✅
-- `Api/IBackupProgress.cs` ✅
-- `Api/IFileProgress.cs` ✅
-- `Scanner/IBackupScanner.cs` ✅
-- `Helpers/Guard.cs` ✅
-- `Engine/Validation/BackupPlanValidator.cs` ✅
-- `Engine/Validation/BackupPlanValidationException.cs` ✅ *(antages komplet)*
-- `Engine/State/BackupSessionState.cs` ✅
-- `Engine/State/BackupSessionStateKey.cs` ✅
-- `Engine/State/BackupSessionStateKeyFactory.cs` ✅
-- `Engine/State/IBackupSessionStateStore.cs` ✅
-- `Engine/State/InMemoryBackupSessionStateStore.cs` ✅
-
-Følgende filer eksisterer men er **tomme skeletons** (skal implementeres):
-
-- `Engine/BackupEngine.cs` `[~]`
-- `Engine/Sequential/SequentialBackupEngine.cs` `[~]`
-- `Engine/LimitedParallel/LimitedParallelBackupEngine.cs` `[~]`
-- `Engine/Parallel/ParallelBackupEngine.cs` `[~]`
-- `Engine/State/BackupSessionStore.cs` `[~]`
-- `BMTP3.Core4.Tests/Fakes/FakeBackupScanner.cs` `[~]`
-- `BMTP3.Core4.Tests/Fakes/FakeFileTransfer.cs` `[~]`
-- `BMTP3.Core4.Tests/Fakes/FakeSidecarGenerator.cs` `[~]`
-
-Følgende filer skal **oprettes fra bunden**:
-
-*(Se TODO-listerne nedenfor)*
-
----
-
-## TIER 1 – FUNDAMENTALS (Start her. MTP er blokeret indtil dette er færdigt.)
-
-### A. MANGLER & RETTELSER I EKSISTERENDE FILER
-
----
-
-#### `[ ]` Models/Enums/CollisionStreategy.cs → Overvej omdøb til `CollisionStrategy.cs`
-- Filnavn har stavefejl (`Streategy` i stedet for `Strategy`)
-- Enum hedder allerede `CollisionStrategy` korrekt
-- Beslut: rename filen eller lad det stå – vælg konsekvent og opdater alle referencer
-
----
-
-#### `[ ]` Models/BackupItem.cs – Tilføj manglende felter
-Nuværende `BackupItem` mangler felter til at understøtte pipeline-berigelse.
-Tilføj følgende properties (se `IBackupItem` i CORE4_ARCHITECTURE_en.md):
 ```
-public List<BackupError>? Errors { get; set; }
-public TransferResult? TransferResult { get; set; }
-public Dictionary<string, string>? Hashes { get; set; }
-public ExtractedMetadata? ExtractedMetadata { get; set; }
-public VerificationResult? VerificationResult { get; set; }
+BackupPlan (input fra bruger)
+    ↓
+BackupEngineFactory (vælger strategi)
+    ↓                    ↓
+SequentialBackupEngine   LimitedParallelBackupEngine
+(MTP-enheder)            (Filsystem ONLY)
+    ↓
+Scan → Transfer → GenerateSidecar → [Hash] → [Metadata] → [Verify] → [Timestamps]
+    ↓
+BackupJobResult (output til bruger)
 ```
-⚠️ `BackupItem` er intern klasse – disse er interne enrichment-felter. Ikke eksponér dem offentligt.
+
+### Hvad er lagene?
+
+```
+Api/              → Interfaces og kontrakter (hvad der SKAL ske)
+Models/           → Dataobjekter (BackupPlan, BackupItem, osv.)
+Scanner/          → Finder filer i kilde (FilesystemItemScanner, MtpItemScanner)
+Transfer/         → Kopierer filer til destination
+Sidecar/          → Opretter metadata-filer ved siden af de kopierede filer
+Hashing/          → Beregner fil-fingeraftryk (SHA256 osv.) – valgfrit
+Metadata/         → Læser EXIF og filattributter – valgfrit
+Verification/     → Bekræfter at filer er kopieret korrekt – valgfrit
+Timestamps/       → Gendanner originale timestamps – valgfrit
+Engine/           → Orkestrerer hele flowet
+Progress/         → Sporer fremskridt thread-safe
+DependencyInjection/ → Registrerer alle services
+```
 
 ---
 
-#### `[ ]` Api/IBackupProgress.cs – Tilføj manglende properties
-Nuværende `IBackupProgress` mangler:
+## NUVÆRENDE STATUS
+
+### Fuldt implementerede filer (rør ikke ved dem)
+
+| Fil | Status |
+|-----|--------|
+| `Models/Enums/BackupItemStatus.cs` | ✅ Komplet |
+| `Models/Enums/CollisionStreategy.cs` | ✅ Komplet *(stavefejl i filnavn – se TODO A1)* |
+| `Models/Enums/OutputStructure.cs` | ✅ Komplet |
+| `Models/BackupItem.cs` | ✅ Delvist *(se TODO A3 – mangler felter)* |
+| `Api/IFileProgress.cs` | ✅ Komplet |
+| `Scanner/IBackupScanner.cs` | ✅ Komplet |
+| `Helpers/Guard.cs` | ✅ Komplet |
+| `Engine/Validation/BackupPlanValidator.cs` | ✅ Komplet |
+| `Engine/Validation/BackupPlanValidationException.cs` | ✅ Antages komplet |
+| `Engine/State/BackupSessionState.cs` | ✅ Komplet |
+| `Engine/State/BackupSessionStateKey.cs` | ✅ Komplet |
+| `Engine/State/BackupSessionStateKeyFactory.cs` | ✅ Komplet |
+| `Engine/State/IBackupSessionStateStore.cs` | ✅ Komplet |
+| `Engine/State/InMemoryBackupSessionStateStore.cs` | ✅ Komplet |
+
+### Tomme skeletons (skal implementeres)
+
+| Fil | Status |
+|-----|--------|
+| `Api/IBackupEngine.cs` | ✅ Interface OK, men returntype er `BackupResult` → skal være `BackupJobResult` |
+| `Api/IBackupProgress.cs` | ✅ Delvist – mangler beregnede properties |
+| `Models/BackupPlan.cs` | ✅ Delvist – bruger `Source` (ét felt) i stedet for `SourceDirectory?` + `DeviceId?` |
+| `Models/BackupResult.cs` | ✅ Delvist – mangler felter, bør omdøbes |
+| `Models/Enums/BackupPhase.cs` | ✅ Delvist – mangler faser |
+| `Models/Enums/BackupErrorCode.cs` | ✅ Delvist – mangler numeriske koder |
+| `Engine/BackupEngine.cs` | `[~]` Har kun kommentarer – ingen implementering |
+| `Engine/Sequential/SequentialBackupEngine.cs` | `[~]` Scan-loop OK, resten mangler |
+| `Engine/LimitedParallel/LimitedParallelBackupEngine.cs` | `[~]` Tom klasse |
+| `Engine/Parallel/ParallelBackupEngine.cs` | `[~]` Tom – sandsynligvis ikke nødvendig, se TODO |
+| `Engine/State/BackupSessionStore.cs` | `[~]` Tom – sandsynligvis ikke nødvendig |
+| `Tests/Fakes/FakeBackupScanner.cs` | `[~]` Tom |
+| `Tests/Fakes/FakeFileTransfer.cs` | `[~]` Tom |
+| `Tests/Fakes/FakeSidecarGenerator.cs` | `[~]` Tom |
+
+---
+
+## SEKTION A: RETTELSER I EKSISTERENDE FILER
+
+---
+
+### `[ ]` A1 – Rename `Models/Enums/CollisionStreategy.cs`
+**Hvad:** Filnavn har stavefejl (`Streategy` i stedet for `Strategy`).
+**Enum-navnet** er korrekt (`CollisionStrategy`). Kun filnavnet er forkert.
+**Handling:** Beslut om du vil rename filen eller lade det stå. Vigtigst: vær konsekvent.
+*Tip: I Visual Studio kan du rename via højreklik → Rename.*
+
+---
+
+### `[ ]` A2 – Opdatér `Models/Enums/BackupPhase.cs`
+**Hvad:** Mangler faser som arkitekturddokumentet kræver.
+
+Nuværende:
 ```
+Starting, Scanning, Transferring, Completed, Cancelled, Failed
+```
+
+Skal være (fra CORE4_PLAN_en.md):
+```csharp
+public enum BackupPhase
+{
+    NotStarted = 0,
+    Initializing = 1,
+    Scanning = 2,
+    Transferring = 3,
+    GeneratingSidecars = 4,      // NY – sidecar-fasen er separat
+    Hashing = 5,                 // NY – valgfri hash-fase
+    MetadataExtraction = 6,      // NY – valgfri metadata-fase
+    Verification = 7,            // NY – valgfri verify-fase
+    TimestampCorrection = 8,     // NY – valgfri timestamp-fase
+    Completed = 100,
+    Failed = 101,
+    Cancelled = 102
+}
+```
+💡 *Numeriske værdier (100/101/102) bruges, fordi Completed/Failed/Cancelled er "terminal states" – nemmere at sortere og vise i UI.*
+
+---
+
+### `[ ]` A3 – Opdatér `Models/Enums/BackupErrorCode.cs`
+**Hvad:** Mangler numeriske koder og flere fejltyper.
+
+Nuværende koder mangler: specifik kategorisering og numeriske ranges.
+
+Skal inkludere (fra CORE4_PLAN_en.md):
+```csharp
+public enum BackupErrorCode
+{
+    // Konfiguration (0-999)
+    InvalidConfiguration = 100,
+    SourceAndDestinationSame = 101,
+
+    // Scan-fejl (1000-1999)
+    ScanDirectoryNotFound = 1001,
+    ScanAccessDenied = 1002,
+    ScanPathInvalid = 1003,
+    ScanIOError = 1004,
+
+    // Transfer-fejl (2000-2999)
+    TransferSourceNotFound = 2001,
+    TransferDestinationFull = 2002,
+    TransferAccessDenied = 2003,
+    TransferIOError = 2004,
+    TransferTimeout = 2005,
+
+    // MTP-specifik (3000-3999)
+    MTPDeviceNotFound = 3001,
+    MTPDeviceDisconnected = 3002,
+    MTPSessionTimeout = 3003,
+    MTPAuthenticationFailed = 3004,
+
+    // Feature-fejl (4000-4999)
+    HashComputationFailed = 4001,
+    MetadataExtractionFailed = 4002,
+    VerificationFailed = 4003,
+    TimestampCorrectionFailed = 4004,
+
+    // System (9000+)
+    OutOfMemory = 9001,
+    DiskFull = 9002,
+    UserCancelled = 9003,
+    Unknown = 9999
+}
+```
+💡 *Numeriske ranges gør det nemt for en bruger/log at se "det er en MTP-fejl" bare ved at kigge på tallet.*
+
+---
+
+### `[ ]` A4 – Opdatér `Models/BackupPlan.cs`
+**Hvad:** Bruger ét `Source`-felt, men arkitekturen kræver separate felter for filsystem vs. MTP-enhed. `BackupEngineFactory` bruger `DeviceId` til at vælge engine.
+
+Udskift:
+```csharp
+public BackupSourceType SourceType { get; init; }
+public string Source { get; init; } = string.Empty;
+```
+
+Med:
+```csharp
+// Kilde – præcis ÉT af disse er udfyldt
+public string? SourceDirectory { get; init; }   // F.eks. "C:\Fotos"
+public string? DeviceId { get; init; }           // F.eks. "iPhone (12345)"
+
+// Afledt kildetype (beregnet fra ovenstående)
+public BackupSourceType SourceType =>
+    DeviceId != null ? BackupSourceType.MediaDevice : BackupSourceType.FileSystem;
+```
+
+Tilføj desuden manglende felter:
+```csharp
+// Fejlhåndteringsstrategi
+public ErrorHandlingStrategy TransferErrorStrategy { get; init; } = ErrorHandlingStrategy.SkipOnError;
+public ErrorHandlingStrategy FeatureErrorStrategy { get; init; } = ErrorHandlingStrategy.SkipOnError;
+
+// Timeout
+public TimeSpan OperationTimeout { get; init; } = TimeSpan.FromSeconds(60);
+
+// Sidecar format
+public SidecarFormat SidecarFormat { get; init; } = SidecarFormat.Json;
+```
+
+⚠️ `BackupEngineFactory` afhænger af `DeviceId != null` til at vælge `SequentialBackupEngine`.
+
+---
+
+### `[ ]` A5 – Opdatér `Models/BackupResult.cs` → omdøb til `BackupJobResult`
+**Hvad:** Arkitekturen kalder den `BackupJobResult`. Nuværende `BackupResult` mangler adskillige felter.
+
+Tilføj/omdøb til:
+```csharp
+public sealed record BackupJobResult
+{
+    // Identifikation
+    public string BackupId { get; init; } = Guid.NewGuid().ToString("N");
+    public string JobName { get; init; } = string.Empty;
+
+    // Status
+    public BackupJobStatus Status { get; init; }          // NY
+    public BackupPhase FinalPhase { get; init; }
+    public BackupErrorCode? FailureReason { get; init; }
+
+    // Tid
+    public DateTime StartTime { get; init; }               // NY
+    public DateTime EndTime { get; init; }                 // NY
+    public TimeSpan Duration => EndTime - StartTime;       // Beregnet
+
+    // Scanning
+    public int DirectoriesScanned { get; init; }
+    public int FilesDiscovered { get; init; }
+    public long BytesTotal { get; init; }
+
+    // Behandling
+    public int FilesProcessed { get; init; }
+    public int FilesSucceeded { get; init; }
+    public int FilesSkipped { get; init; }
+    public int FilesFailed { get; init; }
+    public long BytesProcessed { get; init; }
+
+    // Fejl
+    public IReadOnlyList<BackupError> Errors { get; init; } = [];  // NY
+
+    // Performance
+    public double AvgTransferSpeedMBps { get; init; }      // NY
+
+    // Afledte
+    public bool IsSuccess => Status == BackupJobStatus.Completed;
+    public bool IsPartialSuccess => FilesSucceeded > 0 && FilesFailed > 0;
+}
+```
+
+---
+
+### `[ ]` A6 – Opdatér `Api/IBackupEngine.cs`
+**Hvad:** Returntype bruger `BackupResult` – skal bruge `BackupJobResult`.
+
+```csharp
+Task<BackupJobResult> RunAsync(
+    BackupPlan plan,
+    IProgress<IBackupProgress>? progress,
+    CancellationToken cancellationToken);
+```
+
+---
+
+### `[ ]` A7 – Opdatér `Api/IBackupProgress.cs`
+**Hvad:** Mangler beregnede properties og nuværende fil-detaljer.
+
+Tilføj til interfacet:
+```csharp
+// Nuværende fil (til visning)
 string? CurrentFilePath { get; }
 long CurrentFileBytes { get; }
 long CurrentFileBytesProcessed { get; }
+
+// Timing
 long ElapsedMilliseconds { get; }
+
+// Beregnede metrics (implementeres i BackupProgress-recorden)
 double PercentageComplete { get; }
 double BytesPerSecond { get; }
 TimeSpan EstimatedTimeRemaining { get; }
 ```
-⚠️ FIX fra Core3 Bug #4: `BytesProcessed` er defineret men ikke implementeret i Core3 – her SKAL alle disse properties faktisk implementeres i `BackupProgress`-recorden.
+
+⚠️ FIX fra Core3 Bug #4: BytesTransferred var defineret men ikke implementeret i Core3. Her SKAL alle disse properties implementeres rigtigt.
 
 ---
 
-#### `[ ]` Models/BackupResult.cs – Overvej rename til BackupJobResult
-Arkitekturdokumentet kalder den `BackupJobResult`. Nuværende `BackupResult` mangler:
+### `[ ]` A8 – Opdatér `Models/BackupItem.cs`
+**Hvad:** Mangler felter til pipeline-berigelse (resultater fra transfer, hashing, metadata osv.)
+
+Tilføj:
+```csharp
+// Fejl samlet op undervejs
+public List<BackupError>? Errors { get; set; }
+
+// Resultater fra hvert pipeline-trin
+public TransferResult? TransferResult { get; set; }
+public Dictionary<string, string>? Hashes { get; set; }     // algortime → hex-streng
+public ExtractedMetadata? ExtractedMetadata { get; set; }
+public VerificationResult? VerificationResult { get; set; }
 ```
-bool Success { get; }
-BackupJobStatus Status { get; }     // Completed/PartialSuccess/Failed/Cancelled
-string JobName { get; }
-DateTime StartTime { get; }
-DateTime EndTime { get; }
-double AverageTransferSpeedMBps { get; }
-double PercentageComplete { get; }
-List<BackupError>? GlobalErrors { get; }
-```
-Og beregnet:
-```
-TimeSpan Duration => EndTime - StartTime;
-bool IsPartialSuccess => FilesSucceeded > 0 && FilesFailed > 0;
+
+💡 *BackupItem er intern. Disse felter er "enrichment" – fyldes ud ét ad gangen efterhånden som hvert pipeline-trin kører.*
+
+---
+
+## SEKTION B: NYE ENUMS OG KONTRAKTER
+
+---
+
+### `[ ]` B1 – `Models/Enums/BackupJobStatus.cs`
+**Hvad:** Samlet status for hele backup-jobbet (ikke per fil).
+```csharp
+public enum BackupJobStatus
+{
+    NotStarted,
+    Running,
+    Completed,           // Alt lykkedes
+    PartialSuccess,      // Nogle filer fejlede, men jobbet fortsatte
+    Failed,              // Kritisk fejl – jobbet stoppede
+    Cancelled,           // Brugeren annullerede
+    DryRunCompleted      // Dry-run fuldført (ingen filer kopieret)
+}
 ```
 
 ---
 
-### B. NYE FILER – API LAG
+### `[ ]` B2 – `Models/Enums/ErrorHandlingStrategy.cs`
+**Hvad:** Styrer hvad der sker når en fejl opstår i et bestemt trin.
+```csharp
+public enum ErrorHandlingStrategy
+{
+    StopOnError,   // Stop hele backuppen ved første fejl
+    SkipOnError,   // Log fejlen, spring filen over, fortsæt
+    RetryOnError   // Prøv N gange før du springer over
+}
+```
+⚠️ FIX fra Core3 Design Flaw #1: Fejlhåndtering var implicit og ikke konfigurerbar.
 
 ---
 
-#### `[ ]` Api/IBackupItem.cs
-**Formål:** Kontrakt for en fil der flyder igennem pipeline.
+### `[ ]` B3 – `Models/Enums/SidecarFormat.cs`
+```csharp
+public enum SidecarFormat
+{
+    Json,   // Opretter .json sidecar-filer
+    Xml     // Opretter .xml sidecar-filer
+}
 ```
-IBackupItem:
-  string Id { get; }
-  string SourcePath { get; }
-  string RelativePath { get; }
-  long? SizeBytes { get; }
-  DateTimeOffset? ModifiedAt { get; }
-  BackupItemStatus Status { get; set; }
-  string? DestinationPath { get; set; }
-  List<BackupError>? Errors { get; set; }
-  TransferResult? TransferResult { get; set; }
-  Dictionary<string, string>? Hashes { get; set; }
-  ExtractedMetadata? ExtractedMetadata { get; set; }
-  VerificationResult? VerificationResult { get; set; }
+
+---
+
+### `[ ]` B4 – `Models/Enums/HashType.cs`
+**Hvad:** Understøttede hash-algoritmer. Bruges i `BackupPlan.HashTypes`.
+```csharp
+public enum HashType
+{
+    SHA2_256,            // SHA-256 (mest brugt, hurtig)
+    SHA2_512,            // SHA-512 (stærkere)
+    SHA3_256_FIPS202,    // SHA3-256 FIPS variant
+    SHA3_512_FIPS202,    // SHA3-512 FIPS variant
+    SHA3_256_KECCAK,     // SHA3-256 Keccak variant
+    SHA3_512_KECCAK,     // SHA3-512 Keccak variant
+    BLAKE3_256,          // BLAKE3-256 (moderne, hurtig)
+    BLAKE3_512,          // BLAKE3-512
+    MD5_128              // MD5 (kun legacy-kompatibilitet)
+}
 ```
+⚠️ FIX fra Core3 Design Flaw #2: I Core3 var 3 hash-typer altid tvunget. Her er hashing slået fra som standard (`BackupPlan.HashTypes = null` = ingen hashing).
+
+---
+
+### `[ ]` B5 – `Api/IBackupItem.cs`
+**Hvad:** Offentlig kontrakt for en fil der flyder igennem pipeline.
+
+💡 *`BackupItem` (intern klasse) skal implementere dette interface, så engine og tests kan bruge interfacet i stedet for den konkrete klasse.*
+
+```csharp
+public interface IBackupItem
+{
+    string Id { get; }
+    string SourcePath { get; }
+    string RelativePath { get; }        // Relativ sti fra kildens rod
+    long? SizeBytes { get; }
+    DateTimeOffset? ModifiedAt { get; }
+
+    // Mutable – opdateres under pipeline-kørsel
+    BackupItemStatus Status { get; set; }
+    string? DestinationPath { get; set; }
+    List<BackupError>? Errors { get; set; }
+    TransferResult? TransferResult { get; set; }
+    Dictionary<string, string>? Hashes { get; set; }
+    ExtractedMetadata? ExtractedMetadata { get; set; }
+    VerificationResult? VerificationResult { get; set; }
+}
+```
+
 Sørg for at `BackupItem` implementerer `IBackupItem`.
 
 ---
 
-#### `[ ]` Api/BackupProgress.cs
-**Formål:** Immutable record der implementerer `IBackupProgress`.
-```
-public record BackupProgress(
-  int DirectoriesScanned,
-  int FilesDiscovered,
-  long BytesTotal,
-  int FilesProcessed,
-  int FilesSucceeded,
-  int FilesFailed,
-  int FilesSkipped,
-  long BytesProcessed,
-  string? CurrentFilePath,
-  long CurrentFileBytes,
-  long CurrentFileBytesProcessed,
-  BackupPhase CurrentPhase,
-  long ElapsedMilliseconds
+### `[ ]` B6 – `Api/BackupProgress.cs`
+**Hvad:** Immutable record der implementerer `IBackupProgress`. Skabt af `ProgressTracker.GetSnapshot()`.
+
+```csharp
+public sealed record BackupProgress(
+    int DirectoriesScanned,
+    int FilesDiscovered,
+    long BytesTotal,
+    int FilesProcessed,
+    int FilesSucceeded,
+    int FilesFailed,
+    int FilesSkipped,
+    long BytesProcessed,
+    string? CurrentFilePath,
+    long CurrentFileBytes,
+    long CurrentFileBytesProcessed,
+    BackupPhase CurrentPhase,
+    long ElapsedMilliseconds
 ) : IBackupProgress
-```
-Beregnede properties:
-```
-PercentageComplete = FilesDiscovered > 0 ? FilesProcessed / (double)FilesDiscovered * 100 : 0
-BytesPerSecond = ElapsedMilliseconds > 0 ? (BytesProcessed * 1000.0) / ElapsedMilliseconds : 0
-EstimatedTimeRemaining = BytesPerSecond > 0 ? TimeSpan.FromSeconds((BytesTotal - BytesProcessed) / BytesPerSecond) : TimeSpan.Zero
-```
-⚠️ Brug den eksisterende `IFileProgress`/`ActiveFiles`-liste fra `IBackupProgress.cs` eller beslut om den skal fjernes til fordel for `CurrentFilePath`.
+{
+    // Beregnede properties
+    public double PercentageComplete =>
+        FilesDiscovered > 0 ? (double)FilesProcessed / FilesDiscovered * 100.0 : 0;
 
----
+    public double BytesPerSecond =>
+        ElapsedMilliseconds > 0 ? (BytesProcessed * 1000.0) / ElapsedMilliseconds : 0;
 
-#### `[ ]` Api/IProgressNotifier.cs
-**Formål:** Real-time event-rapportering til UI/CLI.
-```
-IProgressNotifier:
-  void OnPhaseChanged(BackupPhase newPhase, BackupPhase previousPhase)
-  void OnFileStarted(IBackupItem item)
-  void OnFileCompleted(IBackupItem item, BackupItemStatus status)
-  void OnError(BackupError error)
-  void OnCompleted(BackupJobResult result)
-```
-Notifier er valgfri (null = ingen rapportering).
-🚫 Notifier-metoder ALDRIG async – fire-and-forget, fejl fanges og logges.
-
----
-
-#### `[ ]` Api/BackupError.cs
-**Formål:** Struktureret fejlinformation til både job-niveau og fil-niveau.
-```
-public record BackupError(
-  BackupErrorCode Code,
-  string Message,
-  string? Details = null,
-  Exception? SourceException = null
-)
+    public TimeSpan EstimatedTimeRemaining =>
+        BytesPerSecond > 0
+            ? TimeSpan.FromSeconds((BytesTotal - BytesProcessed) / BytesPerSecond)
+            : TimeSpan.Zero;
+}
 ```
 
 ---
 
-#### `[ ]` Api/TransferResult.cs
-**Formål:** Resultat af én fils overførsel.
+### `[ ]` B7 – `Api/IProgressNotifier.cs`
+**Hvad:** Real-time events til UI/CLI om hvad der sker under backup.
+
+💡 *Forskellen fra `IProgress<IBackupProgress>`: IProgress rapporterer et snapshot hvert 500ms. IProgressNotifier sender events præcist når noget sker (fil startet, fil fejlede, fase skiftet).*
+
+```csharp
+public interface IProgressNotifier
+{
+    void OnPhaseChanged(BackupPhase newPhase, BackupPhase previousPhase);
+    void OnFileStarted(IBackupItem item);
+    void OnFileCompleted(IBackupItem item, BackupItemStatus status);
+    void OnError(BackupError error);
+    void OnCompleted(BackupJobResult result);
+}
 ```
-public record TransferResult(
-  bool Success,
-  long BytesTransferred,
-  string DestinationPath,
-  DateTime TransferTime,
-  string? ErrorMessage = null
-)
-```
-⚠️ FIX fra Core3 Bug #2: Transfer MÅ returnere dette i stedet for at kaste exception.
-
----
-
-#### `[ ]` Models/Enums/BackupJobStatus.cs
-**Formål:** Samlet jobstatus.
-```
-NotStarted, Running, Completed, PartialSuccess, Failed, Cancelled
-```
-
----
-
-### C. NYE FILER – TRANSFER LAG
-
----
-
-#### `[ ]` Transfer/IFileTransfer.cs
-**Formål:** Kontrakt for kopiering af én fil.
-```
-IFileTransfer:
-  Task<TransferResult> TransferAsync(
-    IBackupItem item,
-    string destinationPath,
-    IProgress<long>? progress,
-    CancellationToken ct
-  )
-```
-⚠️ Returnerer `TransferResult` – KASTER IKKE exception ved fejl.
-
----
-
-#### `[ ]` Transfer/Filesystem/FilesystemFileTransfer.cs
-**Formål:** Kopier fil fra lokalt/netværks-filsystem til destination.
 
 Regler:
-- `Directory.CreateDirectory(destinationDir)` FØR kopiering ⚠️ FIX Core3 Bug #3
-- Kopier i chunks (f.eks. 81920 bytes = 80 KB buffer)
-- Rapportér fremskridt via `IProgress<long>` (bytes kopieret) ⚠️ FIX Core3 Bug #4
-- Ved fejl: returner `TransferResult` med `Success=false` – KAST IKKE ⚠️ FIX Core3 Bug #2
-- Ryd op partial fil ved fejl/annullering
-- Understøt `CancellationToken` – tjek mellem chunks
+- Alle metoder er **synkrone** (ingen async/await)
+- Fejl i notifier fanges og logges – de stopper IKKE backuppen
+- Notifier er valgfri (null = ingen events)
 
 ---
 
-#### `[ ]` Transfer/Mtp/MtpFileTransfer.cs
-**Formål:** Download fil fra MTP-enhed (iPhone/Android/kamera) til destination.
+### `[ ]` B8 – `Api/BackupError.cs`
+**Hvad:** Struktureret fejlinformation. Bruges både på job-niveau og per-fil.
 
-Regler:
-- Download til temp-fil FØR flytning til endelig destination
-- Brug `MediaDevices` API til at åbne fil-stream fra device
-- Retry med exponential backoff ved transiente fejl: 3 forsøg (1s, 2s, 4s)
-- Tjek at device stadig er forbundet FØR hvert forsøg
-- `Directory.CreateDirectory(destinationDir)` FØR flytning ⚠️ FIX Core3 Bug #3
-- Ryd op temp-fil ved fejl/annullering (finally-blok)
-- Rapportér fremskridt via `IProgress<long>` ⚠️ FIX Core3 Bug #4
-- Returner `TransferResult` med `Success=false` – KAST IKKE ⚠️ FIX Core3 Bug #2
-🚫 MÅ ALDRIG køres parallelt for MTP – kun Sequential engine bruger denne
-
----
-
-#### `[ ]` Transfer/Test/TestFileTransfer.cs  *(i Core4.Tests eller som intern fake)*
-**Formål:** Fake til unit tests.
-
-Regler:
-- Ingen faktisk I/O
-- Kan konfigureres til at returnere succes, fejl, eller kaste OperationCanceledException
-- Registrerer kald (hvilke items blev overført, med hvilken destinationPath)
-
----
-
-### D. NYE FILER – SCANNER LAG
-
----
-
-#### `[ ]` Scanner/Filesystem/FilesystemItemScanner.cs
-**Formål:** Enumerér filer fra lokalt/netværks-filsystem.
-
-Regler:
-- Brug `Directory.EnumerateFiles(path, "*", SearchOption.AllDirectories)` (streaming)
-- Bevar relativ sti: `RelativePath = Path.GetRelativePath(plan.Source, fullPath)` ⚠️ FIX Core3 Bug #1
-- Ved `UnauthorizedAccessException`: log advarsel, skip mappe, fortsæt
-- Respektér `plan.Recursive`, `plan.IncludePatterns`, `plan.ExcludePatterns`
-- Understøt `CancellationToken` (tjek for hvert item)
-- Returnér items via `IAsyncEnumerable<IBackupItem>` (stream, ikke buffer hele listen)
-
----
-
-#### `[ ]` Scanner/Mtp/MtpItemScanner.cs
-**Formål:** Enumerér filer fra MTP-enhed.
-
-Regler:
-- Brug `MediaDevices` API til at gennemgå enhedens filsystem
-- Bevar relativ sti fra devices rod-sti ⚠️ FIX Core3 Bug #1
-- Hvis enhed ikke kan findes: kast meningsfuld exception (ikke NullReferenceException)
-- Hvis enhed afbrydes under scanning: log fejl, stop scanning med passende fejlkode
-- Understøt `CancellationToken`
-🚫 Åbn IKKE MTP-session i scanner – session-livscyklus styres af engine
-
----
-
-#### `[ ]` Scanner/Test/TestItemScanner.cs  *(i Core4.Tests eller som intern fake)*
-**Formål:** Fake til unit tests.
-
-Regler:
-- Returnerer prædefinerede `BackupItem`-objekter
-- Ingen faktisk I/O
-- Kan konfigureres med liste af items og valgfri fejl
-
----
-
-### E. NYE FILER – SIDECAR LAG
-
----
-
-#### `[ ]` Sidecar/ISidecarGenerator.cs
-**Formål:** Kontrakt for generering af sidecar-metadatafiler.
-```
-ISidecarGenerator:
-  Task<bool> GenerateAsync(
-    IBackupItem item,
-    string sidecarPath,
-    CancellationToken ct
-  )
+```csharp
+public sealed record BackupError(
+    BackupErrorCode Code,
+    string Message,
+    string? SourcePath = null,          // Hvilken fil fejlede?
+    string? DestinationPath = null,     // Hvor kopierede vi til?
+    BackupPhase Phase = BackupPhase.Transferring,
+    Exception? InnerException = null,   // Original .NET exception
+    DateTime Timestamp = default
+);
 ```
 
 ---
 
-#### `[ ]` Sidecar/Json/JsonSidecarGenerator.cs
-**Formål:** Opret og opdatér JSON-sidecar-filer.
+### `[ ]` B9 – `Api/TransferResult.cs`
+**Hvad:** Resultat af én fils overførsel. RETURNERES fra `IFileTransfer` – KASTES IKKE.
 
-⚠️ FIX Core3 Design Flaw #3: Sidecar genereres STRAKS efter overførsel – IKKE sidst.
+```csharp
+public sealed record TransferResult(
+    bool Success,
+    long BytesTransferred,
+    string DestinationPath,
+    DateTime TransferTime,
+    long SourceFileSize = 0,
+    string? ErrorMessage = null,
+    BackupError? Error = null
+);
+```
 
-Minimalt indhold lige efter transfer:
+⚠️ FIX fra Core3 Bug #2: `IFileTransfer` KASTEDE exception ved fejl → stoppede hele backuppen. Nu RETURNERER vi `TransferResult` med `Success = false` og backup **fortsætter**.
+
+---
+
+### `[ ]` B10 – `Models/Contexts.cs`
+**Hvad:** Parameter-objekter der sendes igennem pipeline-faserne. Bærer konfiguration, ProgressTracker, og værktøjer.
+
+💡 *I stedet for at sende 7 parametre til hver metode, pakker vi det i ét context-objekt.*
+
+```csharp
+public sealed record ScanContext(
+    BackupPlan Plan,
+    ProgressTracker ProgressTracker,
+    CancellationToken CancellationToken
+);
+
+public sealed record TransferContext(
+    ScanContext ScanContext,
+    IFileTransfer Transfer
+);
+
+public sealed record OptionalFeatureContext(
+    TransferContext TransferContext,
+    IItemHasher? Hasher,
+    IMetadataReader? MetadataReader,
+    IIntegrityVerifier? Verifier,
+    ITimestampCorrector? TimestampCorrector
+);
+
+public sealed record SidecarContext(
+    string OutputDirectory,
+    SidecarFormat Format,
+    ISidecarGenerator SidecarGenerator
+);
+```
+
+---
+
+## SEKTION C: TRANSFER-LAG
+
+---
+
+### `[ ]` C1 – `Transfer/IFileTransfer.cs`
+**Hvad:** Kontrakt for kopiering af én fil fra kilde til destination.
+
+```csharp
+internal interface IFileTransfer
+{
+    Task<TransferResult> TransferAsync(
+        IBackupItem item,
+        string destinationPath,
+        IProgress<long>? progress,     // bytes kopieret så langt
+        CancellationToken ct
+    );
+}
+```
+
+⚠️ Returnerer `TransferResult` – kaster ALDRIG exception ved fil-fejl.
+
+---
+
+### `[ ]` C2 – `Transfer/Filesystem/FilesystemFileTransfer.cs`
+**Hvad:** Kopier fil fra lokalt/netværks-filsystem.
+
+Implementationsregler:
+```
+1. Beregn destinations-mappe fra destinationPath
+2. Directory.CreateDirectory(destinationsmappe)   ← ⚠️ FIX Core3 Bug #3
+3. Åbn source-fil med FileStream (ingen lock)
+4. Opret destination-fil med FileStream
+5. Kopier i chunks (81920 bytes = 80 KB anbefales)
+6. For hvert chunk: progress?.Report(bytesKopieret)  ← ⚠️ FIX Core3 Bug #4
+7. Tjek ct.IsCancellationRequested HVERT chunk
+8. Ved fejl: slet partial destination-fil, returner TransferResult(Success=false)
+                                                  ← ⚠️ FIX Core3 Bug #2
+9. Returner TransferResult(Success=true) ved succes
+```
+
+Eksempel på chunk-loop (pseudokode):
+```csharp
+var buffer = new byte[81920];
+int bytesRead;
+long totalCopied = 0;
+while ((bytesRead = await source.ReadAsync(buffer, ct)) > 0)
+{
+    ct.ThrowIfCancellationRequested();
+    await dest.WriteAsync(buffer.AsMemory(0, bytesRead), ct);
+    totalCopied += bytesRead;
+    progress?.Report(totalCopied);
+}
+```
+
+---
+
+### `[ ]` C3 – `Transfer/Mtp/MtpFileTransfer.cs`
+**Hvad:** Download fil fra MTP-enhed (iPhone, Android, kamera).
+
+Implementationsregler:
+```
+1. Definer temp-fil sti: Path.GetTempFileName()
+2. Åbn fil-stream fra MTP-enhed via MediaDevices API
+3. Kopier til temp-fil (med progress-rapportering)
+4. Flyt temp-fil til endelig destination
+   (Directory.CreateDirectory() FØR flytning)       ← ⚠️ FIX Core3 Bug #3
+5. Ved MTP-timeout: retry med eksponentiel backoff
+   – Forsøg 1: vent 1s
+   – Forsøg 2: vent 2s
+   – Forsøg 3: vent 4s
+   – Herefter: returner TransferResult(Success=false)  ← ⚠️ FIX Core3 Bug #2
+6. Slet altid temp-fil i finally-blok (selv ved fejl/annullering)
+7. Returner TransferResult(Success=true) ved succes
+```
+
+🚫 MÅ ALDRIG køres parallelt – kun `SequentialBackupEngine` bruger denne klasse.
+
+---
+
+### `[ ]` C4 – `Transfer/Test/TestFileTransfer.cs`
+**Hvad:** Fake til unit tests – ingen faktisk I/O.
+
+```csharp
+internal sealed class TestFileTransfer : IFileTransfer
+{
+    // Konfigurer hvad der skal returneres
+    public bool ShouldSucceed { get; set; } = true;
+    public bool ShouldThrowCancelled { get; set; } = false;
+
+    // Registrér kald (til assertions i tests)
+    public List<(IBackupItem item, string dest)> Calls { get; } = new();
+
+    public Task<TransferResult> TransferAsync(
+        IBackupItem item, string destinationPath,
+        IProgress<long>? progress, CancellationToken ct)
+    {
+        if (ShouldThrowCancelled) ct.ThrowIfCancellationRequested();
+        Calls.Add((item, destinationPath));
+        // Returner succes eller fejl baseret på ShouldSucceed
+    }
+}
+```
+
+---
+
+## SEKTION D: SCANNER-LAG
+
+---
+
+### `[ ]` D1 – `Scanner/Filesystem/FilesystemItemScanner.cs`
+**Hvad:** Enumerér filer fra lokalt/netværks-filsystem.
+
+Implementationsregler:
+```
+1. Brug Directory.EnumerateFiles(sti, "*.*") for streaming (ikke buffering)
+2. For hvert fundet element:
+   a. Beregn relativePath = Path.GetRelativePath(plan.SourceDirectory, fullPath)
+                                        ← ⚠️ FIX Core3 Bug #1 (directory structure goes lost)
+   b. Opret BackupItem med Id, SourcePath, RelativePath, SizeBytes, ModifiedAt
+   c. yield return item (IAsyncEnumerable)
+3. Fang UnauthorizedAccessException per mappe: log advarsel, fortsæt
+4. Respektér plan.Recursive – brug SearchOption.AllDirectories eller TopDirectoryOnly
+5. Respektér plan.IncludePatterns og plan.ExcludePatterns (glob-matching)
+6. Tjek ct.IsCancellationRequested for hvert item
+```
+
+💡 *`yield return` betyder: "giv dette item tilbage til kalderen MED DET SAMME uden at vente på at hele listen er klar". Dette er vigtigt for store backups.*
+
+---
+
+### `[ ]` D2 – `Scanner/Mtp/MtpItemScanner.cs`
+**Hvad:** Enumerér filer fra MTP-enhed.
+
+Implementationsregler:
+```
+1. Verificér at enhed er forbundet (via MediaDevices API)
+   – Hvis ikke fundet: kast meningsfuld exception med BackupErrorCode.MTPDeviceNotFound
+2. Åbn IKKE session her – session styres af engine/session-manager
+3. Traversér enhedens filstruktur rekursivt
+4. Bevar relativ sti fra enhedens rod ← ⚠️ FIX Core3 Bug #1
+5. Opret BackupItem for hvert fundet element
+6. Håndtér enhedsafbrydelse: log fejl, stop scanning, kast BackupErrorCode.MTPDeviceDisconnected
+7. Understøt CancellationToken
+```
+
+🚫 Åbn ALDRIG MTP-session i scanner – session-livscyklus styres af engine.
+
+---
+
+### `[ ]` D3 – `Scanner/Test/TestItemScanner.cs`
+**Hvad:** Fake til unit tests.
+
+```csharp
+internal sealed class TestItemScanner : IBackupScanner
+{
+    private readonly List<BackupItem> items;
+    public bool WasCalled { get; private set; }
+
+    public TestItemScanner(List<BackupItem> items) => this.items = items;
+
+    public async IAsyncEnumerable<BackupItem> ScanAsync(
+        BackupPlan plan, CancellationToken ct)
+    {
+        WasCalled = true;
+        foreach (var item in items)
+        {
+            ct.ThrowIfCancellationRequested();
+            yield return item;
+            await Task.Yield(); // Simulér async
+        }
+    }
+}
+```
+
+---
+
+## SEKTION E: SIDECAR-LAG
+
+---
+
+### `[ ]` E1 – `Sidecar/ISidecarGenerator.cs`
+```csharp
+internal interface ISidecarGenerator
+{
+    Task<bool> GenerateAsync(
+        IBackupItem item,
+        string sidecarPath,
+        CancellationToken ct
+    );
+}
+```
+
+---
+
+### `[ ]` E2 – `Sidecar/Json/JsonSidecarGenerator.cs`
+**Hvad:** Opret og opdatér JSON-sidecar-filer ved siden af de kopierede filer.
+
+**Sidecar-filnavn konvention:** `IMG_1234.JPG.sidecar.json` (original filnavn + `.sidecar.json`)
+
+Minimalt indhold (oprettet STRAKS efter transfer):
+```json
+{
+  "source_path": "/source/vacation/IMG_1234.JPG",
+  "destination_path": "/backup/vacation/IMG_1234.JPG",
+  "transferred_at": "2026-05-05T12:15:00Z",
+  "file_size": 2048576,
+  "transfer_status": "success"
+}
+```
+
+Beriget indhold (opdateret efter optional features):
 ```json
 {
   "source_path": "...",
   "destination_path": "...",
   "transferred_at": "...",
-  "file_size": 0,
-  "transfer_status": "success"
+  "file_size": 2048576,
+  "transfer_status": "success",
+  "hashes": {
+    "source_sha256": "abc123...",
+    "dest_sha256": "abc123..."
+  },
+  "metadata": {
+    "photo_taken_date": "2024-06-15T10:30:00Z",
+    "camera_model": "Canon EOS 5D"
+  },
+  "verification": {
+    "verified": true,
+    "verified_at": "2026-05-05T12:16:00Z"
+  }
 }
 ```
 
-Opdaterbart indhold når optional features kører:
-```json
+Implementationsregler:
+```
+1. Beregn sidecar-sti: destinationPath + ".sidecar.json"
+2. Directory.CreateDirectory() FØR skrivning
+3. Serialisér med System.Text.Json (JsonSerializerOptions.WriteIndented = true)
+4. Gem til fil
+5. Ved fejl: log advarsel, returner false – STOP IKKE backup
+6. Understøt CancellationToken
+7. Overskriver eksisterende sidecar (idempotent)
+```
+
+⚠️ FIX fra Core3 Design Flaw #3: I Core3 blev sidecars genereret SIDST. Nu oprettes de STRAKS efter transfer. Selv hvis hashing eller metadata fejler, eksisterer sidecaren allerede.
+
+---
+
+## SEKTION F: ENGINE-LAG
+
+---
+
+### `[ ]` F1 – `Engine/Progress/ProgressTracker.cs`
+**Hvad:** Thread-safe akkumulering af fremskridt fra alle workers.
+
+💡 *`Interlocked.Increment` er en CPU-instruktion der er 100% thread-safe uden at bruge locks. Brug det til alle tæller-operationer.*
+
+```csharp
+internal sealed class ProgressTracker
 {
-  ...minimal felter...,
-  "hashes": { "source_sha256": "...", "dest_sha256": "..." },
-  "metadata": { "exif_date": "...", "camera_model": "..." },
-  "verification": { "verified": true, "verified_at": "..." }
+    // Tællere (thread-safe via Interlocked)
+    private int directoriesScanned;
+    private int filesDiscovered;
+    private long bytesTotal;
+    private int filesProcessed;
+    private int filesSucceeded;
+    private int filesFailed;
+    private int filesSkipped;
+    private long bytesProcessed;
+
+    // Nuværende fil (thread-safe via lock)
+    private readonly object currentFileLock = new();
+    private string? currentFilePath;
+    private long currentFileBytes;
+    private long currentFileBytesProcessed;
+
+    private BackupPhase currentPhase;
+    private readonly Stopwatch stopwatch = Stopwatch.StartNew();
+
+    public void IncrementDirectoriesScanned() =>
+        Interlocked.Increment(ref directoriesScanned);
+
+    public void IncrementFilesDiscovered(long bytes)
+    {
+        Interlocked.Increment(ref filesDiscovered);
+        Interlocked.Add(ref bytesTotal, bytes);
+    }
+
+    public void IncrementFilesSucceeded(long bytes)
+    {
+        Interlocked.Increment(ref filesSucceeded);
+        Interlocked.Increment(ref filesProcessed);
+        Interlocked.Add(ref bytesProcessed, bytes);
+    }
+
+    public void IncrementFilesFailed()
+    {
+        Interlocked.Increment(ref filesFailed);
+        Interlocked.Increment(ref filesProcessed);
+    }
+
+    public void IncrementFilesSkipped()
+    {
+        Interlocked.Increment(ref filesSkipped);
+        Interlocked.Increment(ref filesProcessed);
+    }
+
+    public void SetCurrentFile(string path, long bytes)
+    {
+        lock (currentFileLock)
+        {
+            currentFilePath = path;
+            currentFileBytes = bytes;
+            currentFileBytesProcessed = 0;
+        }
+    }
+
+    public void UpdateCurrentFileBytesProcessed(long bytes)
+    {
+        lock (currentFileLock)
+            currentFileBytesProcessed = bytes;
+    }
+
+    public void SetPhase(BackupPhase phase) =>
+        currentPhase = phase; // enum-assignment er atomisk på .NET
+
+    public BackupProgress GetSnapshot() => new(
+        DirectoriesScanned: directoriesScanned,
+        FilesDiscovered: filesDiscovered,
+        BytesTotal: bytesTotal,
+        FilesProcessed: filesProcessed,
+        FilesSucceeded: filesSucceeded,
+        FilesFailed: filesFailed,
+        FilesSkipped: filesSkipped,
+        BytesProcessed: bytesProcessed,
+        CurrentFilePath: currentFilePath,
+        CurrentFileBytes: currentFileBytes,
+        CurrentFileBytesProcessed: currentFileBytesProcessed,
+        CurrentPhase: currentPhase,
+        ElapsedMilliseconds: stopwatch.ElapsedMilliseconds
+    );
 }
 ```
 
-Regler:
-- Brug `System.Text.Json` til serialisering
-- `Directory.CreateDirectory` FØR skrivning
-- Ved skrivefejl: log advarsel, returner `false`, STOP IKKE backup
-- Understøt `CancellationToken`
-- Fil overskriver eksisterende sidecar (idempotent)
+⚠️ FIX fra Core2: ProgressTracker var delt mutable state uden synkronisering → race conditions. Her bruger vi `Interlocked` for tæller og `lock` for nuværende fil.
 
 ---
 
-### F. NYE FILER – ENGINE LAG
+### `[ ]` F2 – `Engine/BackupEngine.cs` → Gøres **abstract**
+**Hvad:** Den nuværende `BackupEngine.cs` skal omskrives til en abstract base class der definerer det overordnede orkestreringsflow.
+
+💡 *Abstract betyder: klassen kan ikke bruges direkte (du kan ikke `new BackupEngine()`). Den definerer et "template" for hvad alle engines SKAL gøre, men lader subklasser bestemme HOW (via abstract metoder).*
+
+```csharp
+public abstract class BackupEngine : IBackupEngine
+{
+    // Subklasser SKAL implementere disse
+    protected abstract IBackupScanner CreateScanner(BackupPlan plan);
+    protected abstract IFileTransfer CreateTransfer(BackupPlan plan);
+
+    public async Task<BackupJobResult> RunAsync(
+        BackupPlan plan,
+        IProgress<IBackupProgress>? progress,
+        CancellationToken ct)
+    {
+        // 1. Valider plan (kast BackupPlanValidationException ved ugyldig)
+        // 2. Start ProgressTracker og stopwatch
+        // 3. Opret scanner og transfer via abstract metoder
+        // 4. Kald ScanPhase → TransferPhase → SidecarPhase → OptionalFeatures
+        // 5. Returnér BackupJobResult
+        // 6. Håndtér OperationCanceledException → status = Cancelled
+    }
+
+    // Delte hjælpemetoder som begge subklasser bruger
+    protected async Task ScanPhaseAsync(...)
+    protected async Task<TransferResult> TransferSingleItemAsync(...)
+    protected async Task GenerateSidecarAsync(...)
+    protected async Task RunOptionalFeaturesAsync(...)
+}
+```
 
 ---
 
-#### `[ ]` Engine/Progress/ProgressTracker.cs
-**Formål:** Thread-safe akkumulering af fremskridtsdata fra alle workers.
+### `[~]` F3 – `Engine/Sequential/SequentialBackupEngine.cs` → Fuldt implementeret
+**Hvad:** Kør backup sekventielt, én fil ad gangen. ALTID til MTP.
 
-Properties (thread-safe via Interlocked/lock):
+Nuværende skeleton har scan-loop. Mangler alt herefter.
+
+Komplet flow (pseudokode):
 ```
-int DirectoriesScanned
-int FilesDiscovered
-long BytesTotal
-int FilesProcessed
-int FilesSucceeded
-int FilesFailed
-int FilesSkipped
-long BytesProcessed
-string? CurrentFilePath
-long CurrentFileBytes
-long CurrentFileBytesProcessed
-BackupPhase CurrentPhase
-Stopwatch Elapsed (started ved opstart)
-```
-
-Metoder:
-```
-void IncrementDirectoriesScanned()
-void IncrementFilesDiscovered(long bytes)
-void IncrementFilesSucceeded(long bytes)
-void IncrementFilesFailed()
-void IncrementFilesSkipped()
-void SetCurrentFile(string path, long bytes)
-void UpdateCurrentFileBytesProcessed(long bytes)
-void SetPhase(BackupPhase phase)
-BackupProgress GetSnapshot()
-```
-
-Regler:
-- Alle tæller-incrementer bruger `Interlocked.Increment` / `Interlocked.Add`
-- `CurrentFilePath`/`CurrentFileBytes` beskyttes med `lock`
-- `GetSnapshot()` returnerer et immutabelt `BackupProgress`-record
-⚠️ FIX Core2: Delt mutable state SKAL have korrekt sync – ingen race conditions
-
----
-
-#### `[~]` Engine/Sequential/SequentialBackupEngine.cs
-**Formål:** Kør backup sekventielt, én fil ad gangen. ALTID brugt til MTP.
-
-Nuværende skeleton har:
-- Constructor med `IBackupScanner` og `IBackupSessionStateStore` ✅
-- Scan-loop der kalder `scanner.ScanAsync` og `session.AddItem` ✅
-- `BackupPlanValidator.Validate(plan)` ✅
-
-**Mangler at implementere (i rækkefølge):**
-
-```
-[ ] 1. Initialiser ProgressTracker
-[ ] 2. Rapportér progress til IProgress<IBackupProgress> (med interval, f.eks. hvert 500ms)
-[ ] 3. Scan alle items og opdatér ProgressTracker (IncrementFilesDiscovered, IncrementDirectoriesScanned)
-[ ] 4. For hvert pending item:
-    [ ] a. ct.ThrowIfCancellationRequested()
-    [ ] b. SetCurrentFile i ProgressTracker
-    [ ] c. Kald IFileTransfer.TransferAsync → TransferResult
-    [ ] d. Hvis Success=false: marker item Failed, log, fortsæt (KAST IKKE) ⚠️ FIX Core3 Bug #2
-    [ ] e. Hvis Success=true:
-           - Opdatér item.Status = Transferred
-           - Opdatér item.TransferResult
-           - Kald ISidecarGenerator.GenerateAsync (STRAKS) ⚠️ FIX Core3 Design Flaw #3
-           - Kald optional features (hvis aktiveret i BackupPlan):
-             * IItemHasher (hvis HashTypes != null) ⚠️ FIX Core3 Design Flaw #2
-             * IMetadataReader (hvis EnableMetadata)
-             * IIntegrityVerifier (hvis EnableVerification)
-             * ITimestampCorrector (hvis EnableTimestampCorrection, KUN hvis metadata lykkedes)
-           - Opdatér sidecar igen med optional feature-resultater
-    [ ] f. IncrementFilesSucceeded eller IncrementFilesFailed
-[ ] 5. Byg og returnér BackupJobResult med EndTime, statistikker, fejlsamling
-[ ] 6. Håndtér OperationCanceledException → sæt status Cancelled, returnér partial result
-[ ] 7. Kald IProgressNotifier ved fase-skift og fil-events (hvis ikke null)
-```
-
-Dependency injection:
-```
-Tilføj til constructor:
+Constructor modtager:
+  IBackupScanner scanner
   IFileTransfer fileTransfer
   ISidecarGenerator sidecarGenerator
-  IProgressNotifier? progressNotifier
-  IItemHasher? hasher          (optional)
-  IMetadataReader? metadataReader    (optional)
-  IIntegrityVerifier? verifier       (optional)
-  ITimestampCorrector? timestampCorrector  (optional)
+  IProgressNotifier? progressNotifier    (valgfri)
+  IItemHasher? hasher                    (valgfri)
+  IMetadataReader? metadataReader        (valgfri)
+  IIntegrityVerifier? verifier           (valgfri)
+  ITimestampCorrector? timestampCorrector (valgfri)
+  IBackupSessionStateStore sessionStore
+
+RunAsync(plan, progress, ct):
+  1. BackupPlanValidator.Validate(plan)
+  2. var tracker = new ProgressTracker()
+  3. var startTime = DateTime.UtcNow
+  4. tracker.SetPhase(BackupPhase.Scanning)
+
+  5. SCAN:
+     await foreach item in scanner.ScanAsync(plan, ct):
+       ct.ThrowIfCancellationRequested()
+       tracker.IncrementFilesDiscovered(item.SizeBytes ?? 0)
+       session.AddItem(item)
+
+  6. tracker.SetPhase(BackupPhase.Transferring)
+  7. START progress-rapportering (timer hvert 500ms: progress?.Report(tracker.GetSnapshot()))
+
+  8. TRANSFER LOOP (for hvert pending item):
+     a. ct.ThrowIfCancellationRequested()
+     b. progressNotifier?.OnFileStarted(item)
+     c. tracker.SetCurrentFile(item.SourcePath, item.SizeBytes ?? 0)
+
+     d. Byg destinationPath ud fra OutputStructure og RelativePath
+        – PreserveHierarchy: Path.Combine(plan.Destination, item.RelativePath)
+        – Flat: Path.Combine(plan.Destination, Path.GetFileName(item.SourcePath))
+        ← ⚠️ FIX Core3 Bug #1
+
+     e. Collision resolution (tjek om destination eksisterer)
+
+     f. result = await fileTransfer.TransferAsync(item, destinationPath, progressCallback, ct)
+
+     g. Hvis result.Success = false:
+          item.Status = Failed
+          item.Errors ??= []; item.Errors.Add(result.Error ?? ...)
+          tracker.IncrementFilesFailed()
+          progressNotifier?.OnFileCompleted(item, BackupItemStatus.Failed)
+          continue  ← ⚠️ FIX Core3 Bug #2 (stop IKKE hele backup)
+
+     h. Sidecar STRAKS:
+          item.Status = BackupItemStatus.Transferred
+          item.TransferResult = result
+          sidecarPath = destinationPath + ".sidecar.json"
+          await sidecarGenerator.GenerateAsync(item, sidecarPath, ct)
+          ← ⚠️ FIX Core3 Design Flaw #3 (sidecar genereres NU, ikke sidst)
+
+     i. Optional features (kun hvis aktiveret i plan):
+          – Hash: if (plan.HashTypes?.Count > 0) → await hasher.ComputeAsync(...)
+                  → item.Hashes = result; await sidecarGenerator.GenerateAsync(item, ...)
+          – Metadata: if (plan.EnableMetadata) → await metadataReader.ExtractAsync(...)
+          – Verify: if (plan.EnableVerification && item.Hashes != null) → ...
+          – Timestamps: if (plan.EnableTimestampCorrection && item.ExtractedMetadata != null) → ...
+
+     j. tracker.IncrementFilesSucceeded(result.BytesTransferred)
+     k. progressNotifier?.OnFileCompleted(item, BackupItemStatus.Succeeded)
+
+  9. Stop progress-timer
+  10. Byg og returnér BackupJobResult med:
+       – Status = DetermineStatus(tracker)
+       – StartTime, EndTime = DateTime.UtcNow
+       – Alle tæller fra tracker
+       – Samlede fejl fra alle items
+
+  11. Catch OperationCanceledException:
+       – returnér BackupJobResult med Status = Cancelled, partial data
 ```
 
 ---
 
-#### `[~]` Engine/BackupEngine.cs
-**Formål:** Nuværende implementering er lavet om til en samlet orchestrator.
-
-**Valg:** Enten gøres denne til en fabrik der delegerer til SequentialBackupEngine eller LimitedParallelBackupEngine, eller fjernes til fordel for `BackupEngineFactory`.
-
-Anbefaling: Omdøb til `BackupEngineFactory` og lad den implementere `IBackupEngine` som facade:
-```csharp
-// Beslutningstræ:
-// plan.SourceType == MediaDevice → SequentialBackupEngine
-// plan.MaxDegreeOfParallelism == -1 → SequentialBackupEngine
-// ellers → LimitedParallelBackupEngine
-```
-
----
-
-#### `[ ]` Engine/BackupEngineFactory.cs  *(NY fil eller omdøb BackupEngine.cs)*
-**Formål:** Vælg korrekt engine baseret på BackupPlan.
+### `[ ]` F4 – `Engine/BackupEngineFactory.cs`
+**Hvad:** Vælg korrekt engine baseret på BackupPlan. Erstatter den nuværende tomme `BackupEngine.cs` (eller tilføjes som ny fil).
 
 ```csharp
 public static class BackupEngineFactory
 {
-  public static IBackupEngine Create(BackupPlan plan, IServiceProvider serviceProvider)
-  // Logik:
-  // MediaDevice → SequentialBackupEngine
-  // MaxDegreeOfParallelism == -1 → SequentialBackupEngine
-  // Filesystem → LimitedParallelBackupEngine
+    public static IBackupEngine Create(
+        BackupPlan plan,
+        IServiceProvider serviceProvider)
+    {
+        // MTP-enhed → ALTID sekventiel
+        if (plan.DeviceId != null)
+            return serviceProvider.GetRequiredService<SequentialBackupEngine>();
+
+        // Bruger har eksplicit anmodet om sekventiel
+        if (plan.MaxDegreeOfParallelism == -1)
+            return serviceProvider.GetRequiredService<SequentialBackupEngine>();
+
+        // Filsystem → parallel (standard)
+        return serviceProvider.GetRequiredService<LimitedParallelBackupEngine>();
+    }
+}
+```
+
+💡 *`plan.DeviceId != null` er den centrale check. Hvis DeviceId er sat, er det MTP – brug altid sekventiel.*
+
+---
+
+### `[ ]` F5 – `Engine/CollisionResolution/CollisionResolver.cs`
+**Hvad:** Håndtér navne-kollisioner som et separat, testbart trin.
+
+⚠️ FIX fra Core3 Design Flaw #4: Collision resolution skete implicit i scanner/transfer.
+
+```csharp
+internal static class CollisionResolver
+{
+    // Returner endelig destinations-sti baseret på CollisionStrategy
+    public static string Resolve(
+        string desiredPath,
+        CollisionStrategy strategy,
+        Func<string, bool> destinationExists)
+    {
+        if (!destinationExists(desiredPath))
+            return desiredPath;  // Ingen kollision
+
+        return strategy switch
+        {
+            CollisionStrategy.Skip => null!,  // null = spring over
+            CollisionStrategy.Overwrite => desiredPath,
+            CollisionStrategy.Rename => GenerateUniqueName(desiredPath),
+            _ => desiredPath
+        };
+    }
+
+    private static string GenerateUniqueName(string path)
+    {
+        // Tilføj _1, _2, _3 osv. indtil et unikt navn findes
+        var dir = Path.GetDirectoryName(path)!;
+        var name = Path.GetFileNameWithoutExtension(path);
+        var ext = Path.GetExtension(path);
+        int counter = 1;
+        string candidate;
+        do { candidate = Path.Combine(dir, $"{name}_{counter++}{ext}"); }
+        while (File.Exists(candidate));
+        return candidate;
+    }
 }
 ```
 
 ---
 
-### G. DEPENDENCY INJECTION
+### `[ ]` F6 – `Engine/LimitedParallel/LimitedParallelBackupEngine.cs`
+**Hvad:** Paralleliseret backup KUN til filsystem-kilder.
 
----
+🚫 MÅ ALDRIG bruges til MTP – `BackupEngineFactory` sikrer dette.
 
-#### `[ ]` DependencyInjection/ServiceCollectionExtensions.cs
-**Formål:** Registrér alle Core4-services i Microsoft.Extensions.DependencyInjection.
-
-Registreringer (minimum Tier 1):
+Producer-consumer design:
 ```
-IBackupScanner → FilesystemItemScanner (default, kan overrides)
-IFileTransfer → FilesystemFileTransfer (default)
-ISidecarGenerator → JsonSidecarGenerator
-IBackupSessionStateStore → InMemoryBackupSessionStateStore
-IBackupEngine → SequentialBackupEngine (eller via factory)
-IProgressNotifier → null/LoggingProgressNotifier (default)
-```
-
----
-
-### H. FAKES TIL UNIT TESTS
-
----
-
-#### `[~]` BMTP3.Core4.Tests/Fakes/FakeBackupScanner.cs
-**Formål:** Test-dobbeltgænger for `IBackupScanner`.
-
-Implementér:
-```
-- Constructor modtager List<BackupItem> itemsToReturn
-- ScanAsync returnerer disse items via yield return
-- Kan konfigureres til at kaste exception eller simulere tomme resultater
-- Registrér at ScanAsync er kaldt (til assertions i tests)
-```
-Skal implementere `IBackupScanner`.
-
----
-
-#### `[~]` BMTP3.Core4.Tests/Fakes/FakeFileTransfer.cs
-**Formål:** Test-dobbeltgænger for `IFileTransfer`.
-
-Implementér:
-```
-- Returnerer succesfuld TransferResult som standard
-- Kan konfigureres til at returnere fejl for specifikke items
-- Kan konfigureres til at kaste OperationCanceledException
-- Registrér hvilke items der er forsøgt overført (til assertions)
-- Udfør INGEN faktisk I/O
-```
-Skal implementere `IFileTransfer`.
-
----
-
-#### `[~]` BMTP3.Core4.Tests/Fakes/FakeSidecarGenerator.cs
-**Formål:** Test-dobbeltgænger for `ISidecarGenerator`.
-
-Implementér:
-```
-- Returnerer true som standard (sidecar genereret)
-- Kan konfigureres til at returnere false (simuler skrivefejl)
-- Registrér hvilke items og stier der er kaldt med
-- Udfør INGEN faktisk I/O
-```
-Skal implementere `ISidecarGenerator`.
-
----
-
-## TIER 2 – UX OG BRUGERVENLIGHED (Når Tier 1 er stabil)
-
----
-
-#### `[ ]` Api/IProgressNotifier.cs *(allerede listet i Tier 1 – implementér nu)*
-
----
-
-#### `[ ]` Progress/LoggingProgressNotifier.cs
-**Formål:** Simpel progress-notifier der logger til ILogger.
-- Implementér alle `IProgressNotifier`-metoder
-- Log fase-skift som `LogInformation`
-- Log fil-fejl som `LogWarning`
-- Ingen Spectre-afhængighed
-
----
-
-#### `[ ]` Progress/SpectreProgressNotifier.cs
-**Formål:** Rig progress-visning via Spectre.Console.
-- Brug `AnsiConsole.Progress()` til live opdateringer
-- Vis: fase, nuværende fil, %, MB/s, ETA
-- Log fejl som `Markup`-farvekodet tekst
-
----
-
-#### `[ ]` Engine/CollisionResolution/CollisionResolver.cs
-**Formål:** Håndtér navne-kollisioner på destination som separat, testbart step.
-
-⚠️ FIX Core3 Design Flaw #4: Collision resolution skal IKKE ske implicit i scanner/transfer.
-
-Logik:
-- Tjek om destinationsfil eksisterer
-- Baseret på `BackupPlan.CollisionStrategy`:
-  - `Skip`: marker item Skipped, sæt destinationPath til null
-  - `Overwrite`: behold destinationPath som er
-  - `Rename`: generer nyt unikt navn (Increment: fil_1.jpg, fil_2.jpg / Timestamp / Guid)
-- Returnér opdateret destinationPath
-
----
-
-#### `[ ]` Engine/OutputStructure/DestinationPathBuilder.cs
-**Formål:** Byg destinations-sti baseret på OutputStructure-strategi.
-
-Logik:
-- `OutputStructure.PreserveHierarchy`:
-  `destinationPath = Path.Combine(plan.Destination, item.RelativePath)`
-- `OutputStructure.Flat`:
-  `destinationPath = Path.Combine(plan.Destination, Path.GetFileName(item.SourcePath))`
-⚠️ FIX Core3 Bug #1: Relativ sti SKAL bevares i Hierarchical mode
-
----
-
-#### `[ ]` Engine/DryRun/DryRunFileTransfer.cs
-**Formål:** Simulér overførsel uden faktisk I/O.
-
-⚠️ FIX Core3 Bug #5: Dry-run skal simulere KOMPLET – inklusive katalogstruktur og fremskridt.
-
-Regler:
-- Implementér `IFileTransfer`
-- Udfør INGEN faktisk fil-kopiering
-- Simulér fremskridt (rapportér bytes som om de kopieres)
-- Simulér `Directory.CreateDirectory` (men udfør den ikke)
-- Returnér altid succesfuld `TransferResult`
-
----
-
-## TIER 3 – AVANCEREDE FEATURES (Når Tier 1+2 er stabile)
-
----
-
-#### `[ ]` Hashing/IItemHasher.cs
-```
-Task<Dictionary<string, string>> ComputeAsync(
-  string filePath, List<HashType> hashTypes,
-  IProgress<long>? progress, CancellationToken ct)
+Scanner (1 tråd)
+    ↓ [Channel<IBackupItem>, unbounded]
+Transfer workers (N tråde, N = Math.Min(4, CPU/2), maks 8)
+    ↓ [Channel<IBackupItem>, unbounded]
+Sidecar workers (N tråde)
+    ↓ [Channel<IBackupItem>, unbounded]
+Optional feature workers (N tråde per feature)
 ```
 
-#### `[ ]` Hashing/Sha256Hasher.cs
-- Beregn SHA-256 i chunks
-- Rapportér progress
-- Returnér dictionary: `"SHA2_256" → "hexstreng"`
-- Håndtér fil slettet/access denied gracefully
+Backpressure-kontrol:
+- Hvis transfer-queue > 50 items: scanner venter (SemaphoreSlim)
+- Prevents at scanneren bufferer hele filsystemet i hukommelsen
 
-#### `[ ]` Models/Enums/HashType.cs
+Vigtige regler:
 ```
-SHA2_256, SHA2_512, SHA3_256_FIPS202, SHA3_512_KECCAK, BLAKE3_256, BLAKE3_512, MD5_128
+1. Brug Channel.CreateUnbounded<IBackupItem>() – ALDRIG Bounded med multiple writers
+   ← 🚫 FIX Core2: Bounded channels med multiple writers = deadlock-risiko
+
+2. Brug SemaphoreSlim(N) for at begrænse antal samtidige workers
+
+3. Alle workers har try/catch – ingen ubehandlede exceptions fra tasks
+
+4. ProgressTracker er thread-safe (se F1)
+
+5. Timeout på channel-operationer (10 sekunder) – forhindrer hang
+
+6. Ingen cirkulære afhængigheder mellem stages
 ```
 
 ---
 
-#### `[ ]` Metadata/IMetadataReader.cs
-```
-Task<ExtractedMetadata> ExtractAsync(
-  string sourcePath, string destinationPath, CancellationToken ct)
-```
-
-#### `[ ]` Metadata/Models/ExtractedMetadata.cs
-```
-record ExtractedMetadata(
-  DateTime? CreatedDate, DateTime? ModifiedDate, DateTime? AccessedDate,
-  FileAttributes? Attributes,
-  string? CameraModel, DateTime? PhotoTakenDate,
-  double? Latitude, double? Longitude,
-  int? ISO, string? ShutterSpeed, string? FocalLength,
-  Dictionary<string, string>? CustomProperties)
-```
-
-#### `[ ]` Metadata/ExifMetadataReader.cs
-- Brug MetadataExtractor NuGet-pakke
-- Returnér EXIF-felter for billeder, kun filattributter for andre filer
-- Håndtér korrupt EXIF gracefully (log, returner kun filattributter)
+## SEKTION G: OPTIONAL FEATURES
 
 ---
 
-#### `[ ]` Verification/IIntegrityVerifier.cs
-```
-Task<VerificationResult> VerifyAsync(
-  IBackupItem item, string destinationPath,
-  IProgress<long>? progress, CancellationToken ct)
+### `[ ]` G1 – `Hashing/IItemHasher.cs`
+```csharp
+internal interface IItemHasher
+{
+    Task<Dictionary<string, string>> ComputeAsync(
+        string filePath,
+        List<HashType> hashTypes,
+        IProgress<long>? progress,
+        CancellationToken ct
+    );
+    // Returnerer f.eks.: { "SHA2_256" → "a1b2c3...", "BLAKE3_256" → "d4e5f6..." }
+}
 ```
 
-#### `[ ]` Verification/Models/VerificationResult.cs
+---
+
+### `[ ]` G2 – `Hashing/Sha256Hasher.cs`
+**Hvad:** Beregn SHA-256 hash af en fil i chunks (single-pass).
+
 ```
-record VerificationResult(
-  bool Success, string Message, DateTime VerifiedAt,
-  long VerificationTimeMs,
-  bool FileDeleted = false, bool HashMismatch = false)
+1. Åbn fil med FileStream
+2. Opret SHA256-instans (System.Security.Cryptography.SHA256.Create())
+3. Læs i chunks (81920 bytes)
+4. For hvert chunk: sha256.TransformBlock(chunk)
+5. progress?.Report(bytesLæst)
+6. sha256.TransformFinalBlock(...)
+7. Konvertér hash til hex-streng (BitConverter.ToString(...).Replace("-", "").ToLower())
+8. Returnér { "SHA2_256" → hexStreng }
+9. Håndtér FileNotFoundException gracefully → returner tom dictionary
 ```
 
-#### `[ ]` Verification/IntegrityVerifier.cs
-- Beregn hash af destinationsfil
+💡 *"Single-pass" betyder at vi læser filen én gang og beregner hash. Hvis vi skal beregne flere hash-typer, kan vi gøre det simultant i samme fil-gennemlæb.*
+
+---
+
+### `[ ]` G3 – `Metadata/IMetadataReader.cs`
+```csharp
+internal interface IMetadataReader
+{
+    Task<ExtractedMetadata> ExtractAsync(
+        string sourcePath,
+        string destinationPath,
+        CancellationToken ct
+    );
+}
+```
+
+---
+
+### `[ ]` G4 – `Metadata/Models/ExtractedMetadata.cs`
+```csharp
+public sealed record ExtractedMetadata(
+    DateTime? CreatedDate,
+    DateTime? ModifiedDate,
+    DateTime? AccessedDate,
+    FileAttributes? Attributes,
+    // EXIF (kun billeder)
+    string? CameraModel,
+    DateTime? PhotoTakenDate,
+    double? Latitude,
+    double? Longitude,
+    int? ISO,
+    string? ShutterSpeed,
+    string? FocalLength,
+    Dictionary<string, string>? CustomProperties = null
+);
+```
+
+---
+
+### `[ ]` G5 – `Metadata/ExifMetadataReader.cs`
+- Brug `MetadataExtractor` NuGet-pakke
+- Returnér EXIF for billeder, kun filattributter for andre filer
+- Håndtér korrupt EXIF: log advarsel, returnér kun filattributter
+
+---
+
+### `[ ]` G6 – `Verification/IIntegrityVerifier.cs`
+```csharp
+internal interface IIntegrityVerifier
+{
+    Task<VerificationResult> VerifyAsync(
+        IBackupItem item,
+        string destinationPath,
+        IProgress<long>? progress,
+        CancellationToken ct
+    );
+}
+```
+
+---
+
+### `[ ]` G7 – `Verification/Models/VerificationResult.cs`
+```csharp
+public sealed record VerificationResult(
+    bool Success,
+    string Message,
+    DateTime VerifiedAt,
+    long VerificationTimeMs,
+    bool FileDeleted = false,
+    bool HashMismatch = false
+);
+```
+
+---
+
+### `[ ]` G8 – `Verification/IntegrityVerifier.cs`
+- Beregn hash af destinations-filen
 - Sammenlign med `item.Hashes` (source hash)
-- Returner `VerificationResult` med detaljer
-- Kræver at hashing er aktiveret (ellers returner false med besked)
+- Kræv at hashing er aktiveret (ellers returner false med besked)
 
 ---
 
-#### `[ ]` Timestamps/ITimestampCorrector.cs
-```
-Task<TimestampCorrectionResult> CorrectAsync(
-  IBackupItem item, string destinationPath, CancellationToken ct)
-```
-
-#### `[ ]` Timestamps/Models/TimestampCorrectionResult.cs
-```
-record TimestampCorrectionResult(
-  bool Success,
-  DateTime? OriginalModified, DateTime? CorrectedModified,
-  string? Reason = null)
-```
-
-#### `[ ]` Timestamps/TimestampCorrector.cs
-- Kræv at `item.ExtractedMetadata != null` ⚠️ KRAV fra arkitektur: metadata-success er forudsætning
-- Brug `PhotoTakenDate` (EXIF) hvis tilgængeligt, ellers `ModifiedDate`
-- Sæt `File.SetLastWriteTime(destinationPath, originalDate)`
-- Håndtér permission denied gracefully
-
----
-
-#### `[ ]` Engine/LimitedParallel/LimitedParallelBackupEngine.cs
-**Formål:** Paralleliseret backup KUN til filsystem-kilder.
-
-🚫 MÅ ALDRIG bruges til MTP – fabrikken sikrer dette.
-
-Design (producer-consumer):
-```
-Scanner (1 tråd) → [TransferQueue depth=50] → Transfer workers (N tråde)
-                                              → [SidecarQueue] → Sidecar workers (N tråde)
-                                                              → [Optional queues] → Feature workers
-```
-
-Regler:
-- `N = Math.Min(4, Environment.ProcessorCount / 2)`, maks 8
-- Kø-dybde = 50 (backpressure – scanner venter hvis køen er fuld)
-- Thread-safe ProgressTracker (allerede designet til dette)
-- Brug `SemaphoreSlim` eller `Channel<T>` (UNBOUNDED) – ikke Bounded Channel med multiple writers ⚠️ FIX Core2 deadlock-risiko
-- Alle workers har eksplicit fejlhåndtering (ingen ubehandlede exceptions fra tasks)
-- Timeout på kø-operationer (10 sekunder) – forhindrer hang
-🚫 Ingen cirkulære afhængigheder mellem stages
-
----
-
-## TIER 4 – INFRASTRUKTUR OG PERSISTENS
-
----
-
-#### `[ ]` Repository/IBackupRepository.cs
-```
-Task SaveAsync(BackupSessionState session, CancellationToken ct)
-Task<BackupSessionState?> LoadAsync(BackupSessionStateKey key, CancellationToken ct)
-```
-
-#### `[ ]` Repository/NoOpBackupRepository.cs
-- Implementér `IBackupRepository`
-- Gør ingenting (default – ingen persistens)
-
-#### `[ ]` Repository/FileSystemBackupRepository.cs
-- Gem session-tilstand som JSON i output-mappen
-- Håndtér I/O-fejl gracefully (log, fortsæt uden persistens)
-
----
-
-## MTP SESSION MANAGEMENT (Kritisk – implementér tidligt)
-
----
-
-#### `[ ]` Scanner/Mtp/MtpSessionManager.cs (eller tilsvarende)
-**Formål:** Eksplicit livscyklus-styring af MTP-enhedssession.
-
-Regler:
-- `OpenAsync()`: Opret forbindelse til enhed, valider at den er klar
-- `KeepAliveAsync()`: Ping enhed hvert 30. sekund (timer eller baggrundstask)
-- `CloseAsync()`: Luk forbindelsen i finally-blok
-- Per-operation timeout: 60 sekunder (konfigurerbar via BackupPlan)
-- Retry med exponential backoff ved transiente fejl: 3 forsøg (1s, 2s, 4s)
-- Guard: tjek at session er åben FØR enhver operation (undgå brug af afbrudt enhed)
-- Håndtér enhedsafbrydelse gracefully under alle faser
-
----
-
-## TEST-KLASSER (BMTP3.Core4.Tests)
-
----
-
-#### `[ ]` Tests/SequentialBackupEngineTests.cs
-Minimum test-cases:
-```
-[ ] Tomt scan → returnér Completed med 0 filer
-[ ] Enkelt fil, succes → returnér Completed, sidecar genereret STRAKS
-[ ] Enkelt fil, transfer fejler → returnér PartialSuccess, backup STOPPER IKKE ⚠️
-[ ] Annullering under scan → returnér Cancelled med partial result
-[ ] Annullering under transfer → returnér Cancelled med partial result
-[ ] Plan-validering fejler → kast BackupPlanValidationException
-[ ] DryRun = true → ingen faktisk overførsel, korrekt statistik
-[ ] Destination-mappe oprettes automatisk ⚠️ FIX Core3 Bug #3
-[ ] RelativePath bevares korrekt i destination ⚠️ FIX Core3 Bug #1
-[ ] BytesProcessed er korrekt efter transfer ⚠️ FIX Core3 Bug #4
+### `[ ]` G9 – `Timestamps/ITimestampCorrector.cs`
+```csharp
+internal interface ITimestampCorrector
+{
+    Task<TimestampCorrectionResult> CorrectAsync(
+        IBackupItem item,
+        string destinationPath,
+        CancellationToken ct
+    );
+}
 ```
 
 ---
 
-#### `[ ]` Tests/BackupPlanValidatorTests.cs
-```
-[ ] Manglende Name → fejl
-[ ] Manglende Source → fejl
-[ ] Manglende Destination → fejl
-[ ] Ugyldig SourceType → fejl
-[ ] MaxDegreeOfParallelism = 0 → fejl (skal være > 0 eller null)
-[ ] Valid plan → ingen fejl
-```
-
----
-
-#### `[ ]` Tests/ProgressTrackerTests.cs
-```
-[ ] GetSnapshot() returnerer korrekte værdier
-[ ] Increment-metoder er thread-safe (kør fra multiple tråde)
-[ ] PercentageComplete beregnes korrekt
-[ ] BytesPerSecond beregnes korrekt
-[ ] EstimatedTimeRemaining beregnes korrekt
+### `[ ]` G10 – `Timestamps/Models/TimestampCorrectionResult.cs`
+```csharp
+public sealed record TimestampCorrectionResult(
+    bool Success,
+    DateTime? OriginalModified,
+    DateTime? CorrectedModified,
+    string? Reason = null
+);
 ```
 
 ---
 
-#### `[ ]` Tests/FilesystemItemScannerTests.cs
-```
-[ ] Tom mappe → 0 items
-[ ] Flad mappe med filer → items med korrekt RelativePath
-[ ] Nested mapper → items med relative stier der inkluderer undermapper ⚠️ FIX Core3 Bug #1
-[ ] Permission denied mappe → skippes, andre mapper scannes stadig
-[ ] Annullering → stopper scanning
-```
+### `[ ]` G11 – `Timestamps/TimestampCorrector.cs`
+⚠️ Kræv at `item.ExtractedMetadata != null` – metadata-success er FORUDSÆTNING. FIX fra Core3.
 
----
-
-#### `[ ]` Tests/FilesystemFileTransferTests.cs
 ```
-[ ] Kopier fil til eksisterende mappe → succes
-[ ] Kopier fil, destination-mappe eksisterer ikke → oprettes automatisk ⚠️ FIX Core3 Bug #3
-[ ] Kildefil eksisterer ikke → returnér fejl, KAST IKKE ⚠️ FIX Core3 Bug #2
-[ ] Annullering under kopiering → ryd partial fil op, returnér fejl
-[ ] Progress-events sendes under kopiering ⚠️ FIX Core3 Bug #4
+1. Tjek item.ExtractedMetadata != null → ellers returner TimestampCorrectionResult(false, "No metadata")
+2. Brug PhotoTakenDate (EXIF) hvis tilgængeligt, ellers ModifiedDate
+3. File.SetLastWriteTime(destinationPath, originalDate)
+4. Returner TimestampCorrectionResult(true, originalDate, newDate)
+5. Håndtér UnauthorizedAccessException gracefully
 ```
 
 ---
 
-## OPSUMMERING AF RÆKKEFØLGE
+## SEKTION H: PROGRESS-NOTIFIERS
 
-```
-1. [ ] Ret BackupItem til at implementere IBackupItem (tilføj manglende felter)
-2. [ ] Opret Api/IBackupItem.cs
-3. [ ] Opret Api/BackupProgress.cs (med beregnede properties)
-4. [ ] Opret Api/BackupError.cs
-5. [ ] Opret Api/TransferResult.cs
-6. [ ] Opret Api/IProgressNotifier.cs
-7. [ ] Opdatér Models/BackupResult.cs → BackupJobResult
-8. [ ] Opret Models/Enums/BackupJobStatus.cs
-9. [ ] Opret Transfer/IFileTransfer.cs
-10. [ ] Opret Sidecar/ISidecarGenerator.cs
-11. [ ] Implementér Engine/Progress/ProgressTracker.cs
-12. [ ] Implementér Transfer/Filesystem/FilesystemFileTransfer.cs
-13. [ ] Implementér Transfer/Mtp/MtpFileTransfer.cs
-14. [ ] Implementér Scanner/Filesystem/FilesystemItemScanner.cs
-15. [ ] Implementér Scanner/Mtp/MtpItemScanner.cs
-16. [ ] Implementér Sidecar/Json/JsonSidecarGenerator.cs
-17. [ ] Implementér Engine/Sequential/SequentialBackupEngine.cs (fuld krop)
-18. [ ] Opret/tilpas Engine/BackupEngineFactory.cs
-19. [ ] Implementér DependencyInjection/ServiceCollectionExtensions.cs
-20. [ ] Implementér Fakes i Tests-projektet
-21. [ ] Skriv unit tests (se test-liste ovenfor)
---- Tier 1 komplet → valider MTP-stabilitet ---
-22. [ ] Implementér CollisionResolver.cs
-23. [ ] Implementér DestinationPathBuilder.cs
-24. [ ] Implementér DryRunFileTransfer.cs
-25. [ ] Implementér LoggingProgressNotifier.cs og SpectreProgressNotifier.cs
---- Tier 2 komplet → valider UX ---
-26. [ ] Implementér Hashing-lag (IItemHasher, SHA256Hasher)
-27. [ ] Implementér Metadata-lag (IMetadataReader, ExifMetadataReader)
-28. [ ] Implementér Verification-lag (IIntegrityVerifier)
-29. [ ] Implementér Timestamps-lag (ITimestampCorrector)
-30. [ ] Implementér LimitedParallelBackupEngine (KUN filesystem)
---- Tier 3 komplet → valider performance ---
-31. [ ] Implementér Repository-lag (IBackupRepository, NoOp, FileSystem)
-32. [ ] Implementér MTP session-management (keep-alive, timeouts, retry)
+---
+
+### `[ ]` H1 – `Progress/LoggingProgressNotifier.cs`
+**Hvad:** Simpel notifier der logger til konsol/ILogger.
+```csharp
+internal sealed class LoggingProgressNotifier : IProgressNotifier
+{
+    private readonly ILogger logger;
+    // OnPhaseChanged → logger.LogInformation("Phase: {prev} → {new}")
+    // OnFileStarted → logger.LogDebug("Processing: {path}")
+    // OnFileCompleted → logger.LogInformation("✓ {path}") eller logger.LogWarning("✗ {path}")
+    // OnError → logger.LogError(...)
+    // OnCompleted → logger.LogInformation("Backup complete: {status}")
+}
 ```
 
 ---
 
-## KRITISKE FORBUDSZONER (Lær af Core2)
+### `[ ]` H2 – `Progress/SpectreProgressNotifier.cs`
+**Hvad:** Rig konsol-visning via Spectre.Console.
+- Vis live: fase, nuværende fil, %, MB/s, ETA
+- Fejl vises som farvekodet tekst
 
-- 🚫 Brug ALDRIG Bounded `Channel<T>` med multiple writers → deadlock-risiko
-- 🚫 Parallelism MÅ ALDRIG bruges til MTP-kilder
-- 🚫 Transfer MÅ IKKE kaste exception ved filoverførsels-fejl → returnér TransferResult
-- 🚫 Sidecar MÅ IKKE genereres sidst → generer straks efter transfer
-- 🚫 Hashing MÅ IKKE forceres → kun hvis BackupPlan.HashTypes != null
-- 🚫 Directory-sti MÅ IKKE mangle → brug altid RelativePath fra scanner
-- 🚫 ProgressTracker MÅ IKKE tilgås uden sync fra multiple tråde
-- 🚫 MTP-session MÅ IKKE åbnes i scanner (åbnes i engine/session-manager)
+---
+
+## SEKTION I: DRY-RUN SUPPORT
+
+---
+
+### `[ ]` I1 – `Engine/DryRun/DryRunFileTransfer.cs`
+**Hvad:** Simulér transfer uden faktisk I/O.
+
+⚠️ FIX fra Core3 Bug #5: I Core3 simulerede dry-run ikke katalogstruktur, så hash/metadata-faserne fejlede.
+
+```csharp
+internal sealed class DryRunFileTransfer : IFileTransfer
+{
+    // Ingen faktisk fil-kopiering
+    // Simulér progress (rapportér bytes som om de kopieres, med lille forsinkelse)
+    // Simulér Directory.CreateDirectory (log men kør ikke)
+    // Returnér altid TransferResult(Success=true) med korrekte stier
+}
+```
+
+DryRun-tabel fra CORE4_PLAN_en.md:
+| Operation | Kører i DryRun? |
+|-----------|----------------|
+| Fil-scanning | JA |
+| Mappe-enumeration | JA |
+| Fil-størrelse beregning | JA |
+| Katalogstruktur oprettelse | SIMULERET (logger) |
+| Fil-kopiering | NEJ |
+| Sidecar-oprettelse | SIMULERET (logger) |
+| Hash-beregning | NEJ |
+| Metadata-udtræk | NEJ |
+| Verifikation | NEJ |
+| Database-persistens | NEJ |
+
+---
+
+## SEKTION J: DEPENDENCY INJECTION
+
+---
+
+### `[ ]` J1 – `DependencyInjection/ServiceCollectionExtensions.cs`
+```csharp
+public static class ServiceCollectionExtensions
+{
+    public static IServiceCollection AddBMTP3Core4(
+        this IServiceCollection services,
+        Action<Core4Options>? configure = null)
+    {
+        var options = new Core4Options();
+        configure?.Invoke(options);
+
+        // Obligatoriske services (Tier 1)
+        services.AddScoped<IBackupSessionStateStore, InMemoryBackupSessionStateStore>();
+        services.AddScoped<ISidecarGenerator, JsonSidecarGenerator>();
+        services.AddScoped<SequentialBackupEngine>();
+
+        // Default scanner og transfer (kan overrides)
+        if (options.SourceType == BackupSourceType.MediaDevice)
+        {
+            services.AddScoped<IBackupScanner, MtpItemScanner>();
+            services.AddScoped<IFileTransfer, MtpFileTransfer>();
+        }
+        else
+        {
+            services.AddScoped<IBackupScanner, FilesystemItemScanner>();
+            services.AddScoped<IFileTransfer, FilesystemFileTransfer>();
+        }
+
+        // Optional features (kun registrér hvis aktiveret)
+        if (options.EnableHashing)
+            services.AddScoped<IItemHasher, Sha256Hasher>();
+
+        if (options.EnableMetadata)
+            services.AddScoped<IMetadataReader, ExifMetadataReader>();
+
+        // Factory som IBackupEngine
+        services.AddScoped<IBackupEngine>(sp =>
+            BackupEngineFactory.Create(sp.GetRequiredService<BackupPlan>(), sp));
+
+        return services;
+    }
+}
+```
+
+---
+
+## SEKTION K: FAKES OG UNIT TESTS
+
+---
+
+### `[~]` K1 – `Tests/Fakes/FakeBackupScanner.cs`
+Implementér `IBackupScanner`. Se D3 for mønster.
+
+---
+
+### `[~]` K2 – `Tests/Fakes/FakeFileTransfer.cs`
+Implementér `IFileTransfer`. Se C4 for mønster.
+
+---
+
+### `[~]` K3 – `Tests/Fakes/FakeSidecarGenerator.cs`
+Implementér `ISidecarGenerator`.
+
+```csharp
+internal sealed class FakeSidecarGenerator : ISidecarGenerator
+{
+    public List<(IBackupItem item, string path)> Calls { get; } = new();
+    public bool ShouldFail { get; set; } = false;
+
+    public Task<bool> GenerateAsync(IBackupItem item, string path, CancellationToken ct)
+    {
+        Calls.Add((item, path));
+        return Task.FromResult(!ShouldFail);
+    }
+}
+```
+
+---
+
+### `[ ]` K4 – `Tests/SequentialBackupEngineTests.cs`
+
+| Test | Hvad testes | Hvilken bug fixes |
+|------|-------------|-------------------|
+| `EmptyScan_ReturnsCompleted` | 0 items → Completed, 0 fejl | – |
+| `SingleFile_Success_SidecarGeneratedImmediately` | Sidecar genereres FØR optional features | Core3 Design Flaw #3 |
+| `SingleFile_TransferFails_BackupContinues` | Transfer fejl → PartialSuccess, IKKE exception | Core3 Bug #2 |
+| `MultipleFiles_OneFails_RestContinue` | 1 af 5 fejler → 4 succeeds, 1 fejlet | Core3 Bug #2 |
+| `CancelDuringScan_ReturnsCancelled` | Annullering i scan → Cancelled | – |
+| `CancelDuringTransfer_ReturnsCancelled` | Annullering i transfer → Cancelled + partial result | – |
+| `InvalidPlan_ThrowsValidationException` | Tom plan → BackupPlanValidationException | – |
+| `DryRun_NoActualTransfer` | DryRun=true → ingen faktiske filer kopieret | Core3 Bug #5 |
+| `HierarchyPreserved_InDestination` | RelativePath bevares i destination | Core3 Bug #1 |
+| `DestDirCreatedAutomatically` | Destination eksisterer ikke → oprettes automatisk | Core3 Bug #3 |
+| `BytesProcessed_ReportedCorrectly` | BytesProcessed i progress er korrekt | Core3 Bug #4 |
+| `HashingOptional_NullHashTypes_NoHashing` | HashTypes = null → hasher kaldes ikke | Core3 Design Flaw #2 |
+
+---
+
+### `[ ]` K5 – `Tests/ProgressTrackerTests.cs`
+```
+- GetSnapshot_ReturnsCorrectValues
+- IncrementFromMultipleThreads_IsThreadSafe (Task.WhenAll med 100 Tasks)
+- PercentageComplete_CalculatedCorrectly
+- BytesPerSecond_CalculatedCorrectly
+- EstimatedTimeRemaining_CalculatedCorrectly
+```
+
+---
+
+### `[ ]` K6 – `Tests/FilesystemItemScannerTests.cs`
+```
+- EmptyDirectory_ReturnsNoItems
+- FlatDirectory_ReturnsItemsWithCorrectRelativePath  ← FIX Core3 Bug #1
+- NestedDirectories_RelativePathIncludesSubfolders   ← FIX Core3 Bug #1
+- PermissionDenied_SkipsDirectory_ContinuesScanning
+- Cancellation_StopsScanning
+```
+
+---
+
+### `[ ]` K7 – `Tests/FilesystemFileTransferTests.cs`
+```
+- CopyToExistingDir_Succeeds
+- DestDirNotExist_CreatedAutomatically              ← FIX Core3 Bug #3
+- SourceNotFound_ReturnsFailed_DoesNotThrow         ← FIX Core3 Bug #2
+- Cancellation_CleansUpPartialFile
+- ProgressEvents_ReportedDuringCopy                 ← FIX Core3 Bug #4
+```
+
+---
+
+### `[ ]` K8 – `Tests/BackupPlanValidatorTests.cs`
+```
+- MissingName_ReturnsError
+- MissingSourceAndDeviceId_ReturnsError
+- MissingDestination_ReturnsError
+- InvalidSourceType_ReturnsError
+- MaxDegreeOfParallelism_Zero_ReturnsError
+- ValidPlan_NoErrors
+```
+
+---
+
+### `[ ]` K9 – `Tests/CollisionResolverTests.cs`
+```
+- NoCollision_ReturnsSamePath
+- CollisionWithSkip_ReturnsNull
+- CollisionWithOverwrite_ReturnsSamePath
+- CollisionWithRename_ReturnsIncrementedName (fil_1.jpg)
+- MultipleCollisions_IncrementsCorrectly (fil_1.jpg → fil_2.jpg → fil_3.jpg)
+```
+
+---
+
+## SEKTION L: MTP SESSION MANAGEMENT
+
+---
+
+### `[ ]` L1 – `Scanner/Mtp/MtpSessionManager.cs`
+**Hvad:** Eksplicit livscyklus-styring af MTP-enhedssession.
+
+```csharp
+internal sealed class MtpSessionManager : IAsyncDisposable
+{
+    // OpenAsync() – verificér enhed, åbn session
+    // KeepAliveAsync() – ping enhed hvert 30. sekund
+    // CloseAsync() – luk session (i finally-blok)
+
+    // Per-operation timeout: 60 sekunder (fra BackupPlan.OperationTimeout)
+    // Retry: 3 forsøg med 1s, 2s, 4s backoff
+    // Guard: tjek IsConnected FØR enhver operation
+}
+```
+
+---
+
+## IMPLEMENTERINGSRÆKKEFØLGE (start her)
+
+```
+TIER 1 – MTP kan bruges når disse er færdige:
+
+[ ] 1.  A1  Rename CollisionStreategy.cs (5 min)
+[ ] 2.  A2  Opdatér BackupPhase enum (10 min)
+[ ] 3.  A3  Opdatér BackupErrorCode enum (15 min)
+[ ] 4.  B1  Opret BackupJobStatus enum (5 min)
+[ ] 5.  B2  Opret ErrorHandlingStrategy enum (5 min)
+[ ] 6.  B3  Opret SidecarFormat enum (5 min)
+[ ] 7.  B4  Opret HashType enum (10 min)
+[ ] 8.  B8  Opret Api/BackupError.cs (10 min)
+[ ] 9.  B9  Opret Api/TransferResult.cs (10 min)
+[ ] 10. A4  Opdatér BackupPlan.cs (20 min)
+[ ] 11. A5  Opdatér BackupResult.cs → BackupJobResult (20 min)
+[ ] 12. A6  Opdatér IBackupEngine.cs (5 min)
+[ ] 13. A7  Opdatér IBackupProgress.cs (10 min)
+[ ] 14. A8  Opdatér BackupItem.cs (10 min)
+[ ] 15. B5  Opret Api/IBackupItem.cs + BackupItem implementerer det (15 min)
+[ ] 16. B6  Opret Api/BackupProgress.cs (15 min)
+[ ] 17. B7  Opret Api/IProgressNotifier.cs (10 min)
+[ ] 18. B10 Opret Models/Contexts.cs (15 min)
+[ ] 19. C1  Opret Transfer/IFileTransfer.cs (5 min)
+[ ] 20. E1  Opret Sidecar/ISidecarGenerator.cs (5 min)
+[ ] 21. F1  Implementér Engine/Progress/ProgressTracker.cs (30 min)
+[ ] 22. D1  Implementér Scanner/Filesystem/FilesystemItemScanner.cs (30 min)
+[ ] 23. C2  Implementér Transfer/Filesystem/FilesystemFileTransfer.cs (45 min)
+[ ] 24. E2  Implementér Sidecar/Json/JsonSidecarGenerator.cs (30 min)
+[ ] 25. F5  Implementér Engine/CollisionResolution/CollisionResolver.cs (20 min)
+[ ] 26. F2  Omskriv Engine/BackupEngine.cs til abstract (30 min)
+[ ] 27. F3  Implementér Engine/Sequential/SequentialBackupEngine.cs – fuld krop (90 min)
+[ ] 28. F4  Opret Engine/BackupEngineFactory.cs (15 min)
+[ ] 29. J1  Implementér DependencyInjection/ServiceCollectionExtensions.cs (20 min)
+[ ] 30. D3  Implementér TestItemScanner (15 min)
+[ ] 31. C4  Implementér TestFileTransfer (15 min)
+[ ] 32. K3  Implementér FakeSidecarGenerator (10 min)
+[ ] 33. K4  Skriv SequentialBackupEngineTests (60 min)
+[ ] 34. K5  Skriv ProgressTrackerTests (30 min)
+[ ] 35. K6  Skriv FilesystemItemScannerTests (30 min)
+[ ] 36. K7  Skriv FilesystemFileTransferTests (30 min)
+[ ] 37. K8  Skriv BackupPlanValidatorTests (20 min)
+[ ] 38. K9  Skriv CollisionResolverTests (20 min)
+
+--- TIER 1 KOMPLET → Bekræft MTP-stabilitet ---
+
+[ ] 39. D2  Implementér Scanner/Mtp/MtpItemScanner.cs (60 min)
+[ ] 40. C3  Implementér Transfer/Mtp/MtpFileTransfer.cs (60 min)
+[ ] 41. L1  Implementér MtpSessionManager.cs (45 min)
+
+--- MTP KOMPLET ---
+
+[ ] 42. B7  Opret IProgressNotifier.cs (allerede listet) – implementér:
+[ ] 43. H1  LoggingProgressNotifier (20 min)
+[ ] 44. H2  SpectreProgressNotifier (45 min)
+[ ] 45. I1  DryRunFileTransfer (20 min)
+
+--- TIER 2 KOMPLET → Bekræft UX ---
+
+[ ] 46. G1  IItemHasher + G2 Sha256Hasher (45 min)
+[ ] 47. G3  IMetadataReader + G4 ExtractedMetadata + G5 ExifMetadataReader (60 min)
+[ ] 48. G6  IIntegrityVerifier + G7 VerificationResult + G8 IntegrityVerifier (45 min)
+[ ] 49. G9  ITimestampCorrector + G10 TimestampCorrectionResult + G11 TimestampCorrector (30 min)
+[ ] 50. F6  LimitedParallelBackupEngine (120 min)
+
+--- TIER 3 KOMPLET → Bekræft performance ---
+```
+
+---
+
+## KRITISKE FORBUDSZONER
+
+```
+🚫 Bounded Channel<T> med multiple writers → DEADLOCK-RISIKO (Core2-fejl)
+🚫 Parallelism for MTP-kilder → ENHEDS-AFBRYDELSER (Core2-fejl)
+🚫 IFileTransfer kaster exception ved fejl → STOP IKKE backup (Core3 Bug #2)
+🚫 Sidecar genereres sidst → generes STRAKS efter transfer (Core3 Design Flaw #3)
+🚫 Hashing er tvunget → kun hvis HashTypes != null (Core3 Design Flaw #2)
+🚫 DestinationPath = kun filnavn → BEVAR RelativePath (Core3 Bug #1)
+🚫 Ingen Directory.CreateDirectory() → OPRET altid destination-mappe (Core3 Bug #3)
+🚫 ProgressTracker uden sync fra multiple tråde → INTERLOCKED/LOCK (Core2-fejl)
+🚫 MTP-session åbnes i scanner → ÅBNES I ENGINE (Core2-fejl)
+🚫 Dry-run springer alt over → SIMULÉR katalogstruktur (Core3 Bug #5)
+```
