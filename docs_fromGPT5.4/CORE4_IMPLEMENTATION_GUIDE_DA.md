@@ -3,8 +3,9 @@
 **Version:** 4.1  
 **Principper:**  
 - Du som koder kan selv skrive kodelogik. Denne guide giver dig kontrakter, typer og rækkefølge.  
-- Hvert trin er mærket `[NEED]` (core virker ikke uden) eller `[NICE]` (tilvalg, kan udskydes).  
-- Følg rækkefølgen. Hvert trin kompilerer og testes inden næste.
+- Denne guide bruger både **trinnumre** og fire faste prioritetstags: `[NEED]`, `[SHOULD]`, `[NICE]`, `[LATER]`.  
+- Trinnumrene fortæller rækkefølgen. Tags fortæller hvor kritisk noget er.  
+- Følg rækkefølgen. Trin 0-13 bygger foundation, Trin 14 lukker den første komplette baseline, og senere trin kommer bagefter.
 - Denne revision lukker de vigtigste konflikter mellem `CORE4_MASTER_SYNTHESIS.md`, `CORE4_REQUIREMENTS_TIERS.md`, `Core4_Master_Architecture.md` og det faktiske `BMTP3.Core4` skeleton.
 
 ---
@@ -14,12 +15,27 @@
 Før du skriver kode, skal du læse disse regler som **bindende normalisering**:
 
 1. **Skeleton-kontrakterne er bindende.** Brug den nuværende form af `BackupPlan`, `BackupResult`, `BackupItem`, `IBackupEngine`, `IBackupProgress`, `IFileProgress` og `IBackupScanner`. Ældre docs viser andre DTO'er og feltnavne; de må ikke genintroduceres uden bevidst API-ændring.
-2. **Tier 1 er først lukket når MTP også virker.** I denne guide er Trin 0–13 et FS-first foundation-checkpoint. Det er praktisk som arbejdsrytme, men du må ikke erklære Tier 1 færdig før Trin 14 (MTP) også er grønt.
-3. **`MaxDegreeOfParallelism` følger skeleton, ikke de ældre docs.** I det aktuelle skeleton er `BackupPlan.MaxDegreeOfParallelism` `int?`, hvor `null = auto`, `1 = tving sekventiel`, og `> 1 = parallel når Tier 4 findes`. Ignorér ældre beskrivelser med `-1`.
+2. **Den første komplette Core4-baseline er først færdig når Trin 14 (MTP) også virker.** I denne guide er Trin 0-13 et FS-first foundation-checkpoint. Det er praktisk som arbejdsrytme, men du må ikke kalde baseline færdig før MTP også er grønt.
+3. **`MaxDegreeOfParallelism` følger skeleton, ikke de ældre docs.** I det aktuelle skeleton er `BackupPlan.MaxDegreeOfParallelism` `int?`, hvor `null = auto`, `1 = tving sekventiel`, og `> 1 = parallel når det senere parallel-trin findes`. Ignorér ældre beskrivelser med `-1`.
 4. **Metadata/timestamp-strategien er fastlåst.** Core4 læser datoer i denne rækkefølge: `MetadataExtractor` → `ExifTool` fallback → filsystem-attributter. Filsystem-attributter udfyldes i metadataresultatet; engine må ikke have sin egen skjulte dato-fallback ved siden af readeren.
 5. **Sidecar-navnet er i denne guide `item.DestinationPath + ".sidecar.json"`.** Hvis andre docs nævner `.bmtp3.json`, så er det en ældre navnekonvention. Hold dig til én konvention konsekvent.
 6. **`BMTP3.Core4.csproj` er ikke klar som den står.** Skeleton targeter lige nu `net10.0`, mens resten af repoet er .NET 8-orienteret. Det er et preflight-fix, ikke et designvalg. Ret target framework tidligt, men bland det ikke sammen med nye API-ændringer.
 7. **Ældre felter som `WriteSidecar`, `HashTypes`, `SourceDirectory`, `DeviceId` og `OperationTimeout` på `BackupPlan` er ikke en del af nuværende skeleton-contract.** Hvis du skal styre den slags i Core4 nu, så gør det via `Core4Options` eller interne policies, ikke ved at mutere `BackupPlan` tilfældigt.
+
+---
+
+## Sektion 0b: Prioritetsniveauer i denne guide
+
+Denne guide bruger fire faste tags på contracts, datatyper, trintrin og krav:
+
+| Tag | Betydning | Praktisk konsekvens |
+|-----|-----------|---------------------|
+| `[NEED]` | Nødvendigt for første komplette Core4-baseline | Blokerer at Core4 kan kaldes virkende |
+| `[SHOULD]` | Meget vigtigt lige efter baseline | Skal på før Core4 kan kaldes robust og troværdig |
+| `[NICE]` | Værdifuld udvidelse | Må vente til baseline og robusthed er på plads |
+| `[LATER]` | Senere fase | Må ikke blokere den første implementering |
+
+**Regel:** Følg altid trinnumrene i Sektion 5. Brug tags til at vurdere vigtighed.
 
 ---
 
@@ -55,8 +71,8 @@ Før du skriver kode, skal du læse disse regler som **bindende normalisering**:
 
 | Fil | Problem | Handling |
 |-----|---------|---------|
-| `Engine/Sequential/SequentialBackupEngine.cs` | Scan virker, transfer/sidecar/result mangler | Færdiggøres i Trin 11 |
-| `Engine/LimitedParallel/LimitedParallelBackupEngine.cs` | Tom klasse, implementerer ikke IBackupEngine | Implementeres i Trin 29 `[NICE]` |
+| `Engine/Sequential/SequentialBackupEngine.cs` | Scan virker, transfer/sidecar/result mangler | Færdiggøres i Trin 11 `[NEED]` |
+| `Engine/LimitedParallel/LimitedParallelBackupEngine.cs` | Tom klasse, implementerer ikke IBackupEngine | Implementeres i Trin 29 `[LATER]` |
 
 ### 1.3 Skal slettes (tomme stubs der ikke hører hjemme)
 
@@ -73,7 +89,7 @@ Før du skriver kode, skal du læse disse regler som **bindende normalisering**:
 ## Sektion 2: Komplet kontraktoversigt — alle interfaces for Tier 1–4
 
 Alle interfaces er `internal` medmindre andet er angivet.  
-Tier 5–6 interfaces (`IBackupRepository`, `IProgressNotifier`) er **planlagte**, men ikke frosset i denne sektion endnu, fordi de kræver nye public DTO-beslutninger. De er listet i Sektion 4 som senere tiers.
+Sektion 5 styrer rækkefølgen. Persistence/UI-interfaces (`IBackupRepository`, `IProgressNotifier`) er **planlagte**, men ikke frosset i denne sektion endnu, fordi de kræver nye public DTO-beslutninger. De står derfor som senere trin i dokumentet.
 
 ### 2.1 IBackupEngine (eksisterer)
 
@@ -143,7 +159,7 @@ interface IBackupSessionStateStore
 }
 ```
 
-### 2.6 IFileTransfer [NEED] — mangler
+### 2.6 IFileTransfer [NEED] — opret i Trin 2
 
 ```csharp
 // fil: Transfer/IFileTransfer.cs
@@ -161,7 +177,7 @@ interface IFileTransfer
 `bytesProgress.Report(bytesTransferred)` kaldes løbende under overførslen (per chunk).  
 Returnerer altid `TransferResult` — kaster aldrig for normale fejl.
 
-### 2.7 ISidecarGenerator [NEED] — mangler
+### 2.7 ISidecarGenerator [NEED] — opret i Trin 4
 
 ```csharp
 // fil: Sidecar/ISidecarGenerator.cs
@@ -183,7 +199,7 @@ interface ISidecarGenerator
 `CreateAsync` kaldes direkte efter succesfuld transfer.  
 `UpdateAsync` bruges af optional features til at tilføje felter til eksisterende sidecar.
 
-### 2.8 IItemHasher [NICE] — mangler
+### 2.8 IItemHasher [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Features/Hashing/IItemHasher.cs
@@ -196,7 +212,7 @@ interface IItemHasher
 }
 ```
 
-### 2.9 IMetadataReader [NICE] — mangler
+### 2.9 IMetadataReader [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Features/Metadata/IMetadataReader.cs
@@ -211,7 +227,7 @@ interface IMetadataReader
 
 Returnerer `null` hvis ingen metadata kunne udtrækkes.
 
-### 2.10 IIntegrityVerifier [NICE] — mangler
+### 2.10 IIntegrityVerifier [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Features/Verification/IIntegrityVerifier.cs
@@ -225,7 +241,7 @@ interface IIntegrityVerifier
 }
 ```
 
-### 2.11 ITimestampCorrector [NICE] — mangler
+### 2.11 ITimestampCorrector [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Features/Timestamp/ITimestampCorrector.cs
@@ -246,7 +262,7 @@ Korrektoren vælger selv bedste gyldige timestamp fra `ExtractedMetadata` og ret
 
 ## Sektion 3: Komplet datatypeoversigt — alle result/data-klasser
 
-### 3.1 TransferResult [NEED] — mangler
+### 3.1 TransferResult [NEED] — opret i Trin 1
 
 ```csharp
 // fil: Transfer/TransferResult.cs
@@ -262,7 +278,7 @@ internal sealed record TransferResult
 }
 ```
 
-### 3.2 SidecarData [NEED] — mangler
+### 3.2 SidecarData [NEED] — opret i Trin 3
 
 ```csharp
 // fil: Sidecar/SidecarData.cs
@@ -283,7 +299,7 @@ internal sealed class SidecarData
 }
 ```
 
-### 3.3 SidecarEnrichment [NICE] — mangler
+### 3.3 SidecarEnrichment [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Sidecar/SidecarEnrichment.cs
@@ -312,7 +328,7 @@ internal sealed class SidecarEnrichment
 }
 ```
 
-### 3.4 HashResult [NICE] — mangler
+### 3.4 HashResult [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Features/Hashing/HashResult.cs
@@ -325,7 +341,7 @@ internal sealed record HashResult
 }
 ```
 
-### 3.5 ExtractedMetadata [NICE] — mangler
+### 3.5 ExtractedMetadata [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Features/Metadata/ExtractedMetadata.cs
@@ -349,7 +365,7 @@ internal sealed class ExtractedMetadata
 Brug hjælpemetode `GetBestDate()`: `DateTimeOriginal` → `CreateDate` → `QuickTimeCreated` → `FileSystemLastWriteUtc` → `FileSystemCreationUtc` → `null`.  
 Hvis en kandidat er tom, epoch-agtig, `DateTimeOffset.MinValue`, `DateTimeOffset.MaxValue` eller uden for rimeligt område, skal den ignoreres.
 
-### 3.6 VerificationResult [NICE] — mangler
+### 3.6 VerificationResult [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Features/Verification/VerificationResult.cs
@@ -364,7 +380,7 @@ internal sealed record VerificationResult
 }
 ```
 
-### 3.7 BackupProgressSnapshot [NEED] — mangler
+### 3.7 BackupProgressSnapshot [NEED] — opret i Trin 6
 
 ```csharp
 // fil: Progress/BackupProgressSnapshot.cs
@@ -385,7 +401,7 @@ internal sealed class BackupProgressSnapshot : IBackupProgress
 }
 ```
 
-### 3.8 FileProgressSnapshot [NEED] — mangler
+### 3.8 FileProgressSnapshot [NEED] — opret i Trin 5
 
 ```csharp
 // fil: Progress/FileProgressSnapshot.cs
@@ -399,7 +415,7 @@ internal sealed class FileProgressSnapshot : IFileProgress
 }
 ```
 
-### 3.9 Core4Options [NEED] — mangler
+### 3.9 Core4Options [NEED] — opret i Trin 13
 
 ```csharp
 // fil: DependencyInjection/Core4Options.cs
@@ -420,7 +436,7 @@ public sealed class Core4Options
 
 ---
 
-### 3.10 TimestampCorrectionResult [NICE] — mangler
+### 3.10 TimestampCorrectionResult [NICE] — opret i de senere enrichment-trin
 
 ```csharp
 // fil: Features/Timestamp/TimestampCorrectionResult.cs
@@ -439,94 +455,88 @@ internal sealed record TimestampCorrectionResult
 
 ## Sektion 4: Komplet liste over klasser der skal oprettes
 
-**Tier-mapping i denne guide:**
-- **Tier 1** = Trin 0–14 (foundation + MTP; Trin 0–13 alene er kun et internt checkpoint)
-- **Tier 2** = robusthed/UX på de samme kontrakter
-- **Tier 3** = optional features / enrichment
-- **Tier 4** = limited parallel filesystem
-- **Tier 5** = persistence / resume
-- **Tier 6** = notifier / rich UI
+**Denne sektion grupperer klasserne efter den rækkefølge de bygges i. Den styrende implementeringsliste er stadig Sektion 5. Tags viser vigtighed.**
 
-### Tier 1A — NEED (FS-first foundation; internt checkpoint)
+### Trinblok 1 — Sequential foundation (Trin 0-13; FS-first checkpoint) `[NEED]`
 
-| # | Fil | Klasse | Implementerer |
-|---|-----|--------|--------------|
-| 1 | `Transfer/IFileTransfer.cs` | `IFileTransfer` | — (interface) |
-| 2 | `Transfer/TransferResult.cs` | `TransferResult` | — (record) |
-| 3 | `Sidecar/ISidecarGenerator.cs` | `ISidecarGenerator` | — (interface) |
-| 4 | `Sidecar/SidecarData.cs` | `SidecarData` | — (klasse) |
-| 5 | `Sidecar/JsonSidecarGenerator.cs` | `JsonSidecarGenerator` | `ISidecarGenerator` |
-| 6 | `Progress/BackupProgressSnapshot.cs` | `BackupProgressSnapshot` | `IBackupProgress` |
-| 7 | `Progress/FileProgressSnapshot.cs` | `FileProgressSnapshot` | `IFileProgress` |
-| 8 | `Progress/ProgressTracker.cs` | `ProgressTracker` | — (konkret klasse) |
-| 9 | `Scanner/Filesystem/FilesystemItemScanner.cs` | `FilesystemItemScanner` | `IBackupScanner` |
-| 10 | `Transfer/Filesystem/FilesystemFileTransfer.cs` | `FilesystemFileTransfer` | `IFileTransfer` |
-| 11 | `Engine/BackupEngineFactory.cs` | `BackupEngineFactory` | — (konkret klasse) |
-| 12 | `DependencyInjection/Core4Options.cs` | `Core4Options` | — (options klasse) |
-| 13 | `DependencyInjection/ServiceCollectionExtensions.cs` | `ServiceCollectionExtensions` | — (static class) |
+| # | Tag | Fil | Klasse | Implementerer |
+|---|-----|-----|--------|--------------|
+| 1 | `[NEED]` | `Transfer/IFileTransfer.cs` | `IFileTransfer` | — (interface) |
+| 2 | `[NEED]` | `Transfer/TransferResult.cs` | `TransferResult` | — (record) |
+| 3 | `[NEED]` | `Sidecar/ISidecarGenerator.cs` | `ISidecarGenerator` | — (interface) |
+| 4 | `[NEED]` | `Sidecar/SidecarData.cs` | `SidecarData` | — (klasse) |
+| 5 | `[NEED]` | `Sidecar/JsonSidecarGenerator.cs` | `JsonSidecarGenerator` | `ISidecarGenerator` |
+| 6 | `[NEED]` | `Progress/BackupProgressSnapshot.cs` | `BackupProgressSnapshot` | `IBackupProgress` |
+| 7 | `[NEED]` | `Progress/FileProgressSnapshot.cs` | `FileProgressSnapshot` | `IFileProgress` |
+| 8 | `[NEED]` | `Progress/ProgressTracker.cs` | `ProgressTracker` | — (konkret klasse) |
+| 9 | `[NEED]` | `Scanner/Filesystem/FilesystemItemScanner.cs` | `FilesystemItemScanner` | `IBackupScanner` |
+| 10 | `[NEED]` | `Transfer/Filesystem/FilesystemFileTransfer.cs` | `FilesystemFileTransfer` | `IFileTransfer` |
+| 11 | `[NEED]` | `Engine/BackupEngineFactory.cs` | `BackupEngineFactory` | — (konkret klasse) |
+| 12 | `[NEED]` | `DependencyInjection/Core4Options.cs` | `Core4Options` | — (options klasse) |
+| 13 | `[NEED]` | `DependencyInjection/ServiceCollectionExtensions.cs` | `ServiceCollectionExtensions` | — (static class) |
 
 Derudover: **færdiggør** `Engine/Sequential/SequentialBackupEngine.cs` (scanner-del eksisterer, transfer/sidecar/result mangler).  
-Dette er kun et delcheckpoint. Tier 1 er først færdig når Tier 1B / Trin 14 også virker.
+Dette er kun et delcheckpoint. Den første komplette baseline er først færdig når Trin 14 også virker.
 
-### Tier 1B / Tier 1.5 — NEED (MTP completion; Tier 1 er ikke lukket før denne er grøn)
+### Trinblok 2 — MTP completion (Trin 14) `[NEED]`
 
-| # | Fil | Klasse | Implementerer |
-|---|-----|--------|--------------|
-| 14 | `Scanner/MTP/MTPItemScanner.cs` | `MTPItemScanner` | `IBackupScanner` |
-| 15 | `Transfer/MTP/MTPFileTransfer.cs` | `MTPFileTransfer` | `IFileTransfer` |
+| # | Tag | Fil | Klasse | Implementerer |
+|---|-----|-----|--------|--------------|
+| 14 | `[NEED]` | `Scanner/MTP/MTPItemScanner.cs` | `MTPItemScanner` | `IBackupScanner` |
+| 15 | `[NEED]` | `Transfer/MTP/MTPFileTransfer.cs` | `MTPFileTransfer` | `IFileTransfer` |
 
-### Tier 2 — NEED efter Tier 1 (robusthed & UX, ingen nye contracts)
+### Trinblok 3 — Robusthed på foundation (efter Trin 14) `[SHOULD]`
 
-| Fil | Klasse | Handling |
-|-----|--------|---------|
-| (ingen nye filer) | — | Udvid Tier 1-koden med patterns, collision handling, ærlig dry-run, logging og progress-debounce |
+| Tag | Fil | Klasse | Handling |
+|-----|-----|--------|---------|
+| `[SHOULD]` | (ingen nye filer) | — | Udvid foundation-koden med patterns, collision handling, ærlig dry-run, logging og progress-debounce |
 
-### Tier 3 — NICE (enrichment, kan udskydes til core er stabil)
+### Trinblok 4 — Senere enrichment-trin (Trin 15-28) `[NICE]`
 
-| # | Fil | Klasse | Implementerer |
-|---|-----|--------|--------------|
-| 16 | `Sidecar/SidecarEnrichment.cs` | `SidecarEnrichment` | — (klasse) |
-| 17 | `Features/Hashing/IItemHasher.cs` | `IItemHasher` | — (interface) |
-| 18 | `Features/Hashing/HashResult.cs` | `HashResult` | — (record) |
-| 19 | `Features/Hashing/FileHasher.cs` | `FileHasher` | `IItemHasher` |
-| 20 | `Features/Metadata/IMetadataReader.cs` | `IMetadataReader` | — (interface) |
-| 21 | `Features/Metadata/ExtractedMetadata.cs` | `ExtractedMetadata` | — (klasse) |
-| 22 | `Features/Metadata/MetadataExtractorReader.cs` | `MetadataExtractorReader` | `IMetadataReader` |
-| 23 | `Features/Metadata/ExifToolMetadataReader.cs` | `ExifToolMetadataReader` | `IMetadataReader` |
-| 24 | `Features/Verification/IIntegrityVerifier.cs` | `IIntegrityVerifier` | — (interface) |
-| 25 | `Features/Verification/VerificationResult.cs` | `VerificationResult` | — (record) |
-| 26 | `Features/Verification/FileIntegrityVerifier.cs` | `FileIntegrityVerifier` | `IIntegrityVerifier` |
-| 27 | `Features/Timestamp/ITimestampCorrector.cs` | `ITimestampCorrector` | — (interface) |
-| 28 | `Features/Timestamp/TimestampCorrectionResult.cs` | `TimestampCorrectionResult` | — (record) |
-| 29 | `Features/Timestamp/FileTimestampCorrector.cs` | `FileTimestampCorrector` | `ITimestampCorrector` |
+| # | Tag | Fil | Klasse | Implementerer |
+|---|-----|-----|--------|--------------|
+| 16 | `[NICE]` | `Sidecar/SidecarEnrichment.cs` | `SidecarEnrichment` | — (klasse) |
+| 17 | `[NICE]` | `Features/Hashing/IItemHasher.cs` | `IItemHasher` | — (interface) |
+| 18 | `[NICE]` | `Features/Hashing/HashResult.cs` | `HashResult` | — (record) |
+| 19 | `[NICE]` | `Features/Hashing/FileHasher.cs` | `FileHasher` | `IItemHasher` |
+| 20 | `[NICE]` | `Features/Metadata/IMetadataReader.cs` | `IMetadataReader` | — (interface) |
+| 21 | `[NICE]` | `Features/Metadata/ExtractedMetadata.cs` | `ExtractedMetadata` | — (klasse) |
+| 22 | `[NICE]` | `Features/Metadata/MetadataExtractorReader.cs` | `MetadataExtractorReader` | `IMetadataReader` |
+| 23 | `[NICE]` | `Features/Metadata/ExifToolMetadataReader.cs` | `ExifToolMetadataReader` | `IMetadataReader` |
+| 24 | `[NICE]` | `Features/Verification/IIntegrityVerifier.cs` | `IIntegrityVerifier` | — (interface) |
+| 25 | `[NICE]` | `Features/Verification/VerificationResult.cs` | `VerificationResult` | — (record) |
+| 26 | `[NICE]` | `Features/Verification/FileIntegrityVerifier.cs` | `FileIntegrityVerifier` | `IIntegrityVerifier` |
+| 27 | `[NICE]` | `Features/Timestamp/ITimestampCorrector.cs` | `ITimestampCorrector` | — (interface) |
+| 28 | `[NICE]` | `Features/Timestamp/TimestampCorrectionResult.cs` | `TimestampCorrectionResult` | — (record) |
+| 29 | `[NICE]` | `Features/Timestamp/FileTimestampCorrector.cs` | `FileTimestampCorrector` | `ITimestampCorrector` |
 
-### Tier 4 — NICE (parallel FS-engine, kan udskydes)
+### Trinblok 5 — Parallel filesystem senere `[LATER]`
 
-| # | Fil | Klasse | Implementerer |
-|---|-----|--------|--------------|
-| 30 | `Engine/LimitedParallel/LimitedParallelBackupEngine.cs` | `LimitedParallelBackupEngine` | `IBackupEngine` |
+| # | Tag | Fil | Klasse | Implementerer |
+|---|-----|-----|--------|--------------|
+| 30 | `[LATER]` | `Engine/LimitedParallel/LimitedParallelBackupEngine.cs` | `LimitedParallelBackupEngine` | `IBackupEngine` |
 
-### Tier 5 — NICE senere (persistence & resume)
+### Trinblok 6 — Persistence/resume senere `[LATER]`
 
-| # | Fil | Klasse | Implementerer |
-|---|-----|--------|--------------|
-| 31 | `Engine/State/IBackupRepository.cs` | `IBackupRepository` | — (interface) |
-| 32 | `Engine/State/NoOpBackupRepository.cs` | `NoOpBackupRepository` | `IBackupRepository` |
-| 33 | `Engine/State/FileSystemBackupRepository.cs` | `FileSystemBackupRepository` | `IBackupRepository` |
-| 34 | `Engine/State/SqliteBackupRepository.cs` | `SqliteBackupRepository` | `IBackupRepository` |
+| # | Tag | Fil | Klasse | Implementerer |
+|---|-----|-----|--------|--------------|
+| 31 | `[LATER]` | `Engine/State/IBackupRepository.cs` | `IBackupRepository` | — (interface) |
+| 32 | `[LATER]` | `Engine/State/NoOpBackupRepository.cs` | `NoOpBackupRepository` | `IBackupRepository` |
+| 33 | `[LATER]` | `Engine/State/FileSystemBackupRepository.cs` | `FileSystemBackupRepository` | `IBackupRepository` |
+| 34 | `[LATER]` | `Engine/State/SqliteBackupRepository.cs` | `SqliteBackupRepository` | `IBackupRepository` |
 
-### Tier 6 — NICE senere (rich progress / notifier)
+### Trinblok 7 — Rich progress/UI senere `[LATER]`
 
-| # | Fil | Klasse | Implementerer |
-|---|-----|--------|--------------|
-| 35 | `Progress/IProgressNotifier.cs` | `IProgressNotifier` | — (interface) |
-| 36 | `Progress/SpectreProgressNotifier.cs` | `SpectreProgressNotifier` | `IProgressNotifier` |
+| # | Tag | Fil | Klasse | Implementerer |
+|---|-----|-----|--------|--------------|
+| 35 | `[LATER]` | `Progress/IProgressNotifier.cs` | `IProgressNotifier` | — (interface) |
+| 36 | `[LATER]` | `Progress/SpectreProgressNotifier.cs` | `SpectreProgressNotifier` | `IProgressNotifier` |
 
 ---
 
 ## Sektion 5: Implementeringsrækkefølge — skridt for skridt
 
-**Hvert trin har én opgave. Byg, kompilér, verificér inden næste.**
+**Sektion 5 er den styrende implementeringsliste. Hvert trin har én opgave. Byg, kompilér og gå først videre når trinnet er grønt. Tags viser vigtighed, ikke rækkefølge.**
 
 ---
 
@@ -579,7 +589,7 @@ Ingen afhængigheder udenfor Models.
 **Signatur:** Se Sektion 2.7.
 
 Afhænger af: `BackupItem`, `TransferResult` (Trin 1).  
-Note: `SidecarEnrichment` er Tier 3 — `UpdateAsync` kan stub-implementeres for nu.
+Note: `SidecarEnrichment` kommer først i de senere enrichment-trin — `UpdateAsync` kan stub-implementeres for nu.
 
 ---
 
@@ -642,7 +652,7 @@ Brug `Interlocked.Increment/Add` for tæller-felter. Brug `ConcurrentDictionary<
 Krav til implementering:
 - Brug `Directory.EnumerateFiles()` med `SearchOption` baseret på `plan.Recursive`.
 - Beregn `RelativePath` via `Path.GetRelativePath(plan.Source, filePath)`.
-- Tier 1 foundation yield'er alle filer. Tier 2 aktiverer først den egentlige glob-filtering via `plan.IncludePatterns` og `plan.ExcludePatterns`.
+- Foundation-versionen yield'er alle filer. Glob-filtering via `plan.IncludePatterns` og `plan.ExcludePatterns` kommer først i udvidelserne efter Trin 14.
 - Hvert `BackupItem` får et `Id = Guid.NewGuid().ToString("N")`.
 - Kald `await Task.Yield()` per item for at frigive event-loop.
 - `cancellationToken.ThrowIfCancellationRequested()` per item.
@@ -679,7 +689,7 @@ Krav til `CreateAsync`:
 - JSON: indented, snake_case via `JsonNamingPolicy.SnakeCaseLower`.
 - Fejl ved sidecar-skrivning: log og returner (aldrig kast til engine).
 
-Krav til `UpdateAsync` (stub OK for Tier 1):
+Krav til `UpdateAsync` (stub OK i foundation):
 - Læs eksisterende JSON som `Dictionary<string, object?>`.
 - Merge enrichment-felter ind.
 - Skriv atomisk tilbage.
@@ -752,7 +762,7 @@ Catch Exception (fatale systemiske fejl):
     return BuildResult(session, progressTracker)
 ```
 
-**Vigtigt:** Trin 0–13 er stadig kun foundation. Tier 1 kan først markeres som færdig når Trin 14 (MTP) også virker end-to-end.
+**Vigtigt:** Trin 0-13 er stadig kun foundation. Den første komplette baseline kan først markeres som færdig når Trin 14 (MTP) også virker end-to-end.
 
 **Destination-beregning (ResolveDestination) — privat static metode:**
 
@@ -826,7 +836,7 @@ internal sealed class BackupEngineFactory
 Valg-logik i `Create(plan)`:
 - `plan.SourceType == MediaDevice` → returner sequential (ALTID)
 - `plan.MaxDegreeOfParallelism == 1` → returner sequential
-- Ellers → returner parallel (Tier 4; midlertidigt: returner sequential)
+- Ellers → returner parallel senere; midlertidigt returneres sequential
 
 For Tier 1 kan `Create` altid returnere `sequentialEngine`.
 
@@ -861,7 +871,7 @@ Skal registrere:
 
 ---
 
-### Trin 14 — MTPItemScanner og MTPFileTransfer `[NEED for MTP]`
+### Trin 14 — Implementer MTPItemScanner og MTPFileTransfer `[NEED]`
 
 **Filer:**
 - `Scanner/MTP/MTPItemScanner.cs` implementerer `IBackupScanner`
@@ -876,9 +886,9 @@ MTP-specifikke krav:
 - Sessionen holdes aktiv gennem hele scan+transfer-fasen. Lange loops sender keepalive mindst hver `Core4Options.MtpKeepAliveInterval` (default 30s).
 - Hver device-read/device-copy respekterer `Core4Options.MtpOperationTimeout` (default 60s).
 
-### Mellem Trin 14 og Trin 15 — Løft foundation til Tier 2 `[NEED]`
+### Efter Trin 14 — gør foundation robust før senere features `[SHOULD]`
 
-Ingen nye contracts. Udvid de eksisterende Tier 1-klasser med:
+Ingen nye contracts. Udvid de eksisterende foundation-klasser med:
 
 1. Include/exclude pattern-matching
 2. `CollisionStrategy.Rename` og `CollisionStrategy.Overwrite`
@@ -887,11 +897,11 @@ Ingen nye contracts. Udvid de eksisterende Tier 1-klasser med:
 5. Progress-debounce
 6. Ærlig tier-gating af endnu ikke implementerede feature-flags
 
-Først når både Trin 14 og disse Tier 2-udvidelser er grønne, er sequential Core4 klar til at bære optional features.
+Først når både Trin 14 og disse udvidelser er grønne, er sequential Core4 klar til at bære senere features.
 
 ---
 
-### Trin 15–28 — Optional features `[NICE]`
+### Trin 15–28 — Senere udvidelser efter baseline `[NICE]`
 
 Implementer i denne rækkefølge (hver er uafhængig):
 
@@ -915,7 +925,7 @@ Alle optional features:
 
 ---
 
-### Trin 29 — LimitedParallelBackupEngine (Tier 4) `[NICE]`
+### Trin 29 — LimitedParallelBackupEngine `[LATER]`
 
 **Fil:** `Engine/LimitedParallel/LimitedParallelBackupEngine.cs`  
 **Implementerer:** `IBackupEngine`
@@ -947,7 +957,7 @@ Samme fejlpolitik og sidecar-kontrakt som `SequentialBackupEngine`.
 
 Disse krav er IKKE lister — de skal implementeres præcis:
 
-### 7.1 Pattern-matching for Include/ExcludePatterns [NEED for Tier 2]
+### 7.1 Pattern-matching for Include/ExcludePatterns `[SHOULD]`
 
 `FilesystemItemScanner` skal matche `RelativePath` mod patterns. Eksempler:
 - `*.jpg` → matcher `photo.jpg`
@@ -956,21 +966,21 @@ Disse krav er IKKE lister — de skal implementeres præcis:
 
 **Tool:** Brug `Microsoft.Extensions.FileSystemGlobbing.Matcher` (allerede i .NET ecosystem).
 
-### 7.2 Atomisk sidecar-skrivning [NEED]
+### 7.2 Atomisk sidecar-skrivning `[NEED]`
 
 Begge `CreateAsync` og `UpdateAsync` skal bruge samme mønster:
 1. Skriv til `{sidecarPath}.tmp`
 2. `File.Move({sidecarPath}.tmp, {sidecarPath}, overwrite: true)`
 3. Ved exception: slet `.tmp`, kast aldrig til engine (log kun)
 
-### 7.3 Thread-safety i ProgressTracker [NEED]
+### 7.3 Thread-safety i ProgressTracker `[NEED]`
 
 `ProgressTracker` bruges kun af én tråd per engine-instans. Men den skal stadig være sikker:
 - Tæller: `Interlocked.Increment`, `Interlocked.Add`
 - Phase: `Volatile.Write`, `Volatile.Read`
 - ActiveFiles: `ConcurrentDictionary<string, FileProgressSnapshot>`
 
-### 7.4 Kollisions-håndtering ved Rename [NEED for Tier 2]
+### 7.4 Kollisions-håndtering ved Rename `[SHOULD]`
 
 ```csharp
 // Pseudo-kode — implementér præcist dette
@@ -987,7 +997,7 @@ if (plan.CollisionStrategy == CollisionStrategy.Rename && File.Exists(destinatio
 }
 ```
 
-### 7.5 Tempfil-cleanup ved fejl [NEED]
+### 7.5 Tempfil-cleanup ved fejl `[NEED]`
 
 ```csharp
 // I FilesystemFileTransfer.TransferAsync() catch-blok:
@@ -1002,7 +1012,7 @@ catch (Exception ex)
 }
 ```
 
-### 7.6 Dry-run skal være fuld simulering [NEED]
+### 7.6 Dry-run skal være fuld simulering `[SHOULD]`
 
 Dry-run skal køre hele flowet — scan, destination-beregning, collision-check og simulering af mappeoprettelse — men uden writes:
 
@@ -1021,13 +1031,13 @@ if (plan.DryRun)
 }
 ```
 
-### 7.7 Decimal-præcision ved tælling [NEED]
+### 7.7 Decimal-præcision ved tælling `[NEED]`
 
 - `FilesDiscovered`, `FilesSucceeded`, etc. er `int` — max ~2 mia. filer
 - `BytesTotal`, `BytesProcessed` er `long` — max ~9 exabyte
 - Brug `checked` hvis du forventer overflow (sandsynligvis ikke)
 
-### 7.8 MTP-session lifecycle (ikke implementeret af scanner/transfer) [NEED for Tier 1.5]
+### 7.8 MTP-session lifecycle `[NEED]`
 
 MTP-session skal åbnes *uden for* scanner og transfer. Engine eller en dedikeret sessionmanager skal håndtere:
 
@@ -1054,7 +1064,7 @@ Derudover gælder:
 - Hver læse-/copy-operation respekterer `Core4Options.MtpOperationTimeout` (default 60s).
 - Cleanup sker altid i `finally`, også ved cancellation.
 
-### 7.9 Retry-strategi for MTP [NEED for Tier 1.5]
+### 7.9 Retry-strategi for MTP `[NEED]`
 
 ```csharp
 // MTPFileTransfer.TransferAsync():
@@ -1078,7 +1088,7 @@ for (int attempt = 0; attempt < 3; attempt++)
 return TransferResult { Succeeded = false, ErrorCode = TransferFailed, ... };
 ```
 
-### 7.10 SkipExisting logik [NEED]
+### 7.10 SkipExisting logik `[NEED]`
 
 ```csharp
 // I SequentialBackupEngine transfer-loop:
@@ -1092,7 +1102,7 @@ if (plan.SkipExisting && File.Exists(item.DestinationPath))
 }
 ```
 
-### 7.11 StopOnError logik [NEED]
+### 7.11 StopOnError logik `[NEED]`
 
 ```csharp
 // Efter transfer:
@@ -1108,18 +1118,18 @@ if (!result.Succeeded)
 }
 ```
 
-### 7.12 Chunk-based I/O og bufferstørrelse [NEED]
+### 7.12 Chunk-based I/O og bufferstørrelse `[NEED]`
 
 - Transfer og hashing skal være streaming-baseret. Ingen `ReadAllBytes`, ingen hel-fil buffering i RAM.
 - Standardbuffer er `Core4Options.TransferBufferSizeBytes` (default 1 MB).
 - Samme bufferregel gælder `FilesystemFileTransfer`, `MTPFileTransfer` og `FileHasher`.
 - Byte-progress rapporteres pr. chunk.
 
-### 7.13 Logging-strategi [NEED for Tier 2]
+### 7.13 Logging-strategi `[SHOULD]`
 
 Du vil bruge `ILogger` fra `Microsoft.Extensions.Logging`. Dette skal logges:
 
-**Tier 2 minimum:**
+**Minimum når du udvider foundation efter Trin 14:**
 - Scan start: `_logger.LogInformation("Scanning {source}", plan.Source)`
 - Scan fejl per item: `_logger.LogWarning("Skipped {path} — {reason}", item.RelativePath, reason)`
 - Transfer fejl per item: `_logger.LogError("Transfer failed: {path} — {code}: {msg}", item.RelativePath, result.ErrorCode, result.ErrorMessage)`
@@ -1127,7 +1137,7 @@ Du vil bruge `ILogger` fra `Microsoft.Extensions.Logging`. Dette skal logges:
 - Job cancelled: `_logger.LogWarning("Backup cancelled by user")`
 - Job failed: `_logger.LogError("Backup failed: {reason}", session.FailureReason)`
 
-**Tier 2+ enrichment fejl:**
+**Enrichment-fejl når de senere trin er aktiveret:**
 - Hashing fejl: `_logger.LogWarning("Hash computation failed for {path} — continuing")`
 - Metadata fejl: `_logger.LogWarning("Metadata extraction failed for {path} — continuing")`
 - Verification fejl: `_logger.LogWarning("Verification mismatch for {path} — continuing")`
@@ -1138,7 +1148,7 @@ Du vil bruge `ILogger` fra `Microsoft.Extensions.Logging`. Dette skal logges:
 - Stack traces for expected fejl (fx IOException ved disk fuld) — kun ErrorMessage
 - Stack trace under cancellation
 
-### 7.14 ProgressReporter-konfiguration [NEED for Tier 2]
+### 7.14 ProgressReporter-konfiguration `[SHOULD]`
 
 `IProgress<IBackupProgress>` skal rapporteres *ikke for hver enkelt fil*, men periodisk. Eksempel:
 
@@ -1157,7 +1167,7 @@ if (nowMs - lastProgressReportMs > ProgressReportIntervalMs)
 
 Dette forhindrer at UI'en bliver oversvømmet med updates.
 
-### 7.15 Tier-gating af endnu ikke implementerede features [NEED]
+### 7.15 Gating af endnu ikke implementerede features `[NEED]`
 
 En minimal version må aldrig lade som om en senere-tier feature virker. **Silent ignore er ikke tilladt.**
 
@@ -1166,9 +1176,9 @@ Tilladt adfærd er kun:
 2. Nedgrader den kun hvis nedgraderingen er sikker og dokumenteret.
 
 Konkrete regler:
-- Før Tier 2: `IncludePatterns`, `ExcludePatterns` og `CollisionStrategy != Skip` må afvises tydeligt, hvis du endnu ikke har implementeret dem.
-- Før Tier 3: `EnableHashing`, `EnableMetadata`, `EnableVerification`, `EnableTimestampCorrection` må ikke bare ignoreres; de skal give tydelig validation-fejl.
-- Før Tier 4: `MaxDegreeOfParallelism > 1` må gerne nedgraderes til sekventiel kørsel, men det skal logges tydeligt.
+- Før du har implementeret foundation-udvidelserne efter Trin 14: `IncludePatterns`, `ExcludePatterns` og `CollisionStrategy != Skip` må afvises tydeligt, hvis du endnu ikke har implementeret dem.
+- Før du har implementeret Trin 15-28: `EnableHashing`, `EnableMetadata`, `EnableVerification`, `EnableTimestampCorrection` må ikke bare ignoreres; de skal give tydelig validation-fejl.
+- Før du har implementeret Trin 29: `MaxDegreeOfParallelism > 1` må gerne nedgraderes til sekventiel kørsel, men det skal logges tydeligt.
 
 ---
 
@@ -1184,10 +1194,10 @@ Konkrete regler:
 
 | Dokument | Brug |
 |----------|------|
-| `docs/CORE4_MASTER_SYNTHESIS.md` | Endelig beslutningstekst — konflikt? Følg dette. |
-| `docs/CORE4_REQUIREMENTS_TIERS.md` | Tier-definitioner og exit-kriterier |
-| `docs/CORE4_IMPLEMENTATION_GUIDE_DA.md` | **Denne guide** — kontrakter og implementeringsrækkefølge |
-| `docs/Core4_Master_Architecture.md` | Dyb teknisk reference til edge cases og discrepansnoter |
+| `docs_fromGPT5.4\CORE4_MASTER_SYNTHESIS.md` | Endelig beslutningstekst — konflikt? Følg dette. |
+| `docs_fromGPT5.4\CORE4_REQUIREMENTS_TIERS.md` | Tier-definitioner og exit-kriterier |
+| `docs_fromGPT5.4\CORE4_IMPLEMENTATION_GUIDE_DA.md` | **Denne guide** — kontrakter og implementeringsrækkefølge |
+| `docs_fromGPT5.4\Core4_Master_Architecture.md` | Dyb teknisk reference til edge cases og discrepansnoter |
 
 ---
 
