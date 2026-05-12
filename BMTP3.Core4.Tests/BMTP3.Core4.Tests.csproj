@@ -28,4 +28,8 @@
     <Folder Include="Transfer\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BMTP3.Core4\BMTP3.Core4.csproj" />
+  </ItemGroup>
+
 </Project>
