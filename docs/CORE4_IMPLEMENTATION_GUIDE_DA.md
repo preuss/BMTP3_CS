@@ -843,7 +843,210 @@ Samme fejlpolitik og sidecar-kontrakt som `SequentialBackupEngine`.
 
 ---
 
-## Sektion 7: Tre arkitekturregler der aldrig brydes
+## Sektion 7: Kritiske kravspecifikationer
+
+Disse krav er IKKE lister — de skal implementeres præcis:
+
+### 7.1 Pattern-matching for Include/ExcludePatterns [NEED]
+
+`FilesystemItemScanner` skal matche `RelativePath` mod patterns. Eksempler:
+- `*.jpg` → matcher `photo.jpg`
+- `DCIM/**` → matcher `DCIM/Camera/IMG.jpg`
+- `!temp/**` → exclude (hvis implementeret via prefix)
+
+**Tool:** Brug `Microsoft.Extensions.FileSystemGlobbing.Matcher` (allerede i .NET ecosystem).
+
+### 7.2 Atomisk sidecar-skrivning [NEED]
+
+Begge `CreateAsync` og `UpdateAsync` skal bruge samme mønster:
+1. Skriv til `{sidecarPath}.tmp`
+2. `File.Move({sidecarPath}.tmp, {sidecarPath}, overwrite: true)`
+3. Ved exception: slet `.tmp`, kast aldrig til engine (log kun)
+
+### 7.3 Thread-safety i ProgressTracker [NEED]
+
+`ProgressTracker` bruges kun af én tråd per engine-instans. Men den skal stadig være sikker:
+- Tæller: `Interlocked.Increment`, `Interlocked.Add`
+- Phase: `Volatile.Write`, `Volatile.Read`
+- ActiveFiles: `ConcurrentDictionary<string, FileProgressEntry>`
+
+### 7.4 Kollisions-håndtering ved Rename [NEED]
+
+```csharp
+// Pseudo-kode — implementér præcist dette
+if (plan.CollisionStrategy == CollisionStrategy.Rename && File.Exists(destination))
+{
+    string dir = Path.GetDirectoryName(destination) ?? "";
+    string name = Path.GetFileNameWithoutExtension(destination);
+    string ext = Path.GetExtension(destination);
+    int counter = 1;
+    do
+    {
+        destination = Path.Combine(dir, $"{name}_{counter++}{ext}");
+    } while (File.Exists(destination));
+}
+```
+
+### 7.5 Tempfil-cleanup ved fejl [NEED]
+
+```csharp
+// I FilesystemFileTransfer.TransferAsync() catch-blok:
+try
+{
+    // ... copy logic ...
+}
+catch (Exception ex)
+{
+    try { File.Delete(destinationPath + ".tmp"); } catch { /* ignore */ }
+    return TransferResult { Succeeded = false, ErrorCode = ..., ErrorMessage = ex.Message };
+}
+```
+
+### 7.6 Dry-run skal være fuld simulering [NEED]
+
+Dry-run skal køre hele flowet — scan, destination-beregning, collision-check — men uden writes:
+
+```csharp
+// I SequentialBackupEngine transfer-loop:
+if (plan.DryRun)
+{
+    // Beregn destination (som hvis rigtig transfer), tjek collision, men skriv ikke
+    string dest = ResolveDestination(item, plan);
+    item.DestinationPath = dest;
+    item.Status = BackupItemStatus.Succeeded;
+    progressTracker.CompleteFile(item, fakeSuccessResult);
+    // Ingen sidecar-skrivning ved dry-run
+    continue;
+}
+```
+
+### 7.7 Decimal-præcision ved tælling [NEED]
+
+- `FilesDiscovered`, `FilesSucceeded`, etc. er `int` — max ~2 mia. filer
+- `BytesTotal`, `BytesProcessed` er `long` — max ~9 exabyte
+- Brug `checked` hvis du forventer overflow (sandsynligvis ikke)
+
+### 7.8 MTP-session lifecycle (ikke implementeret af scanner/transfer) [NEED for Tier 1.5]
+
+MTP-session skal åbnes *uden for* scanner og transfer. Engine eller en dedikeret sessionmanager skal håndtere:
+
+```csharp
+using (IMediaDevice device = MediaDevice.GetDevices().FirstOrDefault(d => d.ID == plan.Source))
+{
+    device.Connect();
+    try
+    {
+        // scanner og transfer bruger device, men åbner/lukker den ikke
+        await foreach (var item in mtp_scanner.ScanAsync(plan, ct)) { ... }
+    }
+    finally
+    {
+        device.Disconnect();
+    }
+}
+```
+
+**Scanner/Transfer modtager device via konstruktør, de "åbner" den ikke.**
+
+### 7.9 Retry-strategi for MTP [NEED for Tier 1.5]
+
+```csharp
+// MTPFileTransfer.TransferAsync():
+int[] backoffMs = [1000, 2000, 4000];
+for (int attempt = 0; attempt < 3; attempt++)
+{
+    try
+    {
+        // Download til temp, rename, return TransferResult { Succeeded = true }
+        return success_result;
+    }
+    catch (COMException ex) when (IsTransient(ex))
+    {
+        if (attempt < 2) await Task.Delay(backoffMs[attempt], ct);
+    }
+    catch (COMException ex) when (!IsTransient(ex))
+    {
+        return TransferResult { Succeeded = false, ErrorCode = MediaDeviceDisconnected, ... };
+    }
+}
+return TransferResult { Succeeded = false, ErrorCode = TransferFailed, ... };
+```
+
+### 7.10 SkipExisting logik [NEED]
+
+```csharp
+// I SequentialBackupEngine transfer-loop:
+if (plan.SkipExisting && File.Exists(item.DestinationPath))
+{
+    item.Status = BackupItemStatus.Skipped;
+    progressTracker.SkipFile(item);
+    // Ingen transfer, ingen sidecar for skipped fil
+    progress?.Report(progressTracker.GetSnapshot());
+    continue;
+}
+```
+
+### 7.11 StopOnError logik [NEED]
+
+```csharp
+// Efter transfer:
+if (!result.Succeeded)
+{
+    item.Status = BackupItemStatus.Failed;
+    // Log fejlen
+    if (plan.StopOnError)
+    {
+        session.Fail(result.ErrorCode ?? BackupErrorCode.TransferFailed);
+        break; // Exit transfer-loop
+    }
+}
+```
+
+### 7.13 Logging-strategi [NEED]
+
+Du vil bruge `ILogger` fra `Microsoft.Extensions.Logging`. Dette skal logges:
+
+**Tier 1 minimum:**
+- Scan start: `_logger.LogInformation("Scanning {source}", plan.Source)`
+- Scan fejl per item: `_logger.LogWarning("Skipped {path} — {reason}", item.RelativePath, reason)`
+- Transfer fejl per item: `_logger.LogError("Transfer failed: {path} — {code}: {msg}", item.RelativePath, result.ErrorCode, result.ErrorMessage)`
+- Transfer succes summary: `_logger.LogInformation("Transfer complete: {succeeded}/{total} files")`
+- Job cancelled: `_logger.LogWarning("Backup cancelled by user")`
+- Job failed: `_logger.LogError("Backup failed: {reason}", session.FailureReason)`
+
+**Tier 2+ enrichment fejl:**
+- Hashing fejl: `_logger.LogWarning("Hash computation failed for {path} — continuing")`
+- Metadata fejl: `_logger.LogWarning("Metadata extraction failed for {path} — continuing")`
+- Verification fejl: `_logger.LogWarning("Verification mismatch for {path} — continuing")`
+- Timestamp fejl: `_logger.LogWarning("Timestamp correction failed for {path} — continuing")`
+
+**Hvad der IKKE skal logges:**
+- Hver enkelt fil under normal succes (for 50.000 filer ville det være støj)
+- Stack traces for expected fejl (fx IOException ved disk fuld) — kun ErrorMessage
+- Stack trace under cancellation
+
+### 7.14 ProgressReporter-konfiguration [NICE]
+
+`IProgress<IBackupProgress>` skal rapporteres *ikke for hver enkelt fil*, men periodisk. Eksempel:
+
+```csharp
+private long lastProgressReportMs = 0;
+private const long ProgressReportIntervalMs = 500; // Rapportér max hver 500ms
+
+// I transfer-loop, efter hver fil:
+long nowMs = Environment.TickCount64;
+if (nowMs - lastProgressReportMs > ProgressReportIntervalMs)
+{
+    progress?.Report(progressTracker.GetSnapshot());
+    lastProgressReportMs = nowMs;
+}
+```
+
+Dette forhindrer at UI'en bliver oversvømmet med updates.
+
+---
+
+## Sektion 7b: Tre arkitekturregler der aldrig brydes
 
 1. **MTP er altid sekventielt.** Ingen parallel adgang mod MTP-enheder.
 2. **Sidecar skrives atomisk direkte efter succesfuld transfer.** Aldrig samlet til sidst.
