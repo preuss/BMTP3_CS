@@ -7,6 +7,9 @@
 ## Formaal
 Slet `Engine/BackupEngine.cs` (den public stub med kun `NotImplementedException`).
 
+Denne skal ikke slettes, den fortæller hvad BackupEngine skal indeholde overordnet. 
+Det er en del af baseline-kontrakterne, og skal derfor forblive intakt. Tasken skal i stedet opdatere den til at være en korrekt kontrakt uden implementation, og samtidig sikre at den ikke længere er en "stub" der kaster `NotImplementedException`.
+
 ## Hvorfor denne task findes
 Kritisk for baseline eller direkte blokerende compile/run-flow.
 
