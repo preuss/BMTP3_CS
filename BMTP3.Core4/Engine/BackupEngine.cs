@@ -11,7 +11,7 @@ namespace BMTP3.Core4.Engine;
 /// </summary>
 public sealed class BackupEngine : IBackupEngine
 {
-	public async Task<BackupResult> RunAsync(
+	public async Task<BackupJobResult> RunAsync(
 		BackupPlan plan,
 		IProgress<IBackupProgress>? progress,
 		CancellationToken cancellationToken)

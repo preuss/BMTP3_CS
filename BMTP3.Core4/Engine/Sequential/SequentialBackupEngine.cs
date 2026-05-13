@@ -21,7 +21,7 @@ internal sealed class SequentialBackupEngine : IBackupEngine
 		this.sessionStateStore = Guard.RequireNonNull(sessionStateStore);
 	}
 
-	public async Task<BackupResult> RunAsync(
+	public async Task<BackupJobResult> RunAsync(
 		BackupPlan plan,
 		IProgress<IBackupProgress>? progress,
 		CancellationToken cancellationToken)
