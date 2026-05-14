@@ -1,6 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using BMTP3.Core4.Models.Enums;
+﻿using BMTP3.Core4.Models.Enums;
+using System.Collections.Immutable;
 
 namespace BMTP3.Core4.Api;
 
@@ -10,6 +9,20 @@ namespace BMTP3.Core4.Api;
 /// </summary>
 public record BackupProgress
 {
+	// ---------------------------------------------------------------------
+	// Plan
+	// ---------------------------------------------------------------------
+
+	/// <summary>
+	/// The source path from the backup plan that is being processed.
+	/// </summary>
+	public string SourcePath { get; init; } = string.Empty;
+
+	/// <summary>
+	/// The destination path from the backup plan that is being processed.
+	/// </summary>
+	public string DestinationPath { get; init; } = string.Empty;
+
 	// ---------------------------------------------------------------------
 	// Phase
 	// ---------------------------------------------------------------------
@@ -25,19 +38,14 @@ public record BackupProgress
 	// ---------------------------------------------------------------------
 
 	/// <summary>
-	/// Total number of directories scanned so far.
+	/// Total number of directories traversed so far.
 	/// </summary>
-	public int DirectoriesScanned { get; init; }
+	public int DirectoriesTraversed { get; init; }
 
 	/// <summary>
-	/// Total number of files discovered so far.
+	/// Total number of files discovered during traversal so far.
 	/// </summary>
 	public int FilesDiscovered { get; init; }
-
-	/// <summary>
-	/// Total size in bytes of all discovered files.
-	/// </summary>
-	public long BytesTotal { get; init; }
 
 
 	// ---------------------------------------------------------------------
@@ -45,10 +53,9 @@ public record BackupProgress
 	// ---------------------------------------------------------------------
 
 	/// <summary>
-	/// Total number of files processed so far.
-	/// This includes succeeded, skipped, and failed files.
+	/// Total number of files selected for backup after filtering.
 	/// </summary>
-	public int FilesProcessed { get; init; }
+	public int TotalFilesSelected { get; init; }
 
 	/// <summary>
 	/// Number of files successfully backed up.
@@ -84,5 +91,5 @@ public record BackupProgress
 	/// Snapshot of files currently active in the backup workflow.
 	/// Presence does not imply parallel execution.
 	/// </summary>
-	public IReadOnlyList<IBackupProgressItem> ActiveFiles { get; init; }
+	public IReadOnlyList<BackupProgressItem> ActiveFiles { get; init; } = ImmutableList<BackupProgressItem>.Empty;
 }

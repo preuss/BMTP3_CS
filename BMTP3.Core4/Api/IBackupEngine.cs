@@ -27,8 +27,5 @@ public interface IBackupEngine
 	/// <returns>
 	/// A result object describing the final outcome of the backup job.
 	/// </returns>
-	Task<BackupResult> RunAsync(
-		BackupPlan plan,
-		IProgress<BackupProgress>? progress,
-		CancellationToken cancellationToken);
+	Task<BackupResult> RunAsync(BackupPlan plan, IProgress<BackupProgress>? progress, CancellationToken cancellationToken);
 }
