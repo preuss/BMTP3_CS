@@ -4,7 +4,7 @@
 /// Represents progress information for a file that is currently active
 /// in the backup workflow.
 /// </summary>
-public interface IFileProgress
+public interface IBackupProgressItem
 {
 	/// <summary>
 	/// The source-relative path of the file.

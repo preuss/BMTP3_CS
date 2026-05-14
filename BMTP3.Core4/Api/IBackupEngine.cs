@@ -1,4 +1,5 @@
-﻿using BMTP3.Core4.Models;
+﻿using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Api;
 
@@ -26,8 +27,8 @@ public interface IBackupEngine
 	/// <returns>
 	/// A result object describing the final outcome of the backup job.
 	/// </returns>
-	Task<BackupJobResult> RunAsync(
+	Task<BackupResult> RunAsync(
 		BackupPlan plan,
-		IProgress<IBackupProgress>? progress,
+		IProgress<BackupProgress>? progress,
 		CancellationToken cancellationToken);
 }

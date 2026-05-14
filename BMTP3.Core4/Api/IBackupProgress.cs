@@ -1,4 +1,6 @@
-﻿using BMTP3.Core4.Models.Enums;
+﻿using System;
+using System.Collections.Generic;
+using BMTP3.Core4.Models.Enums;
 
 namespace BMTP3.Core4.Api;
 
@@ -6,7 +8,7 @@ namespace BMTP3.Core4.Api;
 /// Represents a snapshot of the current progress state of an ongoing backup job.
 /// The interface exposes only factual, observable data known by the backup engine.
 /// </summary>
-public interface IBackupProgress
+public record BackupProgress
 {
 	// ---------------------------------------------------------------------
 	// Phase
@@ -15,7 +17,7 @@ public interface IBackupProgress
 	/// <summary>
 	/// The current high-level phase of the backup job.
 	/// </summary>
-	BackupPhase CurrentPhase { get; }
+	public BackupPhase CurrentPhase { get; init; }
 
 
 	// ---------------------------------------------------------------------
@@ -25,17 +27,17 @@ public interface IBackupProgress
 	/// <summary>
 	/// Total number of directories scanned so far.
 	/// </summary>
-	int DirectoriesScanned { get; }
+	public int DirectoriesScanned { get; init; }
 
 	/// <summary>
 	/// Total number of files discovered so far.
 	/// </summary>
-	int FilesDiscovered { get; }
+	public int FilesDiscovered { get; init; }
 
 	/// <summary>
 	/// Total size in bytes of all discovered files.
 	/// </summary>
-	long BytesTotal { get; }
+	public long BytesTotal { get; init; }
 
 
 	// ---------------------------------------------------------------------
@@ -46,22 +48,22 @@ public interface IBackupProgress
 	/// Total number of files processed so far.
 	/// This includes succeeded, skipped, and failed files.
 	/// </summary>
-	int FilesProcessed { get; }
+	public int FilesProcessed { get; init; }
 
 	/// <summary>
 	/// Number of files successfully backed up.
 	/// </summary>
-	int FilesSucceeded { get; }
+	public int FilesSucceeded { get; init; }
 
 	/// <summary>
 	/// Number of files skipped intentionally.
 	/// </summary>
-	int FilesSkipped { get; }
+	public int FilesSkipped { get; init; }
 
 	/// <summary>
 	/// Number of files that failed processing.
 	/// </summary>
-	int FilesFailed { get; }
+	public int FilesFailed { get; init; }
 
 
 	// ---------------------------------------------------------------------
@@ -71,7 +73,7 @@ public interface IBackupProgress
 	/// <summary>
 	/// Total number of bytes successfully processed so far.
 	/// </summary>
-	long BytesProcessed { get; }
+	public long BytesProcessed { get; init; }
 
 
 	// ---------------------------------------------------------------------
@@ -82,5 +84,5 @@ public interface IBackupProgress
 	/// Snapshot of files currently active in the backup workflow.
 	/// Presence does not imply parallel execution.
 	/// </summary>
-	IReadOnlyList<IFileProgress> ActiveFiles { get; }
+	public IReadOnlyList<IBackupProgressItem> ActiveFiles { get; init; }
 }

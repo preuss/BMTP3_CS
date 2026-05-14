@@ -1,4 +1,5 @@
 ﻿using BMTP3.Core4.Api;
+using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Engine.State;
 using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Helpers;
@@ -21,9 +22,9 @@ internal sealed class SequentialBackupEngine : IBackupEngine
 		this.sessionStateStore = Guard.RequireNonNull(sessionStateStore);
 	}
 
-	public async Task<BackupJobResult> RunAsync(
+	public async Task<BackupResult> RunAsync(
 		BackupPlan plan,
-		IProgress<IBackupProgress>? progress,
+		IProgress<BackupProgress>? progress,
 		CancellationToken cancellationToken)
 	{
 		// 1. Validate backup plan

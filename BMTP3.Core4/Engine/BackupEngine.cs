@@ -1,4 +1,5 @@
 ﻿using BMTP3.Core4.Api;
+using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine;
@@ -11,9 +12,9 @@ namespace BMTP3.Core4.Engine;
 /// </summary>
 public sealed class BackupEngine : IBackupEngine
 {
-	public async Task<BackupJobResult> RunAsync(
+	public async Task<BackupResult> RunAsync(
 		BackupPlan plan,
-		IProgress<IBackupProgress>? progress,
+		IProgress<BackupProgress>? progress,
 		CancellationToken cancellationToken)
 	{
 		// ------------------------------------------------------------

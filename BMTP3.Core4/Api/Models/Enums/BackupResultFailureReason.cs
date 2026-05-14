@@ -1,11 +1,11 @@
-﻿namespace BMTP3.Core4.Models.Enums;
+﻿namespace BMTP3.Core4.Api.Models.Enums;
 
 /// <summary>
 /// Defines the reason why a backup job failed in a controlled and handled manner.
 /// These error codes represent terminal, domain-level conditions that caused
 /// the backup job to stop, but were fully understood and handled by Core4.
 /// </summary>
-internal enum BackupErrorCode
+public enum BackupResultFailureReason
 {
 	// ---------------------------------------------------------------------
 	// Configuration & setup
