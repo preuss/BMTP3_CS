@@ -28,10 +28,19 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.CollisionStrategy))
 			throw new BackupPlanArgumentException($"Invalid CollisionStrategy value: {plan.CollisionStrategy}.");
 
+		if(!Enum.IsDefined(plan.SidecarFormat))
+			throw new BackupPlanArgumentException($"Invalid SidecarFormat value: {plan.SidecarFormat}.");
+
 		if(plan.MaxDegreeOfParallelism.HasValue && plan.MaxDegreeOfParallelism.Value <= 0)
 			throw new BackupPlanArgumentException("MaxDegreeOfParallelism must be greater than zero.");
 
 		// --- Tier-gating (detect features from higher Tiers) ---
+
+		if(plan.SidecarFormat == SidecarFormat.None)
+			throw new FeatureNotImplementedException(2, "Sidecar format: None");
+
+		if(plan.SidecarFormat == SidecarFormat.Json)
+			throw new FeatureNotImplementedException(2, "Sidecar format: Json");
 
 		if(plan.SourceType == BackupSourceType.MediaDevice)
 			throw new FeatureNotImplementedException(2, "MediaDevice source");

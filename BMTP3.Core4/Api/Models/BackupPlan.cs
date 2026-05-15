@@ -70,6 +70,11 @@ public sealed record BackupPlan
 	/// </summary>
 	public CollisionStrategy CollisionStrategy { get; init; }
 
+	/// <summary>
+	/// The format used for sidecar files accompanying backed-up files.
+	/// </summary>
+	public SidecarFormat SidecarFormat { get; init; } = SidecarFormat.Ini;
+
 
 	// ---------------------------------------------------------------------
 	// Behavior
