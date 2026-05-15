@@ -22,19 +22,4 @@ public enum BackupProgressPhase
 	/// to the destination.
 	/// </summary>
 	Transferring,
-
-	/// <summary>
-	/// The backup job completed successfully.
-	/// </summary>
-	Completed,
-
-	/// <summary>
-	/// The backup job was cancelled before completion.
-	/// </summary>
-	Cancelled,
-
-	/// <summary>
-	/// The backup job failed due to a fatal error.
-	/// </summary>
-	Failed
 }

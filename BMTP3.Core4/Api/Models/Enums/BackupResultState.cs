@@ -3,6 +3,6 @@
 public enum BackupResultState
 {
 	Completed,
+	Cancelled,
 	Failed,
-	Cancelled
 }

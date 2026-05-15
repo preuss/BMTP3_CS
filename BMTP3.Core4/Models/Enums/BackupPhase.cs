@@ -5,7 +5,7 @@
 /// These phases are coarse-grained and intended for progress reporting
 /// and user-facing status display.
 /// </summary>
-public enum BackupPhase
+internal enum BackupPhase
 {
 	/// <summary>
 	/// The backup job is initializing and preparing to start.
