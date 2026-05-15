@@ -1,7 +1,7 @@
 ﻿using BMTP3.Core4.Models.Enums;
 using System.Collections.Immutable;
 
-namespace BMTP3.Core4.Api;
+namespace BMTP3.Core4.Api.Models;
 
 /// <summary>
 /// Represents a snapshot of the current progress state of an ongoing backup job.

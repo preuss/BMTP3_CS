@@ -1,6 +1,6 @@
 ﻿using BMTP3.Core4.Api.Models.Enums;
 
-namespace BMTP3.Core4.Api;
+namespace BMTP3.Core4.Api.Models;
 
 /// <summary>
 /// Represents progress information for a file that is currently active
