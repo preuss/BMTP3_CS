@@ -8,8 +8,7 @@ namespace BMTP3.Core2.BackupNew.Api.Request;
 public sealed class BackupPlanValidationException : Exception
 {
 	public BackupPlanValidationException(IList<string> errors)
-		: base(
-			$"BackupPlan validation failed:{Environment.NewLine}{string.Join(Environment.NewLine, errors.Select(e => $"  - {e}"))}")
+		: base($"BackupPlan validation failed:{Environment.NewLine}{string.Join(Environment.NewLine, errors.Select(e => $"  - {e}"))}")
 	{
 		Errors = new ReadOnlyCollection<string>(errors);
 	}
