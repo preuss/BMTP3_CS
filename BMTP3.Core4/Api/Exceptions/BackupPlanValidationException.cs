@@ -13,14 +13,12 @@ public class BackupPlanValidationException : Exception
     /// </summary>
     public IReadOnlyList<string> Errors { get; }
 
-    public BackupPlanValidationException(string message)
-        : base(message)
+    public BackupPlanValidationException(string message) : base(message)
     {
         Errors = Array.Empty<string>();
     }
 
-    public BackupPlanValidationException(IEnumerable<string> errors)
-        : base("BackupPlan validation failed.")
+    public BackupPlanValidationException(IEnumerable<string> errors) : base("BackupPlan validation failed.")
     {
         Errors = errors.ToList();
     }
