@@ -1,4 +1,4 @@
-﻿using BMTP3.Core4.Models.Enums;
+﻿using BMTP3.Core4.Api.Models.Enums;
 
 namespace BMTP3.Core4.Api.Models;
 

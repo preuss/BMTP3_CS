@@ -1,4 +1,4 @@
-﻿namespace BMTP3.Core4.Models.Enums;
+﻿namespace BMTP3.Core4.Api.Models.Enums;
 
 /// <summary>
 /// Defines how files are laid out in the destination directory.

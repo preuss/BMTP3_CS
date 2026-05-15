@@ -1,4 +1,4 @@
-﻿namespace BMTP3.Core4.Models.Enums;
+﻿namespace BMTP3.Core4.Api.Models.Enums;
 
 /// <summary>
 /// Defines the type of source that will be backed up.
