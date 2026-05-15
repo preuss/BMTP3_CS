@@ -1,5 +1,5 @@
-﻿using BMTP3.Core4.Models.Enums;
-using System.Collections.Immutable;
+﻿using System.Collections.Immutable;
+using BMTP3.Core4.Api.Models.Enums;
 
 namespace BMTP3.Core4.Api.Models;
 
@@ -30,7 +30,7 @@ public record BackupProgress
 	/// <summary>
 	/// The current high-level phase of the backup job.
 	/// </summary>
-	public BackupPhase CurrentPhase { get; init; }
+	public BackupProgressPhase CurrentPhase { get; init; }
 
 
 	// ---------------------------------------------------------------------
