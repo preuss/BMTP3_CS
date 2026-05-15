@@ -1,6 +1,6 @@
 ﻿using BMTP3.Core4.Models.Enums;
 
-namespace BMTP3.Core4.Models;
+namespace BMTP3.Core4.Api.Models;
 
 /// <summary>
 /// Represents the immutable configuration for a single backup job.

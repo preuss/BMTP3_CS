@@ -1,5 +1,5 @@
-﻿using BMTP3.Core4.Helpers;
-using BMTP3.Core4.Models;
+﻿using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Helpers;
 
 namespace BMTP3.Core4.Engine.State;
 

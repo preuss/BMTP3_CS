@@ -1,4 +1,4 @@
-﻿using BMTP3.Core4.Models;
+﻿using BMTP3.Core4.Api.Models;
 
 namespace BMTP3.Core4.Engine.Validation;
 
