@@ -8,25 +8,28 @@ internal static class BackupPlanValidator
 {
 	public static void Validate(BackupPlan plan)
 	{
-		List<string> errors = new();
+		// --- Structural validation (fail-first) ---
 
-		// --- Structural validation ---
+		if(string.IsNullOrWhiteSpace(plan.Name))
+			throw new BackupPlanArgumentException("Name is required.");
 
-		if(string.IsNullOrWhiteSpace(plan.Name)) errors.Add("Name is required.");
+		if(string.IsNullOrWhiteSpace(plan.Source))
+			throw new BackupPlanArgumentException("Source is required.");
 
-		if(string.IsNullOrWhiteSpace(plan.Source)) errors.Add("Source is required.");
+		if(string.IsNullOrWhiteSpace(plan.Destination))
+			throw new BackupPlanArgumentException("Destination is required.");
 
-		if(string.IsNullOrWhiteSpace(plan.Destination)) errors.Add("Destination is required.");
+		if(!Enum.IsDefined(plan.SourceType))
+			throw new BackupPlanArgumentException($"Invalid SourceType value: {plan.SourceType}.");
 
-		if(!Enum.IsDefined(plan.SourceType)) errors.Add($"Invalid SourceType value: {plan.SourceType}.");
+		if(!Enum.IsDefined(plan.OutputStructure))
+			throw new BackupPlanArgumentException($"Invalid OutputStructure value: {plan.OutputStructure}.");
 
-		if(!Enum.IsDefined(plan.OutputStructure)) errors.Add($"Invalid OutputStructure value: {plan.OutputStructure}.");
+		if(!Enum.IsDefined(plan.CollisionStrategy))
+			throw new BackupPlanArgumentException($"Invalid CollisionStrategy value: {plan.CollisionStrategy}.");
 
-		if(!Enum.IsDefined(plan.CollisionStrategy)) errors.Add($"Invalid CollisionStrategy value: {plan.CollisionStrategy}.");
-
-		if(plan.MaxDegreeOfParallelism.HasValue && plan.MaxDegreeOfParallelism.Value <= 0) errors.Add("MaxDegreeOfParallelism must be greater than zero.");
-
-		if(errors.Count > 0) throw new BackupPlanValidationException(errors);
+		if(plan.MaxDegreeOfParallelism.HasValue && plan.MaxDegreeOfParallelism.Value <= 0)
+			throw new BackupPlanArgumentException("MaxDegreeOfParallelism must be greater than zero.");
 
 		// --- Tier-gating (detect features from higher Tiers) ---
 
