@@ -51,6 +51,9 @@ internal static class BackupPlanValidator
 		if(plan.ExcludePatterns is { Count: > 0 })
 			throw new FeatureNotImplementedException(2, "Exclude patterns");
 
+		if(plan.DryRun)
+			throw new FeatureNotImplementedException(3, "Dry run");
+
 		if(plan.EnableHashing)
 			throw new FeatureNotImplementedException(3, "Hashing");
 

@@ -91,11 +91,6 @@ public sealed record BackupPlan
 	/// </summary>
 	public bool StopOnError { get; init; }
 
-	/// <summary>
-	/// If true, existing destination files are skipped.
-	/// </summary>
-	public bool SkipExisting { get; init; }
-
 
 	// ---------------------------------------------------------------------
 	// Optional features
