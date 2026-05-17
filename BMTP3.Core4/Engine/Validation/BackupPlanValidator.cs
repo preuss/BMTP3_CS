@@ -28,6 +28,9 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.CollisionStrategy))
 			throw new BackupPlanArgumentException($"Invalid CollisionStrategy value: {plan.CollisionStrategy}.");
 
+		if(!Enum.IsDefined(plan.CollisionComparisonType))
+			throw new BackupPlanArgumentException($"Invalid CollisionComparisonType value: {plan.CollisionComparisonType}.");
+
 		if(!Enum.IsDefined(plan.SidecarFormat))
 			throw new BackupPlanArgumentException($"Invalid SidecarFormat value: {plan.SidecarFormat}.");
 
@@ -38,6 +41,12 @@ internal static class BackupPlanValidator
 
 		if(plan.CollisionStrategy != CollisionStrategy.Error)
 			throw new FeatureNotImplementedException(2, $"Collision strategy: {plan.CollisionStrategy}");
+
+		if(plan.CollisionComparisonType == CollisionComparisonType.Hash)
+			throw new FeatureNotImplementedException(3, "Collision comparison: Hash");
+
+		if(plan.CollisionComparisonType == CollisionComparisonType.Binary)
+			throw new FeatureNotImplementedException(2, "Collision comparison: Binary");
 
 		if(plan.SidecarFormat == SidecarFormat.None)
 			throw new FeatureNotImplementedException(2, "Sidecar format: None");

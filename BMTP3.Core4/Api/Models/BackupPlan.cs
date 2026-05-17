@@ -90,6 +90,11 @@ public sealed record BackupPlan
 	public CollisionStrategy CollisionStrategy { get; init; }
 
 	/// <summary>
+	/// Defines how files are compared to determine if a collision exists.
+	/// </summary>
+	public CollisionComparisonType CollisionComparisonType { get; init; }
+
+	/// <summary>
 	/// The format used for sidecar files accompanying backed-up files.
 	/// </summary>
 	public SidecarFormat SidecarFormat { get; init; } = SidecarFormat.Ini;
