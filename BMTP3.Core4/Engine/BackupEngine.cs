@@ -1,5 +1,6 @@
 ﻿using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.State;
 using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Models;
@@ -55,11 +56,29 @@ public sealed class BackupEngine : IBackupEngine
 
 		session.SetPhase(BackupPhase.Scanning);
 
-		await foreach(BackupItem item in _scanner.ScanAsync(plan, cancellationToken))
+		BackupScanRequest scanRequest = new(
+			plan.SourcePath,
+			plan.Recursive,
+			plan.IncludePatterns,
+			plan.ExcludePatterns);
+
+		Progress<BackupScanProgress> scanProgress = new(sp =>
+		{
+			progress?.Report(new()
+			{
+				SourcePath = plan.SourcePath,
+				DestinationPath = plan.Destination,
+				CurrentPhase = BackupProgressPhase.Scanning,
+				DirectoriesTraversed = sp.DirectoriesTraversed,
+				FilesDiscovered = sp.FilesDiscovered,
+			});
+		});
+
+		await foreach(BackupScanResult result in _scanner.ScanAsync(scanRequest, scanProgress, cancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			session.AddItem(item);
+			session.AddItem(result.Item);
 		}
 
 		// ------------------------------------------------------------
