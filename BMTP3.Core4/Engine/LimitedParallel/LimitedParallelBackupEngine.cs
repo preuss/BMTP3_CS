@@ -1,10 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+﻿using BMTP3.Core4.Api.Models;
 
-namespace BMTP3.Core4.Engine.LimitedParallel
+namespace BMTP3.Core4.Engine.LimitedParallel;
+
+internal sealed class LimitedParallelBackupEngine : IBackupRunner
 {
-	internal class LimitedParallelBackupEngine
+	public Task<BackupResult> RunAsync(
+		BackupPlan plan,
+		IProgress<BackupProgress>? progress,
+		CancellationToken cancellationToken)
 	{
+		throw new NotImplementedException("LimitedParallelBackupEngine is not yet implemented.");
 	}
 }
