@@ -31,8 +31,14 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.CollisionComparisonType))
 			throw new BackupPlanArgumentException($"Invalid CollisionComparisonType value: {plan.CollisionComparisonType}.");
 
+		if(!Enum.IsDefined(plan.RenameStrategy))
+			throw new BackupPlanArgumentException($"Invalid RenameStrategy value: {plan.RenameStrategy}.");
+
 		if(!Enum.IsDefined(plan.SidecarFormat))
 			throw new BackupPlanArgumentException($"Invalid SidecarFormat value: {plan.SidecarFormat}.");
+
+		if(!Enum.IsDefined(plan.BackupIndexType))
+			throw new BackupPlanArgumentException($"Invalid BackupIndexType value: {plan.BackupIndexType}.");
 
 		if(!Enum.IsDefined(plan.PostWriteVerification))
 			throw new BackupPlanArgumentException($"Invalid PostWriteVerification value: {plan.PostWriteVerification}.");
@@ -51,6 +57,9 @@ internal static class BackupPlanValidator
 		if(plan.CollisionComparisonType == CollisionComparisonType.Binary)
 			throw new FeatureNotImplementedException(2, "Collision comparison: Binary");
 
+		if(plan.RenameStrategy != RenameStrategy.Increment)
+			throw new FeatureNotImplementedException(2, $"Rename strategy: {plan.RenameStrategy}");
+
 		if(plan.SidecarFormat == SidecarFormat.None)
 			throw new FeatureNotImplementedException(2, "Sidecar format: None");
 
@@ -65,6 +74,9 @@ internal static class BackupPlanValidator
 
 		if(plan.ExcludePatterns is { Count: > 0 })
 			throw new FeatureNotImplementedException(2, "Exclude patterns");
+
+		if(plan.BackupIndexType == BackupIndexType.Json)
+			throw new FeatureNotImplementedException(2, "Backup index: Json");
 
 		if(plan.DryRun)
 			throw new FeatureNotImplementedException(3, "Dry run");
@@ -83,6 +95,9 @@ internal static class BackupPlanValidator
 
 		if(plan.EnableTimestampCorrection)
 			throw new FeatureNotImplementedException(3, "Timestamp correction");
+
+		if(plan.BackupIndexType == BackupIndexType.Database)
+			throw new FeatureNotImplementedException(4, "Backup index: Database");
 
 		if(plan.MaxDegreeOfParallelism.HasValue)
 			throw new FeatureNotImplementedException(4, "Parallel execution");

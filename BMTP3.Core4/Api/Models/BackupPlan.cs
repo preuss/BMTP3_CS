@@ -95,9 +95,19 @@ public sealed record BackupPlan
 	public CollisionComparisonType CollisionComparisonType { get; init; }
 
 	/// <summary>
+	/// Defines how files are renamed when a collision is resolved by renaming.
+	/// </summary>
+	public RenameStrategy RenameStrategy { get; init; }
+
+	/// <summary>
 	/// The format used for sidecar files accompanying backed-up files.
 	/// </summary>
 	public SidecarFormat SidecarFormat { get; init; } = SidecarFormat.Ini;
+
+	/// <summary>
+	/// The format for the centralized backup index / catalog file.
+	/// </summary>
+	public BackupIndexType BackupIndexType { get; init; }
 
 
 	// ---------------------------------------------------------------------
