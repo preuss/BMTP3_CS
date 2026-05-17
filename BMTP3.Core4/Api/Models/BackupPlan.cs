@@ -121,19 +121,30 @@ public sealed record BackupPlan
 	// ---------------------------------------------------------------------
 
 	/// <summary>
-	/// Indicates whether file hashing is enabled.
+	/// The hash algorithms used when comparing files during collision detection.
+	/// Only used when <see cref="CollisionComparisonType"/> is set to Hash.
+	/// If null, a default set is chosen by the engine.
 	/// </summary>
-	public bool EnableHashing { get; init; }
+	public IReadOnlyList<HashAlgorithm>? ComparisonHashAlgorithms { get; init; }
+
+	/// <summary>
+	/// The hash algorithms used for post-write verification.
+	/// Only used when <see cref="PostWriteVerification"/> is set to Hash.
+	/// If null, a default set is chosen by the engine.
+	/// </summary>
+	public IReadOnlyList<HashAlgorithm>? VerificationHashAlgorithms { get; init; }
 
 	/// <summary>
 	/// Indicates whether metadata extraction is enabled.
 	/// </summary>
 	public bool EnableMetadata { get; init; }
-
+	
+	
 	/// <summary>
-	/// Indicates whether post-transfer verification is enabled.
+	/// Specifies how files are verified after being written to the destination.
 	/// </summary>
-	public bool EnableVerification { get; init; }
+	public PostWriteVerificationType PostWriteVerification { get; init; }
+
 
 	/// <summary>
 	/// Indicates whether original timestamps should be restored.

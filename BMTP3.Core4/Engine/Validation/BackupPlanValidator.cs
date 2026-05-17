@@ -34,6 +34,9 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.SidecarFormat))
 			throw new BackupPlanArgumentException($"Invalid SidecarFormat value: {plan.SidecarFormat}.");
 
+		if(!Enum.IsDefined(plan.PostWriteVerification))
+			throw new BackupPlanArgumentException($"Invalid PostWriteVerification value: {plan.PostWriteVerification}.");
+
 		if(plan.MaxDegreeOfParallelism.HasValue && plan.MaxDegreeOfParallelism.Value <= 0)
 			throw new BackupPlanArgumentException("MaxDegreeOfParallelism must be greater than zero.");
 
@@ -66,14 +69,17 @@ internal static class BackupPlanValidator
 		if(plan.DryRun)
 			throw new FeatureNotImplementedException(3, "Dry run");
 
-		if(plan.EnableHashing)
-			throw new FeatureNotImplementedException(3, "Hashing");
+		if(plan.ComparisonHashAlgorithms is { Count: > 0 })
+			throw new FeatureNotImplementedException(3, "Hash type selection");
 
 		if(plan.EnableMetadata)
 			throw new FeatureNotImplementedException(3, "Metadata extraction");
 
-		if(plan.EnableVerification)
+		if(plan.PostWriteVerification != PostWriteVerificationType.None)
 			throw new FeatureNotImplementedException(3, "Post-transfer verification");
+
+		if(plan.VerificationHashAlgorithms is { Count: > 0 })
+			throw new FeatureNotImplementedException(3, "Verification hash selection");
 
 		if(plan.EnableTimestampCorrection)
 			throw new FeatureNotImplementedException(3, "Timestamp correction");
