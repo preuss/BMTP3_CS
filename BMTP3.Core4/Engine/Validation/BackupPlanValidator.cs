@@ -60,6 +60,9 @@ internal static class BackupPlanValidator
 		if(plan.RenameStrategy != RenameStrategy.Increment)
 			throw new FeatureNotImplementedException(2, $"Rename strategy: {plan.RenameStrategy}");
 
+		if(plan.CustomOutputCollisionPattern is not null)
+			throw new FeatureNotImplementedException(2, "Custom collision pattern");
+
 		if(plan.SidecarFormat == SidecarFormat.None)
 			throw new FeatureNotImplementedException(2, "Sidecar format: None");
 

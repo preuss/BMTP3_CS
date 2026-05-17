@@ -88,7 +88,7 @@ public sealed record BackupPlan
 	/// Custom template pattern for the output path.
 	/// Only used when <see cref="OutputStructureStrategy"/> is <c>CustomPathPattern</c>.
 	/// </summary>
-	public string? CustomOutputPathPattern { get; init; }
+	public string? CustomOutputPattern { get; init; }
 
 	/// <summary>
 	/// Defines how name collisions at the destination are handled.
@@ -104,6 +104,11 @@ public sealed record BackupPlan
 	/// Defines how files are renamed when a collision is resolved by renaming.
 	/// </summary>
 	public RenameStrategy RenameStrategy { get; init; }
+
+	/// <summary>
+	/// Custom template pattern for renaming when <see cref="RenameStrategy"/> is <c>Custom</c>.
+	/// </summary>
+	public string? CustomOutputCollisionPattern { get; init; }
 
 	/// <summary>
 	/// The format used for sidecar files accompanying backed-up files.
