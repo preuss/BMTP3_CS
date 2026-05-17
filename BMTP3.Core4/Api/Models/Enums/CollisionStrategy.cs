@@ -6,6 +6,11 @@
 public enum CollisionStrategy
 {
 	/// <summary>
+	/// Renames the new file using a specific strategy.
+	/// </summary>
+	Rename,
+
+	/// <summary>
 	/// Skip the file if a destination file already exists.
 	/// </summary>
 	Skip,
@@ -16,7 +21,8 @@ public enum CollisionStrategy
 	Overwrite,
 
 	/// <summary>
-	/// Generate a new unique name for the destination file.
+	/// Stops the backup process and treats the collision as an error.
 	/// </summary>
-	Rename
+	Error
+
 }

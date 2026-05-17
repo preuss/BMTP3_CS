@@ -36,6 +36,9 @@ internal static class BackupPlanValidator
 
 		// --- Tier-gating (detect features from higher Tiers) ---
 
+		if(plan.CollisionStrategy != CollisionStrategy.Error)
+			throw new FeatureNotImplementedException(2, $"Collision strategy: {plan.CollisionStrategy}");
+
 		if(plan.SidecarFormat == SidecarFormat.None)
 			throw new FeatureNotImplementedException(2, "Sidecar format: None");
 
