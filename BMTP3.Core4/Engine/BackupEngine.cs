@@ -1,5 +1,10 @@
 ﻿using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Engine.State;
+using BMTP3.Core4.Engine.Validation;
+using BMTP3.Core4.Models;
+using BMTP3.Core4.Models.Enums;
+using BMTP3.Core4.Scanner;
 
 namespace BMTP3.Core4.Engine;
 
@@ -11,6 +16,17 @@ namespace BMTP3.Core4.Engine;
 /// </summary>
 public sealed class BackupEngine : IBackupEngine
 {
+	private readonly IBackupScanner _scanner;
+	private readonly IBackupSessionStateStore _sessionStateStore;
+
+	internal BackupEngine(
+		IBackupScanner scanner,
+		IBackupSessionStateStore sessionStateStore)
+	{
+		_scanner = scanner;
+		_sessionStateStore = sessionStateStore;
+	}
+
 	public async Task<BackupResult> RunAsync(
 		BackupPlan plan,
 		IProgress<BackupProgress>? progress,
@@ -22,6 +38,7 @@ public sealed class BackupEngine : IBackupEngine
 		//    - Ensure source and destination are not the same
 		//    - Fail fast on invalid configuration
 		// ------------------------------------------------------------
+		BackupPlanValidator.Validate(plan);
 
 		// ------------------------------------------------------------
 		// 2. Initialize backup state
@@ -29,6 +46,21 @@ public sealed class BackupEngine : IBackupEngine
 		//    - Initialize progress tracking
 		//    - Set phase = Starting
 		// ------------------------------------------------------------
+		BackupSessionStateKey sessionKey = BackupSessionStateKeyFactory.Create(plan);
+
+		BackupSessionState session = await _sessionStateStore.OpenAsync(
+			sessionKey,
+			cancellationToken
+		);
+
+		session.SetPhase(BackupPhase.Scanning);
+
+		await foreach(BackupItem item in _scanner.ScanAsync(plan, cancellationToken))
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			session.AddItem(item);
+		}
 
 		// ------------------------------------------------------------
 		// 3. Open source (filesystem or media device)
