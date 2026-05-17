@@ -23,4 +23,10 @@ internal sealed record BackupRecord
 	/// The current backup status of the item.
 	/// </summary>
 	public BackupItemStatus Status { get; set; } = BackupItemStatus.Pending;
+
+	/// <summary>
+	/// The moveable content, set after the item has been staged to a local file.
+	/// Null until staging is complete.
+	/// </summary>
+	public IMoveableContent? MoveableContent { get; set; }
 }
