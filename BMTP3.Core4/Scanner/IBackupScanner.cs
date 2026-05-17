@@ -1,6 +1,4 @@
-﻿using BMTP3.Core4.Models;
-
-namespace BMTP3.Core4.Scanner;
+﻿namespace BMTP3.Core4.Scanner;
 
 /// <summary>
 /// Defines a scanner that discovers backup items from a configured source.
@@ -11,6 +9,7 @@ internal interface IBackupScanner
 	/// Scans the configured source and returns discovered backup items.
 	/// </summary>
 	IAsyncEnumerable<BackupScanResult> ScanAsync(
+		IScanSource source,
 		BackupScanRequest request,
 		IProgress<BackupScanProgress>? progress,
 		CancellationToken cancellationToken);

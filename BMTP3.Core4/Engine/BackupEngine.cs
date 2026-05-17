@@ -3,7 +3,6 @@ using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.State;
 using BMTP3.Core4.Engine.Validation;
-using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
 
@@ -19,13 +18,16 @@ public sealed class BackupEngine : IBackupEngine
 {
 	private readonly IBackupScanner _scanner;
 	private readonly IBackupSessionStateStore _sessionStateStore;
+	private readonly IScanSourceFactory _scanSourceFactory;
 
 	internal BackupEngine(
 		IBackupScanner scanner,
-		IBackupSessionStateStore sessionStateStore)
+		IBackupSessionStateStore sessionStateStore,
+		IScanSourceFactory scanSourceFactory)
 	{
 		_scanner = scanner;
 		_sessionStateStore = sessionStateStore;
+		_scanSourceFactory = scanSourceFactory;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -55,10 +57,19 @@ public sealed class BackupEngine : IBackupEngine
 		);
 
 		// ------------------------------------------------------------
-		// 3. Open source Device (filesystem or media device)
+		// 3. Open source device (filesystem or media device)
 		//    - Establish access to source
 		//    - Fail if source is not accessible
 		// ------------------------------------------------------------
+		ScanSourceCreateRequest sourceRequest = new()
+		{
+			SourceType = plan.SourceType,
+			SourcePath = plan.SourcePath,
+		};
+
+		await using IScanSource source = _scanSourceFactory.Create(sourceRequest);
+
+		await source.OpenAsync(cancellationToken);
 
 		// ------------------------------------------------------------
 		// 4. Scan source
@@ -70,15 +81,16 @@ public sealed class BackupEngine : IBackupEngine
 
 		session.SetPhase(BackupPhase.Scanning);
 
-		BackupScanRequest scanRequest = new(
-			plan.SourcePath,
-			plan.Recursive,
-			plan.IncludePatterns,
-			plan.ExcludePatterns);
+		BackupScanRequest scanRequest = new()
+		{
+			Recursive = plan.Recursive,
+			IncludePatterns = plan.IncludePatterns,
+			ExcludePatterns = plan.ExcludePatterns,
+		};
 
 		Progress<BackupScanProgress> scanProgress = new(sp =>
 		{
-			progress?.Report(new()
+			progress?.Report(new BackupProgress
 			{
 				SourcePath = plan.SourcePath,
 				DestinationPath = plan.Destination,
@@ -88,7 +100,7 @@ public sealed class BackupEngine : IBackupEngine
 			});
 		});
 
-		await foreach(BackupScanResult result in _scanner.ScanAsync(scanRequest, scanProgress, cancellationToken))
+		await foreach(BackupScanResult result in _scanner.ScanAsync(source, scanRequest, scanProgress, cancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 

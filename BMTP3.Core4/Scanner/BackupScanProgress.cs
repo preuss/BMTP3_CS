@@ -1,6 +1,6 @@
 using BMTP3.Core4.Api.Models.Enums;
 
-namespace BMTP3.Core4.Models;
+namespace BMTP3.Core4.Scanner;
 
 internal sealed record BackupScanProgress
 {
