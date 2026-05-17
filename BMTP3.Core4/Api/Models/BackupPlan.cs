@@ -20,7 +20,7 @@ public sealed record BackupPlan
 
 
 	// ---------------------------------------------------------------------
-	// Source
+	// Source Definition
 	// ---------------------------------------------------------------------
 
 	/// <summary>
@@ -29,11 +29,30 @@ public sealed record BackupPlan
 	public BackupSourceType SourceType { get; init; }
 
 	/// <summary>
-	/// The root path or identifier of the source.
-	/// For filesystem sources, this is a directory path.
-	/// For device sources, this may be a device id.
+	/// The source path to back up.
+	/// 
+	/// Supports multiple source types:
+	/// 
+	/// <para><b>File system:</b> Absolute local or UNC path.</para>
+	/// <para>Examples:</para>
+	/// <para><c>C:\Users\John\Pictures</c></para>
+	/// <para><c>\\NAS\Share\Backup</c></para>
+	/// 
+	/// <para><b>Media device (MTP/PTP):</b> URI formatted as:</para>
+	/// <para><c>mtp://[Device Friendly Name]/[Storage or Root]/[Path]</c></para>
+	/// 
+	/// <para>The device name must match the name shown in Windows (e.g. "Apple iPad", "Canon Camera").</para>
+	/// 
+	/// <para>Examples:</para>
+	/// <para><c>mtp://Apple iPad/Internal Storage/DCIM/202205__</c></para>
+	/// <para><c>mtp://Canon Camera/SD Card/DCIM/100CANON</c></para>
+	/// 
+	/// <para>Notes:</para>
+	/// <para>- "Internal Storage", "SD Card", etc. represent the device's root storage.</para>
+	/// <para>- Most cameras store images under a <c>DCIM</c> folder.</para>
+	/// <para>- Path segments use forward slashes (<c>/</c>).</para>
 	/// </summary>
-	public string Source { get; init; } = string.Empty;
+	public string SourcePath { get; init; } = string.Empty;
 
 	/// <summary>
 	/// Indicates whether subdirectories should be included.

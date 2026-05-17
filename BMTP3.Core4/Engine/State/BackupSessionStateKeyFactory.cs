@@ -20,6 +20,6 @@ internal static class BackupSessionStateKeyFactory
 
 	private static string CreateSourceIdentity(BackupPlan plan)
 	{
-		return $"{plan.SourceType}:{plan.Source.Trim()}";
+		return $"{plan.SourceType}:{plan.SourcePath.Trim()}";
 	}
 }

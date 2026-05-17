@@ -13,8 +13,8 @@ internal static class BackupPlanValidator
 		if(string.IsNullOrWhiteSpace(plan.Name))
 			throw new BackupPlanArgumentException("Name is required.");
 
-		if(string.IsNullOrWhiteSpace(plan.Source))
-			throw new BackupPlanArgumentException("Source is required.");
+		if(string.IsNullOrWhiteSpace(plan.SourcePath))
+			throw new BackupPlanArgumentException("SourcePath is required.");
 
 		if(string.IsNullOrWhiteSpace(plan.Destination))
 			throw new BackupPlanArgumentException("Destination is required.");
