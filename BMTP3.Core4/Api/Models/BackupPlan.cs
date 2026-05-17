@@ -82,7 +82,13 @@ public sealed record BackupPlan
 	/// <summary>
 	/// Determines how the output directory structure is created.
 	/// </summary>
-	public OutputStructure OutputStructure { get; init; }
+	public OutputStructureStrategy OutputStructureStrategy { get; init; }
+
+	/// <summary>
+	/// Custom template pattern for the output path.
+	/// Only used when <see cref="OutputStructureStrategy"/> is <c>CustomPathPattern</c>.
+	/// </summary>
+	public string? CustomOutputPathPattern { get; init; }
 
 	/// <summary>
 	/// Defines how name collisions at the destination are handled.

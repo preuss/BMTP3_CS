@@ -22,8 +22,8 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.SourceType))
 			throw new BackupPlanArgumentException($"Invalid SourceType value: {plan.SourceType}.");
 
-		if(!Enum.IsDefined(plan.OutputStructure))
-			throw new BackupPlanArgumentException($"Invalid OutputStructure value: {plan.OutputStructure}.");
+		if(!Enum.IsDefined(plan.OutputStructureStrategy))
+			throw new BackupPlanArgumentException($"Invalid OutputStructureStrategy value: {plan.OutputStructureStrategy}.");
 
 		if(!Enum.IsDefined(plan.CollisionStrategy))
 			throw new BackupPlanArgumentException($"Invalid CollisionStrategy value: {plan.CollisionStrategy}.");
@@ -74,6 +74,9 @@ internal static class BackupPlanValidator
 
 		if(plan.ExcludePatterns is { Count: > 0 })
 			throw new FeatureNotImplementedException(2, "Exclude patterns");
+
+		if(plan.OutputStructureStrategy == OutputStructureStrategy.CustomPathPattern)
+			throw new FeatureNotImplementedException(2, "Custom output path pattern");
 
 		if(plan.BackupIndexType == BackupIndexType.Json)
 			throw new FeatureNotImplementedException(2, "Backup index: Json");
