@@ -5,12 +5,12 @@ namespace BMTP3.Core4.Engine.State;
 
 /// <summary>
 /// Represents the internal in-memory state of a single backup session.
-/// The state owns the known backup items and is the source of truth
+/// The state owns the known backup _items and is the source of truth
 /// for what the engine knows about the session.
 /// </summary>
 internal sealed class BackupSessionState
 {
-	private readonly List<BackupItem> items = new();
+	private readonly List<BackupItem> _items = new();
 
 	public BackupSessionState(string sessionId, string sourceIdentity)
 	{
@@ -45,9 +45,9 @@ internal sealed class BackupSessionState
 	public BackupPhase Phase { get; private set; }
 
 	/// <summary>
-	/// All items known to the backup session.
+	/// All _items known to the backup session.
 	/// </summary>
-	public IReadOnlyList<BackupItem> Items => items;
+	public IReadOnlyList<BackupItem> Items => _items;
 
 	/// <summary>
 	/// Optional terminal failure reason if the backup ends in Failed state.
@@ -81,16 +81,16 @@ internal sealed class BackupSessionState
 	{
 		ArgumentNullException.ThrowIfNull(item);
 
-		if(items.Any(existing => existing.Id == item.Id))
+		if(_items.Any(existing => existing.Id == item.Id))
 		{
 			throw new InvalidOperationException($"A backup item with id '{item.Id}' already exists.");
 		}
 
-		items.Add(item);
+		_items.Add(item);
 	}
 
 	public IEnumerable<BackupItem> GetPendingItems()
 	{
-		return items.Where(item => item.Status == BackupItemStatus.Pending);
+		return _items.Where(item => item.Status == BackupItemStatus.Pending);
 	}
 }

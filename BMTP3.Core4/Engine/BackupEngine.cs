@@ -54,6 +54,20 @@ public sealed class BackupEngine : IBackupEngine
 			cancellationToken
 		);
 
+		// ------------------------------------------------------------
+		// 3. Open source Device (filesystem or media device)
+		//    - Establish access to source
+		//    - Fail if source is not accessible
+		// ------------------------------------------------------------
+
+		// ------------------------------------------------------------
+		// 4. Scan source
+		//    - Enumerate directories and files
+		//    - Apply include / exclude rules
+		//    - Count files and total bytes
+		//    - Update progress (phase = Scanning)
+		// ------------------------------------------------------------
+
 		session.SetPhase(BackupPhase.Scanning);
 
 		BackupScanRequest scanRequest = new(
@@ -80,20 +94,6 @@ public sealed class BackupEngine : IBackupEngine
 
 			session.AddItem(result.Item);
 		}
-
-		// ------------------------------------------------------------
-		// 3. Open source (filesystem or media device)
-		//    - Establish access to source
-		//    - Fail if source is not accessible
-		// ------------------------------------------------------------
-
-		// ------------------------------------------------------------
-		// 4. Scan source
-		//    - Enumerate directories and files
-		//    - Apply include / exclude rules
-		//    - Count files and total bytes
-		//    - Update progress (phase = Scanning)
-		// ------------------------------------------------------------
 
 		// ------------------------------------------------------------
 		// 5. Prepare destination
