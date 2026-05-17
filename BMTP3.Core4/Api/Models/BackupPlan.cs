@@ -90,6 +90,11 @@ public sealed record BackupPlan
 	/// </summary>
 	public string? CustomOutputPattern { get; init; }
 
+
+	// ---------------------------------------------------------------------
+	// Collision & Versioning Policy
+	// ---------------------------------------------------------------------
+
 	/// <summary>
 	/// Defines how name collisions at the destination are handled.
 	/// </summary>
@@ -110,6 +115,11 @@ public sealed record BackupPlan
 	/// </summary>
 	public string? CustomOutputCollisionPattern { get; init; }
 
+
+	// ---------------------------------------------------------------------
+	// Metadata & Indexing
+	// ---------------------------------------------------------------------
+
 	/// <summary>
 	/// The format used for sidecar files accompanying backed-up files.
 	/// </summary>
@@ -119,27 +129,6 @@ public sealed record BackupPlan
 	/// The format for the centralized backup index / catalog file.
 	/// </summary>
 	public BackupIndexType BackupIndexType { get; init; }
-
-
-	// ---------------------------------------------------------------------
-	// Behavior
-	// ---------------------------------------------------------------------
-
-	/// <summary>
-	/// If true, the backup performs no write operations.
-	/// The process is simulated only.
-	/// </summary>
-	public bool DryRun { get; init; }
-
-	/// <summary>
-	/// If true, the backup stops immediately on the first fatal error.
-	/// </summary>
-	public bool StopOnError { get; init; }
-
-
-	// ---------------------------------------------------------------------
-	// Optional features
-	// ---------------------------------------------------------------------
 
 	/// <summary>
 	/// The hash algorithms used when comparing files during collision detection.
@@ -159,13 +148,11 @@ public sealed record BackupPlan
 	/// Indicates whether metadata extraction is enabled.
 	/// </summary>
 	public bool EnableMetadata { get; init; }
-	
-	
+
 	/// <summary>
 	/// Specifies how files are verified after being written to the destination.
 	/// </summary>
 	public PostWriteVerificationType PostWriteVerification { get; init; }
-
 
 	/// <summary>
 	/// Indicates whether original timestamps should be restored.
@@ -174,7 +161,23 @@ public sealed record BackupPlan
 
 
 	// ---------------------------------------------------------------------
-	// Execution hints
+	// Behavior
+	// ---------------------------------------------------------------------
+
+	/// <summary>
+	/// If true, the backup performs no write operations.
+	/// The process is simulated only.
+	/// </summary>
+	public bool DryRun { get; init; }
+
+	/// <summary>
+	/// If true, the backup stops immediately on the first fatal error.
+	/// </summary>
+	public bool StopOnError { get; init; }
+
+
+	// ---------------------------------------------------------------------
+	// Execution Hints
 	// ---------------------------------------------------------------------
 
 	/// <summary>
