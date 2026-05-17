@@ -3,6 +3,7 @@ using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.State;
 using BMTP3.Core4.Engine.Validation;
+using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
 
@@ -103,8 +104,9 @@ public sealed class BackupEngine : IBackupEngine
 		await foreach(BackupScanResult result in _scanner.ScanAsync(source, scanRequest, scanProgress, cancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
+			BackupRecord record = new() { Item = result.Item };
 
-			session.AddItem(result.Item);
+			session.AddRecord(record);
 		}
 
 		// ------------------------------------------------------------

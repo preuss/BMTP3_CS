@@ -5,12 +5,12 @@ namespace BMTP3.Core4.Engine.State;
 
 /// <summary>
 /// Represents the internal in-memory state of a single backup session.
-/// The state owns the known backup _items and is the source of truth
+/// The state owns the known backup _records and is the source of truth
 /// for what the engine knows about the session.
 /// </summary>
 internal sealed class BackupSessionState
 {
-	private readonly List<BackupItem> _items = new();
+	private readonly List<BackupRecord> _records = new();
 
 	public BackupSessionState(string sessionId, string sourceIdentity)
 	{
@@ -45,9 +45,9 @@ internal sealed class BackupSessionState
 	public BackupPhase Phase { get; private set; }
 
 	/// <summary>
-	/// All _items known to the backup session.
+	/// All _records known to the backup session.
 	/// </summary>
-	public IReadOnlyList<BackupItem> Items => _items;
+	public IReadOnlyList<BackupRecord> Records => _records;
 
 	/// <summary>
 	/// Optional terminal failure reason if the backup ends in Failed state.
@@ -77,20 +77,20 @@ internal sealed class BackupSessionState
 		FailureReason = null;
 	}
 
-	public void AddItem(BackupItem item)
+	public void AddRecord(BackupRecord record)
 	{
-		ArgumentNullException.ThrowIfNull(item);
+		ArgumentNullException.ThrowIfNull(record);
 
-		if(_items.Any(existing => existing.Id == item.Id))
+		if(_records.Any(existing => existing.Item.Id == record.Item.Id))
 		{
-			throw new InvalidOperationException($"A backup item with id '{item.Id}' already exists.");
+			throw new InvalidOperationException($"A backup record with id '{record.Item.Id}' already exists.");
 		}
 
-		_items.Add(item);
+		_records.Add(record);
 	}
 
-	public IEnumerable<BackupItem> GetPendingItems()
+	public IEnumerable<BackupRecord> GetPendingItems()
 	{
-		return _items.Where(item => item.Status == BackupItemStatus.Pending);
+		return _records.Where(item => item.Status == BackupItemStatus.Pending);
 	}
 }

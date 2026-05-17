@@ -11,6 +11,11 @@ internal enum BackupItemStatus
 	Pending,
 
 	/// <summary>
+	/// The item is currently handled by the backup process.
+	///	</summary>
+	Active,
+
+	/// <summary>
 	/// The item was successfully backed up.
 	/// </summary>
 	Succeeded,
