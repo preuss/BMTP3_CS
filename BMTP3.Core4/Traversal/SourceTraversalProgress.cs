@@ -1,9 +1,9 @@
-namespace BMTP3.Core4.Scanner;
+namespace BMTP3.Core4.Traversal;
 
 /// <summary>
-/// Snapshot of scanner progress.
+/// Snapshot of traversal progress.
 /// </summary>
-internal sealed record BackupScanProgress
+internal sealed record SourceTraversalProgress
 {
 	/// <summary>
 	/// Number of directories traversed so far.

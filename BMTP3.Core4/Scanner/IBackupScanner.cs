@@ -1,15 +1,20 @@
-﻿namespace BMTP3.Core4.Scanner;
+﻿using BMTP3.Core4.Models;
+using BMTP3.Core4.Traversal;
+
+namespace BMTP3.Core4.Scanner;
 
 /// <summary>
-/// Defines a scanner that discovers backup items from a configured source.
+///     Discovers backup items by consuming an <see cref="ISourceTraversal" />
+///     and mapping <see cref="SourceTraversalItem" /> to <see cref="BackupItem" />.
 /// </summary>
 internal interface IBackupScanner
 {
 	/// <summary>
-	/// Scans the configured source and returns discovered backup items.
+	///     Scans the source via <paramref name="traversal" /> and returns
+	///     <see cref="BackupItem" /> instances for the backup pipeline.
 	/// </summary>
-	IAsyncEnumerable<BackupScanResult> ScanAsync(
-		IScanSource source,
+	IAsyncEnumerable<BackupItem> ScanAsync(
+		ISourceTraversal traversal,
 		BackupScanRequest request,
 		IProgress<BackupScanProgress>? progress,
 		CancellationToken cancellationToken);

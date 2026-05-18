@@ -1,11 +1,13 @@
 ﻿using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.State;
 using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
+using BMTP3.Core4.Traversal;
 
 namespace BMTP3.Core4.Engine;
 
@@ -19,16 +21,20 @@ public sealed class BackupEngine : IBackupEngine
 {
 	private readonly IBackupScanner _scanner;
 	private readonly IBackupSessionStateStore _sessionStateStore;
-	private readonly IScanSourceFactory _scanSourceFactory;
+	private readonly ISourceTraversalFactory _sourceTraversalFactory;
+	private readonly IBackupRunnerFactory _backupRunnerFactory;
 
 	internal BackupEngine(
 		IBackupScanner scanner,
 		IBackupSessionStateStore sessionStateStore,
-		IScanSourceFactory scanSourceFactory)
+		ISourceTraversalFactory sourceTraversalFactory,
+		IBackupRunnerFactory backupRunnerFactory
+	)
 	{
 		_scanner = scanner;
 		_sessionStateStore = sessionStateStore;
-		_scanSourceFactory = scanSourceFactory;
+		_sourceTraversalFactory = sourceTraversalFactory;
+		_backupRunnerFactory = backupRunnerFactory;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -58,19 +64,17 @@ public sealed class BackupEngine : IBackupEngine
 		);
 
 		// ------------------------------------------------------------
-		// 3. Open source device (filesystem or media device)
-		//    - Establish access to source
+		// 3. Open source traversal (filesystem or media device)
+		//    - Establish access to source via ISourceTraversal
 		//    - Fail if source is not accessible
 		// ------------------------------------------------------------
-		ScanSourceCreateRequest sourceRequest = new()
+		SourceTraversalFactoryCreateRequest sourceTraversalFactoryCreateRequest = new()
 		{
 			SourceType = plan.SourceType,
 			SourcePath = plan.SourcePath,
 		};
 
-		await using IScanSource source = _scanSourceFactory.Create(sourceRequest);
-
-		await source.OpenAsync(cancellationToken);
+		await using ISourceTraversal traversal = _sourceTraversalFactory.Create(sourceTraversalFactoryCreateRequest);
 
 		// ------------------------------------------------------------
 		// 4. Scan source
@@ -84,6 +88,7 @@ public sealed class BackupEngine : IBackupEngine
 
 		BackupScanRequest scanRequest = new()
 		{
+			SourcePath = plan.SourcePath,
 			Recursive = plan.Recursive,
 			IncludePatterns = plan.IncludePatterns,
 			ExcludePatterns = plan.ExcludePatterns,
@@ -101,13 +106,15 @@ public sealed class BackupEngine : IBackupEngine
 			});
 		});
 
-		await foreach(BackupScanResult result in _scanner.ScanAsync(source, scanRequest, scanProgress, cancellationToken))
+		await foreach(BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			BackupRecord record = new() { Item = result.Item };
+			BackupRecord record = new() { Item = item };
 
 			session.AddRecord(record);
 		}
+
+
 
 		// ------------------------------------------------------------
 		// 5. Prepare destination

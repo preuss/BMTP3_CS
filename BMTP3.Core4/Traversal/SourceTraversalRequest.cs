@@ -1,15 +1,14 @@
-namespace BMTP3.Core4.Scanner;
+namespace BMTP3.Core4.Traversal;
 
 /// <summary>
-/// Parameters for controlling the behavior of the backup scanning process.
+/// Parameters controlling a source traversal operation.
 /// </summary>
-internal sealed record BackupScanRequest
+internal sealed record SourceTraversalRequest
 {
 	/// <summary>
 	/// The root path within the source to start scanning from.
 	/// </summary>
 	public required string SourcePath { get; init; }
-
 	/// <summary>
 	/// Whether to recurse into subdirectories.
 	/// </summary>
