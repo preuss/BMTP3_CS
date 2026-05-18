@@ -17,6 +17,32 @@ internal sealed record BackupRunnerProgress
 	/// The current high-level phase of the backup job.
 	/// </summary>
 	public BackupProgressPhase CurrentPhase { get; init; }
+	
+
+	// ---------------------------------------------------------------------
+	// Processing
+	// ---------------------------------------------------------------------
+
+	/// <summary>
+	/// Total number of files selected for backup after filtering.
+	/// </summary>
+	public int TotalFilesSelected { get; init; }
+
+	/// <summary>
+	/// Number of files successfully backed up.
+	/// </summary>
+	public int FilesSucceeded { get; init; }
+
+	/// <summary>
+	/// Number of files skipped intentionally.
+	/// </summary>
+	public int FilesSkipped { get; init; }
+
+	/// <summary>
+	/// Number of files that failed processing.
+	/// </summary>
+	public int FilesFailed { get; init; }
+
 
 	// ---------------------------------------------------------------------
 	// Active files

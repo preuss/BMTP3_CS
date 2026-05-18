@@ -131,6 +131,10 @@ public sealed class BackupEngine : IBackupEngine
 				SourcePath = plan.SourcePath,
 				DestinationPath = plan.Destination,
 				CurrentPhase = rp.CurrentPhase,
+				TotalFilesSelected = rp.TotalFilesSelected,
+				FilesSucceeded = rp.FilesSucceeded,
+				FilesSkipped = rp.FilesSkipped,
+				FilesFailed = rp.FilesFailed,
 				ActiveFiles = rp.ActiveFiles
 			});
 		});
