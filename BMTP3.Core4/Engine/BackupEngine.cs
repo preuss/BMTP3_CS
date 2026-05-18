@@ -114,6 +114,28 @@ public sealed class BackupEngine : IBackupEngine
 			session.AddRecord(record);
 		}
 
+		BackupRunnerFactoryCreateRequest runnerFactoryCreateRequest = new()
+			{
+				MaxDegreeOfParallelism = plan.MaxDegreeOfParallelism
+			};
+		IBackupRunner runner = _backupRunnerFactory.Create(runnerFactoryCreateRequest);
+
+		BackupRunnerRequest runnerRequest = new()
+		{
+		};
+
+		Progress<BackupRunnerProgress> runnerProgress = new(rp =>
+		{
+			progress?.Report(new BackupProgress
+			{
+				SourcePath = plan.SourcePath,
+				DestinationPath = plan.Destination,
+				CurrentPhase = rp.CurrentPhase,
+				ActiveFiles = rp.ActiveFiles
+			});
+		});
+
+		await runner.RunAsync(runnerRequest, sessionKey, runnerProgress, cancellationToken);
 
 
 		// ------------------------------------------------------------
