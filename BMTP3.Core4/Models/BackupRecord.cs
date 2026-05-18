@@ -25,8 +25,21 @@ internal sealed record BackupRecord
 	public BackupItemStatus Status { get; set; } = BackupItemStatus.Pending;
 
 	/// <summary>
-	/// The moveable content, set after the item has been staged to a local file.
-	/// Null until staging is complete.
+	/// The moveable content (local temp file), set via <see cref="ReplaceContent"/>.
+	/// Null until staging is complete. Read-only outside the record to prevent
+	/// the two properties from drifting out of sync.
 	/// </summary>
-	public IMoveableContent? MoveableContent { get; set; }
+	public IMoveableContent? MoveableContent { get; private set; }
+
+	/// <summary>
+	/// Replaces both Item.Content and MoveableContent atomically.
+	/// Use this after staging a file to local disk to ensure the item's
+	/// content provider and the moveable reference stay in sync.
+	/// </summary>
+	/// <param name="moveableContent">The staged file content (local temp file).</param>
+	public void ReplaceContent(IMoveableContent moveableContent)
+	{
+		Item.ReplaceContentProvider(moveableContent);
+		MoveableContent = moveableContent;
+	}
 }

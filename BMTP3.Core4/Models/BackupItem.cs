@@ -80,7 +80,6 @@ internal sealed class BackupItem : IBackupItem
 	/// </summary>
 	public DateTimeOffset? DateAccessed { get; set; }
 
-
 	public void ReplaceContentProvider(IContent content)
 	{
 		Content = content ?? throw new ArgumentNullException(nameof(content));
