@@ -7,10 +7,10 @@ internal sealed class BackupRunnerFactory : IBackupRunnerFactory
 	public IBackupRunner Create(BackupRunnerFactoryCreateRequest request)
 	{
 		ArgumentNullException.ThrowIfNull(request);
-		ArgumentNullException.ThrowIfNull(request.MaxDegreeOfParallelism);
-		ArgumentOutOfRangeException.ThrowIfNegative(request.MaxDegreeOfParallelism.Value);
 
-		int maxDegreeOfParallelism = request.MaxDegreeOfParallelism.Value;
+		int maxDegreeOfParallelism = request.MaxDegreeOfParallelism ?? 1;
+
+		ArgumentOutOfRangeException.ThrowIfNegative(maxDegreeOfParallelism, nameof(request.MaxDegreeOfParallelism));
 
 		if(maxDegreeOfParallelism > 2)
 		{

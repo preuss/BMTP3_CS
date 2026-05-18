@@ -115,9 +115,9 @@ public sealed class BackupEngine : IBackupEngine
 		}
 
 		BackupRunnerFactoryCreateRequest runnerFactoryCreateRequest = new()
-			{
-				MaxDegreeOfParallelism = plan.MaxDegreeOfParallelism
-			};
+		{
+			MaxDegreeOfParallelism = plan.MaxDegreeOfParallelism
+		};
 		IBackupRunner runner = _backupRunnerFactory.Create(runnerFactoryCreateRequest);
 
 		BackupRunnerRequest runnerRequest = new()
