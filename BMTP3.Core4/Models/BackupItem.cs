@@ -20,9 +20,12 @@ internal sealed class BackupItem : IBackupItem
 	/// </para>
 	/// </summary>
 	public required string Id { get; init; } = string.Empty;
-
+	
 	/// <summary>
-	/// The original source path of the item.
+	/// The full original source path of the item.
+	/// <para>
+	/// This is the path used to locate the item in its original source system.
+	/// </para>
 	/// <para>
 	/// Examples:
 	/// <c>C:\Users\John\Pictures\image.jpg</c>,
@@ -33,17 +36,38 @@ internal sealed class BackupItem : IBackupItem
 	public required string SourcePath { get; init; } = string.Empty;
 
 	/// <summary>
-	/// The path of the item relative to the configured backup source.
+	/// The path of the item relative to the configured backup source root.
+	/// <para>
+	/// This value represents the item's location inside the selected source tree
+	/// and can be used when preserving the source folder structure at the destination.
+	/// </para>
+	/// <para>
+	/// Example:
+	/// If the configured source is <c>C:\Photos</c> and the file is
+	/// <c>C:\Photos\2026\IMG_001.jpg</c>, the relative path may be
+	/// <c>2026\IMG_001.jpg</c>.
+	/// </para>
 	/// </summary>
 	public required string RelativePath { get; init; } = string.Empty;
 
+	/// <summary>
+	/// The file name of the source item, including extension.
+	/// <para>
+	/// Example: <c>IMG_001.jpg</c>.
+	/// </para>
+	/// </summary>
 	public required string FileName { get; init; } = string.Empty;
-
+	
 	/// <summary>
 	/// The content of the backup item.
+	/// <para>
+	/// Must be replaced when the item's content location changes.
+	/// </para>
+	/// <para>
+	/// May implement <see cref="IMoveableContent"/>.
+	/// </para>
 	/// </summary>
 	public IContent Content { get; private set; }
-
 
 	/// <summary>
 	/// The source item creation date, if available.
@@ -80,6 +104,15 @@ internal sealed class BackupItem : IBackupItem
 	/// </summary>
 	public DateTimeOffset? DateAccessed { get; set; }
 
+	/// <summary>
+	/// Replaces the content provider for this backup item.
+	/// <para>
+	/// Must be called when the item's content location changes.
+	/// </para>
+	/// <para>
+	/// The new provider may implement <see cref="IMoveableContent"/>.
+	/// </para>
+	/// </summary>
 	public void ReplaceContentProvider(IContent content)
 	{
 		Content = content ?? throw new ArgumentNullException(nameof(content));
