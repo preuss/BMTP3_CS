@@ -43,6 +43,9 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.PostWriteVerification))
 			throw new BackupPlanArgumentException($"Invalid PostWriteVerification value: {plan.PostWriteVerification}.");
 
+		if(!Enum.IsDefined(plan.ResumeBehavior))
+			throw new BackupPlanArgumentException($"Invalid ResumeBehavior value: {plan.ResumeBehavior}.");
+
 		if(plan.MaxDegreeOfParallelism.HasValue && plan.MaxDegreeOfParallelism.Value <= 0)
 			throw new BackupPlanArgumentException("MaxDegreeOfParallelism must be greater than zero.");
 

@@ -6,18 +6,18 @@ namespace BMTP3.Core4.Api.Models.Enums;
 /// </summary>
 public enum SidecarFormat
 {
-    /// <summary>
-    /// No sidecar files are generated.
-    /// </summary>
-    None,
+	/// <summary>
+	/// No sidecar files are generated.
+	/// </summary>
+	None,
 
-    /// <summary>
-    /// Sidecar files are written as INI-style key-value pairs.
-    /// </summary>
-    Ini,
+	/// <summary>
+	/// Sidecar files are written as INI-style key-value pairs.
+	/// </summary>
+	Ini,
 
-    /// <summary>
-    /// Sidecar files are written as JSON objects.
-    /// </summary>
-    Json
+	/// <summary>
+	/// Sidecar files are written as JSON objects.
+	/// </summary>
+	Json
 }

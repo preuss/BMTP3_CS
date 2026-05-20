@@ -8,7 +8,7 @@ namespace BMTP3.Core4.Api.Exceptions;
 /// </summary>
 public class BackupPlanValidationException : Exception
 {
-    public BackupPlanValidationException(string message) : base(message)
-    {
-    }
+	public BackupPlanValidationException(string message) : base(message)
+	{
+	}
 }

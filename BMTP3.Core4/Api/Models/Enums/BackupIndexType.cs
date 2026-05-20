@@ -6,18 +6,18 @@ namespace BMTP3.Core4.Api.Models.Enums;
 /// </summary>
 public enum BackupIndexType
 {
-    /// <summary>
-    /// No central index file is generated.
-    /// </summary>
-    None,
+	/// <summary>
+	/// No central index file is generated.
+	/// </summary>
+	None,
 
-    /// <summary>
-    /// A single JSON catalog file (e.g. backup_catalog.json).
-    /// </summary>
-    Json,
+	/// <summary>
+	/// A single JSON catalog file (e.g. backup_catalog.json).
+	/// </summary>
+	Json,
 
-    /// <summary>
-    /// A SQLite database catalog (e.g. backup.db).
-    /// </summary>
-    Database
+	/// <summary>
+	/// A SQLite database catalog (e.g. backup.db).
+	/// </summary>
+	Database
 }

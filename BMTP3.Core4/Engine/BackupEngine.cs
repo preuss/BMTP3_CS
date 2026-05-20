@@ -7,6 +7,7 @@ using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
+using BMTP3.Core4.State;
 using BMTP3.Core4.Traversal;
 
 namespace BMTP3.Core4.Engine;
@@ -22,16 +23,19 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly IBackupScanner _scanner;
 	private readonly ISourceTraversalFactory _sourceTraversalFactory;
 	private readonly IBackupRunnerFactory _backupRunnerFactory;
+	private readonly ISummaryStore _summaryStore;
 
 	internal BackupEngine(
 		IBackupScanner scanner,
 		ISourceTraversalFactory sourceTraversalFactory,
-		IBackupRunnerFactory backupRunnerFactory
+		IBackupRunnerFactory backupRunnerFactory,
+		ISummaryStore summaryStore
 	)
 	{
 		_scanner = scanner;
 		_sourceTraversalFactory = sourceTraversalFactory;
 		_backupRunnerFactory = backupRunnerFactory;
+		_summaryStore = summaryStore;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -113,6 +117,53 @@ public sealed class BackupEngine : IBackupEngine
 			BackupRecord record = new() { Item = item };
 
 			repository.Add(record);
+		}
+
+		// ------------------------------------------------------------
+		// 4b. Resume — match scanned items against persisted summary
+		//      to restore DestinationPath and processing Status
+		// ------------------------------------------------------------
+
+		BackupSummary? existingSummary = await _summaryStore.LoadAsync(cancellationToken);
+
+		if(existingSummary is not null)
+		{
+			Dictionary<string, BackupSummaryItem> summaryItemsById = existingSummary.Items
+				.ToDictionary(i => i.Id);
+
+			HashSet<string> matchedIds = new();
+			foreach(BackupRecord record in repository.GetAll())
+			{
+				if(summaryItemsById.TryGetValue(record.Item.Id, out BackupSummaryItem? match))
+				{
+					matchedIds.Add(record.Item.Id);
+					record.DestinationPath = match.DestinationPath;
+					record.Status = match.IsCompleted
+						? BackupItemStatus.Succeeded
+						: BackupItemStatus.Pending;
+				}
+			}
+
+			int added = repository.GetAll().Count(r => !matchedIds.Contains(r.Item.Id));
+			int removed = existingSummary.Items.Count(i => !summaryItemsById.ContainsKey(i.Id));
+			bool hasChanges = added > 0 || removed > 0;
+
+			if(hasChanges)
+			{
+				switch(plan.ResumeBehavior)
+				{
+					case SessionResumeStrategy.Abort:
+						throw new InvalidOperationException(
+							$"Source has changed: {added} file(s) added, {removed} file(s) removed.");
+
+					case SessionResumeStrategy.Continue:
+						break;
+
+					case SessionResumeStrategy.Restart:
+						await _summaryStore.DeleteAsync(cancellationToken);
+						break;
+				}
+			}
 		}
 
 		BackupRunnerFactoryCreateRequest runnerFactoryCreateRequest = new()

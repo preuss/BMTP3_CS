@@ -175,6 +175,11 @@ public sealed record BackupPlan
 	/// </summary>
 	public bool StopOnError { get; init; }
 
+	/// <summary>
+	/// Defines how to handle inconsistencies when resuming from a previous session.
+	/// </summary>
+	public SessionResumeStrategy ResumeBehavior { get; init; } = SessionResumeStrategy.Continue;
+
 
 	// ---------------------------------------------------------------------
 	// Execution Hints

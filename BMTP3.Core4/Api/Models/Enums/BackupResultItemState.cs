@@ -2,7 +2,7 @@
 
 public enum BackupResultItemState
 {
-    Succeeded,
-    Failed,
-    Skipped
+	Succeeded,
+	Failed,
+	Skipped
 }
