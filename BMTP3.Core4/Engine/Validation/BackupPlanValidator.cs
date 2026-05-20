@@ -11,17 +11,26 @@ internal static class BackupPlanValidator
 	{
 		// --- Structural validation (fail-first) ---
 
+		if(plan.Name is null)
+			throw new BackupPlanArgumentException("Name must not be null.");
+
 		if(string.IsNullOrWhiteSpace(plan.Name))
-			throw new BackupPlanArgumentException("Name is required.");
+			throw new BackupPlanArgumentException("Name must not be empty or whitespace.");
+
+		if(plan.SourcePath is null)
+			throw new BackupPlanArgumentException("SourcePath must not be null.");
 
 		if(string.IsNullOrWhiteSpace(plan.SourcePath))
-			throw new BackupPlanArgumentException("SourcePath is required.");
+			throw new BackupPlanArgumentException("SourcePath must not be empty or whitespace.");
 
 		if(plan.SourcePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
 			throw new BackupPlanArgumentException("SourcePath contains invalid path characters.");
 
+		if(plan.Destination is null)
+			throw new BackupPlanArgumentException("Destination must not be null.");
+
 		if(string.IsNullOrWhiteSpace(plan.Destination))
-			throw new BackupPlanArgumentException("Destination is required.");
+			throw new BackupPlanArgumentException("Destination must not be empty or whitespace.");
 
 		if(plan.Destination.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
 			throw new BackupPlanArgumentException("Destination contains invalid path characters.");
