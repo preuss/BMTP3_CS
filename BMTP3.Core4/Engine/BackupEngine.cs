@@ -1,6 +1,7 @@
 ﻿using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Engine.Exceptions;
 using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.Validation;
@@ -126,42 +127,54 @@ public sealed class BackupEngine : IBackupEngine
 
 		BackupSummary? existingSummary = await _summaryStore.LoadAsync(cancellationToken);
 
-		if(existingSummary is not null)
+		if(existingSummary != null)
 		{
+			IReadOnlyList<BackupRecord> records = repository.GetAll();
+
 			Dictionary<string, BackupSummaryItem> summaryItemsById = existingSummary.Items
 				.ToDictionary(i => i.Id);
 
-			HashSet<string> matchedIds = new();
-			foreach(BackupRecord record in repository.GetAll())
-			{
-				if(summaryItemsById.TryGetValue(record.Item.Id, out BackupSummaryItem? match))
-				{
-					matchedIds.Add(record.Item.Id);
-					record.DestinationPath = match.DestinationPath;
-					record.Status = match.IsCompleted
-						? BackupItemStatus.Succeeded
-						: BackupItemStatus.Pending;
-				}
-			}
+			HashSet<string> recordIds = records
+				.Select(r => r.Item.Id)
+				.ToHashSet();
 
-			int added = repository.GetAll().Count(r => !matchedIds.Contains(r.Item.Id));
-			int removed = existingSummary.Items.Count(i => !summaryItemsById.ContainsKey(i.Id));
+			int added = records.Count(r => !summaryItemsById.ContainsKey(r.Item.Id));
+			int removed = existingSummary.Items.Count(i => !recordIds.Contains(i.Id));
 			bool hasChanges = added > 0 || removed > 0;
+
+			bool applyResumeState = true;
 
 			if(hasChanges)
 			{
 				switch(plan.ResumeBehavior)
 				{
 					case SessionResumeStrategy.Abort:
-						throw new InvalidOperationException(
-							$"Source has changed: {added} file(s) added, {removed} file(s) removed.");
+						throw new SessionResumeMismatchException(added, removed);
 
 					case SessionResumeStrategy.Continue:
+						applyResumeState = true;
 						break;
 
 					case SessionResumeStrategy.Restart:
 						await _summaryStore.DeleteAsync(cancellationToken);
+						applyResumeState = false;
 						break;
+					default:
+						throw new InvalidOperationException($"Unsupported resume behavior: {plan.ResumeBehavior}");
+				}
+			}
+
+			if(applyResumeState)
+			{
+				foreach(BackupRecord record in records)
+				{
+					if(summaryItemsById.TryGetValue(record.Item.Id, out BackupSummaryItem? match))
+					{
+						record.DestinationPath = match.DestinationPath;
+						record.Status = match.IsCompleted
+							? BackupItemStatus.Succeeded
+							: BackupItemStatus.Pending;
+					}
 				}
 			}
 		}

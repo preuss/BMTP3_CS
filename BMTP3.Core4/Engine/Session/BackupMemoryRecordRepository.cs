@@ -17,8 +17,8 @@ internal class BackupMemoryRecordRepository : IBackupRecordRepository
 		_records.Add(record);
 	}
 
-	public IReadOnlyList<BackupRecord> GetAll()
+	public List<BackupRecord> GetAll()
 	{
-		return _records;
+		return _records.ToList();
 	}
 }
