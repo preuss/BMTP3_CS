@@ -1,7 +1,7 @@
 ﻿using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 
-namespace BMTP3.Core4.Engine.State;
+namespace BMTP3.Core4.Engine.Session.OldState;
 
 /// <summary>
 /// Represents the internal in-memory state of a single backup session.

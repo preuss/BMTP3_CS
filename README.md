@@ -77,3 +77,12 @@ Update documentation as new features are added.
 You are welcome to support this project. 
 
 [![Donate](https://raw.githubusercontent.com/preuss/BMTP3_CS/dev/develop_4_ai_refactor/.github/images/donate.gif)](https://www.paypal.me/JPreuss)
+
+
+## UUIDv7 (time-ordered UUID)
+
+This project may use UUIDv7 for time-ordered unique identifiers. For a small, well-maintained C# implementation, see Steve Simmons' repository:
+
+https://github.com/stevesimmons/uuid7-csharp
+
+Consider adding this library as a dependency when implementing UUIDv7 generation or testing time-ordered identifier behavior.

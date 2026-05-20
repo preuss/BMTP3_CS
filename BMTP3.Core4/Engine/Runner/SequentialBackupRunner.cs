@@ -1,5 +1,5 @@
 ﻿using BMTP3.Core4.Api.Models;
-using BMTP3.Core4.Engine.State;
+using BMTP3.Core4.Engine.Session;
 
 namespace BMTP3.Core4.Engine.Runner;
 
@@ -7,7 +7,7 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 {
 	public Task<BackupResult> RunAsync(
 		BackupRunnerRequest request,
-		BackupSessionStateKey sessionKey,
+		BackupSessionKey sessionKey,
 		IProgress<BackupRunnerProgress>? progress,
 		CancellationToken cancellationToken
 	)

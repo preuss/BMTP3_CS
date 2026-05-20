@@ -2,7 +2,7 @@
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Runner;
-using BMTP3.Core4.Engine.State;
+using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
@@ -20,19 +20,16 @@ namespace BMTP3.Core4.Engine;
 public sealed class BackupEngine : IBackupEngine
 {
 	private readonly IBackupScanner _scanner;
-	private readonly IBackupSessionStateStore _sessionStateStore;
 	private readonly ISourceTraversalFactory _sourceTraversalFactory;
 	private readonly IBackupRunnerFactory _backupRunnerFactory;
 
 	internal BackupEngine(
 		IBackupScanner scanner,
-		IBackupSessionStateStore sessionStateStore,
 		ISourceTraversalFactory sourceTraversalFactory,
 		IBackupRunnerFactory backupRunnerFactory
 	)
 	{
 		_scanner = scanner;
-		_sessionStateStore = sessionStateStore;
 		_sourceTraversalFactory = sourceTraversalFactory;
 		_backupRunnerFactory = backupRunnerFactory;
 	}
@@ -40,7 +37,8 @@ public sealed class BackupEngine : IBackupEngine
 	public async Task<BackupResult> RunAsync(
 		BackupPlan plan,
 		IProgress<BackupProgress>? progress,
-		CancellationToken cancellationToken)
+		CancellationToken cancellationToken
+	)
 	{
 		// ------------------------------------------------------------
 		// 1. Validate backup plan
@@ -56,12 +54,18 @@ public sealed class BackupEngine : IBackupEngine
 		//    - Initialize progress tracking
 		//    - Set phase = Starting
 		// ------------------------------------------------------------
-		BackupSessionStateKey sessionKey = BackupSessionStateKeyFactory.Create(plan);
 
-		BackupSessionState session = await _sessionStateStore.OpenAsync(
-			sessionKey,
-			cancellationToken
-		);
+		BackupProgress _currentProgress = new()
+		{
+			SourcePath = plan.SourcePath,
+			DestinationPath = plan.Destination,
+			CurrentPhase = BackupProgressPhase.Starting,
+		};
+		progress?.Report(_currentProgress);
+
+		IBackupRecordRepository repository = new BackupMemoryRecordRepository();
+
+		BackupSessionKey sessionKey = BackupSessionKeyFactory.Create(plan);
 
 		// ------------------------------------------------------------
 		// 3. Open source traversal (filesystem or media device)
@@ -84,8 +88,6 @@ public sealed class BackupEngine : IBackupEngine
 		//    - Update progress (phase = Scanning)
 		// ------------------------------------------------------------
 
-		session.SetPhase(BackupPhase.Scanning);
-
 		BackupScanRequest scanRequest = new()
 		{
 			SourcePath = plan.SourcePath,
@@ -96,14 +98,13 @@ public sealed class BackupEngine : IBackupEngine
 
 		Progress<BackupScanProgress> scanProgress = new(sp =>
 		{
-			progress?.Report(new BackupProgress
+			_currentProgress = _currentProgress with
 			{
-				SourcePath = plan.SourcePath,
-				DestinationPath = plan.Destination,
 				CurrentPhase = BackupProgressPhase.Scanning,
 				DirectoriesTraversed = sp.DirectoriesTraversed,
 				FilesDiscovered = sp.FilesDiscovered,
-			});
+			};
+			progress?.Report(_currentProgress);
 		});
 
 		await foreach(BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
@@ -111,7 +112,7 @@ public sealed class BackupEngine : IBackupEngine
 			cancellationToken.ThrowIfCancellationRequested();
 			BackupRecord record = new() { Item = item };
 
-			session.AddRecord(record);
+			repository.Add(record);
 		}
 
 		BackupRunnerFactoryCreateRequest runnerFactoryCreateRequest = new()
@@ -126,17 +127,16 @@ public sealed class BackupEngine : IBackupEngine
 
 		Progress<BackupRunnerProgress> runnerProgress = new(rp =>
 		{
-			progress?.Report(new BackupProgress
+			_currentProgress = _currentProgress with
 			{
-				SourcePath = plan.SourcePath,
-				DestinationPath = plan.Destination,
 				CurrentPhase = rp.CurrentPhase,
 				TotalFilesSelected = rp.TotalFilesSelected,
 				FilesSucceeded = rp.FilesSucceeded,
 				FilesSkipped = rp.FilesSkipped,
 				FilesFailed = rp.FilesFailed,
-				ActiveFiles = rp.ActiveFiles
-			});
+				ActiveFiles = rp.ActiveFiles,
+			};
+			progress?.Report(_currentProgress);
 		});
 
 		await runner.RunAsync(runnerRequest, sessionKey, runnerProgress, cancellationToken);
