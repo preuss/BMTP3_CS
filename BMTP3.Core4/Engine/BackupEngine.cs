@@ -125,13 +125,13 @@ public sealed class BackupEngine : IBackupEngine
 		//      to restore DestinationPath and processing Status
 		// ------------------------------------------------------------
 
-		BackupSummary? existingSummary = await _summaryStore.LoadAsync(cancellationToken);
+		BackupSummary? resumeSummary = await _summaryStore.LoadAsync(cancellationToken);
 
-		if(existingSummary != null)
+		if(resumeSummary != null)
 		{
 			IReadOnlyList<BackupRecord> records = repository.GetAll();
 
-			Dictionary<string, BackupSummaryItem> summaryItemsById = existingSummary.Items
+			Dictionary<string, BackupSummaryItem> summaryItemsById = resumeSummary.Items
 				.ToDictionary(i => i.Id);
 
 			HashSet<string> recordIds = records
@@ -139,7 +139,7 @@ public sealed class BackupEngine : IBackupEngine
 				.ToHashSet();
 
 			int added = records.Count(r => !summaryItemsById.ContainsKey(r.Item.Id));
-			int removed = existingSummary.Items.Count(i => !recordIds.Contains(i.Id));
+			int removed = resumeSummary.Items.Count(i => !recordIds.Contains(i.Id));
 			bool hasChanges = added > 0 || removed > 0;
 
 			bool applyResumeState = true;
@@ -178,6 +178,39 @@ public sealed class BackupEngine : IBackupEngine
 				}
 			}
 		}
+		// Save session, to update it.
+		resumeSummary = new BackupSummary
+		{
+			SessionId = sessionKey.SessionId,
+			SourceRoot = sessionKey.SourceIdentity,
+			CreatedAt = DateTimeOffset.UtcNow,
+			Items = repository.GetAll()
+				.Select(record =>
+				{
+					long length = record.Item.Content.Length > (ulong)long.MaxValue
+						? long.MaxValue
+						: (long)record.Item.Content.Length;
+
+					return new BackupSummaryItem
+					{
+						Id = record.Item.Id,
+						SourcePath = record.Item.SourcePath,
+						RelativePath = record.Item.RelativePath,
+						FileName = record.Item.FileName,
+						Length = length,
+						LastModified = record.Item.DateModified,
+						DateCreated = record.Item.DateCreated,
+						DateAuthored = record.Item.DateAuthored,
+						DestinationPath = record.DestinationPath,
+						IsCompleted = record.Status == BackupItemStatus.Succeeded,
+						CompletedAt = record.Status == BackupItemStatus.Succeeded ? DateTimeOffset.UtcNow : null,
+						ErrorMessage = record.Status == BackupItemStatus.Failed ? "Processing failed." : null,
+					};
+				})
+				.ToList(),
+		};
+
+		await _summaryStore.SaveAsync(resumeSummary, cancellationToken);
 
 		BackupRunnerFactoryCreateRequest runnerFactoryCreateRequest = new()
 		{
@@ -245,5 +278,28 @@ public sealed class BackupEngine : IBackupEngine
 		// ------------------------------------------------------------
 
 		throw new NotImplementedException("BackupEngine is not yet implemented.");
+	}
+
+	private static BackupSummaryItem ToSummaryItem(BackupRecord record)
+	{
+		long length = record.Item.Content.Length > (ulong)long.MaxValue
+			? long.MaxValue
+			: (long)record.Item.Content.Length;
+
+		return new BackupSummaryItem
+		{
+			Id = record.Item.Id,
+			SourcePath = record.Item.SourcePath,
+			RelativePath = record.Item.RelativePath,
+			FileName = record.Item.FileName,
+			Length = length,
+			LastModified = record.Item.DateModified,
+			DateCreated = record.Item.DateCreated,
+			DateAuthored = record.Item.DateAuthored,
+			DestinationPath = record.DestinationPath,
+			IsCompleted = record.Status == BackupItemStatus.Succeeded,
+			CompletedAt = record.Status == BackupItemStatus.Succeeded ? DateTimeOffset.UtcNow : null,
+			ErrorMessage = record.Status == BackupItemStatus.Failed ? "Processing failed." : null,
+		};
 	}
 }
