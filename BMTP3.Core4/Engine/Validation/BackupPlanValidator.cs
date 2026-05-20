@@ -1,4 +1,5 @@
-﻿using BMTP3.Core4.Api.Exceptions;
+﻿using System.IO;
+using BMTP3.Core4.Api.Exceptions;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 
@@ -16,8 +17,14 @@ internal static class BackupPlanValidator
 		if(string.IsNullOrWhiteSpace(plan.SourcePath))
 			throw new BackupPlanArgumentException("SourcePath is required.");
 
+		if(plan.SourcePath.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+			throw new BackupPlanArgumentException("SourcePath contains invalid path characters.");
+
 		if(string.IsNullOrWhiteSpace(plan.Destination))
 			throw new BackupPlanArgumentException("Destination is required.");
+
+		if(plan.Destination.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
+			throw new BackupPlanArgumentException("Destination contains invalid path characters.");
 
 		if(!Enum.IsDefined(plan.SourceType))
 			throw new BackupPlanArgumentException($"Invalid SourceType value: {plan.SourceType}.");
