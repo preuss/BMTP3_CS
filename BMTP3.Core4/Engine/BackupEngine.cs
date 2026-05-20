@@ -73,6 +73,16 @@ public sealed class BackupEngine : IBackupEngine
 		BackupSessionKey sessionKey = BackupSessionKeyFactory.Create(plan);
 
 		// ------------------------------------------------------------
+		// 5. Prepare destination
+		//    - Create root destination folder
+		//    - Create .bmtp3 subfolder for session data (session.json, logs)
+		//    - Fail if destination is not accessible
+		// ------------------------------------------------------------
+		Directory.CreateDirectory(plan.Destination);
+		string metadataPath = Path.Combine(plan.Destination, ".bmtp3");
+		Directory.CreateDirectory(metadataPath);
+
+		// ------------------------------------------------------------
 		// 3. Open source traversal (filesystem or media device)
 		//    - Establish access to source via ISourceTraversal
 		//    - Fail if source is not accessible
@@ -238,12 +248,6 @@ public sealed class BackupEngine : IBackupEngine
 
 		await runner.RunAsync(runnerRequest, sessionKey, runnerProgress, cancellationToken);
 
-
-		// ------------------------------------------------------------
-		// 5. Prepare destination
-		//    - Ensure destination is accessible
-		//    - Create required directories
-		// ------------------------------------------------------------
 
 		// ------------------------------------------------------------
 		// 6. Transfer files
