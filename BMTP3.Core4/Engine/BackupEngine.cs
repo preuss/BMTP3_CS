@@ -68,6 +68,8 @@ public sealed class BackupEngine : IBackupEngine
 		};
 		progress?.Report(_currentProgress);
 
+		DateTimeOffset backupStartTime = DateTimeOffset.UtcNow;
+
 		IBackupRecordRepository repository = new BackupMemoryRecordRepository();
 
 		BackupSessionKey sessionKey = BackupSessionKeyFactory.Create(plan);
@@ -181,13 +183,8 @@ public sealed class BackupEngine : IBackupEngine
 					if(summaryItemsById.TryGetValue(record.Item.Id, out BackupSummaryItem? match))
 					{
 						record.DestinationPath = match.DestinationPath;
-						record.Status = match.Status switch
-						{
-							BackupSummaryItemStatus.Succeeded => BackupItemStatus.Succeeded,
-							BackupSummaryItemStatus.Skipped => BackupItemStatus.Skipped,
-							BackupSummaryItemStatus.Pending => BackupItemStatus.Pending,
-							_ => throw new InvalidOperationException($"Unexpected BackupSummaryItemStatus '{match.Status}'."),
-						};
+						record.Status = ToBackupItemStatus(match.Status);
+						record.StatusChangedAt = match.CompletedAt;
 					}
 				}
 			}
@@ -214,6 +211,12 @@ public sealed class BackupEngine : IBackupEngine
 		BackupRunnerRequest runnerRequest = new()
 		{
 			Records = repository.GetAll(),
+			Destination = plan.Destination,
+			OutputStructureStrategy = plan.OutputStructureStrategy,
+			CollisionStrategy = plan.CollisionStrategy,
+			SidecarFormat = plan.SidecarFormat,
+			StopOnError = plan.StopOnError,
+			BackupStartTime = backupStartTime,
 		};
 
 		Progress<BackupRunnerProgress> runnerProgress = new(rp =>
@@ -313,6 +316,27 @@ public sealed class BackupEngine : IBackupEngine
 
 			default:
 				throw new InvalidOperationException($"Unexpected BackupItemStatus '{status}'.");
+		}
+	}
+
+	/// <summary>
+	/// Maps the persisted <see cref="BackupSummaryItemStatus"/> back to the internal <see cref="BackupItemStatus"/>.
+	/// </summary>
+	private static BackupItemStatus ToBackupItemStatus(BackupSummaryItemStatus status)
+	{
+		switch(status)
+		{
+			case BackupSummaryItemStatus.Succeeded:
+				return BackupItemStatus.Succeeded;
+
+			case BackupSummaryItemStatus.Skipped:
+				return BackupItemStatus.Skipped;
+
+			case BackupSummaryItemStatus.Pending:
+				return BackupItemStatus.Pending;
+
+			default:
+				throw new InvalidOperationException($"Unexpected BackupSummaryItemStatus '{status}'.");
 		}
 	}
 }
