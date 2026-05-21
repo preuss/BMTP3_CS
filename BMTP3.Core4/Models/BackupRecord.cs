@@ -1,11 +1,8 @@
 ﻿using BMTP3.Core4.Models.Enums;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BMTP3.Core4.Models;
+
 internal sealed record BackupRecord
 {
 	/// <summary>
@@ -23,4 +20,10 @@ internal sealed record BackupRecord
 	/// The current backup status of the item.
 	/// </summary>
 	public BackupItemStatus Status { get; set; } = BackupItemStatus.Pending;
+
+	/// <summary>
+	/// The timestamp when the status last changed.
+	/// Null when the item is still in its initial Pending state.
+	/// </summary>
+	public DateTimeOffset? StatusChangedAt { get; set; }
 }

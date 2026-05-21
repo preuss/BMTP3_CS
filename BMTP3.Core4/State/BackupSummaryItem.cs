@@ -11,7 +11,17 @@ public sealed record BackupSummaryItem
 	public DateTimeOffset? DateCreated { get; init; }
 	public DateTimeOffset? DateAuthored { get; init; }
 	public string? DestinationPath { get; init; }
+
+	/// <summary>
+	/// The precise outcome of this item from the last run.
+	/// </summary>
+	public BackupSummaryItemStatus Status { get; init; }
+
+	/// <summary>
+	/// Convenience flag for quick readability in JSON.
+	/// True when <see cref="Status"/> is <see cref="BackupSummaryItemStatus.Succeeded"/> or <see cref="BackupSummaryItemStatus.Skipped"/>.
+	/// </summary>
 	public bool IsCompleted { get; init; }
+
 	public DateTimeOffset? CompletedAt { get; init; }
-	public string? ErrorMessage { get; init; }
 }

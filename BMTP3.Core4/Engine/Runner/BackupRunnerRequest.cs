@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Runner;
-internal class BackupRunnerRequest
+
+internal record BackupRunnerRequest
 {
+	public IReadOnlyList<BackupRecord> Records { get; init; } = Array.Empty<BackupRecord>();
 }

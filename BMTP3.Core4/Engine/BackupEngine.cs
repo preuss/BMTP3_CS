@@ -17,7 +17,7 @@ namespace BMTP3.Core4.Engine;
 /// Orchestrates the execution of a backup job.
 /// This implementation defines the ordered steps of a backup run.
 /// Each step is initially expressed as a comment and will later
-/// be replaced by concrete implementation calls.
+/// be replaced with concrete implementation calls.
 /// </summary>
 public sealed class BackupEngine : IBackupEngine
 {
@@ -181,9 +181,13 @@ public sealed class BackupEngine : IBackupEngine
 					if(summaryItemsById.TryGetValue(record.Item.Id, out BackupSummaryItem? match))
 					{
 						record.DestinationPath = match.DestinationPath;
-						record.Status = match.IsCompleted
-							? BackupItemStatus.Succeeded
-							: BackupItemStatus.Pending;
+						record.Status = match.Status switch
+						{
+							BackupSummaryItemStatus.Succeeded => BackupItemStatus.Succeeded,
+							BackupSummaryItemStatus.Skipped => BackupItemStatus.Skipped,
+							BackupSummaryItemStatus.Pending => BackupItemStatus.Pending,
+							_ => throw new InvalidOperationException($"Unexpected BackupSummaryItemStatus '{match.Status}'."),
+						};
 					}
 				}
 			}
@@ -195,28 +199,7 @@ public sealed class BackupEngine : IBackupEngine
 			SourceRoot = sessionKey.SourceIdentity,
 			CreatedAt = DateTimeOffset.UtcNow,
 			Items = repository.GetAll()
-				.Select(record =>
-				{
-					long length = record.Item.Content.Length > (ulong)long.MaxValue
-						? long.MaxValue
-						: (long)record.Item.Content.Length;
-
-					return new BackupSummaryItem
-					{
-						Id = record.Item.Id,
-						SourcePath = record.Item.SourcePath,
-						RelativePath = record.Item.RelativePath,
-						FileName = record.Item.FileName,
-						Length = length,
-						LastModified = record.Item.DateModified,
-						DateCreated = record.Item.DateCreated,
-						DateAuthored = record.Item.DateAuthored,
-						DestinationPath = record.DestinationPath,
-						IsCompleted = record.Status == BackupItemStatus.Succeeded,
-						CompletedAt = record.Status == BackupItemStatus.Succeeded ? DateTimeOffset.UtcNow : null,
-						ErrorMessage = record.Status == BackupItemStatus.Failed ? "Processing failed." : null,
-					};
-				})
+				.Select(ToSummaryItem)
 				.ToList(),
 		};
 
@@ -230,6 +213,7 @@ public sealed class BackupEngine : IBackupEngine
 
 		BackupRunnerRequest runnerRequest = new()
 		{
+			Records = repository.GetAll(),
 		};
 
 		Progress<BackupRunnerProgress> runnerProgress = new(rp =>
@@ -301,9 +285,34 @@ public sealed class BackupEngine : IBackupEngine
 			DateCreated = record.Item.DateCreated,
 			DateAuthored = record.Item.DateAuthored,
 			DestinationPath = record.DestinationPath,
-			IsCompleted = record.Status == BackupItemStatus.Succeeded,
-			CompletedAt = record.Status == BackupItemStatus.Succeeded ? DateTimeOffset.UtcNow : null,
-			ErrorMessage = record.Status == BackupItemStatus.Failed ? "Processing failed." : null,
+			Status = ToSummaryItemStatus(record.Status),
+			IsCompleted = ToSummaryItemStatus(record.Status) is BackupSummaryItemStatus.Succeeded or BackupSummaryItemStatus.Skipped,
+			CompletedAt = record.StatusChangedAt,
 		};
+	}
+
+	/// <summary>
+	/// Maps the internal <see cref="BackupItemStatus"/> to the persisted <see cref="BackupSummaryItemStatus"/>.
+	/// Active is an in-memory-only state — it is never persisted and is treated as Pending.
+	/// Failed items are retried on resume and therefore also treated as Pending.
+	/// </summary>
+	private static BackupSummaryItemStatus ToSummaryItemStatus(BackupItemStatus status)
+	{
+		switch(status)
+		{
+			case BackupItemStatus.Succeeded:
+				return BackupSummaryItemStatus.Succeeded;
+
+			case BackupItemStatus.Skipped:
+				return BackupSummaryItemStatus.Skipped;
+
+			case BackupItemStatus.Failed:
+			case BackupItemStatus.Pending:
+			case BackupItemStatus.Active:
+				return BackupSummaryItemStatus.Pending;
+
+			default:
+				throw new InvalidOperationException($"Unexpected BackupItemStatus '{status}'.");
+		}
 	}
 }
