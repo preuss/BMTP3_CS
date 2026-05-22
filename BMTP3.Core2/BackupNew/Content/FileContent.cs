@@ -67,10 +67,7 @@ public sealed class FileContent : IContent, IMoveableContent
 	/// </summary>
 	public IContent MoveTo(string destinationPath)
 	{
-		if (_disposed)
-		{
-			throw new ObjectDisposedException(nameof(FileContent));
-		}
+		ObjectDisposedException.ThrowIf(_disposed, this);
 
 		// Make sure the destination directory exists
 		string? destDir = Path.GetDirectoryName(destinationPath);
