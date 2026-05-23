@@ -6,6 +6,11 @@ using BMTP3.Core4.State;
 
 namespace BMTP3.Core4.Engine.Session;
 
+/// <summary>
+/// Default implementation of <see cref="ISessionStateService"/>.
+/// Uses an <see cref="ISummaryStore"/> for persistence and
+/// owns the <see cref="BackupRecord"/> ↔ <see cref="BackupSummaryItem"/> mapping.
+/// </summary>
 internal sealed class SessionStateService : ISessionStateService
 {
 	private readonly ISummaryStore _store;
@@ -15,6 +20,7 @@ internal sealed class SessionStateService : ISessionStateService
 		_store = store;
 	}
 
+	/// <inheritdoc />
 	public async Task ApplyResumeAsync(
 		IReadOnlyList<BackupRecord> records,
 		BackupSessionKey sessionKey,
@@ -88,6 +94,7 @@ internal sealed class SessionStateService : ISessionStateService
 		await SaveAsync(records, sessionKey, ct);
 	}
 
+	/// <inheritdoc />
 	public async Task SaveAsync(
 		IReadOnlyList<BackupRecord> records,
 		BackupSessionKey sessionKey,
@@ -104,11 +111,15 @@ internal sealed class SessionStateService : ISessionStateService
 		await _store.SaveAsync(summary, ct);
 	}
 
+	/// <inheritdoc />
 	public Task DeleteAsync(CancellationToken ct)
 	{
 		return _store.DeleteAsync(ct);
 	}
 
+	/// <summary>
+	/// Converts a <see cref="BackupRecord"/> to a <see cref="BackupSummaryItem"/> for persistence.
+	/// </summary>
 	private static BackupSummaryItem ToSummaryItem(BackupRecord record)
 	{
 		long length = record.Item.Content.Length > (ulong)long.MaxValue
@@ -132,6 +143,10 @@ internal sealed class SessionStateService : ISessionStateService
 		};
 	}
 
+	/// <summary>
+	/// Maps internal <see cref="BackupItemStatus"/> to persisted <see cref="BackupSummaryItemStatus"/>.
+	/// Active and Failed are mapped to Pending so they will be retried on resume.
+	/// </summary>
 	private static BackupSummaryItemStatus ToSummaryItemStatus(BackupItemStatus status)
 	{
 		return status switch
@@ -143,6 +158,9 @@ internal sealed class SessionStateService : ISessionStateService
 		};
 	}
 
+	/// <summary>
+	/// Maps persisted <see cref="BackupSummaryItemStatus"/> back to internal <see cref="BackupItemStatus"/>.
+	/// </summary>
 	private static BackupItemStatus ToBackupItemStatus(BackupSummaryItemStatus status)
 	{
 		return status switch
