@@ -179,6 +179,59 @@ public sealed class BackupEngine : IBackupEngine
 		// (Succeeded/Skipped from resume + results from loop).
 
 
+		IBackupRunner runner = _backupRunnerFactory.Create(new BackupRunnerFactoryCreateRequest());
+
+		foreach(BackupRecord record in pendingRecords)
+		{
+			// Create temp file path for this item
+			string tempFilePath = TempDirectoryHelper.BuildTempFilePath(tempDir, record.Item.FileName);
+
+			// Download content to temp file with progress reporting
+			BackupProgressItem currentProgressItem = new()
+			{
+				RelativePath = record.Item.RelativePath,
+				Length = (long)record.Item.Content.Length,
+				Phase = BackupProgressItemPhase.Transferring,
+			};
+			_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+			progress?.Report(_currentProgress);
+
+			Progress<ulong> downloadProgress = new(bytesRead =>
+			{
+				currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
+				_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+				progress?.Report(_currentProgress);
+			});
+			IMoveableContent content = await _downloadService.DownloadAsync(
+				new FileInfo(tempFilePath),
+				record.Item.Content,
+				downloadProgress,
+				cancellationToken);
+			record.Item.ReplaceContentProvider(content);
+
+			BackupRunnerRequest runnerRequest = new()
+			{
+				SidecarFormat = plan.SidecarFormat,
+				CollisionStrategy = plan.CollisionStrategy,
+				BackupStartTime = backupStartTime,
+			};
+
+			await runner.RunAsync(
+				record.Item,
+				record.DestinationPath!,
+				tempFilePath,
+				runnerRequest,
+				cancellationToken);
+
+			record.Status = BackupItemStatus.Succeeded;
+
+			_currentProgress = _currentProgress with
+			{
+				ActiveFiles = Array.Empty<BackupProgressItem>(),
+			};
+			progress?.Report(_currentProgress);
+		}
+
 		// ------------------------------------------------------------
 		// 6. Transfer files
 		//    - Copy data from source to destination
