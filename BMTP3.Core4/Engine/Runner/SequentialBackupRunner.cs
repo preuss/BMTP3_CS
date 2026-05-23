@@ -21,7 +21,7 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 		
 		BackupRunnerProgress currentProgress = new()
 		{
-			TotalFilesSelected = records.Count,
+			CurrentPhase = BackupProgressPhase.Transferring
 		};
 		progress?.Report(currentProgress);
 
@@ -315,5 +315,139 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 			Length = (long)item.Content.Length,
 			State = state,
 		};
+	}
+
+	// ------------------------------------------------------------
+	// Phase 2 — Processing metoder (temp-file pipeline)
+	// ------------------------------------------------------------
+
+	private static async Task<IMoveableContent> DownloadToTempAsync(FileInfo tempFile, IContent sourceContent, IProgress<ulong>? fileProgress, CancellationToken cancellationToken)
+	{
+		await using Stream sourceStream = await sourceContent.OpenReadStreamAsync(cancellationToken);
+		await using FileStream destStream = tempFile.Create();
+
+		long bytesRead = 0;
+		byte[] buffer = new byte[81920];
+		int read;
+
+		while((read = await sourceStream.ReadAsync(buffer.AsMemory(0, buffer.Length), cancellationToken)) > 0)
+		{
+			await destStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
+			bytesRead += read;
+			fileProgress?.Report((ulong)bytesRead);
+		}
+
+		// TODO: Return new MoveableFileContent(tempFile.FullName) when implementation exists
+		throw new NotImplementedException("IMoveableContent is not yet implemented.");
+	}
+
+	private static async Task<string> BuildAndSaveSidecarAsync(BackupItem item, string tempPath, SidecarFormat sidecarFormat, DateTimeOffset backupStartTime, CancellationToken cancellationToken)
+	{
+		string content = sidecarFormat switch
+		{
+			SidecarFormat.Ini => BuildIniSidecarContent(item, backupStartTime),
+
+			SidecarFormat.None or SidecarFormat.Json => throw new NotImplementedException($"Sidecar format '{sidecarFormat}' is not yet implemented."),
+
+			_ => throw new InvalidOperationException($"Unexpected SidecarFormat '{sidecarFormat}'."),
+		};
+
+		string sidecarPath = tempPath + ".ini";
+		await File.WriteAllTextAsync(sidecarPath, content, cancellationToken);
+		return sidecarPath;
+	}
+
+	private static string BuildIniSidecarContent(BackupItem item, DateTimeOffset backupStartTime)
+	{
+		return
+			$"[Settings]{Environment.NewLine}" +
+			$"OriginalFileName={item.FileName}{Environment.NewLine}" +
+			$"CreateDateTime={item.DateCreated?.ToString("O")}{Environment.NewLine}" +
+			$"LastAccessDateTime={item.DateAccessed?.ToString("O")}{Environment.NewLine}" +
+			$"LastWriteDateTime={item.DateModified?.ToString("O")}{Environment.NewLine}" +
+			$"MediaTakenDateTime={item.DateAuthored?.ToString("O")}{Environment.NewLine}" +
+			$"RelativePath={item.RelativePath}{Environment.NewLine}" +
+			$"{Environment.NewLine}" +
+			$"[BackupInfo]{Environment.NewLine}" +
+			$"BackupDateTime={backupStartTime:O}{Environment.NewLine}";
+	}
+
+	private static string? ResolveTargetPath(string destinationPath, CollisionStrategy collisionStrategy)
+	{
+		if(!File.Exists(destinationPath))
+		{
+			return destinationPath;
+		}
+
+		switch(collisionStrategy)
+		{
+			case CollisionStrategy.Error:
+				throw new IOException($"Destination already exists: {destinationPath}");
+
+			// Tier 2+: Rename, Skip, Overwrite
+
+			default:
+				throw new InvalidOperationException($"Collision strategy '{collisionStrategy}' is not supported in the current Tier.");
+		}
+	}
+
+	private static void CommitTransfer(string tempPath, string tempSidecarPath, string finalPath)
+	{
+		File.Move(tempPath, finalPath, overwrite: false);
+
+		string finalSidecarPath = finalPath + ".ini";
+		if(File.Exists(tempSidecarPath))
+		{
+			File.Move(tempSidecarPath, finalSidecarPath, overwrite: false);
+		}
+	}
+
+	private static void CleanupTempFiles(string? tempPath, string? tempSidecarPath)
+	{
+		if(tempPath is not null && File.Exists(tempPath))
+		{
+			try { File.Delete(tempPath); } catch { /* best-effort cleanup */ }
+		}
+
+		if(tempSidecarPath is not null && File.Exists(tempSidecarPath))
+		{
+			try { File.Delete(tempSidecarPath); } catch { /* best-effort cleanup */ }
+		}
+	}
+
+	// ------------------------------------------------------------
+	// Hjælpemetoder — temp-sti og filnavn
+	// ------------------------------------------------------------
+
+	private static DirectoryInfo ResolveTempDirectoryPath(string destination, DateTimeOffset backupStartTime, BackupSessionKey sessionKey)
+	{
+		string timestamp = backupStartTime.ToString("yyyyMMdd_HHmmss");
+		string dirName = $"{timestamp}_{sessionKey.SessionId}";
+		return new DirectoryInfo(Path.Combine(destination, ".tmp", dirName));
+	}
+
+	private static void PrepareTempDirectory(DirectoryInfo tempDir)
+	{
+		tempDir.Create();
+	}
+
+	private static string ResolveTempFileName(BackupItem item, DirectoryInfo tempDir, string extension = ".tmp")
+	{
+		if(string.IsNullOrEmpty(item.Id))
+		{
+			return Guid.NewGuid().ToString("N") + extension;
+		}
+
+		string baseName = item.Id + extension;
+
+		bool hasInvalidChars = baseName.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0;
+		bool fileExists = File.Exists(Path.Combine(tempDir.FullName, baseName));
+
+		if(!hasInvalidChars && !fileExists)
+		{
+			return baseName;
+		}
+
+		return Guid.NewGuid().ToString("N") + extension;
 	}
 }

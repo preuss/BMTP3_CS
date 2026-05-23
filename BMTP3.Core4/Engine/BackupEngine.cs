@@ -132,6 +132,13 @@ public sealed class BackupEngine : IBackupEngine
 			repository.Add(record);
 		}
 
+		// Update progress with total selected files.
+		_currentProgress = _currentProgress with
+		{
+			TotalFilesSelected = repository.GetAll().Count,
+		};
+		progress?.Report(_currentProgress);
+
 		// ------------------------------------------------------------
 		// 4b. Resume — match scanned items against persisted summary
 		//      to restore DestinationPath and processing Status
@@ -224,7 +231,6 @@ public sealed class BackupEngine : IBackupEngine
 			_currentProgress = _currentProgress with
 			{
 				CurrentPhase = rp.CurrentPhase,
-				TotalFilesSelected = rp.TotalFilesSelected,
 				FilesSucceeded = rp.FilesSucceeded,
 				FilesSkipped = rp.FilesSkipped,
 				FilesFailed = rp.FilesFailed,

@@ -79,6 +79,7 @@ public record BackupProgress
 
 	/// <summary>
 	/// Total number of bytes successfully processed so far.
+	/// Out of total files selected.
 	/// </summary>
 	public long BytesProcessed { get; init; }
 

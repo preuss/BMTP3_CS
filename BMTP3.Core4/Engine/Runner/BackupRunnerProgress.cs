@@ -24,11 +24,6 @@ internal sealed record BackupRunnerProgress
 	// ---------------------------------------------------------------------
 
 	/// <summary>
-	/// Total number of files selected for backup after filtering.
-	/// </summary>
-	public int TotalFilesSelected { get; init; }
-
-	/// <summary>
 	/// Number of files successfully backed up.
 	/// </summary>
 	public int FilesSucceeded { get; init; }
