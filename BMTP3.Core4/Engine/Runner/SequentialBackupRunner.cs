@@ -174,6 +174,7 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 		};
 	}
 
+	// TODO: Remove this method. Engine now handles seeding succeeded/skipped result items and progress after resume.
 	private static List<BackupResultItem> SeedResultItems(
 		IReadOnlyList<BackupRecord> records,
 		BackupRunnerProgress currentProgress,

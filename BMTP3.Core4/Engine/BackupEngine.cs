@@ -148,11 +148,14 @@ public sealed class BackupEngine : IBackupEngine
 
 		await _sessionState.ApplyResumeAsync(repository.GetAll(), sessionKey, plan.ResumeBehavior, cancellationToken);
 
-		// TODO: this comments is for the tage download out of runner
-		// Now validate that all records have a valid DestinationPath, which is required for the next steps.
-		// ValidateStatusOfRecords and throw if any records are in an invalid state (e.g. Failed) that cannot be resumed.
-		// SeedResultRecord list, make a list of all the records succeeded aknd skipped and report progress. Records this makes is used for the actual bakcup
-		// use DownloadService to download to temp file before calling runner
+		List<BackupRecord> pendingRecords = FilterPendingRecords(repository.GetAll(), ref _currentProgress, progress);
+
+		// TODO: Validate DestinationPath on all records. Then loop over pendingRecords:
+		//   - Prepare temp dir / temp file path
+		//   - _downloadService.DownloadAsync(tempFile, item.Content, ...)
+		//   - item.ReplaceContentProvider(moveableContent)
+		//   - call single-item IBackupRunner.RunAsync(...)
+		// Build BackupResultItem list at the end from all records (Succeeded/Skipped from resume + results from loop).
 
 
 
@@ -224,5 +227,33 @@ public sealed class BackupEngine : IBackupEngine
 		throw new NotImplementedException("BackupEngine is not yet implemented.");
 	}
 
+	private static List<BackupRecord> FilterPendingRecords(
+		IReadOnlyList<BackupRecord> records,
+		ref BackupProgress currentProgress,
+		IProgress<BackupProgress>? progress)
+	{
+		List<BackupRecord> pending = new();
 
+		foreach(BackupRecord record in records)
+		{
+			switch(record.Status)
+			{
+				case BackupItemStatus.Succeeded:
+					currentProgress = currentProgress with { FilesSucceeded = currentProgress.FilesSucceeded + 1 };
+					progress?.Report(currentProgress);
+					break;
+
+				case BackupItemStatus.Skipped:
+					currentProgress = currentProgress with { FilesSkipped = currentProgress.FilesSkipped + 1 };
+					progress?.Report(currentProgress);
+					break;
+
+				case BackupItemStatus.Pending:
+					pending.Add(record);
+					break;
+			}
+		}
+
+		return pending;
+	}
 }
