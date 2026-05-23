@@ -209,6 +209,14 @@ public sealed class BackupEngine : IBackupEngine
 
 		await _summaryStore.SaveAsync(resumeSummary, cancellationToken);
 
+		// TODO: this comments is for the tage download out of runner
+		// Now validate that all records have a valid DestinationPath, which is required for the next steps.
+		// ValidateStatusOfRecords and throw if any records are in an invalid state (e.g. Failed) that cannot be resumed.
+		// SeedResultRecord list, make a list of all the records succeeded aknd skipped and report progress. Records this makes is used for the actual bakcup
+		// use DownloadService to download to temp file before calling runner
+
+
+
 		BackupRunnerFactoryCreateRequest runnerFactoryCreateRequest = new()
 		{
 			MaxDegreeOfParallelism = plan.MaxDegreeOfParallelism
