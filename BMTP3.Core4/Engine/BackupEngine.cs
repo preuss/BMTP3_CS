@@ -26,6 +26,8 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly ISessionStateService _sessionState;
 	private readonly IDownloadService _downloadService;
 
+	private DirectoryInfo? _tempDir;
+
 	internal BackupEngine(
 		IBackupScanner scanner,
 		ISourceTraversalFactory sourceTraversalFactory,
@@ -150,14 +152,18 @@ public sealed class BackupEngine : IBackupEngine
 
 		List<BackupRecord> pendingRecords = FilterPendingRecords(repository.GetAll(), ref _currentProgress, progress);
 
+		// Prepare temp directory for staged file transfer.
+		DirectoryInfo tempDir = TempDirectoryHelper.ResolveTempDirectoryPath(plan.Destination, backupStartTime, sessionKey);
+		TempDirectoryHelper.PrepareTempDirectory(tempDir);
+
+		_tempDir = tempDir;
+
 		// TODO: Validate DestinationPath on all records. Then loop over pendingRecords:
-		//   - Prepare temp dir / temp file path
-		//   - _downloadService.DownloadAsync(tempFile, item.Content, ...)
-		//   - item.ReplaceContentProvider(moveableContent)
+		//   - string tempFile = Path.Combine(tempDir.FullName, TempDirectoryHelper.BuildTempFileName(item.FileName))
+		//   - IMoveableContent content = await _downloadService.DownloadAsync(new FileInfo(tempFile), item.Content, ...)
+		//   - item.ReplaceContentProvider(content)
 		//   - call single-item IBackupRunner.RunAsync(...)
 		// Build BackupResultItem list at the end from all records (Succeeded/Skipped from resume + results from loop).
-
-
 
 		BackupRunnerFactoryCreateRequest runnerFactoryCreateRequest = new()
 		{
