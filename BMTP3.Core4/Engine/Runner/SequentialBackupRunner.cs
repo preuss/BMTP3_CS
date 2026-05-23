@@ -29,10 +29,6 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 		// Phase 1 — Pre-processing: guard, count, separate Pending
 		// ------------------------------------------------------------
 
-		// Guard against invalid record statuses before starting the run.
-		// This ensures that the progress reporting and result seeding logic can safely assume only valid statuses are present.
-		ValidateStatusOfRecordItem(records);
-
 		// Seed initial progress and result items based on existing record statuses.
 		// Sends progress of count of total files, and seeds result items for any records that have already succeeded or been skipped in previous runs.
 		IProgress<BackupRunnerProgress> seedProgress = new Progress<BackupRunnerProgress>(
@@ -176,31 +172,6 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 			State = resultState,
 			ItemResults = resultItems,
 		};
-	}
-
-	private static void ValidateStatusOfRecordItem(IReadOnlyList<BackupRecord> records)
-	{
-		foreach(BackupRecord record in records)
-		{
-			switch(record.Status)
-			{
-				case BackupItemStatus.Pending:
-				case BackupItemStatus.Succeeded:
-				case BackupItemStatus.Skipped:
-					//Legal status.
-					break;
-
-				case BackupItemStatus.Active:
-					throw new InvalidOperationException($"Record '{record.Item.Id}' has status Active at run start. This may indicate a crash during a previous run.");
-
-				case BackupItemStatus.Failed:
-					throw new InvalidOperationException($"Record '{record.Item.Id}' has status Failed at run start. Failed items should have been converted to Pending during resume.");
-
-				default:
-					// Unknown status
-					throw new InvalidOperationException($"Unexpected BackupItemStatus '{record.Status}' for record '{record.Item.Id}'.");
-			}
-		}
 	}
 
 	private static List<BackupResultItem> SeedResultItems(

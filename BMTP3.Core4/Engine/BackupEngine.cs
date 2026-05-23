@@ -1,14 +1,13 @@
 ﻿using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
-using BMTP3.Core4.Engine.Exceptions;
+using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
-using BMTP3.Core4.State;
 using BMTP3.Core4.Traversal;
 
 namespace BMTP3.Core4.Engine;
@@ -24,19 +23,22 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly IBackupScanner _scanner;
 	private readonly ISourceTraversalFactory _sourceTraversalFactory;
 	private readonly IBackupRunnerFactory _backupRunnerFactory;
-	private readonly ISummaryStore _summaryStore;
+	private readonly ISessionStateService _sessionState;
+	private readonly IDownloadService _downloadService;
 
 	internal BackupEngine(
 		IBackupScanner scanner,
 		ISourceTraversalFactory sourceTraversalFactory,
 		IBackupRunnerFactory backupRunnerFactory,
-		ISummaryStore summaryStore
+		ISessionStateService sessionState,
+		IDownloadService downloadService
 	)
 	{
 		_scanner = scanner;
 		_sourceTraversalFactory = sourceTraversalFactory;
 		_backupRunnerFactory = backupRunnerFactory;
-		_summaryStore = summaryStore;
+		_sessionState = sessionState;
+		_downloadService = downloadService;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -144,70 +146,7 @@ public sealed class BackupEngine : IBackupEngine
 		//      to restore DestinationPath and processing Status
 		// ------------------------------------------------------------
 
-		BackupSummary? resumeSummary = await _summaryStore.LoadAsync(cancellationToken);
-
-		if(resumeSummary != null)
-		{
-			IReadOnlyList<BackupRecord> records = repository.GetAll();
-
-			Dictionary<string, BackupSummaryItem> summaryItemsById = resumeSummary.Items
-				.ToDictionary(i => i.Id);
-
-			HashSet<string> recordIds = records
-				.Select(r => r.Item.Id)
-				.ToHashSet();
-
-			int added = records.Count(r => !summaryItemsById.ContainsKey(r.Item.Id));
-			int removed = resumeSummary.Items.Count(i => !recordIds.Contains(i.Id));
-			bool hasChanges = added > 0 || removed > 0;
-
-			bool applyResumeState = true;
-
-			if(hasChanges)
-			{
-				switch(plan.ResumeBehavior)
-				{
-					case SessionResumeStrategy.Abort:
-						throw new SessionResumeMismatchException(added, removed);
-
-					case SessionResumeStrategy.Continue:
-						applyResumeState = true;
-						break;
-
-					case SessionResumeStrategy.Restart:
-						await _summaryStore.DeleteAsync(cancellationToken);
-						applyResumeState = false;
-						break;
-					default:
-						throw new InvalidOperationException($"Unsupported resume behavior: {plan.ResumeBehavior}");
-				}
-			}
-
-			if(applyResumeState)
-			{
-				foreach(BackupRecord record in records)
-				{
-					if(summaryItemsById.TryGetValue(record.Item.Id, out BackupSummaryItem? match))
-					{
-						record.DestinationPath = match.DestinationPath;
-						record.Status = ToBackupItemStatus(match.Status);
-						record.StatusChangedAt = match.CompletedAt;
-					}
-				}
-			}
-		}
-		// Save session, to update it.
-		resumeSummary = new BackupSummary
-		{
-			SessionId = sessionKey.SessionId,
-			SourceRoot = sessionKey.SourceIdentity,
-			CreatedAt = DateTimeOffset.UtcNow,
-			Items = repository.GetAll()
-				.Select(ToSummaryItem)
-				.ToList(),
-		};
-
-		await _summaryStore.SaveAsync(resumeSummary, cancellationToken);
+		await _sessionState.ApplyResumeAsync(repository.GetAll(), sessionKey, plan.ResumeBehavior, cancellationToken);
 
 		// TODO: this comments is for the tage download out of runner
 		// Now validate that all records have a valid DestinationPath, which is required for the next steps.
@@ -285,72 +224,5 @@ public sealed class BackupEngine : IBackupEngine
 		throw new NotImplementedException("BackupEngine is not yet implemented.");
 	}
 
-	private static BackupSummaryItem ToSummaryItem(BackupRecord record)
-	{
-		long length = record.Item.Content.Length > (ulong)long.MaxValue
-			? long.MaxValue
-			: (long)record.Item.Content.Length;
 
-		return new BackupSummaryItem
-		{
-			Id = record.Item.Id,
-			SourcePath = record.Item.SourcePath,
-			RelativePath = record.Item.RelativePath,
-			FileName = record.Item.FileName,
-			Length = length,
-			LastModified = record.Item.DateModified,
-			DateCreated = record.Item.DateCreated,
-			DateAuthored = record.Item.DateAuthored,
-			DestinationPath = record.DestinationPath,
-			Status = ToSummaryItemStatus(record.Status),
-			IsCompleted = ToSummaryItemStatus(record.Status) is BackupSummaryItemStatus.Succeeded or BackupSummaryItemStatus.Skipped,
-			CompletedAt = record.StatusChangedAt,
-		};
-	}
-
-	/// <summary>
-	/// Maps the internal <see cref="BackupItemStatus"/> to the persisted <see cref="BackupSummaryItemStatus"/>.
-	/// Active is an in-memory-only state — it is never persisted and is treated as Pending.
-	/// Failed items are retried on resume and therefore also treated as Pending.
-	/// </summary>
-	private static BackupSummaryItemStatus ToSummaryItemStatus(BackupItemStatus status)
-	{
-		switch(status)
-		{
-			case BackupItemStatus.Succeeded:
-				return BackupSummaryItemStatus.Succeeded;
-
-			case BackupItemStatus.Skipped:
-				return BackupSummaryItemStatus.Skipped;
-
-			case BackupItemStatus.Failed:
-			case BackupItemStatus.Pending:
-			case BackupItemStatus.Active:
-				return BackupSummaryItemStatus.Pending;
-
-			default:
-				throw new InvalidOperationException($"Unexpected BackupItemStatus '{status}'.");
-		}
-	}
-
-	/// <summary>
-	/// Maps the persisted <see cref="BackupSummaryItemStatus"/> back to the internal <see cref="BackupItemStatus"/>.
-	/// </summary>
-	private static BackupItemStatus ToBackupItemStatus(BackupSummaryItemStatus status)
-	{
-		switch(status)
-		{
-			case BackupSummaryItemStatus.Succeeded:
-				return BackupItemStatus.Succeeded;
-
-			case BackupSummaryItemStatus.Skipped:
-				return BackupItemStatus.Skipped;
-
-			case BackupSummaryItemStatus.Pending:
-				return BackupItemStatus.Pending;
-
-			default:
-				throw new InvalidOperationException($"Unexpected BackupSummaryItemStatus '{status}'.");
-		}
-	}
 }
