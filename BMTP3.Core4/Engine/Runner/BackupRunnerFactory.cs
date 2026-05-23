@@ -4,6 +4,6 @@ internal sealed class BackupRunnerFactory : IBackupRunnerFactory
 {
 	public IBackupRunner Create(BackupRunnerFactoryCreateRequest request)
 	{
-		return new SequentialBackupRunner();
+		return new BackupRunner();
 	}
 }

@@ -1,10 +1,10 @@
-﻿using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Runner;
 
-internal sealed class SequentialBackupRunner : IBackupRunner
+internal sealed class BackupRunner : IBackupRunner
 {
 	public async Task<BackupResultItem> RunAsync(
 		BackupItem item,
