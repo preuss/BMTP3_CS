@@ -149,13 +149,19 @@ internal sealed class SessionStateService : ISessionStateService
 	/// </summary>
 	private static BackupSummaryItemStatus ToSummaryItemStatus(BackupItemStatus status)
 	{
-		return status switch
+		switch(status)
 		{
-			BackupItemStatus.Succeeded => BackupSummaryItemStatus.Succeeded,
-			BackupItemStatus.Skipped => BackupSummaryItemStatus.Skipped,
-			BackupItemStatus.Failed or BackupItemStatus.Pending or BackupItemStatus.Active => BackupSummaryItemStatus.Pending,
-			_ => throw new InvalidOperationException($"Unexpected BackupItemStatus '{status}'."),
-		};
+			case BackupItemStatus.Succeeded:
+				return BackupSummaryItemStatus.Succeeded;
+			case BackupItemStatus.Skipped:
+				return BackupSummaryItemStatus.Skipped;
+			case BackupItemStatus.Failed:
+			case BackupItemStatus.Pending:
+			case BackupItemStatus.Active:
+				return BackupSummaryItemStatus.Pending;
+			default:
+				throw new InvalidOperationException($"Unexpected BackupItemStatus '{status}'.");
+		}
 	}
 
 	/// <summary>
