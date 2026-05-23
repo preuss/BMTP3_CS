@@ -158,44 +158,25 @@ public sealed class BackupEngine : IBackupEngine
 
 		_tempDir = tempDir;
 
-		// TODO: Validate DestinationPath on all records. Then loop over pendingRecords:
-		//   - string tempFile = Path.Combine(tempDir.FullName, TempDirectoryHelper.BuildTempFileName(item.FileName))
-		//   - IMoveableContent content = await _downloadService.DownloadAsync(new FileInfo(tempFile), item.Content, ...)
-		//   - item.ReplaceContentProvider(content)
-		//   - call single-item IBackupRunner.RunAsync(...)
-		// Build BackupResultItem list at the end from all records (Succeeded/Skipped from resume + results from loop).
-
-		BackupRunnerFactoryCreateRequest runnerFactoryCreateRequest = new()
-		{
-			MaxDegreeOfParallelism = plan.MaxDegreeOfParallelism
-		};
-		IBackupRunner runner = _backupRunnerFactory.Create(runnerFactoryCreateRequest);
-
-		BackupRunnerRequest runnerRequest = new()
-		{
-			Records = repository.GetAll(),
-			Destination = plan.Destination,
-			OutputStructureStrategy = plan.OutputStructureStrategy,
-			CollisionStrategy = plan.CollisionStrategy,
-			SidecarFormat = plan.SidecarFormat,
-			StopOnError = plan.StopOnError,
-			BackupStartTime = backupStartTime,
-		};
-
-		Progress<BackupRunnerProgress> runnerProgress = new(rp =>
-		{
-			_currentProgress = _currentProgress with
-			{
-				CurrentPhase = rp.CurrentPhase,
-				FilesSucceeded = rp.FilesSucceeded,
-				FilesSkipped = rp.FilesSkipped,
-				FilesFailed = rp.FilesFailed,
-				ActiveFiles = rp.ActiveFiles,
-			};
-			progress?.Report(_currentProgress);
-		});
-
-		await runner.RunAsync(runnerRequest, sessionKey, runnerProgress, cancellationToken);
+		// TODO: Loop over pendingRecords — download + run + collect results:
+		//   foreach(BackupRecord record in pendingRecords)
+		//   {
+		//       string tempFile = Path.Combine(tempDir.FullName, TempDirectoryHelper.BuildTempFileName(record.Item.FileName));
+		//       IMoveableContent content = await _downloadService.DownloadAsync(
+		//           new FileInfo(tempFile), record.Item.Content, null, cancellationToken);
+		//       record.Item.ReplaceContentProvider(content);
+		//       BackupRunnerRequest runnerRequest = new()
+		//       {
+		//           SidecarFormat = plan.SidecarFormat,
+		//           CollisionStrategy = plan.CollisionStrategy,
+		//           BackupStartTime = backupStartTime,
+		//       };
+		//       BackupResultItem result = new SequentialBackupRunner().RunAsync(
+		//           record.Item, record.DestinationPath!, tempFile, runnerRequest, cancellationToken);
+		//       results.Add(result);
+		//   }
+		// Build BackupResultItem list at the end from all records
+		// (Succeeded/Skipped from resume + results from loop).
 
 
 		// ------------------------------------------------------------
