@@ -8,43 +8,35 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 {
 	public async Task<BackupResultItem> RunAsync(
 		BackupItem item,
-		string destinationPath,
-		string tempFilePath,
+		FileInfo destinationFile,
+		FileInfo tempFile,
 		BackupRunnerRequest request,
 		CancellationToken cancellationToken)
 	{
 		ArgumentNullException.ThrowIfNull(item);
-		ArgumentNullException.ThrowIfNull(destinationPath);
-		ArgumentNullException.ThrowIfNull(tempFilePath);
+		ArgumentNullException.ThrowIfNull(destinationFile);
+		ArgumentNullException.ThrowIfNull(tempFile);
 		ArgumentNullException.ThrowIfNull(request);
 
-		string? tempSidecarPath = null;
+		destinationFile.Directory?.Create();
 
-		try
+		string finalPath = ResolveTargetPath(destinationFile.FullName, request.CollisionStrategy);
+
+		FileInfo sidecarFile = new(tempFile.FullName + ".ini");
+		await BuildAndSaveSidecarAsync(item, sidecarFile, request.SidecarFormat, request.BackupStartTime, cancellationToken);
+
+		tempFile.MoveTo(finalPath, overwrite: false);
+
+		string finalSidecarPath = finalPath + ".ini";
+		if(sidecarFile.Exists)
 		{
-			string? parentDir = Path.GetDirectoryName(destinationPath);
-			if(!string.IsNullOrEmpty(parentDir))
-			{
-				Directory.CreateDirectory(parentDir);
-			}
-
-			string finalPath = ResolveTargetPath(destinationPath, request.CollisionStrategy);
-
-			tempSidecarPath = await BuildAndSaveSidecarAsync(item, tempFilePath, request.SidecarFormat, request.BackupStartTime, cancellationToken);
-
-			CommitTransfer(tempFilePath, tempSidecarPath, finalPath);
-			tempSidecarPath = null;
-
-			return ToResultItem(item, finalPath, BackupResultItemState.Succeeded);
+			sidecarFile.MoveTo(finalSidecarPath, overwrite: false);
 		}
-		catch
-		{
-			CleanupTempFiles(tempFilePath, tempSidecarPath);
-			throw;
-		}
+
+		return ToResultItem(item, finalPath, BackupResultItemState.Succeeded);
 	}
 
-	private static async Task<string> BuildAndSaveSidecarAsync(BackupItem item, string tempPath, SidecarFormat sidecarFormat, DateTimeOffset backupStartTime, CancellationToken cancellationToken)
+	private static async Task BuildAndSaveSidecarAsync(BackupItem item, FileInfo sidecarFile, SidecarFormat sidecarFormat, DateTimeOffset backupStartTime, CancellationToken cancellationToken)
 	{
 		string content = sidecarFormat switch
 		{
@@ -55,9 +47,7 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 			_ => throw new InvalidOperationException($"Unexpected SidecarFormat '{sidecarFormat}'."),
 		};
 
-		string sidecarPath = tempPath + ".ini";
-		await File.WriteAllTextAsync(sidecarPath, content, cancellationToken);
-		return sidecarPath;
+		await File.WriteAllTextAsync(sidecarFile.FullName, content, cancellationToken);
 	}
 
 	private static string BuildIniSidecarContent(BackupItem item, DateTimeOffset backupStartTime)
@@ -89,30 +79,6 @@ internal sealed class SequentialBackupRunner : IBackupRunner
 
 			default:
 				throw new InvalidOperationException($"Collision strategy '{collisionStrategy}' is not supported in the current Tier.");
-		}
-	}
-
-	private static void CommitTransfer(string tempPath, string tempSidecarPath, string finalPath)
-	{
-		File.Move(tempPath, finalPath, overwrite: false);
-
-		string finalSidecarPath = finalPath + ".ini";
-		if(File.Exists(tempSidecarPath))
-		{
-			File.Move(tempSidecarPath, finalSidecarPath, overwrite: false);
-		}
-	}
-
-	private static void CleanupTempFiles(string? tempPath, string? tempSidecarPath)
-	{
-		if(tempPath is not null && File.Exists(tempPath))
-		{
-			try { File.Delete(tempPath); } catch { }
-		}
-
-		if(tempSidecarPath is not null && File.Exists(tempSidecarPath))
-		{
-			try { File.Delete(tempSidecarPath); } catch { }
 		}
 	}
 

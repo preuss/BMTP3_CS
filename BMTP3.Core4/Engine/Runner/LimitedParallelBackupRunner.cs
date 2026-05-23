@@ -7,8 +7,8 @@ internal sealed class LimitedParallelBackupRunner : IBackupRunner
 {
 	public Task<BackupResultItem> RunAsync(
 		BackupItem item,
-		string destinationPath,
-		string tempFilePath,
+		FileInfo destinationFile,
+		FileInfo tempFile,
 		BackupRunnerRequest request,
 		CancellationToken cancellationToken)
 	{

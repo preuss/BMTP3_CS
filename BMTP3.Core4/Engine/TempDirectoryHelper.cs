@@ -136,11 +136,11 @@ internal static class TempDirectoryHelper
 	/// Builds the full temporary file path within the given temp directory.
 	/// Calls <see cref="BuildTempFileName"/> and combines it with <paramref name="tempDir"/>.
 	/// </summary>
-	public static string BuildTempFilePath(DirectoryInfo tempDir, string fileName)
+	public static FileInfo BuildTempFilePath(DirectoryInfo tempDir, string fileName)
 	{
 		ArgumentNullException.ThrowIfNull(tempDir);
 
-		return Path.Combine(tempDir.FullName, BuildTempFileName(fileName));
+		return new FileInfo(Path.Combine(tempDir.FullName, BuildTempFileName(fileName)));
 	}
 
 	// =========================

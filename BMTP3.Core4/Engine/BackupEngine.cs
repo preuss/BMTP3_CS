@@ -184,7 +184,7 @@ public sealed class BackupEngine : IBackupEngine
 		foreach(BackupRecord record in pendingRecords)
 		{
 			// Create temp file path for this item
-			string tempFilePath = TempDirectoryHelper.BuildTempFilePath(tempDir, record.Item.FileName);
+			FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(tempDir, record.Item.FileName);
 
 			// Download content to temp file with progress reporting
 			BackupProgressItem currentProgressItem = new()
@@ -203,7 +203,7 @@ public sealed class BackupEngine : IBackupEngine
 				progress?.Report(_currentProgress);
 			});
 			IMoveableContent content = await _downloadService.DownloadAsync(
-				new FileInfo(tempFilePath),
+				tempFile,
 				record.Item.Content,
 				downloadProgress,
 				cancellationToken);
@@ -218,8 +218,8 @@ public sealed class BackupEngine : IBackupEngine
 
 			await runner.RunAsync(
 				record.Item,
-				record.DestinationPath!,
-				tempFilePath,
+				new FileInfo(record.DestinationPath!),
+				tempFile,
 				runnerRequest,
 				cancellationToken);
 
