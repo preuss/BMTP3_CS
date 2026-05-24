@@ -4,6 +4,7 @@ using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Session;
+using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
@@ -25,6 +26,7 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly IBackupRunnerFactory _backupRunnerFactory;
 	private readonly ISessionStateService _sessionState;
 	private readonly IDownloadService _downloadService;
+	private readonly IMetadataTimestampService _metadataTimestampService;
 
 	private DirectoryInfo? _tempDir;
 
@@ -33,7 +35,8 @@ public sealed class BackupEngine : IBackupEngine
 		ISourceTraversalFactory sourceTraversalFactory,
 		IBackupRunnerFactory backupRunnerFactory,
 		ISessionStateService sessionState,
-		IDownloadService downloadService
+		IDownloadService downloadService,
+		IMetadataTimestampService metadataTimestampService
 	)
 	{
 		_scanner = scanner;
@@ -41,6 +44,7 @@ public sealed class BackupEngine : IBackupEngine
 		_backupRunnerFactory = backupRunnerFactory;
 		_sessionState = sessionState;
 		_downloadService = downloadService;
+		_metadataTimestampService = metadataTimestampService;
 	}
 
 	public async Task<BackupResult> RunAsync(
