@@ -1,6 +1,6 @@
 namespace BMTP3.Core4.Models;
 
-internal interface IMoveableContent : IContent
+internal interface IMoveableContent : IContent, IFileInfoSource
 {
 	/// <summary>
 	///     Atomically moves the physical file to <paramref name="destinationPath"/>.

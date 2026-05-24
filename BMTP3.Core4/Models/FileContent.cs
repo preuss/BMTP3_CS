@@ -1,5 +1,5 @@
 ﻿namespace BMTP3.Core4.Models;
-internal class FileContent : IContent
+internal class FileContent : IContent, IFileInfoSource
 {
 	private bool _disposed;
 	private const int bufferSize = 128 * 1024; // Default is 4096, this is 128 kb - larger buffer size can improve performance for large files.
@@ -49,6 +49,12 @@ internal class FileContent : IContent
 			ThrowIfDisposed();
 			return (ulong)FileInfo.Length;
 		}
+	}
+
+	public bool TryGetFileInfo(out FileInfo fileInfo)
+	{
+		fileInfo = FileInfo;
+		return true;
 	}
 
 	/// <summary>
