@@ -3,8 +3,8 @@ using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
-using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Session;
+using BMTP3.Core4.Engine.Sidecar;
 using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Models;
@@ -24,31 +24,31 @@ public sealed class BackupEngine : IBackupEngine
 {
 	private readonly IBackupScanner _scanner;
 	private readonly ISourceTraversalFactory _sourceTraversalFactory;
-	private readonly IBackupRunnerFactory _backupRunnerFactory;
 	private readonly ISessionStateService _sessionState;
 	private readonly IDownloadService _downloadService;
 	private readonly IHashService _hashService;
 	private readonly IEarliestTimestampResolutionService _earliestTimestampService;
+	private readonly ISidecarService _sidecarService;
 
 	private DirectoryInfo? _tempDir;
 
 	internal BackupEngine(
 		IBackupScanner scanner,
 		ISourceTraversalFactory sourceTraversalFactory,
-		IBackupRunnerFactory backupRunnerFactory,
 		ISessionStateService sessionState,
 		IDownloadService downloadService,
 		IHashService hashService,
-		IEarliestTimestampResolutionService earliestTimestampService
+		IEarliestTimestampResolutionService earliestTimestampService,
+		ISidecarService sidecarService
 	)
 	{
 		_scanner = scanner;
 		_sourceTraversalFactory = sourceTraversalFactory;
-		_backupRunnerFactory = backupRunnerFactory;
 		_sessionState = sessionState;
 		_downloadService = downloadService;
 		_hashService = hashService;
 		_earliestTimestampService = earliestTimestampService;
+		_sidecarService = sidecarService;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -166,23 +166,23 @@ public sealed class BackupEngine : IBackupEngine
 
 		_tempDir = tempDir;
 
-		IBackupRunner runner = _backupRunnerFactory.Create(new BackupRunnerFactoryCreateRequest());
-
 		// ------------------------------------------------------------
 		// 6. Process pending items
 		//    - Download content to temp file
+		//    - Extract earliest timestamp from metadata
 		//    - Compute hashes (comparison + verification)
-		//    - Transfer files: copy from source to destination via runner
-		//    - Generate sidecar files via runner
+		//    - Resolve destination path (collision handling)
+		//    - Move file from temp to destination
+		//    - Write sidecar file
 		//    - Update progress (phase = Transferring / Hashing)
 		// ------------------------------------------------------------
 
 		foreach(BackupRecord record in pendingRecords)
 		{
-			// Create temp file path for this item
+			// Create temp file path for this item.
 			FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(tempDir, record.Item.FileName);
 
-			// Download content to temp file with progress reporting
+			// Download content to temp file with progress reporting.
 			BackupProgressItem currentProgressItem = new()
 			{
 				RelativePath = record.Item.RelativePath,
@@ -198,7 +198,6 @@ public sealed class BackupEngine : IBackupEngine
 				_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
 				progress?.Report(_currentProgress);
 			});
-			// Initialize progress with 0 bytes read to show the item in the UI immediately.
 			downloadProgress.Report(0);
 
 			IMoveableContent content = await _downloadService.DownloadAsync(
@@ -208,6 +207,7 @@ public sealed class BackupEngine : IBackupEngine
 				cancellationToken);
 			record.Item.ReplaceContentProvider(content);
 
+			// Extract earliest authored timestamp from file metadata.
 			EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveEarliestAsync(
 				content, cancellationToken);
 
@@ -217,13 +217,7 @@ public sealed class BackupEngine : IBackupEngine
 				record.Metadata.CreatedDateTime = earliest.Timestamp;
 			}
 
-			BackupRunnerRequest runnerRequest = new()
-			{
-				SidecarFormat = plan.SidecarFormat,
-				CollisionStrategy = plan.CollisionStrategy,
-				BackupStartTime = backupStartTime,
-			};
-
+			// Compute hashes.
 			IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
 			{
 				currentProgressItem = currentProgressItem with
@@ -234,11 +228,8 @@ public sealed class BackupEngine : IBackupEngine
 				_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
 				progress?.Report(_currentProgress);
 			});
-
-			// Initialize progress with 0 bytes computed to update the phase in the UI immediately.
 			computeHashProgress.Report(0);
 
-			// Compute for all types of hashes required by the plan.
 			List<HashAlgorithmType> allAlgorithms =
 				plan.ComparisonHashAlgorithmTypes!
 				.Concat(plan.VerificationHashAlgorithmTypes!)
@@ -252,21 +243,57 @@ public sealed class BackupEngine : IBackupEngine
 				computeHashProgress,
 				cancellationToken);
 
-			record.DestinationPath = Path.Combine(plan.Destination, record.Item.RelativePath);
+			// ------------------------------------------------------------
+			// Commit: resolve path → move file → write sidecar
+			// ------------------------------------------------------------
 
-			BackupResultItem runnerResult = await runner.RunAsync(
-				record,
-				tempFile,
-				runnerRequest,
-				cancellationToken);
+			string destinationDir = Path.Combine(
+				plan.Destination,
+				Path.GetDirectoryName(record.Item.RelativePath) ?? string.Empty);
 
-			record.Status = runnerResult.State switch
+			string finalPath = CollisionHelpers.ResolveTargetPath(
+				destinationDir,
+				record.Item.FileName,
+				plan.CollisionStrategy,
+				out CollisionResolution resolution);
+
+			if(resolution == CollisionResolution.Skip)
 			{
-				BackupResultItemState.Succeeded => BackupItemStatus.Succeeded,
-				BackupResultItemState.Skipped => BackupItemStatus.Skipped,
-				_ => BackupItemStatus.Failed,
-			};
-			record.DestinationPath = runnerResult.DestinationPath;
+				record.Status = BackupItemStatus.Skipped;
+				continue;
+			}
+
+			if(resolution == CollisionResolution.Error)
+			{
+				throw new IOException($"Destination already exists: {finalPath}");
+			}
+
+			Directory.CreateDirectory(destinationDir);
+
+			long itemLength = (long)content.Length;
+			IContent movedContent = content.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
+			record.Item.ReplaceContentProvider(movedContent);
+			record.DestinationPath = finalPath;
+
+			if(plan.SidecarFormat != SidecarFormat.None)
+			{
+				SidecarRequest sidecarRequest = new()
+				{
+					Format = plan.SidecarFormat,
+					OriginalFileName = record.Item.FileName,
+					RelativePath = record.Item.RelativePath,
+					CreateDateTime = record.Metadata.CreatedDateTime,
+					AccessDateTime = record.Metadata.AccessedDateTime,
+					ModifyDateTime = record.Metadata.ModifiedDateTime,
+					AuthoredDateTime = record.Metadata.AuthoredDateTime,
+					Hashes = record.Metadata.ComputedHashes,
+					BackupStartTime = backupStartTime,
+				};
+
+				await _sidecarService.WriteAsync(finalPath, sidecarRequest, cancellationToken);
+			}
+
+			record.Status = BackupItemStatus.Succeeded;
 
 			_currentProgress = _currentProgress with
 			{
@@ -277,7 +304,6 @@ public sealed class BackupEngine : IBackupEngine
 
 		// ------------------------------------------------------------
 		// 7. (Future) Optional per-item features
-		//    - Metadata extraction
 		//    - Post-write verification
 		//    - Timestamp correction
 		// ------------------------------------------------------------

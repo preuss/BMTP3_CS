@@ -4,6 +4,7 @@ using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Session;
+using BMTP3.Core4.Engine.Sidecar;
 using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Scanner;
@@ -25,6 +26,7 @@ public static class ServiceCollectionExtensions
 		// Engine services
 		services.TryAddSingleton<IDownloadService, DownloadService>();
 		services.TryAddSingleton<IEarliestTimestampResolutionService, EarliestTimestampResolutionService>();
+		services.TryAddSingleton<ISidecarService, SidecarService>();
 		services.TryAddSingleton<IBackupRunnerFactory, BackupRunnerFactory>();
 		services.TryAddTransient<IBackupRunner, BackupRunner>();
 
