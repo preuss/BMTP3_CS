@@ -28,7 +28,7 @@ public class StreamHashGenerator : IHashGenerator
 		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
-	public async Task<IReadOnlyDictionary<HashType, string>> ComputeHashesAsync(
+	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(
 		Stream stream,
 		IEnumerable<HashType> hashTypes,
 		IProgress<ulong>? progress,

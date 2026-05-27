@@ -206,12 +206,15 @@ public sealed class BackupEngine : IBackupEngine
 			_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
 			progress?.Report(_currentProgress);
 
-			Progress<ulong> downloadProgress = new(bytesRead =>
+			IProgress<ulong> downloadProgress = new Progress<ulong>(bytesRead =>
 			{
 				currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
 				_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
 				progress?.Report(_currentProgress);
 			});
+			// Initialize progress with 0 bytes read to show the item in the UI immediately.
+			downloadProgress.Report(0);
+
 			IMoveableContent content = await _downloadService.DownloadAsync(
 				tempFile,
 				record.Item.Content,
@@ -228,11 +231,31 @@ public sealed class BackupEngine : IBackupEngine
 
 			try
 			{
-				IReadOnlyDictionary<HashType, string> hashes = await _hashService.ComputeHashesAsync(
+				IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
+				{
+					currentProgressItem = currentProgressItem with
+					{
+						BytesProcessed = (long)bytesComputed,
+						Phase = BackupProgressItemPhase.Hashing,
+					};
+					_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+					progress?.Report(_currentProgress);
+				});
+				// Initialize progress with 0 bytes computed to update the phase in the UI immediately.
+				computeHashProgress.Report(0);
+
+				// Compute for all types of hashes required by the plan.
+				List<HashAlgorithmType> allAlgorithms = 
+					plan.ComparisonHashAlgorithmTypes!
+					.Concat(plan.VerificationHashAlgorithmTypes!)
+					.ToList();
+
+				record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
 					record.Item.Content,
-					plan.ComparisonHashAlgorithmTypes!,
-					null,
+					allAlgorithms,
+					computeHashProgress,
 					cancellationToken);
+
 			} catch(OperationCanceledException)
 			{
 				throw;

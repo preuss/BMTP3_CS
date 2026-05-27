@@ -26,4 +26,9 @@ internal sealed record BackupRecord
 	/// Null when the item is still in its initial Pending state.
 	/// </summary>
 	public DateTimeOffset? StatusChangedAt { get; set; }
+
+	/// <summary>
+	/// Item-level metadata (hashes, timestamps, etc.) accumulated during processing.
+	/// </summary>
+	public ItemMetadata Metadata { get; set; } = new();
 }
