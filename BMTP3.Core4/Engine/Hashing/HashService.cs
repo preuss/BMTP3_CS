@@ -13,7 +13,7 @@ internal sealed class HashService : IHashService
 		_hashGenerator = hashGenerator ?? throw new ArgumentNullException(nameof(hashGenerator));
 	}
 
-	public async Task<IDictionary<HashType, string>> ComputeHashesAsync(
+	public async Task<IReadOnlyDictionary<HashType, string>> ComputeHashesAsync(
 		IContent content,
 		IReadOnlyCollection<HashAlgorithmType> algorithms,
 		IProgress<ulong>? progress,

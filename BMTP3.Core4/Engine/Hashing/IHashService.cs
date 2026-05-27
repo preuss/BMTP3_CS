@@ -20,7 +20,7 @@ internal interface IHashService
 	/// <param name="progress">Optional progress callback that reports bytes processed.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>A dictionary mapping each requested algorithm to its hex digest string.</returns>
-	Task<IDictionary<HashType, string>> ComputeHashesAsync(
+	Task<IReadOnlyDictionary<HashType, string>> ComputeHashesAsync(
 		IContent content,
 		IReadOnlyCollection<HashAlgorithmType> algorithms,
 		IProgress<ulong>? progress,

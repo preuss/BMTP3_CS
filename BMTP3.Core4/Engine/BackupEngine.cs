@@ -228,7 +228,7 @@ public sealed class BackupEngine : IBackupEngine
 
 			try
 			{
-				IDictionary<HashType, string> hashes = await _hashService.ComputeHashesAsync(
+				IReadOnlyDictionary<HashType, string> hashes = await _hashService.ComputeHashesAsync(
 					record.Item.Content,
 					plan.ComparisonHashAlgorithmTypes!,
 					null,
