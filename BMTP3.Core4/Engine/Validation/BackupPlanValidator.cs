@@ -1,5 +1,4 @@
-﻿using System.IO;
-using BMTP3.Core4.Api.Exceptions;
+﻿using BMTP3.Core4.Api.Exceptions;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 
@@ -56,8 +55,11 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.BackupIndexType))
 			throw new BackupPlanArgumentException($"Invalid BackupIndexType value: {plan.BackupIndexType}.");
 
-		if (plan.ComparisonHashAlgorithmTypes is not { Count: > 0 })
+		if(plan.ComparisonHashAlgorithmTypes is not { Count: > 0 })
 			throw new BackupPlanArgumentException("ComparisonHashAlgorithmTypes must not be null and must contain at least one algorithm.");
+
+		if(plan.VerificationHashAlgorithmTypes is not { Count: > 0 })
+			throw new BackupPlanArgumentException("VerificationHashAlgorithmTypes must contain at least one algorithm if specified.");
 
 		if(!Enum.IsDefined(plan.PostWriteVerification))
 			throw new BackupPlanArgumentException($"Invalid PostWriteVerification value: {plan.PostWriteVerification}.");
@@ -111,6 +113,9 @@ internal static class BackupPlanValidator
 
 		if(plan.ComparisonHashAlgorithmTypes is { Count: > 0 })
 			throw new FeatureNotImplementedException(3, "Hash type selection");
+
+		if(plan.VerificationHashAlgorithmTypes is { Count: > 0 })
+			throw new FeatureNotImplementedException(3, "Verification hash type selection");
 
 		if(plan.EnableMetadata)
 			throw new FeatureNotImplementedException(3, "Metadata extraction");
