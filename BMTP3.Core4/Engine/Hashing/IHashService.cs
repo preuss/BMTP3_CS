@@ -1,6 +1,5 @@
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Models;
-using System.Collections.Generic;
 
 namespace BMTP3.Core4.Engine.Hashing;
 
@@ -12,17 +11,17 @@ namespace BMTP3.Core4.Engine.Hashing;
 /// </summary>
 internal interface IHashService
 {
-    /// <summary>
-    /// Compute the requested hash algorithms for the provided content.
-    /// </summary>
-    /// <param name="content">Content to compute hashes for (IContent).</param>
-    /// <param name="algorithms">The set of algorithms to compute. If empty, no hashes are computed.</param>
-    /// <param name="progress">Optional progress callback that reports bytes processed.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>A dictionary mapping each requested algorithm to its hex digest string.</returns>
-    Task<IDictionary<HashAlgorithm, string>> ComputeHashesAsync(
-        IContent content,
-        IReadOnlyCollection<HashAlgorithm> algorithms,
-        IProgress<ulong>? progress,
-        CancellationToken cancellationToken);
+	/// <summary>
+	/// Compute the requested hash algorithms for the provided content.
+	/// </summary>
+	/// <param name="content">Content to compute hashes for (IContent).</param>
+	/// <param name="algorithms">The set of algorithms to compute. If empty, no hashes are computed.</param>
+	/// <param name="progress">Optional progress callback that reports bytes processed.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
+	/// <returns>A dictionary mapping each requested algorithm to its hex digest string.</returns>
+	Task<IDictionary<HashAlgorithm, string>> ComputeHashesAsync(
+		IContent content,
+		IReadOnlyCollection<HashAlgorithm> algorithms,
+		IProgress<ulong>? progress,
+		CancellationToken cancellationToken);
 }

@@ -1,22 +1,25 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Folder Include="Models\Contexts\" />
-    <Folder Include="DependencyInjection\" />
-    <Folder Include="Progress\" />
-    <Folder Include="Scanner\Filesystem\" />
-    <Folder Include="Sidecar\" />
-    <Folder Include="Transfer\Filesystem\" />
-  </ItemGroup>
+	<ItemGroup>
+		<Folder Include="Models\Contexts\" />
+		<Folder Include="DependencyInjection\" />
+		<Folder Include="Progress\" />
+		<Folder Include="Scanner\Filesystem\" />
+		<Folder Include="Sidecar\" />
+		<Folder Include="Transfer\Filesystem\" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="MetadataExtractor" Version="2.9.3" />
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Blake3" Version="2.2.1" />
+		<PackageReference Include="MetadataExtractor" Version="2.9.3" />
+		<PackageReference Include="SharpHash" Version="1.2.0" />
+	</ItemGroup>
 
 </Project>
+
