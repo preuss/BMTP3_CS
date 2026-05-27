@@ -1,13 +1,15 @@
-﻿using BMTP3.Core4.Api.Models.Enums;
 
 namespace BMTP3.Core4.Hashing;
 
 public interface IHashGenerator
 {
-	Task<Dictionary<HashAlgorithm, string>> ComputeHashesAsync(
+	/// <summary>
+	///     Computes multiple hashes from a single stream in one pass.
+	/// </summary>
+	Task<Dictionary<HashType, string>> ComputeHashesAsync(
 		Stream stream,
-		IEnumerable<HashAlgorithm> hashTypes,
+		IEnumerable<HashType> hashTypes,
 		IProgress<ulong>? progress,
-		CancellationToken ct
+		CancellationToken cancellationToken
 	);
 }

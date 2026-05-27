@@ -1,57 +1,72 @@
-﻿using System.Security.Cryptography;
-using HashAlgorithmEnum = BMTP3.Core4.Api.Models.Enums.HashAlgorithm;
+using BMTP3.Core4.Hashing.Crypto;
+using Microsoft.Extensions.Logging;
+using System.Security.Cryptography;
 
 namespace BMTP3.Core4.Hashing;
 
 public class StreamHashGenerator : IHashGenerator
 {
-	private const int BufferSize = 81920;
+	private const int BufferSize = 81920; // 80 KB buffer
+	private readonly ILogger<StreamHashGenerator> _logger;
 
-	public async Task<Dictionary<HashAlgorithmEnum, string>> ComputeHashesAsync(
+	public StreamHashGenerator(ILogger<StreamHashGenerator> logger)
+	{
+		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
+	}
+
+	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(
 		Stream stream,
-		IEnumerable<HashAlgorithmEnum> hashTypes,
+		IEnumerable<HashType> hashTypes,
 		IProgress<ulong>? progress,
-		CancellationToken ct
-	)
+		CancellationToken ct)
 	{
 		ArgumentNullException.ThrowIfNull(stream);
+		// Respect cancellation as early as possible
 		ct.ThrowIfCancellationRequested();
 
-		List<HashAlgorithmEnum> requested = hashTypes?.Distinct().ToList() ?? new List<HashAlgorithmEnum>();
+		List<HashType> requested = hashTypes?.Distinct().ToList() ?? new List<HashType>();
 
 		if(requested.Count == 0)
 		{
-			return new Dictionary<HashAlgorithmEnum, string>();
+			return new Dictionary<HashType, string>();
 		}
 
-		Dictionary<HashAlgorithmEnum, HashAlgorithm> algorithms = new();
-		Dictionary<HashAlgorithmEnum, string> results = new();
+		Dictionary<HashType, HashAlgorithm> algorithms = new(requested.Count);
 
 		try
 		{
-			foreach(HashAlgorithmEnum type in requested)
+			// Initialize Algorithms
+			foreach(HashType type in requested)
 			{
 				algorithms[type] = CreateAlgorithm(type);
 			}
 
+			// Read Stream & Transform
 			byte[] buffer = new byte[BufferSize];
 			int bytesRead;
 			ulong totalBytesRead = 0;
 
-			while((bytesRead = await stream.ReadAsync(buffer, 0, BufferSize, ct).ConfigureAwait(false)) > 0)
+			while((bytesRead = await stream.ReadAsync(buffer.AsMemory(), ct).ConfigureAwait(false)) > 0)
 			{
 				totalBytesRead += (ulong)bytesRead;
-				progress?.Report(totalBytesRead);
 
+				// Feed data to all hashers
 				foreach(HashAlgorithm algo in algorithms.Values)
 				{
 					algo.TransformBlock(buffer, 0, bytesRead, buffer, 0);
 				}
+
+				// Update progress after each read
+				progress?.Report(totalBytesRead);
 			}
 
+			// Finalize & Convert to Hex
+			// Check cancellation before finalizing
 			ct.ThrowIfCancellationRequested();
 
-			foreach(KeyValuePair<HashAlgorithmEnum, HashAlgorithm> kvp in algorithms)
+			Dictionary<HashType, string> results = new(algorithms.Count);
+
+			foreach(KeyValuePair<HashType, HashAlgorithm> kvp in algorithms)
 			{
 				kvp.Value.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
@@ -72,20 +87,24 @@ public class StreamHashGenerator : IHashGenerator
 		}
 	}
 
-	private static HashAlgorithm CreateAlgorithm(HashAlgorithmEnum type)
+	private static HashAlgorithm CreateAlgorithm(HashType type)
 	{
 		return type switch
 		{
-			HashAlgorithmEnum.MD5_128 => MD5.Create(),
-			HashAlgorithmEnum.SHA2_256 => SHA256.Create(),
-			HashAlgorithmEnum.SHA2_512 => SHA512.Create(),
-			HashAlgorithmEnum.SHA3_256_FIPS202 => new SharpHashSHA3_256(),
-			HashAlgorithmEnum.SHA3_512_FIPS202 => new SharpHashSHA3_512(),
-			HashAlgorithmEnum.SHA3_256_KECCAK => new SharpHashSHA3_256_Keccak(),
-			HashAlgorithmEnum.SHA3_512_KECCAK => new SharpHashSHA3_512_Keccak(),
-			HashAlgorithmEnum.BLAKE3_256 => new Blake3HashAlgorithm(32),
-			HashAlgorithmEnum.BLAKE3_512 => new Blake3HashAlgorithm(64),
-			_ => throw new NotSupportedException($"HashAlgorithmEnum {type} is not supported by StreamHashGenerator yet.")
+			HashType.MD5_128 => MD5.Create(),
+			HashType.SHA2_256 => SHA256.Create(),
+			HashType.SHA2_512 => SHA512.Create(),
+
+			// Custom BouncyCastle/SharpHash implementations
+			HashType.SHA3_256_FIPS202 => new SharpHashSHA3_256(),
+			HashType.SHA3_512_FIPS202 => new SharpHashSHA3_512(),
+			HashType.SHA3_256_KECCAK => new SharpHashSHA3_256_Keccak(),
+			HashType.SHA3_512_KECCAK => new SharpHashSHA3_512_Keccak(),
+
+			HashType.BLAKE3_256 => new Blake3HashAlgorithm(32),
+			HashType.BLAKE3_512 => new Blake3HashAlgorithm(64),
+
+			_ => throw new NotSupportedException($"HashType {type} is not supported.")
 		};
 	}
 }

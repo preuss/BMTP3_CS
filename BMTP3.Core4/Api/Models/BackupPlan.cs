@@ -135,14 +135,14 @@ public sealed record BackupPlan
 	/// Only used when <see cref="CollisionComparisonType"/> is set to Hash.
 	/// If null, a default set is chosen by the engine.
 	/// </summary>
-	public IReadOnlyList<HashAlgorithm>? ComparisonHashAlgorithms { get; init; }
+	public IReadOnlyList<HashAlgorithmType>? ComparisonHashAlgorithmTypes { get; init; }
 
 	/// <summary>
 	/// The hash algorithms used for post-write verification.
 	/// Only used when <see cref="PostWriteVerification"/> is set to Hash.
 	/// If null, a default set is chosen by the engine.
 	/// </summary>
-	public IReadOnlyList<HashAlgorithm>? VerificationHashAlgorithms { get; init; }
+	public IReadOnlyList<HashAlgorithmType>? VerificationHashAlgorithmTypes { get; init; }
 
 	/// <summary>
 	/// Indicates whether metadata extraction is enabled.

@@ -8,6 +8,7 @@ using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Engine.Validation;
+using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
@@ -227,11 +228,9 @@ public sealed class BackupEngine : IBackupEngine
 
 			try
 			{
-				// plan.ComparisonHashAlgorithms is an IReadOnlyList<HashAlgorithm> which
-				// already implements IReadOnlyCollection<HashAlgorithm>. No cast is needed.
-				IDictionary<HashAlgorithm, string> hashes = await _hashService.ComputeHashesAsync(
+				IDictionary<HashType, string> hashes = await _hashService.ComputeHashesAsync(
 					record.Item.Content,
-					plan.ComparisonHashAlgorithms!,
+					plan.ComparisonHashAlgorithmTypes!,
 					null,
 					cancellationToken);
 			} catch(OperationCanceledException)

@@ -1,16 +1,16 @@
-using SharpHash.Base;
+﻿using SharpHash.Base;
 using SharpHash.Interfaces;
 using System.Security.Cryptography;
 
-namespace BMTP3.Core4.Hashing;
+namespace BMTP3.Core4.Hashing.Crypto;
 
-public class SharpHashSHA3_256 : HashAlgorithm
+public class SharpHashSHA3_512 : HashAlgorithm
 {
 	private readonly IHash _hash;
 
-	public SharpHashSHA3_256()
+	public SharpHashSHA3_512()
 	{
-		_hash = HashFactory.Crypto.CreateSHA3_256();
+		_hash = HashFactory.Crypto.CreateSHA3_512();
 		HashSizeValue = _hash.HashSize;
 		Initialize();
 	}

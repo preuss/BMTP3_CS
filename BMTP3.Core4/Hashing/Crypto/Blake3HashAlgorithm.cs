@@ -1,8 +1,12 @@
 using Blake3;
 using System.Security.Cryptography;
 
-namespace BMTP3.Core4.Hashing;
+namespace BMTP3.Core4.Hashing.Crypto;
 
+/// <summary>
+///     Adapter that exposes the Blake3 Hasher as a System.Security.Cryptography.HashAlgorithm.
+///     Supports 256-bit (32 bytes) and 512-bit (64 bytes) outputs.
+/// </summary>
 internal sealed class Blake3HashAlgorithm : HashAlgorithm
 {
 	private readonly int _outputBytes;
@@ -40,12 +44,14 @@ internal sealed class Blake3HashAlgorithm : HashAlgorithm
 			return;
 		}
 
+		// Hasher.Update accepts ReadOnlySpan<byte>
 		_hasher.Update(array.AsSpan(ibStart, cbSize));
 	}
 
 	protected override byte[] HashFinal()
 	{
-		Span<byte> outBuf = stackalloc byte[64];
+		Span<byte> outBuf = stackalloc byte[64]; // Blake3 can output up to 64 bytes here
+												 // Call the Span-based Finalize overload
 		_hasher.Finalize(outBuf);
 		byte[] result = outBuf.Slice(0, _outputBytes).ToArray();
 		HashValue = result;

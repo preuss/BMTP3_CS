@@ -1,4 +1,5 @@
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Hashing;
@@ -19,9 +20,9 @@ internal interface IHashService
 	/// <param name="progress">Optional progress callback that reports bytes processed.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>A dictionary mapping each requested algorithm to its hex digest string.</returns>
-	Task<IDictionary<HashAlgorithm, string>> ComputeHashesAsync(
+	Task<IDictionary<HashType, string>> ComputeHashesAsync(
 		IContent content,
-		IReadOnlyCollection<HashAlgorithm> algorithms,
+		IReadOnlyCollection<HashAlgorithmType> algorithms,
 		IProgress<ulong>? progress,
 		CancellationToken cancellationToken
 	);
