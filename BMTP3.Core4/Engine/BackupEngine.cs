@@ -252,14 +252,21 @@ public sealed class BackupEngine : IBackupEngine
 				computeHashProgress,
 				cancellationToken);
 
-			await runner.RunAsync(
-				record.Item,
-				new FileInfo(record.DestinationPath!),
+			record.DestinationPath = Path.Combine(plan.Destination, record.Item.RelativePath);
+
+			BackupResultItem runnerResult = await runner.RunAsync(
+				record,
 				tempFile,
 				runnerRequest,
 				cancellationToken);
 
-			record.Status = BackupItemStatus.Succeeded;
+			record.Status = runnerResult.State switch
+			{
+				BackupResultItemState.Succeeded => BackupItemStatus.Succeeded,
+				BackupResultItemState.Skipped => BackupItemStatus.Skipped,
+				_ => BackupItemStatus.Failed,
+			};
+			record.DestinationPath = runnerResult.DestinationPath;
 
 			_currentProgress = _currentProgress with
 			{

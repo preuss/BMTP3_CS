@@ -1,5 +1,7 @@
+using System.Text;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Runner;
@@ -7,40 +9,56 @@ namespace BMTP3.Core4.Engine.Runner;
 internal sealed class BackupRunner : IBackupRunner
 {
 	public async Task<BackupResultItem> RunAsync(
-		BackupItem item,
-		FileInfo destinationFile,
+		BackupRecord record,
 		FileInfo tempFile,
 		BackupRunnerRequest request,
 		CancellationToken cancellationToken)
 	{
-		ArgumentNullException.ThrowIfNull(item);
-		ArgumentNullException.ThrowIfNull(destinationFile);
+		ArgumentNullException.ThrowIfNull(record);
 		ArgumentNullException.ThrowIfNull(tempFile);
 		ArgumentNullException.ThrowIfNull(request);
 
-		destinationFile.Directory?.Create();
+		string destinationDir = Path.GetDirectoryName(record.DestinationPath)
+			?? throw new InvalidOperationException($"Cannot determine destination directory from '{record.DestinationPath}'.");
 
-		string finalPath = ResolveTargetPath(destinationFile.FullName, request.CollisionStrategy);
+		string finalPath = CollisionHelpers.ResolveTargetPath(
+			destinationDir,
+			record.Item.FileName,
+			request.CollisionStrategy,
+			out CollisionResolution resolution);
+
+		switch(resolution)
+		{
+			case CollisionResolution.Skip:
+				tempFile.Delete();
+				return ToResultItem(record.Item, destinationPath: null, BackupResultItemState.Skipped);
+
+			case CollisionResolution.Error:
+				tempFile.Delete();
+				throw new IOException($"Destination already exists: {finalPath}");
+		}
+
+		Directory.CreateDirectory(destinationDir);
 
 		FileInfo sidecarFile = new(tempFile.FullName + ".ini");
-		await BuildAndSaveSidecarAsync(item, sidecarFile, request.SidecarFormat, request.BackupStartTime, cancellationToken);
+		await BuildAndSaveSidecarAsync(record, sidecarFile, request.SidecarFormat, request.BackupStartTime, cancellationToken);
 
-		tempFile.MoveTo(finalPath, overwrite: false);
+		tempFile.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
 
 		string finalSidecarPath = finalPath + ".ini";
 		if(sidecarFile.Exists)
 		{
-			sidecarFile.MoveTo(finalSidecarPath, overwrite: false);
+			sidecarFile.MoveTo(finalSidecarPath, overwrite: resolution == CollisionResolution.Overwrite);
 		}
 
-		return ToResultItem(item, finalPath, BackupResultItemState.Succeeded);
+		return ToResultItem(record.Item, finalPath, BackupResultItemState.Succeeded);
 	}
 
-	private static async Task BuildAndSaveSidecarAsync(BackupItem item, FileInfo sidecarFile, SidecarFormat sidecarFormat, DateTimeOffset backupStartTime, CancellationToken cancellationToken)
+	private static async Task BuildAndSaveSidecarAsync(BackupRecord record, FileInfo sidecarFile, SidecarFormat sidecarFormat, DateTimeOffset backupStartTime, CancellationToken cancellationToken)
 	{
 		string content = sidecarFormat switch
 		{
-			SidecarFormat.Ini => BuildIniSidecarContent(item, backupStartTime),
+			SidecarFormat.Ini => BuildIniSidecarContent(record, backupStartTime),
 
 			SidecarFormat.None or SidecarFormat.Json => throw new NotImplementedException($"Sidecar format '{sidecarFormat}' is not yet implemented."),
 
@@ -50,36 +68,33 @@ internal sealed class BackupRunner : IBackupRunner
 		await File.WriteAllTextAsync(sidecarFile.FullName, content, cancellationToken);
 	}
 
-	private static string BuildIniSidecarContent(BackupItem item, DateTimeOffset backupStartTime)
+	private static string BuildIniSidecarContent(BackupRecord record, DateTimeOffset backupStartTime)
 	{
-		return
-			$"[Settings]{Environment.NewLine}" +
-			$"OriginalFileName={item.FileName}{Environment.NewLine}" +
-			$"CreateDateTime={item.DateCreated?.ToString("O")}{Environment.NewLine}" +
-			$"LastAccessDateTime={item.DateAccessed?.ToString("O")}{Environment.NewLine}" +
-			$"LastWriteDateTime={item.DateModified?.ToString("O")}{Environment.NewLine}" +
-			$"MediaTakenDateTime={item.DateAuthored?.ToString("O")}{Environment.NewLine}" +
-			$"RelativePath={item.RelativePath}{Environment.NewLine}" +
-			$"{Environment.NewLine}" +
-			$"[BackupInfo]{Environment.NewLine}" +
-			$"BackupDateTime={backupStartTime:O}{Environment.NewLine}";
-	}
+		var sb = new StringBuilder();
 
-	private static string ResolveTargetPath(string destinationPath, CollisionStrategy collisionStrategy)
-	{
-		if(!File.Exists(destinationPath))
+		sb.AppendLine("[Settings]");
+		sb.AppendLine($"OriginalFileName={record.Item.FileName}");
+		sb.AppendLine($"CreateDateTime={record.Metadata.CreatedDateTime?.ToString("O")}");
+		sb.AppendLine($"LastAccessDateTime={record.Metadata.AccessedDateTime?.ToString("O")}");
+		sb.AppendLine($"LastWriteDateTime={record.Metadata.ModifiedDateTime?.ToString("O")}");
+		sb.AppendLine($"MediaTakenDateTime={record.Metadata.AuthoredDateTime?.ToString("O")}");
+		sb.AppendLine($"RelativePath={record.Item.RelativePath}");
+		sb.AppendLine();
+
+		sb.AppendLine("[BackupInfo]");
+		sb.AppendLine($"BackupDateTime={backupStartTime:O}");
+		sb.AppendLine();
+
+		if(record.Metadata.ComputedHashes is { Count: > 0 })
 		{
-			return destinationPath;
+			sb.AppendLine("[Hashes]");
+			foreach(KeyValuePair<HashType, string> hash in record.Metadata.ComputedHashes)
+			{
+				sb.AppendLine($"{hash.Key}={hash.Value}");
+			}
 		}
 
-		switch(collisionStrategy)
-		{
-			case CollisionStrategy.Error:
-				throw new IOException($"Destination already exists: {destinationPath}");
-
-			default:
-				throw new InvalidOperationException($"Collision strategy '{collisionStrategy}' is not supported in the current Tier.");
-		}
+		return sb.ToString();
 	}
 
 	private static BackupResultItem ToResultItem(BackupItem item, string? destinationPath, BackupResultItemState state)

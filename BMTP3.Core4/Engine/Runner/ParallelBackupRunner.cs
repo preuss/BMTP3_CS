@@ -6,8 +6,7 @@ namespace BMTP3.Core4.Engine.Runner;
 internal sealed class ParallelBackupRunner : IBackupRunner
 {
 	public Task<BackupResultItem> RunAsync(
-		BackupItem item,
-		FileInfo destinationFile,
+		BackupRecord record,
 		FileInfo tempFile,
 		BackupRunnerRequest request,
 		CancellationToken cancellationToken)
