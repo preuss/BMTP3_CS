@@ -2,6 +2,8 @@
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Downloader;
+using BMTP3.Core4.Engine.Exceptions;
+using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.TimeStamp;
@@ -27,6 +29,7 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly ISessionStateService _sessionState;
 	private readonly IDownloadService _downloadService;
 	private readonly IMetadataTimestampService _metadataTimestampService;
+	private readonly IHashService _hashService;
 
 	private DirectoryInfo? _tempDir;
 
@@ -36,7 +39,8 @@ public sealed class BackupEngine : IBackupEngine
 		IBackupRunnerFactory backupRunnerFactory,
 		ISessionStateService sessionState,
 		IDownloadService downloadService,
-		IMetadataTimestampService metadataTimestampService
+		IMetadataTimestampService metadataTimestampService,
+		IHashService hashService
 	)
 	{
 		_scanner = scanner;
@@ -45,6 +49,7 @@ public sealed class BackupEngine : IBackupEngine
 		_sessionState = sessionState;
 		_downloadService = downloadService;
 		_metadataTimestampService = metadataTimestampService;
+		_hashService = hashService;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -219,6 +224,39 @@ public sealed class BackupEngine : IBackupEngine
 				CollisionStrategy = plan.CollisionStrategy,
 				BackupStartTime = backupStartTime,
 			};
+
+			try
+			{
+				// plan.ComparisonHashAlgorithms is an IReadOnlyList<HashAlgorithm> which
+				// already implements IReadOnlyCollection<HashAlgorithm>. No cast is needed.
+				IDictionary<HashAlgorithm, string> hashes = await _hashService.ComputeHashesAsync(
+					record.Item.Content,
+					plan.ComparisonHashAlgorithms!,
+					null,
+					cancellationToken);
+			} catch(OperationCanceledException)
+			{
+				throw;
+			} catch(Exception ex)
+			{
+				// Wrap hashing error in a domain exception and persist state for resume.
+				record.Status = BackupItemStatus.Failed;
+
+				BackupHashException wrapped = new("Hashing failed for backup item.", record.Item.RelativePath, ex);
+
+				try
+				{
+					await _sessionState.SaveAsync(repository.GetAll(), sessionKey, cancellationToken);
+				} catch
+				{
+					// ignore save failures here
+				}
+
+				if(plan.StopOnError)
+					throw wrapped;
+				else
+					continue; // move to next pending record
+			}
 
 			await runner.RunAsync(
 				record.Item,
