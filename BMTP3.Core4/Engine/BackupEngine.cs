@@ -2,13 +2,11 @@
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Downloader;
-using BMTP3.Core4.Engine.Exceptions;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Engine.Validation;
-using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
@@ -29,8 +27,8 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly IBackupRunnerFactory _backupRunnerFactory;
 	private readonly ISessionStateService _sessionState;
 	private readonly IDownloadService _downloadService;
-	private readonly IMetadataTimestampService _metadataTimestampService;
 	private readonly IHashService _hashService;
+	private readonly IEarliestTimestampResolutionService _earliestTimestampService;
 
 	private DirectoryInfo? _tempDir;
 
@@ -40,8 +38,8 @@ public sealed class BackupEngine : IBackupEngine
 		IBackupRunnerFactory backupRunnerFactory,
 		ISessionStateService sessionState,
 		IDownloadService downloadService,
-		IMetadataTimestampService metadataTimestampService,
-		IHashService hashService
+		IHashService hashService,
+		IEarliestTimestampResolutionService earliestTimestampService
 	)
 	{
 		_scanner = scanner;
@@ -49,8 +47,8 @@ public sealed class BackupEngine : IBackupEngine
 		_backupRunnerFactory = backupRunnerFactory;
 		_sessionState = sessionState;
 		_downloadService = downloadService;
-		_metadataTimestampService = metadataTimestampService;
 		_hashService = hashService;
+		_earliestTimestampService = earliestTimestampService;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -210,6 +208,15 @@ public sealed class BackupEngine : IBackupEngine
 				cancellationToken);
 			record.Item.ReplaceContentProvider(content);
 
+			EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveEarliestAsync(
+				content, cancellationToken);
+
+			if(earliest.Timestamp.HasValue)
+			{
+				record.Metadata.AuthoredDateTime = earliest.Timestamp;
+				record.Metadata.CreatedDateTime = earliest.Timestamp;
+			}
+
 			BackupRunnerRequest runnerRequest = new()
 			{
 				SidecarFormat = plan.SidecarFormat,
@@ -232,7 +239,7 @@ public sealed class BackupEngine : IBackupEngine
 			computeHashProgress.Report(0);
 
 			// Compute for all types of hashes required by the plan.
-			List<HashAlgorithmType> allAlgorithms = 
+			List<HashAlgorithmType> allAlgorithms =
 				plan.ComparisonHashAlgorithmTypes!
 				.Concat(plan.VerificationHashAlgorithmTypes!)
 				.Distinct()

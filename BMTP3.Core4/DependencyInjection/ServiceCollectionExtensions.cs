@@ -24,7 +24,7 @@ public static class ServiceCollectionExtensions
 
 		// Engine services
 		services.TryAddSingleton<IDownloadService, DownloadService>();
-		services.TryAddSingleton<IMetadataTimestampService, MetadataTimestampService>();
+		services.TryAddSingleton<IEarliestTimestampResolutionService, EarliestTimestampResolutionService>();
 		services.TryAddSingleton<IBackupRunnerFactory, BackupRunnerFactory>();
 		services.TryAddTransient<IBackupRunner, BackupRunner>();
 
