@@ -89,7 +89,7 @@ public sealed class BackupEngine : IBackupEngine
 		BackupSessionKey sessionKey = BackupSessionKeyFactory.Create(plan);
 
 		// ------------------------------------------------------------
-		// 5. Prepare destination
+		// 3. Prepare destination
 		//    - Create root destination folder
 		//    - Create .bmtp3 subfolder for session data (session.json, logs)
 		//    - Fail if destination is not accessible
@@ -99,7 +99,7 @@ public sealed class BackupEngine : IBackupEngine
 		Directory.CreateDirectory(metadataPath);
 
 		// ------------------------------------------------------------
-		// 3. Open source traversal (filesystem or media device)
+		// 4. Open source traversal (filesystem or media device)
 		//    - Establish access to source via ISourceTraversal
 		//    - Fail if source is not accessible
 		// ------------------------------------------------------------
@@ -112,7 +112,7 @@ public sealed class BackupEngine : IBackupEngine
 		await using ISourceTraversal traversal = _sourceTraversalFactory.Create(sourceTraversalFactoryCreateRequest);
 
 		// ------------------------------------------------------------
-		// 4. Scan source
+		// 5. Scan source
 		//    - Enumerate directories and files
 		//    - Apply include / exclude rules
 		//    - Count files and total bytes
@@ -154,7 +154,7 @@ public sealed class BackupEngine : IBackupEngine
 		progress?.Report(_currentProgress);
 
 		// ------------------------------------------------------------
-		// 4b. Resume — match scanned items against persisted summary
+		// 5b. Resume — match scanned items against persisted summary
 		//      to restore DestinationPath and processing Status
 		// ------------------------------------------------------------
 
@@ -168,28 +168,16 @@ public sealed class BackupEngine : IBackupEngine
 
 		_tempDir = tempDir;
 
-		// TODO: Loop over pendingRecords — download + run + collect results:
-		//   foreach(BackupRecord record in pendingRecords)
-		//   {
-		//       string tempFile = Path.Combine(tempDir.FullName, TempDirectoryHelper.BuildTempFileName(record.Item.FileName));
-		//       IMoveableContent content = await _downloadService.DownloadAsync(
-		//           new FileInfo(tempFile), record.Item.Content, null, cancellationToken);
-		//       record.Item.ReplaceContentProvider(content);
-		//       BackupRunnerRequest runnerRequest = new()
-		//       {
-		//           SidecarFormat = plan.SidecarFormat,
-		//           CollisionStrategy = plan.CollisionStrategy,
-		//           BackupStartTime = backupStartTime,
-		//       };
-		//       BackupResultItem result = new SequentialBackupRunner().RunAsync(
-		//           record.Item, record.DestinationPath!, tempFile, runnerRequest, cancellationToken);
-		//       results.Add(result);
-		//   }
-		// Build BackupResultItem list at the end from all records
-		// (Succeeded/Skipped from resume + results from loop).
-
-
 		IBackupRunner runner = _backupRunnerFactory.Create(new BackupRunnerFactoryCreateRequest());
+
+		// ------------------------------------------------------------
+		// 6. Process pending items
+		//    - Download content to temp file
+		//    - Compute hashes (comparison + verification)
+		//    - Transfer files: copy from source to destination via runner
+		//    - Generate sidecar files via runner
+		//    - Update progress (phase = Transferring / Hashing)
+		// ------------------------------------------------------------
 
 		foreach(BackupRecord record in pendingRecords)
 		{
@@ -274,17 +262,9 @@ public sealed class BackupEngine : IBackupEngine
 		}
 
 		// ------------------------------------------------------------
-		// 6. Transfer files
-		//    - Copy data from source to destination
-		//    - Generate sidecar files
-		//    - Update progress (phase = Transferring)
-		// ------------------------------------------------------------
-
-		// ------------------------------------------------------------
-		// 7. Execute optional features (if enabled in BackupPlan)
-		//    - Hashing
+		// 7. (Future) Optional per-item features
 		//    - Metadata extraction
-		//    - Verification
+		//    - Post-write verification
 		//    - Timestamp correction
 		// ------------------------------------------------------------
 
@@ -296,17 +276,52 @@ public sealed class BackupEngine : IBackupEngine
 
 		// ------------------------------------------------------------
 		// 9. Finalize backup result
-		//    - Collect final counters
-		//    - Determine final phase (Completed / Failed / Cancelled)
+		//    - Collect item results from all records
+		//    - Determine final state (Completed / Failed / Cancelled)
 		//    - Set failure reason if applicable
 		// ------------------------------------------------------------
+
+		IReadOnlyList<BackupRecord> allRecords = repository.GetAll();
+
+		List<BackupResultItem> itemResults = new(allRecords.Count);
+		bool anyFailed = false;
+
+		foreach(BackupRecord record in allRecords)
+		{
+			itemResults.Add(new BackupResultItem
+			{
+				Id = record.Item.Id,
+				SourcePath = record.Item.SourcePath,
+				DestinationPath = record.DestinationPath,
+				Length = (long)record.Item.Content.Length,
+				State = MapItemState(record.Status),
+			});
+
+			if(record.Status == BackupItemStatus.Failed)
+				anyFailed = true;
+		}
+
+		BackupResult result = new()
+		{
+			Name = plan.Name,
+			State = anyFailed ? BackupResultState.Failed : BackupResultState.Completed,
+			ItemResults = itemResults.AsReadOnly(),
+		};
 
 		// ------------------------------------------------------------
 		// 10. Return BackupResult
 		// ------------------------------------------------------------
 
-		throw new NotImplementedException("BackupEngine is not yet implemented.");
+		return result;
 	}
+
+	private static BackupResultItemState MapItemState(BackupItemStatus status) => status switch
+	{
+		BackupItemStatus.Succeeded => BackupResultItemState.Succeeded,
+		BackupItemStatus.Failed => BackupResultItemState.Failed,
+		BackupItemStatus.Skipped => BackupResultItemState.Skipped,
+		_ => BackupResultItemState.Skipped,
+	};
 
 	private static List<BackupRecord> FilterPendingRecords(
 		IReadOnlyList<BackupRecord> records,
