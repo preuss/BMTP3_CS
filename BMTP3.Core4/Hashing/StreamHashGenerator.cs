@@ -11,7 +11,8 @@ public class StreamHashGenerator : IHashGenerator
 		Stream stream,
 		IEnumerable<HashAlgorithmEnum> hashTypes,
 		IProgress<ulong>? progress,
-		CancellationToken ct)
+		CancellationToken ct
+	)
 	{
 		ArgumentNullException.ThrowIfNull(stream);
 		ct.ThrowIfCancellationRequested();

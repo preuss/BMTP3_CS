@@ -23,5 +23,6 @@ internal interface IHashService
 		IContent content,
 		IReadOnlyCollection<HashAlgorithm> algorithms,
 		IProgress<ulong>? progress,
-		CancellationToken cancellationToken);
+		CancellationToken cancellationToken
+	);
 }

@@ -8,5 +8,6 @@ public interface IHashGenerator
 		Stream stream,
 		IEnumerable<HashAlgorithm> hashTypes,
 		IProgress<ulong>? progress,
-		CancellationToken ct);
+		CancellationToken ct
+	);
 }
