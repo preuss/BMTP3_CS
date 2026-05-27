@@ -248,6 +248,7 @@ public sealed class BackupEngine : IBackupEngine
 				List<HashAlgorithmType> allAlgorithms = 
 					plan.ComparisonHashAlgorithmTypes!
 					.Concat(plan.VerificationHashAlgorithmTypes!)
+					.Distinct()
 					.ToList();
 
 				record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
