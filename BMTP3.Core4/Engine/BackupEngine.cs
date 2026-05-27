@@ -229,57 +229,33 @@ public sealed class BackupEngine : IBackupEngine
 				BackupStartTime = backupStartTime,
 			};
 
-			try
+			IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
 			{
-				IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
+				currentProgressItem = currentProgressItem with
 				{
-					currentProgressItem = currentProgressItem with
-					{
-						BytesProcessed = (long)bytesComputed,
-						Phase = BackupProgressItemPhase.Hashing,
-					};
-					_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
-					progress?.Report(_currentProgress);
-				});
-				// Initialize progress with 0 bytes computed to update the phase in the UI immediately.
-				computeHashProgress.Report(0);
+					BytesProcessed = (long)bytesComputed,
+					Phase = BackupProgressItemPhase.Hashing,
+				};
+				_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+				progress?.Report(_currentProgress);
+			});
 
-				// Compute for all types of hashes required by the plan.
-				List<HashAlgorithmType> allAlgorithms = 
-					plan.ComparisonHashAlgorithmTypes!
-					.Concat(plan.VerificationHashAlgorithmTypes!)
-					.Distinct()
-					.ToList();
+			// Initialize progress with 0 bytes computed to update the phase in the UI immediately.
+			computeHashProgress.Report(0);
 
-				record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
-					record.Item.Content,
-					allAlgorithms,
-					computeHashProgress,
-					cancellationToken);
+			// Compute for all types of hashes required by the plan.
+			List<HashAlgorithmType> allAlgorithms = 
+				plan.ComparisonHashAlgorithmTypes!
+				.Concat(plan.VerificationHashAlgorithmTypes!)
+				.Distinct()
+				.ToList();
 
-			} catch(OperationCanceledException)
-			{
-				throw;
-			} catch(Exception ex)
-			{
-				// Wrap hashing error in a domain exception and persist state for resume.
-				record.Status = BackupItemStatus.Failed;
-
-				BackupHashException wrapped = new("Hashing failed for backup item.", record.Item.RelativePath, ex);
-
-				try
-				{
-					await _sessionState.SaveAsync(repository.GetAll(), sessionKey, cancellationToken);
-				} catch
-				{
-					// ignore save failures here
-				}
-
-				if(plan.StopOnError)
-					throw wrapped;
-				else
-					continue; // move to next pending record
-			}
+			record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
+				record.Item.Content,
+				record.Item.RelativePath,
+				allAlgorithms,
+				computeHashProgress,
+				cancellationToken);
 
 			await runner.RunAsync(
 				record.Item,

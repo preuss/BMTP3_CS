@@ -1,4 +1,5 @@
 ﻿using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Engine.Exceptions;
 using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Models;
 
@@ -15,14 +16,24 @@ internal sealed class HashService : IHashService
 
 	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(
 		IContent content,
+		string relativePath,
 		IReadOnlyCollection<HashAlgorithmType> algorithms,
 		IProgress<ulong>? progress,
 		CancellationToken cancellationToken
 	)
 	{
-		List<HashType> hashTypes = algorithms.Select(ToHashType).ToList();
-		await using Stream stream = await content.OpenReadStreamAsync(cancellationToken);
-		return await _hashGenerator.ComputeHashesAsync(stream, hashTypes, progress, cancellationToken);
+		try
+		{
+			List<HashType> hashTypes = algorithms.Select(ToHashType).ToList();
+			await using Stream stream = await content.OpenReadStreamAsync(cancellationToken);
+			return await _hashGenerator.ComputeHashesAsync(stream, hashTypes, progress, cancellationToken);
+		} catch(OperationCanceledException)
+		{
+			throw;
+		} catch(Exception ex)
+		{
+			throw new BackupHashException("Hashing failed for backup item.", relativePath, ex);
+		}
 	}
 
 	private static HashType ToHashType(HashAlgorithmType a) => a switch
