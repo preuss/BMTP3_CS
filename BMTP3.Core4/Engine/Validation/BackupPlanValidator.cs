@@ -106,7 +106,7 @@ internal static class BackupPlanValidator
 			throw new FeatureNotImplementedException(2, "Custom output path pattern");
 
 		if(plan.BackupIndexType == BackupIndexType.Json)
-			throw new FeatureNotImplementedException(2, "Backup index: Json");
+			throw new FeatureNotImplementedException(3, "Backup index: Json");
 
 		if(plan.DryRun)
 			throw new FeatureNotImplementedException(3, "Dry run");
