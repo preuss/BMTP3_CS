@@ -153,7 +153,17 @@ public sealed class BackupEngine : IBackupEngine
 		await foreach(BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-			BackupRecord record = new() { Item = item };
+			BackupRecord record = new()
+			{
+				Item = item,
+				Metadata = new ItemMetadata
+				{
+					AuthoredDateTime = item.DateAuthored,
+					CreatedDateTime = item.DateCreated,
+					ModifiedDateTime = item.DateModified,
+					AccessedDateTime = item.DateAccessed,
+				},
+			};
 
 			repository.Add(record);
 		}
