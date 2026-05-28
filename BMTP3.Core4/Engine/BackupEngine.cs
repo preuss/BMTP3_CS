@@ -360,25 +360,28 @@ public sealed class BackupEngine : IBackupEngine
 		}
 
 		// ------------------------------------------------------------
-		// 7. (Future) Optional per-item features
-		//    - Post-write verification
-		//    - Timestamp correction
+		// 7. Final progress report
 		// ------------------------------------------------------------
 
-		// ------------------------------------------------------------
-		// 8. Handle cancellation
-		//    - Observe cancellationToken
-		//    - Stop processing gracefully if requested
-		// ------------------------------------------------------------
+		IReadOnlyList<BackupRecord> allRecords = repository.GetAll();
+
+		_currentProgress = _currentProgress with
+		{
+			CurrentPhase = BackupProgressPhase.Completed,
+			FilesSucceeded = allRecords.Count(r => r.Status == BackupItemStatus.Succeeded),
+			FilesSkipped = allRecords.Count(r => r.Status == BackupItemStatus.Skipped),
+			FilesFailed = allRecords.Count(r => r.Status == BackupItemStatus.Failed),
+		};
+		progress?.Report(_currentProgress);
 
 		// ------------------------------------------------------------
-		// 9. Finalize backup result
+		// 8. Finalize backup result
 		//    - Collect item results from all records
 		//    - Determine final state (Completed / Failed / Cancelled)
 		//    - Set failure reason if applicable
 		// ------------------------------------------------------------
 
-		IReadOnlyList<BackupRecord> allRecords = repository.GetAll();
+
 
 		List<BackupResultItem> itemResults = new(allRecords.Count);
 		bool anyFailed = false;

@@ -22,4 +22,9 @@ public enum BackupProgressPhase
 	/// to the destination.
 	/// </summary>
 	Transferring,
+
+	/// <summary>
+	/// The backup job has completed successfully.
+	/// </summary>
+	Completed,
 }
