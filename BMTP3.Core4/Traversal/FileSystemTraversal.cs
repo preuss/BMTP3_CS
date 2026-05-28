@@ -1,0 +1,109 @@
+using System.Runtime.CompilerServices;
+
+namespace BMTP3.Core4.Traversal;
+
+internal sealed class FileSystemTraversal : ISourceTraversal
+{
+	public async IAsyncEnumerable<SourceTraversalItem> TraverseAsync(
+		SourceTraversalRequest request,
+		IProgress<SourceTraversalProgress>? progress = null,
+		[EnumeratorCancellation] CancellationToken cancellationToken = default)
+	{
+		ArgumentNullException.ThrowIfNull(request);
+
+		DirectoryInfo rootDir = new(request.SourcePath);
+
+		if(!rootDir.Exists)
+			yield break;
+
+		int dirCount = 0;
+		int fileCount = 0;
+
+		await foreach(FileInfo file in EnumerateFilesRecursiveAsync(rootDir, request.Recursive, cancellationToken))
+		{
+			fileCount++;
+			progress?.Report(new SourceTraversalProgress
+			{
+				DirectoriesTraversed = dirCount,
+				FilesDiscovered = fileCount,
+			});
+
+			DateTimeOffset? created = SafeGetDate(file, f => f.CreationTimeUtc);
+			DateTimeOffset? modified = SafeGetDate(file, f => f.LastWriteTimeUtc);
+			DateTimeOffset? accessed = SafeGetDate(file, f => f.LastAccessTimeUtc);
+
+			yield return new SourceTraversalItem
+			{
+				Id = file.FullName,
+				SourcePath = file.FullName,
+				Content = new Models.FileContent(file),
+				DateCreated = created,
+				DateModified = modified,
+				DateAccessed = accessed,
+			};
+		}
+	}
+
+	private static async IAsyncEnumerable<FileInfo> EnumerateFilesRecursiveAsync(
+		DirectoryInfo dir,
+		bool recursive,
+		[EnumeratorCancellation] CancellationToken cancellationToken)
+	{
+		foreach(FileInfo file in SafeGetFiles(dir))
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+			yield return file;
+		}
+
+		if(!recursive)
+			yield break;
+
+		foreach(DirectoryInfo subDir in SafeGetDirectories(dir))
+		{
+			cancellationToken.ThrowIfCancellationRequested();
+
+			await foreach(FileInfo file in EnumerateFilesRecursiveAsync(subDir, recursive, cancellationToken))
+			{
+				yield return file;
+			}
+		}
+	}
+
+	private static IEnumerable<FileInfo> SafeGetFiles(DirectoryInfo dir)
+	{
+		try
+		{
+			return dir.EnumerateFiles();
+		}
+		catch
+		{
+			return Array.Empty<FileInfo>();
+		}
+	}
+
+	private static IEnumerable<DirectoryInfo> SafeGetDirectories(DirectoryInfo dir)
+	{
+		try
+		{
+			return dir.EnumerateDirectories();
+		}
+		catch
+		{
+			return Array.Empty<DirectoryInfo>();
+		}
+	}
+
+	private static DateTimeOffset? SafeGetDate(FileInfo file, Func<FileInfo, DateTime> selector)
+	{
+		try
+		{
+			return new DateTimeOffset(selector(file), TimeSpan.Zero);
+		}
+		catch
+		{
+			return null;
+		}
+	}
+
+	public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+}

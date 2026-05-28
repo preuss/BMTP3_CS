@@ -4,12 +4,10 @@ using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Runner;
-using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.Sidecar;
 using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Scanner;
-using BMTP3.Core4.State;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -34,9 +32,9 @@ public static class ServiceCollectionExtensions
 		services.TryAddSingleton<IBackupRunnerFactory, BackupRunnerFactory>();
 		services.TryAddTransient<IBackupRunner, BackupRunner>();
 
-		// Stubs — throw NotImplementedException at runtime
-		services.TryAddSingleton<ISourceTraversalFactory, FileSystemTraversalFactoryStub>();
-		services.TryAddSingleton<IBackupScanner, BackupScannerStub>();
+		// Traversal & scanner
+		services.TryAddSingleton<ISourceTraversalFactory, SourceTraversalFactory>();
+		services.TryAddSingleton<IBackupScanner, BackupScanner>();
 
 		// Engine
 		services.TryAddSingleton<IBackupEngine, BackupEngine>();
