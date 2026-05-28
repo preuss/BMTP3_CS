@@ -339,6 +339,9 @@ public sealed class BackupEngine : IBackupEngine
 			progress?.Report(_currentProgress);
 		}
 
+		// Cleanup empty session temp directory.
+		TempDirectoryHelper.CleanupSessionTempDirectory(_tempDir);
+
 		// ------------------------------------------------------------
 		// 7. (Future) Optional per-item features
 		//    - Post-write verification

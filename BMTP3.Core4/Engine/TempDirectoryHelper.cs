@@ -1,5 +1,6 @@
 using BMTP3.Core4.Engine.Session;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace BMTP3.Core4.Engine;
 
@@ -40,7 +41,8 @@ internal static class TempDirectoryHelper
 	public static DirectoryInfo ResolveTempDirectoryPath(
 		string destination,
 		DateTimeOffset backupStartTime,
-		BackupSessionKey sessionKey)
+		BackupSessionKey sessionKey
+	)
 	{
 		ArgumentNullException.ThrowIfNull(destination);
 		ArgumentNullException.ThrowIfNull(sessionKey);
@@ -124,10 +126,10 @@ internal static class TempDirectoryHelper
 			guidPart,
 			separatorPart,
 			basePart,
-			extensionPart);
+			extensionPart
+		);
 
-		string tempFileName =
-			$"{guidPart}{separatorPart}{adjustedBasePart}{extensionPart}";
+		string tempFileName = $"{guidPart}{separatorPart}{adjustedBasePart}{extensionPart}";
 
 		return tempFileName;
 	}
@@ -237,6 +239,52 @@ internal static class TempDirectoryHelper
 	// =========================
 	// CLEANUP
 	// =========================
+
+	// Matches: yyyyMMdd_HHmmss_{sessionId}
+	private static readonly Regex SessionTempDirPattern = new(@"^\d{8}_\d{6}_.+$", RegexOptions.Compiled);
+
+	/// <summary>
+	///     Deletes the session temp directory and all its empty subdirectories.
+	///     Only deletes if the directory contains no files.
+	///     Validates the directory name matches {timestamp}_{sessionId} format
+	///     as a safety guard against accidental deletion of arbitrary paths.
+	/// </summary>
+	/// <exception cref="ArgumentNullException"><paramref name="sessionTempDir"/> is null.</exception>
+	/// <exception cref="InvalidOperationException">Directory name does not match expected format.</exception>
+	public static void CleanupSessionTempDirectory(DirectoryInfo sessionTempDir)
+	{
+		ArgumentNullException.ThrowIfNull(sessionTempDir);
+
+		if(!sessionTempDir.Exists)
+			return;
+
+		if(!SessionTempDirPattern.IsMatch(sessionTempDir.Name))
+			throw new InvalidOperationException($"Session temp directory '{sessionTempDir.Name}' does not match expected format.");
+
+		TryDeleteIfEmpty(sessionTempDir);
+	}
+
+	private static bool TryDeleteIfEmpty(DirectoryInfo dir)
+	{
+		// If this directory has any files, it cannot be deleted
+		if(dir.EnumerateFiles().Any())
+			return false;
+
+		// Try to delete all subdirectories - do NOT short-circuit, every sub must be attempted
+		bool allSubsDeleted = true;
+
+		foreach(DirectoryInfo sub in dir.EnumerateDirectories())
+		{
+			if(!TryDeleteIfEmpty(sub))
+				allSubsDeleted = false;
+		}
+
+		if(!allSubsDeleted)
+			return false;
+
+		dir.Delete(recursive: false);
+		return true;
+	}
 
 	/// <summary>
 	/// Attempts to delete temporary files.
