@@ -34,10 +34,6 @@ public static class ServiceCollectionExtensions
 		services.TryAddSingleton<IBackupRunnerFactory, BackupRunnerFactory>();
 		services.TryAddTransient<IBackupRunner, BackupRunner>();
 
-		// Session / state
-		services.TryAddSingleton<ISummaryStore, BackupMemorySummaryStore>();
-		services.TryAddSingleton<ISessionStateService, SessionStateService>();
-
 		// Stubs — throw NotImplementedException at runtime
 		services.TryAddSingleton<ISourceTraversalFactory, FileSystemTraversalFactoryStub>();
 		services.TryAddSingleton<IBackupScanner, BackupScannerStub>();

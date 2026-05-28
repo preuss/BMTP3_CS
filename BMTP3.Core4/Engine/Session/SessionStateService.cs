@@ -25,7 +25,8 @@ internal sealed class SessionStateService : ISessionStateService
 		IReadOnlyList<BackupRecord> records,
 		BackupSessionKey sessionKey,
 		SessionResumeStrategy resumeBehavior,
-		CancellationToken ct)
+		CancellationToken cancellationToken
+	)
 	{
 		BackupSummary? summary = await _store.LoadAsync();
 		if(summary is null)
@@ -97,7 +98,8 @@ internal sealed class SessionStateService : ISessionStateService
 	/// <inheritdoc />
 	public async Task SaveAsync(
 		IReadOnlyList<BackupRecord> records,
-		BackupSessionKey sessionKey)
+		BackupSessionKey sessionKey
+	)
 	{
 		BackupSummary summary = new()
 		{

@@ -19,7 +19,7 @@ internal interface ISessionStateService
 	/// <param name="records">All records in the current session, already scanned.</param>
 	/// <param name="sessionKey">Identifies which session to resume.</param>
 	/// <param name="resumeBehavior">Controls behaviour when the scanned file list differs from the persisted summary.</param>
-	/// <param name="ct">Cancellation token.</param>
+	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <exception cref="SessionResumeMismatchException">
 	/// Thrown when <paramref name="resumeBehavior"/> is <see cref="SessionResumeStrategy.Abort"/>
 	/// and the scanned file list differs from the persisted summary.
@@ -28,7 +28,8 @@ internal interface ISessionStateService
 		IReadOnlyList<BackupRecord> records,
 		BackupSessionKey sessionKey,
 		SessionResumeStrategy resumeBehavior,
-		CancellationToken ct);
+		CancellationToken cancellationToken
+	);
 
 	/// <summary>
 	/// Persists the current state of all records as a session summary.
@@ -37,7 +38,8 @@ internal interface ISessionStateService
 	/// <param name="sessionKey">Identifies the session.</param>
 	Task SaveAsync(
 		IReadOnlyList<BackupRecord> records,
-		BackupSessionKey sessionKey);
+		BackupSessionKey sessionKey
+	);
 
 	/// <summary>
 	/// Deletes the persisted summary for the current session, if any.

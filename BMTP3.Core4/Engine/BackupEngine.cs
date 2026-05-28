@@ -11,6 +11,7 @@ using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
+using BMTP3.Core4.State;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.Logging;
 
@@ -26,7 +27,6 @@ public sealed class BackupEngine : IBackupEngine
 {
 	private readonly IBackupScanner _scanner;
 	private readonly ISourceTraversalFactory _sourceTraversalFactory;
-	private readonly ISessionStateService _sessionState;
 	private readonly IDownloadService _downloadService;
 	private readonly IHashService _hashService;
 	private readonly IEarliestTimestampResolutionService _earliestTimestampService;
@@ -38,7 +38,6 @@ public sealed class BackupEngine : IBackupEngine
 	internal BackupEngine(
 		IBackupScanner scanner,
 		ISourceTraversalFactory sourceTraversalFactory,
-		ISessionStateService sessionState,
 		IDownloadService downloadService,
 		IHashService hashService,
 		IEarliestTimestampResolutionService earliestTimestampService,
@@ -49,7 +48,6 @@ public sealed class BackupEngine : IBackupEngine
 	{
 		_scanner = scanner;
 		_sourceTraversalFactory = sourceTraversalFactory;
-		_sessionState = sessionState;
 		_downloadService = downloadService;
 		_hashService = hashService;
 		_earliestTimestampService = earliestTimestampService;
@@ -102,6 +100,9 @@ public sealed class BackupEngine : IBackupEngine
 		Directory.CreateDirectory(plan.Destination);
 		string metadataPath = Path.Combine(plan.Destination, ".bmtp3");
 		Directory.CreateDirectory(metadataPath);
+
+		var summaryStore = new BackupJsonSummaryStore(metadataPath, sessionKey.SessionId);
+		var sessionState = new SessionStateService(summaryStore);
 
 		// ------------------------------------------------------------
 		// 3b. Validate disk space — minimum free space for application
@@ -179,7 +180,7 @@ public sealed class BackupEngine : IBackupEngine
 		//      to restore DestinationPath and processing Status
 		// ------------------------------------------------------------
 
-		await _sessionState.ApplyResumeAsync(repository.GetAll(), sessionKey, plan.ResumeBehavior, cancellationToken);
+		await sessionState.ApplyResumeAsync(repository.GetAll(), sessionKey, plan.ResumeBehavior, cancellationToken);
 
 		List<BackupRecord> pendingRecords = FilterPendingRecords(repository.GetAll(), ref _currentProgress, progress);
 
@@ -338,7 +339,7 @@ public sealed class BackupEngine : IBackupEngine
 			}
 		} finally
 		{
-			await _sessionState.SaveAsync(repository.GetAll(), sessionKey);
+			await sessionState.SaveAsync(repository.GetAll(), sessionKey);
 
 			// Do this even when exception or cancel.
 			// Do not let cleanup errors mask original failure.
