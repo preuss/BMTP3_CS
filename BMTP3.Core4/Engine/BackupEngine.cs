@@ -224,22 +224,18 @@ public sealed class BackupEngine : IBackupEngine
 			DownloadRequest downloadRequest = new()
 			{
 				Destination = tempFile,
-				Source = record.Item.Content,
-				DateAuthored = record.Item.DateAuthored,
-				DateCreated = record.Item.DateCreated,
-				DateModified = record.Item.DateModified,
-				DateAccessed = record.Item.DateAccessed,
+				Item = record.Item,
+				BackupStartTime = backupStartTime,
 			};
 
-			IMoveableContent content = await _downloadService.DownloadAsync(
+			await _downloadService.DownloadAsync(
 				downloadRequest,
 				downloadProgress,
 				cancellationToken);
-			record.Item.ReplaceContentProvider(content);
 
 			// Extract earliest authored timestamp from file metadata.
 			EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveEarliestAsync(
-				content, cancellationToken);
+				record.Item.Content, cancellationToken);
 
 			if(earliest.Timestamp.HasValue)
 			{
@@ -300,8 +296,9 @@ public sealed class BackupEngine : IBackupEngine
 
 			Directory.CreateDirectory(destinationDir);
 
-			long itemLength = (long)content.Length;
-			IContent movedContent = content.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
+			IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
+			long itemLength = (long)moveableContent.Length;
+			IContent movedContent = moveableContent.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
 			record.Item.ReplaceContentProvider(movedContent);
 			record.DestinationPath = finalPath;
 
