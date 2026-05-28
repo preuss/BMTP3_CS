@@ -34,7 +34,6 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly IDiskSpaceValidator _diskSpaceValidator;
 	private readonly ILogger<BackupEngine> _logger;
 
-	private DirectoryInfo? _tempDir;
 
 	internal BackupEngine(
 		IBackupScanner scanner,
@@ -191,11 +190,9 @@ public sealed class BackupEngine : IBackupEngine
 		long totalBytesRequired = pendingRecords.Sum(r => (long)r.Item.Content.Length);
 		await _diskSpaceValidator.EnsureSufficientBackupCapacityAsync(plan.Destination, totalBytesRequired, cancellationToken);
 
-		// Prepare temp directory for staged file transfer.
-		DirectoryInfo tempDir = TempDirectoryHelper.ResolveTempDirectoryPath(plan.Destination, backupStartTime, sessionKey);
-		TempDirectoryHelper.PrepareTempDirectory(tempDir);
-
-		_tempDir = tempDir;
+		// Prepare session temp directory for staged file transfer.
+		DirectoryInfo sessionTempDir = TempDirectoryHelper.ResolveTempDirectoryPath(plan.Destination, backupStartTime, sessionKey);
+		TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
 
 		// ------------------------------------------------------------
 		// 6. Process pending items
@@ -211,7 +208,7 @@ public sealed class BackupEngine : IBackupEngine
 		foreach(BackupRecord record in pendingRecords)
 		{
 			// Create temp file path for this item.
-			FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(tempDir, record.Item.FileName);
+			FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
 			// Download content to temp file with progress reporting.
 			BackupProgressItem currentProgressItem = new()
@@ -340,7 +337,7 @@ public sealed class BackupEngine : IBackupEngine
 		}
 
 		// Cleanup empty session temp directory.
-		TempDirectoryHelper.CleanupSessionTempDirectory(_tempDir);
+		TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
 
 		// ------------------------------------------------------------
 		// 7. (Future) Optional per-item features
