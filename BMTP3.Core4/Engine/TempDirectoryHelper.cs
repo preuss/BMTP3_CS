@@ -251,17 +251,17 @@ internal static class TempDirectoryHelper
 	/// </summary>
 	/// <exception cref="ArgumentNullException"><paramref name="sessionTempDir"/> is null.</exception>
 	/// <exception cref="InvalidOperationException">Directory name does not match expected format.</exception>
-	public static void CleanupSessionTempDirectory(DirectoryInfo sessionTempDir)
+	public static bool CleanupSessionTempDirectory(DirectoryInfo sessionTempDir)
 	{
 		ArgumentNullException.ThrowIfNull(sessionTempDir);
 
-		if(!sessionTempDir.Exists)
-			return;
+		// If the directory doesn't exist, consider it already cleaned up
+		if(!sessionTempDir.Exists) return true;
 
 		if(!SessionTempDirPattern.IsMatch(sessionTempDir.Name))
 			throw new InvalidOperationException($"Session temp directory '{sessionTempDir.Name}' does not match expected format.");
 
-		TryDeleteIfEmpty(sessionTempDir);
+		return TryDeleteIfEmpty(sessionTempDir);
 	}
 
 	private static bool TryDeleteIfEmpty(DirectoryInfo dir)

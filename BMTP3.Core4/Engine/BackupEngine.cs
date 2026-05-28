@@ -190,10 +190,6 @@ public sealed class BackupEngine : IBackupEngine
 		long totalBytesRequired = pendingRecords.Sum(r => (long)r.Item.Content.Length);
 		await _diskSpaceValidator.EnsureSufficientBackupCapacityAsync(plan.Destination, totalBytesRequired, cancellationToken);
 
-		// Prepare session temp directory for staged file transfer.
-		DirectoryInfo sessionTempDir = TempDirectoryHelper.ResolveTempDirectoryPath(plan.Destination, backupStartTime, sessionKey);
-		TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
-
 		// ------------------------------------------------------------
 		// 6. Process pending items
 		//    - Download content to temp file
@@ -205,139 +201,163 @@ public sealed class BackupEngine : IBackupEngine
 		//    - Update progress (phase = Transferring / Hashing)
 		// ------------------------------------------------------------
 
-		foreach(BackupRecord record in pendingRecords)
+		DirectoryInfo sessionTempDir = TempDirectoryHelper.ResolveTempDirectoryPath(plan.Destination, backupStartTime, sessionKey);
+
+		try
 		{
-			// Create temp file path for this item.
-			FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
+			TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
 
-			// Download content to temp file with progress reporting.
-			BackupProgressItem currentProgressItem = new()
+			foreach(BackupRecord record in pendingRecords)
 			{
-				RelativePath = record.Item.RelativePath,
-				Length = (long)record.Item.Content.Length,
-				Phase = BackupProgressItemPhase.Transferring,
-			};
-			_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
-			progress?.Report(_currentProgress);
+				// Create temp file path for this item.
+				FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
-			IProgress<ulong> downloadProgress = new Progress<ulong>(bytesRead =>
-			{
-				currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
-				_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
-				progress?.Report(_currentProgress);
-			});
-			downloadProgress.Report(0);
-
-			DownloadRequest downloadRequest = new()
-			{
-				Destination = tempFile,
-				Item = record.Item,
-				BackupStartTime = backupStartTime,
-			};
-
-			await _downloadService.DownloadAsync(
-				downloadRequest,
-				downloadProgress,
-				cancellationToken);
-
-			// Extract earliest authored timestamp from file metadata.
-			EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveEarliestAsync(
-				record.Item.Content, cancellationToken);
-
-			if(earliest.Timestamp.HasValue)
-			{
-				record.Metadata.AuthoredDateTime = earliest.Timestamp;
-				record.Metadata.CreatedDateTime = earliest.Timestamp;
-			}
-
-			// Compute hashes.
-			IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
-			{
-				currentProgressItem = currentProgressItem with
+				// Download content to temp file with progress reporting.
+				BackupProgressItem currentProgressItem = new()
 				{
-					BytesProcessed = (long)bytesComputed,
-					Phase = BackupProgressItemPhase.Hashing,
+					RelativePath = record.Item.RelativePath,
+					Length = (long)record.Item.Content.Length,
+					Phase = BackupProgressItemPhase.Transferring,
 				};
 				_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
 				progress?.Report(_currentProgress);
-			});
-			computeHashProgress.Report(0);
 
-			List<HashAlgorithmType> allAlgorithms =
-				plan.ComparisonHashAlgorithmTypes!
-				.Concat(plan.VerificationHashAlgorithmTypes!)
-				.Distinct()
-				.ToList();
-
-			record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
-				record.Item.Content,
-				record.Item.RelativePath,
-				allAlgorithms,
-				computeHashProgress,
-				cancellationToken);
-
-			// ------------------------------------------------------------
-			// Commit: resolve path → move file → write sidecar
-			// ------------------------------------------------------------
-
-			string destinationDir = Path.Combine(
-				plan.Destination,
-				Path.GetDirectoryName(record.Item.RelativePath) ?? string.Empty);
-
-			string finalPath = CollisionHelpers.ResolveTargetPath(
-				destinationDir,
-				record.Item.FileName,
-				plan.CollisionStrategy,
-				out CollisionResolution resolution);
-
-			if(resolution == CollisionResolution.Skip)
-			{
-				record.Status = BackupItemStatus.Skipped;
-				continue;
-			}
-
-			if(resolution == CollisionResolution.Error)
-			{
-				throw new IOException($"Destination already exists: {finalPath}");
-			}
-
-			Directory.CreateDirectory(destinationDir);
-
-			IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
-			long itemLength = (long)moveableContent.Length;
-			IContent movedContent = moveableContent.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
-			record.Item.ReplaceContentProvider(movedContent);
-			record.DestinationPath = finalPath;
-
-			if(plan.SidecarFormat != SidecarFormat.None)
-			{
-				SidecarRequest sidecarRequest = new()
+				IProgress<ulong> downloadProgress = new Progress<ulong>(bytesRead =>
 				{
-					Format = plan.SidecarFormat,
-					OriginalFileName = record.Item.FileName,
-					RelativePath = record.Item.RelativePath,
-					CreateDateTime = record.Metadata.CreatedDateTime,
-					AccessDateTime = record.Metadata.AccessedDateTime,
-					ModifyDateTime = record.Metadata.ModifiedDateTime,
-					AuthoredDateTime = record.Metadata.AuthoredDateTime,
-					Hashes = record.Metadata.ComputedHashes,
+					currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
+					_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+					progress?.Report(_currentProgress);
+				});
+				downloadProgress.Report(0);
+
+				DownloadRequest downloadRequest = new()
+				{
+					Destination = tempFile,
+					Item = record.Item,
 					BackupStartTime = backupStartTime,
 				};
 
-				await _sidecarService.WriteAsync(finalPath, sidecarRequest, cancellationToken);
+				await _downloadService.DownloadAsync(
+					downloadRequest,
+					downloadProgress,
+					cancellationToken);
+
+				// Extract earliest authored timestamp from file metadata.
+				EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveEarliestAsync(
+					record.Item.Content, cancellationToken);
+
+				if(earliest.Timestamp.HasValue)
+				{
+					record.Metadata.AuthoredDateTime = earliest.Timestamp;
+					record.Metadata.CreatedDateTime = earliest.Timestamp;
+				}
+
+				// Compute hashes.
+				IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
+				{
+					currentProgressItem = currentProgressItem with
+					{
+						BytesProcessed = (long)bytesComputed,
+						Phase = BackupProgressItemPhase.Hashing,
+					};
+					_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+					progress?.Report(_currentProgress);
+				});
+				computeHashProgress.Report(0);
+
+				List<HashAlgorithmType> allAlgorithms =
+					plan.ComparisonHashAlgorithmTypes!
+					.Concat(plan.VerificationHashAlgorithmTypes!)
+					.Distinct()
+					.ToList();
+
+				record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
+					record.Item.Content,
+					record.Item.RelativePath,
+					allAlgorithms,
+					computeHashProgress,
+					cancellationToken);
+
+				// ------------------------------------------------------------
+				// Commit: resolve path → move file → write sidecar
+				// ------------------------------------------------------------
+
+				string destinationDir = Path.Combine(
+					plan.Destination,
+					Path.GetDirectoryName(record.Item.RelativePath) ?? string.Empty);
+
+				string finalPath = CollisionHelpers.ResolveTargetPath(
+					destinationDir,
+					record.Item.FileName,
+					plan.CollisionStrategy,
+					out CollisionResolution resolution);
+
+				if(resolution == CollisionResolution.Skip)
+				{
+					record.Status = BackupItemStatus.Skipped;
+					continue;
+				}
+
+				if(resolution == CollisionResolution.Error)
+				{
+					throw new IOException($"Destination already exists: {finalPath}");
+				}
+
+				Directory.CreateDirectory(destinationDir);
+
+				IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
+				long itemLength = (long)moveableContent.Length;
+				IContent movedContent = moveableContent.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
+				record.Item.ReplaceContentProvider(movedContent);
+				record.DestinationPath = finalPath;
+
+				if(plan.SidecarFormat != SidecarFormat.None)
+				{
+					SidecarRequest sidecarRequest = new()
+					{
+						Format = plan.SidecarFormat,
+						OriginalFileName = record.Item.FileName,
+						RelativePath = record.Item.RelativePath,
+						CreateDateTime = record.Metadata.CreatedDateTime,
+						AccessDateTime = record.Metadata.AccessedDateTime,
+						ModifyDateTime = record.Metadata.ModifiedDateTime,
+						AuthoredDateTime = record.Metadata.AuthoredDateTime,
+						Hashes = record.Metadata.ComputedHashes,
+						BackupStartTime = backupStartTime,
+					};
+
+					await _sidecarService.WriteAsync(finalPath, sidecarRequest, cancellationToken);
+				}
+
+				record.Status = BackupItemStatus.Succeeded;
+
+				_currentProgress = _currentProgress with
+				{
+					ActiveFiles = Array.Empty<BackupProgressItem>(),
+				};
+				progress?.Report(_currentProgress);
 			}
+		} finally
+		{
+			await _sessionState.SaveAsync(repository.GetAll(), sessionKey, cancellationToken);
 
-			record.Status = BackupItemStatus.Succeeded;
-
-			_currentProgress = _currentProgress with
+			// Do this even when exception or cancel.
+			// Do not let cleanup errors mask original failure.
+			if(sessionTempDir.Exists)
 			{
-				ActiveFiles = Array.Empty<BackupProgressItem>(),
-			};
-			progress?.Report(_currentProgress);
+				try
+				{
+					bool removed = TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
+					if(!removed)
+					{
+						_logger.LogDebug("Session temp directory not empty, kept: {sessionTempDir}", sessionTempDir.FullName);
+					}
+				} catch(Exception ex)
+				{
+					_logger.LogWarning(ex, "Could not clean session temp directory: {sessionTempDir}", sessionTempDir.FullName);
+				}
+			}
 		}
-
-		// Cleanup empty session temp directory.
-		TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
 
 		// ------------------------------------------------------------
 		// 7. (Future) Optional per-item features
