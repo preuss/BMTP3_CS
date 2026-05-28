@@ -306,7 +306,6 @@ public sealed class BackupEngine : IBackupEngine
 				Directory.CreateDirectory(destinationDir);
 
 				IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
-				long itemLength = (long)moveableContent.Length;
 				IContent movedContent = moveableContent.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
 				record.Item.ReplaceContentProvider(movedContent);
 				record.DestinationPath = finalPath;
@@ -339,7 +338,7 @@ public sealed class BackupEngine : IBackupEngine
 			}
 		} finally
 		{
-			await _sessionState.SaveAsync(repository.GetAll(), sessionKey, cancellationToken);
+			await _sessionState.SaveAsync(repository.GetAll(), sessionKey);
 
 			// Do this even when exception or cancel.
 			// Do not let cleanup errors mask original failure.

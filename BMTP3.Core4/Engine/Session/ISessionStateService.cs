@@ -35,14 +35,12 @@ internal interface ISessionStateService
 	/// </summary>
 	/// <param name="records">All records whose state should be persisted.</param>
 	/// <param name="sessionKey">Identifies the session.</param>
-	/// <param name="ct">Cancellation token.</param>
 	Task SaveAsync(
 		IReadOnlyList<BackupRecord> records,
-		BackupSessionKey sessionKey,
-		CancellationToken ct);
+		BackupSessionKey sessionKey);
 
 	/// <summary>
 	/// Deletes the persisted summary for the current session, if any.
 	/// </summary>
-	Task DeleteAsync(CancellationToken ct);
+	Task DeleteAsync();
 }

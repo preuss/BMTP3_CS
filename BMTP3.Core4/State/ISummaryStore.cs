@@ -1,7 +1,7 @@
 ﻿namespace BMTP3.Core4.State;
 internal interface ISummaryStore
 {
-	Task SaveAsync(BackupSummary summary, CancellationToken cancellationToken);
-	Task<BackupSummary?> LoadAsync(CancellationToken cancellationToken);
-	Task DeleteAsync(CancellationToken cancellationToken);
+	Task SaveAsync(BackupSummary summary);
+	Task<BackupSummary?> LoadAsync();
+	Task DeleteAsync();
 }

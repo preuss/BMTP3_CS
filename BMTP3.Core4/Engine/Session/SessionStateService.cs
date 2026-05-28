@@ -27,7 +27,7 @@ internal sealed class SessionStateService : ISessionStateService
 		SessionResumeStrategy resumeBehavior,
 		CancellationToken ct)
 	{
-		BackupSummary? summary = await _store.LoadAsync(ct);
+		BackupSummary? summary = await _store.LoadAsync();
 		if(summary is null)
 			return;
 
@@ -46,7 +46,7 @@ internal sealed class SessionStateService : ISessionStateService
 					throw new SessionResumeMismatchException(added, removed);
 
 				case SessionResumeStrategy.Restart:
-					await _store.DeleteAsync(ct);
+					await _store.DeleteAsync();
 					return;
 
 				case SessionResumeStrategy.Continue:
@@ -91,14 +91,13 @@ internal sealed class SessionStateService : ISessionStateService
 		}
 
 		// Persist updated state so summary matches records after resume
-		await SaveAsync(records, sessionKey, ct);
+		await SaveAsync(records, sessionKey);
 	}
 
 	/// <inheritdoc />
 	public async Task SaveAsync(
 		IReadOnlyList<BackupRecord> records,
-		BackupSessionKey sessionKey,
-		CancellationToken ct)
+		BackupSessionKey sessionKey)
 	{
 		BackupSummary summary = new()
 		{
@@ -108,13 +107,13 @@ internal sealed class SessionStateService : ISessionStateService
 			Items = records.Select(ToSummaryItem).ToList(),
 		};
 
-		await _store.SaveAsync(summary, ct);
+		await _store.SaveAsync(summary);
 	}
 
 	/// <inheritdoc />
-	public Task DeleteAsync(CancellationToken ct)
+	public Task DeleteAsync()
 	{
-		return _store.DeleteAsync(ct);
+		return _store.DeleteAsync();
 	}
 
 	/// <summary>
