@@ -1,18 +1,14 @@
-﻿using BMTP3.Core4.Models;
+﻿using BMTP3.Core4.Engine.Helpers;
+using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Downloader;
 internal sealed class DownloadService : IDownloadService
 {
 	private const int BufferSize = 80 * 1024; // 80 KB buffer size for efficient copying
-	public async Task<IMoveableContent> DownloadAsync(
-		FileInfo destination,
-		IContent source,
-		IProgress<ulong>? totalBytesReadProgress,
-		CancellationToken cancellationToken
-	)
+	public async Task<IMoveableContent> DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken)
 	{
-		await using Stream sourceStream = await source.OpenReadStreamAsync(cancellationToken);
-		await using FileStream destStream = destination.Create();
+		await using Stream sourceStream = await request.Source.OpenReadStreamAsync(cancellationToken);
+		await using FileStream destStream = request.Destination.Create();
 		ulong totalBytesRead = 0;
 		byte[] buffer = new byte[BufferSize];
 		int read;
@@ -20,8 +16,16 @@ internal sealed class DownloadService : IDownloadService
 		{
 			await destStream.WriteAsync(buffer.AsMemory(0, read), cancellationToken);
 			totalBytesRead += (ulong)read;
-			totalBytesReadProgress?.Report((ulong)totalBytesRead);
+			progress?.Report((ulong)totalBytesRead);
 		}
-		return new MoveableFileContent(destination.FullName);
+
+		DateTime sourceLocal = TimestampHelpers.FindEarliestValidDate(
+			request.DateAuthored, request.DateCreated, request.DateModified, request.DateAccessed).LocalDateTime;
+
+		request.Destination.CreationTime = sourceLocal;
+		request.Destination.LastAccessTime = sourceLocal;
+		request.Destination.LastWriteTime = sourceLocal;
+
+		return new MoveableFileContent(request.Destination.FullName);
 	}
 }

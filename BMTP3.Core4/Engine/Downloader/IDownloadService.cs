@@ -3,10 +3,5 @@
 namespace BMTP3.Core4.Engine.Downloader;
 internal interface IDownloadService
 {
-	Task<IMoveableContent> DownloadAsync(
-		FileInfo destination,
-		IContent source,
-		IProgress<ulong>? totalBytesReadProgress,
-		CancellationToken cancellationToken
-	);
+	Task<IMoveableContent> DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken);
 }

@@ -221,9 +221,18 @@ public sealed class BackupEngine : IBackupEngine
 			});
 			downloadProgress.Report(0);
 
+			DownloadRequest downloadRequest = new()
+			{
+				Destination = tempFile,
+				Source = record.Item.Content,
+				DateAuthored = record.Item.DateAuthored,
+				DateCreated = record.Item.DateCreated,
+				DateModified = record.Item.DateModified,
+				DateAccessed = record.Item.DateAccessed,
+			};
+
 			IMoveableContent content = await _downloadService.DownloadAsync(
-				tempFile,
-				record.Item.Content,
+				downloadRequest,
 				downloadProgress,
 				cancellationToken);
 			record.Item.ReplaceContentProvider(content);
@@ -413,4 +422,5 @@ public sealed class BackupEngine : IBackupEngine
 
 		return pending;
 	}
+
 }
