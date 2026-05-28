@@ -1,5 +1,6 @@
 using BMTP3.Core4.Api;
 using BMTP3.Core4.Engine;
+using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Runner;
@@ -22,6 +23,9 @@ public static class ServiceCollectionExtensions
 		// Hashing
 		services.TryAddSingleton<IHashGenerator, StreamHashGenerator>();
 		services.TryAddSingleton<IHashService, HashService>();
+
+		// Pre-flight validation
+		services.TryAddSingleton<IDiskSpaceValidator, DiskSpaceValidator>();
 
 		// Engine services
 		services.TryAddSingleton<IDownloadService, DownloadService>();

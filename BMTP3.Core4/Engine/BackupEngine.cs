@@ -1,6 +1,7 @@
 ﻿using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Session;
@@ -11,6 +12,7 @@ using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
 using BMTP3.Core4.Traversal;
+using Microsoft.Extensions.Logging;
 
 namespace BMTP3.Core4.Engine;
 
@@ -29,6 +31,8 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly IHashService _hashService;
 	private readonly IEarliestTimestampResolutionService _earliestTimestampService;
 	private readonly ISidecarService _sidecarService;
+	private readonly IDiskSpaceValidator _diskSpaceValidator;
+	private readonly ILogger<BackupEngine> _logger;
 
 	private DirectoryInfo? _tempDir;
 
@@ -39,7 +43,9 @@ public sealed class BackupEngine : IBackupEngine
 		IDownloadService downloadService,
 		IHashService hashService,
 		IEarliestTimestampResolutionService earliestTimestampService,
-		ISidecarService sidecarService
+		ISidecarService sidecarService,
+		IDiskSpaceValidator diskSpaceValidator,
+		ILogger<BackupEngine> logger
 	)
 	{
 		_scanner = scanner;
@@ -49,6 +55,8 @@ public sealed class BackupEngine : IBackupEngine
 		_hashService = hashService;
 		_earliestTimestampService = earliestTimestampService;
 		_sidecarService = sidecarService;
+		_diskSpaceValidator = diskSpaceValidator;
+		_logger = logger;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -95,6 +103,12 @@ public sealed class BackupEngine : IBackupEngine
 		Directory.CreateDirectory(plan.Destination);
 		string metadataPath = Path.Combine(plan.Destination, ".bmtp3");
 		Directory.CreateDirectory(metadataPath);
+
+		// ------------------------------------------------------------
+		// 3b. Validate disk space — minimum free space for application
+		//      (logs, metadata, temp files).
+		// ------------------------------------------------------------
+		await _diskSpaceValidator.EnsureMinimumFreeSpaceAsync(plan.Destination, cancellationToken);
 
 		// ------------------------------------------------------------
 		// 4. Open source traversal (filesystem or media device)
@@ -159,6 +173,13 @@ public sealed class BackupEngine : IBackupEngine
 		await _sessionState.ApplyResumeAsync(repository.GetAll(), sessionKey, plan.ResumeBehavior, cancellationToken);
 
 		List<BackupRecord> pendingRecords = FilterPendingRecords(repository.GetAll(), ref _currentProgress, progress);
+
+		// ------------------------------------------------------------
+		// 5c. Validate disk space — sufficient capacity for backup content
+		//      (total file size + overhead buffer).
+		// ------------------------------------------------------------
+		long totalBytesRequired = pendingRecords.Sum(r => (long)r.Item.Content.Length);
+		await _diskSpaceValidator.EnsureSufficientBackupCapacityAsync(plan.Destination, totalBytesRequired, cancellationToken);
 
 		// Prepare temp directory for staged file transfer.
 		DirectoryInfo tempDir = TempDirectoryHelper.ResolveTempDirectoryPath(plan.Destination, backupStartTime, sessionKey);
