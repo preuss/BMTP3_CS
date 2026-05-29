@@ -145,6 +145,10 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 		return dayDifference <= SameDayToleranceDays;
 	}
 
+	/// <summary>
+	///     Calculates the absolute difference in calendar days between two <see cref="DateTimeOffset" /> values
+	///     using their UTC dates.
+	/// </summary>
 	private static int GetUtcCalendarDayDifference(DateTimeOffset first, DateTimeOffset second)
 	{
 		DateOnly firstDate = DateOnly.FromDateTime(first.UtcDateTime);
@@ -234,32 +238,6 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 	///         </list>
 	///     </para>
 	/// </summary>
-	private static DateTimeOffset? ConvertToDateTimeOffset(TimestampCandidate candidate)
-	{
-		// Partial dates (year-only or year+month) are too imprecise to be useful.
-		if(candidate.DateResolution != ChronoDateResolution.FullDate)
-		{
-			return null;
-		}
-
-		if(candidate.TryToDateTimeOffset(out DateTimeOffset dto))
-		{
-			return dto;
-		}
-
-		if(candidate.TryToDateTime(out DateTime dt))
-		{
-			return new DateTimeOffset(dt, TimeSpan.Zero);
-		}
-
-		if(candidate.Date.HasValue)
-		{
-			return new DateTimeOffset(candidate.Date.Value, TimeOnly.MinValue, TimeSpan.Zero);
-		}
-
-		return null;
-	}
-
 	private static EarliestTimestampResolutionResult? ResolveCandidate(TimestampCandidate candidate)
 	{
 		if(!TryConvertToDateTimeOffset(candidate, out DateTimeOffset dto))
@@ -273,6 +251,18 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 	}
 
 
+	/// <summary>
+	///     Attempts to convert a <see cref="TimestampCandidate" /> to a <see cref="DateTimeOffset" />.
+	///     Returns <c>false</c> if the candidate does not have a full date, or if conversion fails.
+	///     <para>
+	///         Conversion is attempted in order of specificity:
+	///         <list type="number">
+	///             <item><see cref="TimestampCandidate.TryToDateTimeOffset" /> — requires Date + Time + Offset.</item>
+	///             <item><see cref="TimestampCandidate.TryToDateTime" /> — requires Date + Time (assumed UTC).</item>
+	///             <item><see cref="TimestampCandidate.Date" /> — date-only, returns midnight UTC.</item>
+	///         </list>
+	///     </para>
+	/// </summary>
 	private static bool TryConvertToDateTimeOffset(TimestampCandidate candidate, out DateTimeOffset dto)
 	{
 		dto = default;
@@ -301,6 +291,11 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 		return false;
 	}
 
+	/// <summary>
+	///     Returns <c>true</c> if the candidate has a non-null <see cref="EarliestTimestampResolutionResult.Timestamp" />
+	///     that is later than the Unix epoch (1970-01-01).
+	///     Dates before the epoch are almost certainly corrupt or default metadata values.
+	/// </summary>
 	private static bool HasValidDate(EarliestTimestampResolutionResult? resultCandidate)
 	{
 		return resultCandidate?.Timestamp != null && resultCandidate.Timestamp.Value.UtcDateTime > UnixEpoch;
