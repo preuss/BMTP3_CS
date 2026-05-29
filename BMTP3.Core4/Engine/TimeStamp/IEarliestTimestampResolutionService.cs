@@ -1,54 +1,41 @@
-using BMTP3.Core4.Engine.TimeStamp.Candidates;
-using BMTP3.Core4.Models;
-
 namespace BMTP3.Core4.Engine.TimeStamp;
 
 /// <summary>
-///     Holds the result of resolving the earliest valid timestamp from a set of metadata candidates.
-/// </summary>
-internal sealed record EarliestTimestampResolutionResult
-{
-	/// <summary>
-	///     The earliest valid timestamp found across all metadata sources,
-	///     or <c>null</c> if no candidate could be converted to a meaningful date.
-	/// </summary>
-	public DateTimeOffset? Timestamp { get; init; }
-
-	/// <summary>
-	///     The <see cref="TimestampCandidate" /> that produced the earliest timestamp.
-	///     Useful for debugging and for identifying the source metadata type (<see cref="TimestampCandidate.SourceType" />).
-	/// </summary>
-	public TimestampCandidate? Candidate { get; init; }
-}
-
-/// <summary>
 ///     Resolves the earliest valid timestamp from embedded metadata (EXIF, XMP, QuickTime, etc.)
-///     and filesystem attributes for a given piece of content.
+///     for a given piece of content, optionally applies it to the target file and updates
+///     item and metadata properties.
 ///     <para>
-///         <see cref="ResolveEarliestAsync" /> accepts an <see cref="IContent" /> instance,
-///         reads all available metadata directories, extracts timestamp candidates,
-///     converts each candidate to a <see cref="DateTimeOffset" /> (assuming UTC for
-///     timezone-naive values), filters out dates before the Unix epoch (1970-01-01),
-///     and returns the earliest (minimum UTC) value.
+///         <see cref="ResolveAndApplyEarliestAsync" /> accepts an <see cref="EarliestTimestampResolutionRequest" />
+///         containing the source content (for metadata extraction), the target file to correct,
+///         and the item/metadata objects to update.
+///         When <paramref name="enableTimestampCorrection" /> is <c>true</c>, the resolved
+///         timestamp is written to <see cref="EarliestTimestampResolutionRequest.TimestampCorrectionTarget" />
+///         and <see cref="EarliestTimestampResolutionRequest.Item" /> date properties are updated.
+///         <see cref="EarliestTimestampResolutionRequest.Metadata" /> is always updated when a timestamp is resolved.
 ///     </para>
 /// </summary>
 internal interface IEarliestTimestampResolutionService
 {
 	/// <summary>
-	///     Scans all metadata readers for timestamp candidates and returns the earliest
-	///     valid <see cref="DateTimeOffset" /> together with the source candidate.
+	///     Scans all metadata readers for timestamp candidates, resolves the earliest
+	///     valid timestamp, applies it to the target file (if enabled), and updates
+	///     item and metadata properties.
 	/// </summary>
-	/// <param name="content">
-	///     The content to extract timestamps from.
-	///     Must implement <see cref="IFileInfoSource" /> with a resolvable <see cref="FileInfo" />.
-	///     If the content does not provide file-level access, an empty result is returned.
+	/// <param name="request">
+	///     Contains the content for metadata extraction, the target file to correct,
+	///     and the item/metadata objects to update.
+	/// </param>
+	/// <param name="enableTimestampCorrection">
+	///     If <c>true</c>, the resolved timestamp is written to the target file's
+	///     filesystem attributes and the item's date properties are updated.
 	/// </param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>
 	///     An <see cref="EarliestTimestampResolutionResult" /> containing the earliest timestamp
 	///     (or <c>null</c> if none could be resolved) and the candidate that produced it.
 	/// </returns>
-	Task<EarliestTimestampResolutionResult> ResolveEarliestAsync(
-		IContent content,
+	Task<EarliestTimestampResolutionResult> ResolveAndApplyEarliestAsync(
+		EarliestTimestampResolutionRequest request,
+		bool enableTimestampCorrection,
 		CancellationToken cancellationToken);
 }

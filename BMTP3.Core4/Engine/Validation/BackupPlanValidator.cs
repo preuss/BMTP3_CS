@@ -126,9 +126,6 @@ internal static class BackupPlanValidator
 		if(plan.VerificationHashAlgorithmTypes is { Count: > 0 })
 			throw new FeatureNotImplementedException(3, "Verification hash selection");
 
-		if(plan.EnableTimestampCorrection)
-			throw new FeatureNotImplementedException(3, "Timestamp correction");
-
 		if(plan.BackupIndexType == BackupIndexType.Database)
 			throw new FeatureNotImplementedException(4, "Backup index: Database");
 

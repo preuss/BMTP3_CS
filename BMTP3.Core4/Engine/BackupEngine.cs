@@ -243,15 +243,17 @@ public sealed class BackupEngine : IBackupEngine
 					downloadProgress,
 					cancellationToken);
 
-				// Extract earliest authored timestamp from file metadata.
-				EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveEarliestAsync(
-					record.Item.Content, cancellationToken);
-
-				if(earliest.Timestamp.HasValue)
+				EarliestTimestampResolutionRequest earliestTimestampRequest = new()
 				{
-					record.Metadata.AuthoredDateTime = earliest.Timestamp;
-					record.Metadata.CreatedDateTime = earliest.Timestamp;
-				}
+					Content = record.Item.Content,
+					TimestampCorrectionTarget = tempFile,
+					Item = record.Item,
+					Metadata = record.Metadata,
+				};
+
+				EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveAndApplyEarliestAsync(
+					earliestTimestampRequest, plan.EnableTimestampCorrection, cancellationToken
+				);
 
 				// Compute hashes.
 				IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>

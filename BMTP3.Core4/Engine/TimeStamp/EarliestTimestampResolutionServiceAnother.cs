@@ -35,12 +35,13 @@ internal sealed class EarliestTimestampResolutionServiceAnother : IEarliestTimes
 	}
 
 	/// <inheritdoc />
-	public Task<EarliestTimestampResolutionResult> ResolveEarliestAsync(
-		IContent content,
+	public Task<EarliestTimestampResolutionResult> ResolveAndApplyEarliestAsync(
+		EarliestTimestampResolutionRequest request,
+		bool enableTimestampCorrection,
 		CancellationToken cancellationToken
 	)
 	{
-		if(content is not IFileInfoSource fileSource || !fileSource.TryGetFileInfo(out FileInfo file))
+		if(request.Content is not IFileInfoSource fileSource || !fileSource.TryGetFileInfo(out FileInfo file))
 		{
 			return Task.FromResult(new EarliestTimestampResolutionResult());
 		}
@@ -65,6 +66,24 @@ internal sealed class EarliestTimestampResolutionServiceAnother : IEarliestTimes
 			}
 
 			(bestValue, bestCandidate) = PickBetter(bestValue, bestCandidate, converted.Value, candidate);
+		}
+
+		if(bestValue.HasValue)
+		{
+			request.Metadata.AuthoredDateTime = bestValue;
+			request.Metadata.CreatedDateTime = bestValue;
+
+			if(enableTimestampCorrection)
+			{
+				DateTime utc = bestValue.Value.UtcDateTime;
+				request.TimestampCorrectionTarget.CreationTimeUtc = utc;
+				request.TimestampCorrectionTarget.LastWriteTimeUtc = utc;
+				request.TimestampCorrectionTarget.LastAccessTimeUtc = utc;
+
+				request.Item.DateCreated = bestValue;
+				request.Item.DateModified = bestValue;
+				request.Item.DateAccessed = bestValue;
+			}
 		}
 
 		return Task.FromResult(new EarliestTimestampResolutionResult

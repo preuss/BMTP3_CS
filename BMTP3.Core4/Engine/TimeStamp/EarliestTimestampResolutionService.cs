@@ -15,6 +15,12 @@ namespace BMTP3.Core4.Engine.TimeStamp;
 ///         apart, the more precise one wins (DateTimeOffset &#x226B; DateTime &#x226B; Date-only);
 ///         otherwise the earlier date wins regardless of precision.
 ///     </para>
+///     <para>
+///         After resolution, the service optionally applies the timestamp to the target file's
+///         filesystem attributes and updates item date properties when
+///         <paramref name="enableTimestampCorrection" /> is <c>true</c>.
+///         Metadata is always updated when a timestamp is resolved.
+///     </para>
 /// </summary>
 internal sealed class EarliestTimestampResolutionService : IEarliestTimestampResolutionService
 {
@@ -35,43 +41,51 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 	}
 
 	/// <inheritdoc />
-	public Task<EarliestTimestampResolutionResult> ResolveEarliestAsync(
-		IContent content,
+	public Task<EarliestTimestampResolutionResult> ResolveAndApplyEarliestAsync(
+		EarliestTimestampResolutionRequest request,
+		bool enableTimestampCorrection,
 		CancellationToken cancellationToken
 	)
 	{
-		if(content is not IFileInfoSource fileSource || !fileSource.TryGetFileInfo(out FileInfo file))
+		if(request.Content is not IFileInfoSource fileSource)
 		{
-			return Task.FromResult(new EarliestTimestampResolutionResult());
+			throw new InvalidOperationException($"Content must implement {nameof(IFileInfoSource)}. Actual type: {request.Content?.GetType().FullName ?? "null"}");
 		}
 
+		if(!fileSource.TryGetFileInfo(out FileInfo file))
+		{
+			throw new InvalidOperationException($"IFileInfoSource implementation did not provide a valid FileInfo. Actual type: {fileSource.GetType().FullName}");
+		}
+
+		// The real metadata extraction.
 		IReadOnlyList<TimestampCandidate> candidates = _reader.Read(file, cancellationToken);
 
-		DateTimeOffset? bestValue = null;
-		TimestampCandidate? bestCandidate = null;
+		EarliestTimestampResolutionResult best = candidates
+			.Select(ResolveCandidate)
+			.Where(HasValidDate)
+			.Aggregate(
+				new EarliestTimestampResolutionResult(),
+				PickBetter);
 
-		foreach(TimestampCandidate candidate in candidates)
+		if(best.Timestamp.HasValue)
 		{
-			DateTimeOffset? converted = ConvertToDateTimeOffset(candidate);
-			if(converted == null)
-			{
-				continue;
-			}
+			request.Metadata.AuthoredDateTime = best.Timestamp;
+			request.Metadata.CreatedDateTime = best.Timestamp;
 
-			// Dates before the Unix epoch are almost certainly corrupt or default metadata values.
-			if(converted.Value.UtcDateTime < UnixEpoch)
+			if(enableTimestampCorrection)
 			{
-				continue;
-			}
+				DateTime utc = best.Timestamp.Value.UtcDateTime;
+				request.TimestampCorrectionTarget.CreationTimeUtc = utc;
+				request.TimestampCorrectionTarget.LastWriteTimeUtc = utc;
+				request.TimestampCorrectionTarget.LastAccessTimeUtc = utc;
 
-			(bestValue, bestCandidate) = PickBetter(bestValue, bestCandidate, converted.Value, candidate);
+				request.Item.DateCreated = best.Timestamp;
+				request.Item.DateModified = best.Timestamp;
+				request.Item.DateAccessed = best.Timestamp;
+			}
 		}
 
-		return Task.FromResult(new EarliestTimestampResolutionResult
-		{
-			Timestamp = bestValue,
-			Candidate = bestCandidate,
-		});
+		return Task.FromResult(best);
 	}
 
 	/// <summary>
@@ -84,43 +98,61 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 	///         </list>
 	///     </para>
 	/// </summary>
-	private static (DateTimeOffset? Value, TimestampCandidate? Candidate) PickBetter(
-		DateTimeOffset? currentValue, TimestampCandidate? currentCandidate,
-		DateTimeOffset? challengerValue, TimestampCandidate? challengerCandidate)
+	private static EarliestTimestampResolutionResult PickBetter(
+		EarliestTimestampResolutionResult? current,
+		EarliestTimestampResolutionResult? challenger
+	)
 	{
-		if(currentValue == null)
-		{
-			return (challengerValue, challengerCandidate);
-		}
+		bool currentValid = HasValidDate(current);
+		bool challengerValid = HasValidDate(challenger);
 
-		if(challengerValue == null)
-		{
-			return (currentValue, currentCandidate);
-		}
+		if(!currentValid && !challengerValid) return new EarliestTimestampResolutionResult();
 
-		if(WithinDayTolerance(currentValue.Value, challengerValue.Value, SameDayToleranceDays))
+		if(!currentValid) return challenger!;
+
+		if(!challengerValid) return current!;
+
+
+		EarliestTimestampResolutionResult currentResult = current!;
+		EarliestTimestampResolutionResult challengerResult = challenger!;
+
+		DateTimeOffset currentTimestamp = currentResult.Timestamp!.Value;
+		DateTimeOffset challengerTimestamp = challengerResult.Timestamp!.Value;
+
+
+		if(IsWithinSameEventWindow(currentTimestamp, challengerTimestamp))
 		{
 			// Same or adjacent day: the more precise candidate wins.
-			return IsMorePrecise(currentCandidate, challengerCandidate)
-				? (currentValue, currentCandidate)
-				: (challengerValue, challengerCandidate);
+			return MostPrecise(currentResult, challengerResult);
 		}
 
 		// More than one day apart: the earlier date wins.
-		return currentValue.Value.UtcTicks <= challengerValue.Value.UtcTicks
-			? (currentValue, currentCandidate)
-			: (challengerValue, challengerCandidate);
+		if(currentTimestamp.UtcTicks <= challengerTimestamp.UtcTicks)
+		{
+			return currentResult;
+		}
+
+		return challengerResult;
 	}
 
 	/// <summary>
 	///     Returns <see langword="true" /> if two timestamps are within <paramref name="toleranceDays" />
 	///     calendar days of each other (UTC).
 	/// </summary>
-	private static bool WithinDayTolerance(DateTimeOffset a, DateTimeOffset b, int toleranceDays)
+	private static bool IsWithinSameEventWindow(DateTimeOffset first, DateTimeOffset second)
 	{
-		TimeSpan dayDiff = a.UtcDateTime.Date - b.UtcDateTime.Date;
-		return Math.Abs(dayDiff.Days) <= toleranceDays;
+		int dayDifference = GetUtcCalendarDayDifference(first, second);
+		return dayDifference <= SameDayToleranceDays;
 	}
+
+	private static int GetUtcCalendarDayDifference(DateTimeOffset first, DateTimeOffset second)
+	{
+		DateOnly firstDate = DateOnly.FromDateTime(first.UtcDateTime);
+		DateOnly secondDate = DateOnly.FromDateTime(second.UtcDateTime);
+
+		return Math.Abs(firstDate.DayNumber - secondDate.DayNumber);
+	}
+
 
 	/// <summary>
 	///     Returns <see langword="true" /> if <paramref name="candidate" /> is at least as precise
@@ -134,27 +166,47 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 	///         </list>
 	///     </para>
 	/// </summary>
-	private static bool IsMorePrecise(TimestampCandidate? candidate, TimestampCandidate? challenger)
+	private static EarliestTimestampResolutionResult MostPrecise(
+		EarliestTimestampResolutionResult current,
+		EarliestTimestampResolutionResult challenger
+	)
 	{
-		bool candidateHasOffset = candidate?.Offset.HasValue ?? false;
-		bool candidateHasTime = candidate?.Time.HasValue ?? false;
-		bool challengerHasOffset = challenger?.Offset.HasValue ?? false;
-		bool challengerHasTime = challenger?.Time.HasValue ?? false;
+		if(current == null)
+		{
+			throw new ArgumentNullException(nameof(current), "Current result must not be null.");
+		}
+		if(challenger == null)
+		{
+			throw new ArgumentNullException(nameof(challenger), "Challenger result must not be null.");
+		}
+		if(current.Candidate == null)
+		{
+			throw new ArgumentException("Current result must have a non-null Candidate.", nameof(current));
+		}
+		if(challenger.Candidate == null)
+		{
+			throw new ArgumentException("Challenger result must have a non-null Candidate.", nameof(challenger));
+		}
+
+		bool currentHasOffset = current.Candidate.Offset.HasValue;
+		bool currentHasTime = current.Candidate.Time.HasValue;
+		bool challengerHasOffset = challenger.Candidate.Offset.HasValue;
+		bool challengerHasTime = challenger.Candidate.Time.HasValue;
 
 		// A candidate with a timezone offset is more precise than one without.
-		if(candidateHasOffset != challengerHasOffset)
+		if(currentHasOffset != challengerHasOffset)
 		{
-			return candidateHasOffset;
+			return currentHasOffset ? current : challenger;
 		}
 
 		// A candidate with a time component is more precise than a date-only candidate.
-		if(candidateHasTime != challengerHasTime)
+		if(currentHasTime != challengerHasTime)
 		{
-			return candidateHasTime;
+			return currentHasTime ? current : challenger;
 		}
 
-		// Both have the same tier — treat as equally precise, keep current.
-		return true;
+		// Both have the same tier — return current (arbitrary, but deterministic).
+		return current;
 	}
 
 	/// <summary>
@@ -206,5 +258,51 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 		}
 
 		return null;
+	}
+
+	private static EarliestTimestampResolutionResult? ResolveCandidate(TimestampCandidate candidate)
+	{
+		if(!TryConvertToDateTimeOffset(candidate, out DateTimeOffset dto))
+			return null;
+
+		return new EarliestTimestampResolutionResult
+		{
+			Timestamp = dto,
+			Candidate = candidate,
+		};
+	}
+
+
+	private static bool TryConvertToDateTimeOffset(TimestampCandidate candidate, out DateTimeOffset dto)
+	{
+		dto = default;
+
+		if(candidate.DateResolution != ChronoDateResolution.FullDate)
+		{
+			return false;
+		}
+
+		if(candidate.TryToDateTimeOffset(out dto))
+		{
+			return true;
+		}
+
+		if(candidate.TryToDateTime(out DateTime dt))
+		{
+			dto = new DateTimeOffset(dt, TimeSpan.Zero);
+			return true;
+		}
+
+		if(candidate.Date.HasValue)
+		{
+			dto = new DateTimeOffset(candidate.Date.Value, TimeOnly.MinValue, TimeSpan.Zero);
+			return true;
+		}
+		return false;
+	}
+
+	private static bool HasValidDate(EarliestTimestampResolutionResult? resultCandidate)
+	{
+		return resultCandidate?.Timestamp != null && resultCandidate.Timestamp.Value.UtcDateTime > UnixEpoch;
 	}
 }
