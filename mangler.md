@@ -85,6 +85,43 @@
 
 ---
 
+## Edge Case Audit (31 May 2026)
+
+Gennemgang af CancellationToken-flow, error recovery, temp cleanup og I/O edge cases.
+
+### CancellationToken Issues
+
+| # | Issue | File | Severity |
+|---|-------|------|----------|
+| E1 | `CompositeTimestampReader` ignores CancellationToken — `Read(FileInfo, CancellationToken)` delegates to overload that passes `CancellationToken.None` to all sub-readers | `Engine/TimeStamp/Readers/CompositeTimestampReader.cs:44-48` → `:73` | **High** |
+| E2 | No `ThrowIfCancellationRequested()` at processing loop top — cancellation between items proceeds until the next async call | `Engine/BackupEngine.cs:219` | Low |
+| E3 | No `catch(OperationCanceledException)` anywhere — cancellation propagates unhandled; no graceful `BackupResult.Cancelled` | `Engine/BackupEngine.cs:215-418` | **Medium** |
+
+### Bug Fixes Needed
+
+| # | Issue | File | Severity |
+|---|-------|------|----------|
+| E4 | `MoveableFileContent.MoveTo` hardcodes `FileInfo.MoveTo(destinationPath, false)` ignoring the `overwrite` parameter — `CollisionStrategy.Overwrite` crashes with IOException | `Models/MoveableFileContent.cs:26` | **Critical** (same as I4 above) |
+| E5 | `DownloadService` uses `TimestampHelpers.FindEarliestValidDate` with `backupStartTime` as fallback — contradicts new `ResolveDate` design. Redundant filesystem + item date writes overwritten by `EarliestTimestampResolutionService` | `Engine/Downloader/DownloadService.cs:23-38` | Low (cosmetic/redundant work) |
+| E6 | No per-item try-catch in processing loop — any exception (download, hash, move, sidecar) aborts the entire backup, not just that one item | `Engine/BackupEngine.cs:219-397` | **High** |
+
+### Temp Cleanup
+
+| # | Issue | File | Severity |
+|---|-------|------|----------|
+| E7 | `CleanupSessionTempDirectory` only deletes empty directories — orphaned `.tmp` files from failed moves accumulate if `MoveTo` fails mid-session | `Engine/TempDirectoryHelper.cs:270` | Low (session cleanup is best-effort) |
+| E8 | `CleanupTempFiles` swallows all exceptions — orphaned temp files possible after crash | `Engine/TempDirectoryHelper.cs:293-314` | Low (acceptable) |
+
+### Resilience
+
+| # | Issue | Severity |
+|---|-------|----------|
+| E9 | No retry/backoff for any I/O (download, hash, move, sidecar write) | **Medium** (deferred — Core4 design choice) |
+| E10 | Locked source files — `IContent.OpenReadStreamAsync` will throw; no graceful handling | Low (fail-fast acceptable) |
+| E11 | Disk full during download — no pre-check per-item, `FileStream.WriteAsync` throws IOE | Low (rare, fail-fast acceptable) |
+
+---
+
 ## Feature Audit — Core / Core2 / Core3
 
 Gennemgang af alle features i Core (136 .cs), Core2 (150 .cs) og Core3 (19 .cs) krydsrefereret mod Core4.

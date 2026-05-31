@@ -19,16 +19,22 @@
 ### Høj prioritet
 
 - [ ] C4 — Fix `BackupPlanValidator` tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans)
-- [ ] I4 — Fix `MoveableFileContent.MoveTo` overwrite bug (`FileInfo.MoveTo(dest, false)` hardcoded)
+- [ ] I4/E4 — Fix `MoveableFileContent.MoveTo` overwrite bug (`FileInfo.MoveTo(dest, false)` hardcoded)
+- [ ] E1 — Fix `CompositeTimestampReader` så CancellationToken faktisk passes til sub-readers
+- [ ] E6 — Tilføj per-item try-catch i processing loop (BackupEngine.cs:219), markér failed items som Failed, fortsæt med næste
 - [ ] I2 — Source/output access probe i pre-flight
 - [ ] N3 — Cleanup af tomme temp-mapper i post-run
 
 ### Medium prioritet
 
+- [ ] E3 — Tilføj `catch(OperationCanceledException)` i BackupEngine så cancellation returnerer `BackupResult.Cancelled` i stedet for unhandled exception
 - [ ] I6 — Post-write verification efter fil-flytning
+- [ ] E2 — Overvej `ThrowIfCancellationRequested()` i starten af foreach-loop (BackupEngine.cs:219)
 
 ### Lav prioritet / fremtid
 
+- [ ] E5 — Fjern redundant timestamp-logik fra `DownloadService` (overrides af `EarliestTimestampResolutionService`)
+- [ ] E7 — Overvej at slette individuelle `.tmp`-filer i `CleanupSessionTempDirectory` i stedet for kun tomme dirs
 - [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup)
 - [ ] N2 — Device metadata i sidecar (`[DeviceDetails]`, `[PathMapping]`)
 - [ ] N5 — Ryd op: wire eller fjern ubrugte `BackupRunner`-klasser
