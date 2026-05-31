@@ -72,6 +72,9 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 		{
 			request.Metadata.AuthoredDateTime = best.Timestamp;
 			request.Metadata.CreatedDateTime = best.Timestamp;
+			request.Metadata.ModifiedDateTime = best.Timestamp;
+			request.Metadata.AccessedDateTime = best.Timestamp;
+			request.Metadata.MetadataChangedDateTime = best.Timestamp;
 
 			if(enableTimestampCorrection)
 			{
