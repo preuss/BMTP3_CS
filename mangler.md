@@ -1,17 +1,23 @@
 # Core4 — Mangler / Issues
 
-> Generated 29 May 2026. Updated after timestamp correction work.
+> Generated 31 May 2026. Updated after full codebase cross-reference audit.
 
 ---
 
-## Fixed in this session
+## Resolved since last update
 
-| Item | Status |
-|------|--------|
-| Timestamp correction (ResolveAndApplyEarliestAsync) | ✅ Applied to file + Item.Date* + Metadata |
-| BackupPlanValidator `EnableTimestampCorrection` gate | ✅ Gate removed |
-| `EarliestTimestampResolutionServiceAnother.cs` | ✅ Deleted (dead code) |
-| `ConvertToDateTimeOffset` dead method | ✅ Removed |
+| Item | Status | Evidence |
+|------|--------|----------|
+| Binary/hash comparison in collision handling (I2) | ✅ **DONE** | `FileCompareService` + `BinaryFileComparerSelector` + 5 algorithms (WholeFile, ChunkedSequenceEqual, ChunkedVector, ChunkedEightByte, ChunkedAvx2). `RenameCollisionResolver.ContentCompareAsync` uses it. All in `Engine/Compare/` and DI-registered. |
+| Timestamp correction (ResolveAndApplyEarliestAsync) | ✅ Applied to file + Item.Date* + Metadata | `EarliestTimestampResolutionService.ResolveAndApplyEarliestAsync` — sets all 4 timestamps on item + 3 filesystem timestamps on target file when `enableTimestampCorrection` is true. |
+| BackupPlanValidator `EnableTimestampCorrection` gate | ✅ Gate removed | Confirmed: no tier-gate for timestamp correction. |
+| `EarliestTimestampResolutionServiceAnother.cs` | ✅ Deleted (dead code) | Confirmed deleted per earlier session. |
+| `ConvertToDateTimeOffset` dead method | ✅ Removed | Confirmed removed. |
+| Post-run persistence (C1) | ✅ **DONE** | `sessionState.SaveAsync()` in `finally` block at BackupEngine.cs:400. |
+| File-backed SummaryStore (C2) | ✅ **DONE** | `BackupJsonSummaryStore` — writes JSON to `.bmtp3/{sessionId}.json` with temp-file + replace atomicity. |
+| Real filesystem traversal (C3) | ✅ **DONE** | `FileSystemTraversal` — recursive walk with SafeGetFiles/SafeGetDirectories/SafeGetDate. |
+| All dates on temp file (I3a) | ✅ **DONE** | `EarliestTimestampResolutionService` sets `CreationTimeUtc`, `LastWriteTimeUtc`, `LastAccessTimeUtc` on target file. |
+| Timestamp correction after MoveTo (I4 in old plan.md — not to be confused with I4 below) | ✅ **DONE** | Applied in `ResolveAndApplyEarliestAsync` — not in the engine's MoveTo step (the file is corrected pre-move at temp stage, survives move). |
 
 ---
 
@@ -22,10 +28,11 @@
 - **C4: BackupPlanValidator blocks all plans**
   - Tier-gates prevent even minimal plans from reaching the engine.
   - `CollisionStrategy` — only `Error` allowed (line 75-76)
-  - `ComparisonHashAlgorithmTypes` — feature-gated (line 114-115)
+  - `CollisionComparisonType` — all non-`None` blocked (lines 78-82)
+  - `SidecarFormat` — `None` and `Json` reject (lines 90-94)
+  - `ComparisonHashAlgorithmTypes` — requires non-empty (line 58-59) BUT then also blocks as feature-not-implemented (line 114-115) — **contradictory**
   - `VerificationHashAlgorithmTypes` — feature-gated (line 117-118)
   - `EnableMetadata` — feature-gated (line 120-121)
-  - `SidecarFormat` — `None` and `Json` reject (lines 90-94)
   - `IncludePatterns`/`ExcludePatterns` — feature-gated (lines 99-103)
   - Several more...
 
@@ -37,16 +44,11 @@
 
 ### Important
 
-- **I2: Binary/hash comparison missing in collision handling**
-  - No `ICollisionComparer` interface exists in Core4.
-  - `CollisionHelpers.ResolveTargetPath` only checks `File.Exists()`.
-  - Original Core has byte-by-byte and SIMD-accelerated comparison.
-  - Cannot detect false duplicates (same content, different name).
-
 - **I3: Post-write verification missing**
   - No `IPostWriteVerification` interface exists in Core4.
   - After `MoveTo`, no re-read or re-hash of the destination file.
   - Cannot detect silent corruption or failed writes.
+  - `BackupPlan.PostWriteVerification` field exists but is not implemented.
 
 - **I5: Sidecar does not match Original Core metadata richness**
   - Missing `[DeviceDetails]` / `[DriveDetails]` sections.
@@ -55,7 +57,7 @@
 
 ### Medium
 
-- **Unused variable `earliest` in BackupEngine.cs:254**
+- **Unused variable `earliest` in BackupEngine.cs:268**
   - `EarliestTimestampResolutionResult earliest = await ...`
   - Variable assigned but never read. Service now updates metadata directly.
 
@@ -66,6 +68,12 @@
 - **Step numbering jump in BackupEngine (8 → 10)**
   - Comments skip step 9 (cosmetic).
 
+- **Include/Exclude patterns not implemented**
+  - `SourceTraversalRequest` has `IncludePatterns`/`ExcludePatterns` fields, but `FileSystemTraversal` ignores them.
+
+- **DryRun not implemented**
+  - `BackupPlan.DryRun` exists but engine doesn't check it; would still download and move.
+
 ### Low / Deferred
 
 - **JSON sidecar** — `NotImplementedException` in `SidecarService` (line 14)
@@ -73,3 +81,105 @@
 - **Runner subsystem** — `IBackupRunnerFactory`/`IBackupRunner` exist but not wired (intentional — parallelism deferred)
 - **Source/output access probe** — missing, but fail-first is acceptable for now
 - **Progress reporting** — per-item `BytesProcessed` only updated during download/hash, not final state
+- **Wire Core4 into Consoles** — `ServiceCollectionExtensions.AddBMTP3Core4` exists but Consoles program still uses Core2
+
+---
+
+## Feature Audit — Core / Core2 / Core3
+
+Gennemgang af alle features i Core (136 .cs), Core2 (150 .cs) og Core3 (19 .cs) krydsrefereret mod Core4.
+Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ = Arkitekturforskellig (ikke 1:1)
+
+### Core
+
+| # | Feature | Status | Noter |
+|---|---|---|---|
+| 1 | `IBackupHandler` / handler-hierarki (Device, Drive, MediaDevice, Print, Verify) | ➡️ | Core4 har samlet `BackupEngine` i stedet for per-source handlers |
+| 2 | `IBackupScanner` / `ScannerGatherer` | ⚠️ | Core4 har `IBackupScanner` men `ScannerGathererStub` — scanner-logik mangler |
+| 3 | `IFileComparer` + 8 chunked compare algoritmer + `Md5Comparer` | ✅ | Core4 har `IFileCompareService` + `BinaryFileComparerSelector` + 5 algoritmer |
+| 4 | `ISideCarDocumentBuilder` / `ISideCarMetaDataBuilder` | ➡️ | Core4 har `ISidecarService` / `SidecarService` — anderledes interface |
+| 5 | `BackupTimeStamp` / `BackupTimeStampForDevice` / `BackupTimeStampForDrive` | ➡️ | Core4 har `IEarliestTimestampResolutionService` — langt mere avanceret |
+| 6 | `IHashCode` / `IHashCodeStringBuilder` / `HashCalculator` / `HashCode` | ✅ | Core4 har `IHashGenerator` / `IHashService` / `StreamHashGenerator` |
+| 7 | `IMessageFormatter` + `StringVariableSubstitution.Template` | ✅ | Fælles i `BMTP3.Common.MessageFormatterParser` |
+| 8 | `IBackupPathExtension` | ✅ | Core4 har `ITargetPathResolver` |
+| 9 | `IEventLogger` | ➡️ | Core4 bruger `ILogger<T>` fra MS.Extensions |
+| 10 | `IGetLatestItem` / `IGetLatestItemFromIndex` | ➡️ | Core4 har `ISessionStateService` / `IBackupRecordRepository` |
+| 11 | `BackupMaster` / `BackupHelper` / `ConfigurationHandler` | ❌ | Orchestrator/helper — nogle dele mangler i Core4 |
+| 12 | `MediaDeviceServiceProd` / `IMediaDeviceService` | ❌ | MTP kaster `NotSupportedException` i Core4 |
+| 13 | `NExifTool` / `MetadataExtractorFileInfo` / `AbstractMetadataFileInfo` | ➡️ | Core4 bruger MetadataExtractor i stedet for ExifTool |
+| 14 | `VerifyBackupHandler` | ❌ | Post-write verification mangler i Core4 (`IPostWriteVerification`) |
+| 15 | `BackupRecordDataStore` / `BackupRecordDataStorePathResolver` | ✅ | Core4 har `BackupJsonSummaryStore` / `SessionStateService` |
+| 16 | TOML config (`BackupSettingsImpl`, `BackupSettingsReader`, `ConfigModel`) | ❌ | Core4 bruger programmatisk `BackupPlan` — ingen TOML-reader |
+| 17 | `IMasterTypeRegistrar` / `ServiceLocator` (custom DI) | ➡️ | Core4 bruger MS.DependencyInjection |
+| 18 | Crypto helpers (8 x SharpHash + BouncyCastle) | ✅ | Core4 har samme i `Hashing/Crypto/` |
+| 19 | `RenameStrategyDefault` / `RenameStrategyWithTimestamp` / `RenameStrategyNumbering` | ✅ | Core4 har `RenameCollisionResolver` med 4 strategier + Custom |
+| 20 | `CopyStrategy` / `MoveStrategy` / `SymlinkStrategy` | ➡️ | Core4 har `IMoveableContent.MoveTo()` — flytning, ikke copy |
+
+### Core2
+
+| # | Feature | Status | Noter |
+|---|---|---|---|
+| 1 | `BackupEngine` / `BackupEngineSequentiel` | ➡️ | Core2 har 7-step pipeline; Core4 har strategi-baseret loop |
+| 2 | `SequentialItemPipeline` + 7 `PipelineStep` (Init→Hash→Compare→Copy→Verify→Sidecar→Finalize) | ⚠️ | Core4 har lignende flow men ikke step-klasser; verify-step mangler |
+| 3 | `PathGenerator` (path resolution) | ✅ | Core4 har `TargetPathResolver` med PreserveHierarchy/Flat/Custom |
+| 4 | `CollisionResolver` (rename/overwrite/skip) | ✅ | Core4 har `CollisionResolver` + `RenameCollisionResolver` |
+| 5 | `DestinationInspector` | ❌ | Destination inspection/scoping mangler i Core4 |
+| 6 | `MetadataReader` / `TimestampWaterfall` | ⚠️ | Core4 har `EarliestTimestampResolutionService` — mere avanceret |
+| 7 | `ItemHasher` | ✅ | Core4 har `HashService` / `StreamHashGenerator` |
+| 8 | `SidecarGenerators` (`.hash` sidecar) | ⚠️ | Core4 har `SidecarService` — JSON/INI/TEXT, INI ikke implementeret |
+| 9 | `IHashAdapter` + 8 implementeringer (MD5, SHA1, SHA256, SHA512, BLAKE3, XXH3, CRC32, CRC64) | ⚠️ | Core4 har 9 hash-typer (incl. 2 x SHA3, 2 x BLAKE3) men ikke CRC/XXH3/SHA1 |
+| 10 | `ITransferEngine` / `FileTransferEngine` | ➡️ | Core4 har `IDownloadService` + `IMoveableContent` |
+| 11 | `IFileTraversalService` / `FileTraversalService` / `TraversalConfig` | ⚠️ | Core4 har `ISourceTraversal` + `FileSystemTraversal` — ligner |
+| 12 | `BackupResiliencePipeline` (Polly retry/circuit-breaker) | ❌ | Core4 har ingen resilience/retry |
+| 13 | `BackupStateMachine` / `ProcessingStateMachine` / `ProcessingStateMachineFactory` | ❌ | Core4 har ingen state machines — inline status i record |
+| 14 | `ItemStagingArea` / `StagingItem` | ❌ | Core4 har `TempDirectoryHelper` men ikke staging abstraction |
+| 15 | `ParallelTransferOrchestrator` | ❌ | Core4 har `BackupRunner` framework men ikke implementeret |
+| 16 | `IBackupItem` / `BackupItem` / `BackupMetadata` | ➡️ | Core4 har `BackupItem` / `ItemMetadata` — lignende men forskellige |
+| 17 | `IContent` / `FileContent` / `MediaFileContent` / `GatekeptStream` / `IMoveableContent` | ✅ | Core4 har samme mønster: `IContent` / `FileContent` / `IMoveableContent` / `MoveableFileContent` |
+| 18 | `IFileScanner` / `IMediaFileScanner` / `DirectoryScanner` / `MediaFileScanner` | ⚠️ | Core4 har `FileSystemTraversal` — scanner-logik mangler for MTP/media |
+| 19 | `MTPGatekeeperService` / `MTPMtpDeviceSession` / `MTPMtpDeviceSessionFactory` / `MtpDeviceUtils` | ❌ | Core4: MTP kaster `NotSupportedException` |
+| 20 | `PathNormalizer` / `GlobMatcher` | ⚠️ | Core4 har `NormalizeRelativeDirectory`/`NormalizeCustomRelativePath` — GlobMatcher mangler |
+| 21 | `exifreader` (15 parsers, 11 readers, 14 candidates, tag definitions, formatter) | ✅ | Core4 har timestamp subsystem i `Engine/TimeStamp/` — samme kodebase flyttet |
+| 22 | `IBackupItemRepository` / `BackupItemRepository` / `IFileAttributeRepository` / `ITimestampRepository` | ❌ | Core4 har `IBackupRecordRepository` / `SessionStateService` — anderledes scope |
+| 23 | `BackupJob` / `JobState` / `BackupError` / `BackupErrorType` | ⚠️ | Core4 har `BackupPlan` / `BackupResult` / `BackupResultItem` — lignende |
+| 24 | `BackupMode` (Full/Incremental/Differential/Snapshot) | ❌ | Core4 understøtter kun full backup |
+| 25 | `CollisionResolutionStrategy` (Skip, Overwrite, Rename, Compare, Prompt) | ⚠️ | Core4 har `CollisionStrategy` + `CollisionComparisonType` — ikke `Prompt` |
+| 26 | `DuplicateHandling` (KeepAll/SkipDuplicates/Replace) | ❌ | Core4 har ikke dedup på tværs af items |
+| 27 | `ResiliencePipeline` (Default/HighLatency/MTP) | ❌ | Core4 har ingen resilience |
+| 28 | `FileCategory` (Document/Image/Video/Audio etc.) | ❌ | Core4 har ikke file kategorisering |
+| 29 | `ServiceCollectionExtensions.AddBMTP3Core2()` | ✅ | Core4 har `AddBMTP3Core4()` |
+
+### Core3
+
+Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dækker næsten alt.
+
+| # | Feature | Status | Noter |
+|---|---|---|---|
+| 1 | `IBackupEngine` / `BackupEngineSequential` | ✅ | Core4 har `IBackupEngine` / `BackupEngine` — mere avanceret |
+| 2 | `IBackupProgress` / `BackupProgress` | ✅ | Core4 har `BackupProgress` / `BackupProgressItem` |
+| 3 | `BackupPhase` (6 faser: Scan→Transfer→Metadata→Hash→Timestamp→Sidecar) | ✅ | Core4 har samme flow men ikke som enum |
+| 4 | `IBackupScanner` / `FileSystemScanner` | ⚠️ | Core4 har scanner men `ScannerGathererStub` |
+| 5 | `IFileTransfer` / `SimpleFileTransfer` (buffered copy + collision) | ➡️ | Core4 har `IDownloadService` + `IMoveableContent.MoveTo()` |
+| 6 | `IHashGenerator` / `IItemHasher` / `StreamHashGenerator` + `Blake3Digest` | ✅ | Core4 har samme mønster i `Engine/Hashing/` |
+| 7 | `IMetadataReader` / `FileMetadataReader` (basic FileInfo metadata) | ➡️ | Core4 har `EarliestTimestampResolutionService` — langt mere |
+| 8 | `ISidecarGenerator` / `SimpleSidecarGenerator` (INI .sidecar) | ⚠️ | Core4 har `SidecarService` — INI skrivning er NotImplemented |
+| 9 | `BackupItem` (immutable record with With* helpers) | ➡️ | Core4 har `BackupItem` (mutable class) — forskelligt mønster |
+| 10 | `BackupJobResult` / `BackupError` | ✅ | Core4 har `BackupResult` / `BackupResultItem` |
+| 11 | `BackupPlan` / `CollisionStrategy` / `HashType` | ✅ | Core4 har alle tre, mere udvidede |
+| 12 | `ServiceCollectionExtensions.AddBMTP3Core3()` | ✅ | Core4 har `AddBMTP3Core4()` |
+
+### Sammenfatning — væsentlige huller i Core4
+
+| Område | Hvad mangler |
+|---|---|
+| **Scanner** | `ScannerGathererStub` — ikke implementeret; MTP traversal kaster `NotSupportedException` |
+| **Verify** | `IPostWriteVerification` — ingen post-write hash check |
+| **Resilience** | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
+| **MTP** | `NotSupportedException` — ingen MTP device support |
+| **TOML config** | Ingen TOML-reader; kun programmatisk `BackupPlan` |
+| **INI sidecar** | `NotImplementedException` |
+| **DryRun** | `BackupPlan.DryRun` ignoreres |
+| **Parallel runner** | `BackupRunner` framework eksisterer men ikke implementeret |
+| **Include/Exclude patterns** | `FileSystemTraversal` ignorerer dem |
+| **Dedup/FileCategory** | Ingen dedup på tværs af sessioner |
+| **State machines** | Core4 har ikke eksplicit state machine (inline status) |

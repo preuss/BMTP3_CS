@@ -9,16 +9,14 @@ This is the third major implementation of the backup program:
 
 ## Overview
 
-BMTP3 is a reliable and extensible backup solution for Windows, designed to securely back up data from a wide range of devices.
-Supported devices include smartphones, tablets, cameras, and external drives.  
+BMTP3 is a reliable and extensible backup solution for Windows, designed to securely back up data from a wide range of devices. Supported devices include smartphones, tablets, cameras, and external drives.  
 
 Device communication is handled via popular protocols:
 - **MTP (Media Transfer Protocol)**
 - **PTP (Picture Transfer Protocol)**
 - **MSC (Mass Storage Class)**
 
-BMTP3 provides a modern command-line interface (CLI) with advanced options, progress reporting, and verification features. 
-The architecture is modular, making it easy to extend and customize for different backup scenarios.
+BMTP3 provides a modern command-line interface (CLI) with advanced options, progress reporting, and verification features. The architecture is modular, making it easy to extend and customize for different backup scenarios.
 
 ## Key Features
 
@@ -72,12 +70,22 @@ Future: [NuGet Package](https://www.nuget.org/packages/MediaDevices/)
 See `README.md` and project source for usage and API details.  
 Update documentation as new features are added.
 
+### Documentation Language and Comments
+
+All project documentation, inline code comments, and XML documentation comments must be written in English. Public API surface areas should include XML documentation summaries and parameter descriptions. Keep explanations concise, use clear examples when helpful, and avoid non-English text in code comments or public-facing docs.
+
+**Guidance:**
+- Write XML documentation for public APIs and important internal types.
+- Use English in inline comments and commit messages where they describe code behavior.
+- Keep examples short and focused; include usage snippets for public methods when relevant.
+
+This section documents the project's expectation for consistent English documentation.
+
 ## Donate
 
 You are welcome to support this project. 
 
 [![Donate](https://raw.githubusercontent.com/preuss/BMTP3_CS/dev/develop_4_ai_refactor/.github/images/donate.gif)](https://www.paypal.me/JPreuss)
-
 
 ## UUIDv7 (time-ordered UUID)
 
