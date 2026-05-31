@@ -1,8 +1,8 @@
-using System.Text;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Models;
+using System.Text;
 
 namespace BMTP3.Core4.Engine.Runner;
 
@@ -14,6 +14,11 @@ internal sealed class BackupRunner : IBackupRunner
 		BackupRunnerRequest request,
 		CancellationToken cancellationToken)
 	{
+		// NOTE: This runner is kept for reference but is no longer called
+		// by BackupEngine. Collision resolution now happens via
+		// ITargetPathResolver + ICollisionResolver in Engine/Strategies/.
+		_ = cancellationToken;
+
 		ArgumentNullException.ThrowIfNull(record);
 		ArgumentNullException.ThrowIfNull(tempFile);
 		ArgumentNullException.ThrowIfNull(request);
@@ -21,21 +26,21 @@ internal sealed class BackupRunner : IBackupRunner
 		string destinationDir = Path.GetDirectoryName(record.DestinationPath)
 			?? throw new InvalidOperationException($"Cannot determine destination directory from '{record.DestinationPath}'.");
 
-		string finalPath = CollisionHelpers.ResolveTargetPath(
-			destinationDir,
-			record.Item.FileName,
-			request.CollisionStrategy,
-			out CollisionResolution resolution);
+		string intendedPath = Path.Combine(destinationDir, record.Item.FileName);
+		string finalPath;
 
-		switch(resolution)
+		if(!File.Exists(intendedPath))
 		{
-			case CollisionResolution.Skip:
-				tempFile.Delete();
-				return ToResultItem(record.Item, destinationPath: null, BackupResultItemState.Skipped);
-
-			case CollisionResolution.Error:
-				tempFile.Delete();
-				throw new IOException($"Destination already exists: {finalPath}");
+			finalPath = intendedPath;
+		} else if(request.CollisionStrategy == CollisionStrategy.Skip)
+		{
+			return ToResultItem(record.Item, destinationPath: null, BackupResultItemState.Skipped);
+		} else if(request.CollisionStrategy == CollisionStrategy.Error)
+		{
+			throw new IOException($"Destination already exists: {intendedPath}");
+		} else
+		{
+			finalPath = intendedPath;
 		}
 
 		Directory.CreateDirectory(destinationDir);
@@ -43,12 +48,12 @@ internal sealed class BackupRunner : IBackupRunner
 		FileInfo sidecarFile = new(tempFile.FullName + ".ini");
 		await BuildAndSaveSidecarAsync(record, sidecarFile, request.SidecarFormat, request.BackupStartTime, cancellationToken);
 
-		tempFile.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
+		tempFile.MoveTo(finalPath, overwrite: request.CollisionStrategy == CollisionStrategy.Overwrite);
 
 		string finalSidecarPath = finalPath + ".ini";
 		if(sidecarFile.Exists)
 		{
-			sidecarFile.MoveTo(finalSidecarPath, overwrite: resolution == CollisionResolution.Overwrite);
+			sidecarFile.MoveTo(finalSidecarPath, overwrite: request.CollisionStrategy == CollisionStrategy.Overwrite);
 		}
 
 		return ToResultItem(record.Item, finalPath, BackupResultItemState.Succeeded);

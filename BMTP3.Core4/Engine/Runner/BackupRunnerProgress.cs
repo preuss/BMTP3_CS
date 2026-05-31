@@ -17,7 +17,7 @@ internal sealed record BackupRunnerProgress
 	/// The current high-level phase of the backup job.
 	/// </summary>
 	public BackupProgressPhase CurrentPhase { get; init; }
-	
+
 
 	// ---------------------------------------------------------------------
 	// Processing

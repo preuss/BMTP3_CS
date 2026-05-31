@@ -1,5 +1,3 @@
-using System;
-
 namespace BMTP3.Core4.Engine.Exceptions;
 
 /// <summary>
@@ -9,24 +7,24 @@ namespace BMTP3.Core4.Engine.Exceptions;
 /// </summary>
 public sealed class BackupHashException : Exception
 {
-    /// <summary>
-    /// Optional relative path of the item being hashed when the error occurred.
-    /// </summary>
-    public string? ItemRelativePath { get; }
+	/// <summary>
+	/// Optional relative path of the item being hashed when the error occurred.
+	/// </summary>
+	public string? ItemRelativePath { get; }
 
-    public BackupHashException(string message)
-        : base(message)
-    {
-    }
+	public BackupHashException(string message)
+		: base(message)
+	{
+	}
 
-    public BackupHashException(string message, Exception innerException)
-        : base(message, innerException)
-    {
-    }
+	public BackupHashException(string message, Exception innerException)
+		: base(message, innerException)
+	{
+	}
 
-    public BackupHashException(string message, string itemRelativePath, Exception innerException)
-        : base(message, innerException)
-    {
-        ItemRelativePath = itemRelativePath;
-    }
+	public BackupHashException(string message, string itemRelativePath, Exception innerException)
+		: base(message, innerException)
+	{
+		ItemRelativePath = itemRelativePath;
+	}
 }

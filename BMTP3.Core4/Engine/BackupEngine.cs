@@ -6,8 +6,10 @@ using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.Sidecar;
+using BMTP3.Core4.Engine.Strategies;
 using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Engine.Validation;
+using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
@@ -33,6 +35,8 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly ISidecarService _sidecarService;
 	private readonly IDiskSpaceValidator _diskSpaceValidator;
 	private readonly ILogger<BackupEngine> _logger;
+	private readonly ITargetPathResolver _targetPathResolver;
+	private readonly ICollisionResolver _collisionResolver;
 
 
 	internal BackupEngine(
@@ -43,7 +47,9 @@ public sealed class BackupEngine : IBackupEngine
 		IEarliestTimestampResolutionService earliestTimestampService,
 		ISidecarService sidecarService,
 		IDiskSpaceValidator diskSpaceValidator,
-		ILogger<BackupEngine> logger
+		ILogger<BackupEngine> logger,
+		ITargetPathResolver targetPathResolver,
+		ICollisionResolver collisionResolver
 	)
 	{
 		_scanner = scanner;
@@ -54,6 +60,8 @@ public sealed class BackupEngine : IBackupEngine
 		_sidecarService = sidecarService;
 		_diskSpaceValidator = diskSpaceValidator;
 		_logger = logger;
+		_targetPathResolver = targetPathResolver;
+		_collisionResolver = collisionResolver;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -101,8 +109,8 @@ public sealed class BackupEngine : IBackupEngine
 		string metadataPath = Path.Combine(plan.Destination, ".bmtp3");
 		Directory.CreateDirectory(metadataPath);
 
-		var summaryStore = new BackupJsonSummaryStore(metadataPath, sessionKey.SessionId);
-		var sessionState = new SessionStateService(summaryStore);
+		BackupJsonSummaryStore summaryStore = new(metadataPath, sessionKey.SessionId);
+		SessionStateService sessionState = new(summaryStore);
 
 		// ------------------------------------------------------------
 		// 3b. Validate disk space — minimum free space for application
@@ -210,6 +218,11 @@ public sealed class BackupEngine : IBackupEngine
 
 			foreach(BackupRecord record in pendingRecords)
 			{
+				if(record.Metadata is null)
+				{
+					record.Metadata = new ItemMetadata();
+				}
+
 				// Create temp file path for this item.
 				FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
@@ -241,7 +254,8 @@ public sealed class BackupEngine : IBackupEngine
 				await _downloadService.DownloadAsync(
 					downloadRequest,
 					downloadProgress,
-					cancellationToken);
+					cancellationToken
+				);
 
 				EarliestTimestampResolutionRequest earliestTimestampRequest = new()
 				{
@@ -279,39 +293,82 @@ public sealed class BackupEngine : IBackupEngine
 					record.Item.RelativePath,
 					allAlgorithms,
 					computeHashProgress,
-					cancellationToken);
+					cancellationToken
+				);
 
 				// ------------------------------------------------------------
 				// Commit: resolve path → move file → write sidecar
 				// ------------------------------------------------------------
+				DateTimeOffset createFileDate = ResolveDate(record.Item.DateAuthored, record.Item.DateCreated, record.Metadata.AuthoredDateTime, record.Metadata.CreatedDateTime);
+				string? strongHash = GetStrongestHash(record.Metadata.ComputedHashes);
+				TargetPathResolveRequest targetPathResolveRequest = new(
+					DestinationRoot: plan.Destination,
+					RelativePath: record.Item.RelativePath,
+					FileName: record.Item.FileName,
+					CreateFileDate: createFileDate,
+					StrongHash: strongHash,
+					ItemId: record.Item.Id,
+					OutputStructureStrategy: plan.OutputStructureStrategy,
+					CustomPattern: plan.CustomOutputPattern
+				);
+				string intendedPath = _targetPathResolver.Resolve(targetPathResolveRequest);
 
-				string destinationDir = Path.Combine(
-					plan.Destination,
-					Path.GetDirectoryName(record.Item.RelativePath) ?? string.Empty);
+				CollisionResult? collisionResult = null;
 
-				string finalPath = CollisionHelpers.ResolveTargetPath(
-					destinationDir,
-					record.Item.FileName,
-					plan.CollisionStrategy,
-					out CollisionResolution resolution);
-
-				if(resolution == CollisionResolution.Skip)
+				if(File.Exists(intendedPath))
 				{
-					record.Status = BackupItemStatus.Skipped;
-					continue;
+					// collision
+					CollisionResolveRequest collisionRequest = new()
+					{
+						SourcePath = tempFile.FullName,
+						IntendedTargetPath = intendedPath,
+
+						RelativePath = record.Item.RelativePath,
+						CreateFileDate = createFileDate,
+						ItemId = record.Item.Id,
+
+						StrongHash = strongHash,
+						DeviceName = null,
+						DeviceModel = null,
+
+						Strategy = plan.CollisionStrategy,
+
+						ComparisonType = plan.CollisionComparisonType,
+
+						RenameStrategy = plan.RenameStrategy,
+						CustomRenamePattern = plan.CustomOutputCollisionPattern,
+
+						ComparisonHashAlgorithmTypes = plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>(),
+					};
+
+					collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
+
+					switch(collisionResult.Action)
+					{
+						case CollisionResolutionAction.Skip:
+							record.Status = BackupItemStatus.Skipped;
+							continue;
+
+						case CollisionResolutionAction.Move:
+						case CollisionResolutionAction.Overwrite:
+							break;
+					}
 				}
 
-				if(resolution == CollisionResolution.Error)
+				string targetPath = collisionResult?.TargetPath ?? intendedPath;
+				bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
+
+				string? targetDir = Path.GetDirectoryName(targetPath);
+				if(!string.IsNullOrEmpty(targetDir))
 				{
-					throw new IOException($"Destination already exists: {finalPath}");
+					Directory.CreateDirectory(targetDir);
 				}
 
-				Directory.CreateDirectory(destinationDir);
-
+				// We know that record.Item.Content is IMoveableContent because it was created by the BackupScanner which always creates items with moveable content.
 				IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
-				IContent movedContent = moveableContent.MoveTo(finalPath, overwrite: resolution == CollisionResolution.Overwrite);
+				IContent movedContent = moveableContent.MoveTo(targetPath, overwrite: overwrite);
 				record.Item.ReplaceContentProvider(movedContent);
-				record.DestinationPath = finalPath;
+				record.DestinationPath = targetPath;
 
 				if(plan.SidecarFormat != SidecarFormat.None)
 				{
@@ -328,7 +385,7 @@ public sealed class BackupEngine : IBackupEngine
 						BackupStartTime = backupStartTime,
 					};
 
-					await _sidecarService.WriteAsync(finalPath, sidecarRequest, cancellationToken);
+					await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
 				}
 
 				record.Status = BackupItemStatus.Succeeded;
@@ -455,4 +512,52 @@ public sealed class BackupEngine : IBackupEngine
 		return pending;
 	}
 
+	private static DateTimeOffset ResolveDate(params DateTimeOffset?[] dates)
+	{
+		DateTimeOffset unixEpoch = new(1970, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+		DateTimeOffset earliest = dates
+			.Where(d => d.HasValue && d.Value > unixEpoch)
+			.Select(d => d!.Value)
+			.DefaultIfEmpty()
+			.Min();
+
+		if(earliest <= unixEpoch)
+		{
+			throw new InvalidOperationException("No valid authored or created date found in item or metadata.");
+		}
+
+		return earliest;
+	}
+
+	private static string? GetStrongestHash(Dictionary<HashType, string>? computedHashes)
+	{
+		if(computedHashes == null || computedHashes.Count == 0)
+		{
+			return null;
+		}
+
+		HashType[] priority =
+		[
+			HashType.BLAKE3_512,
+			HashType.SHA3_512_FIPS202,
+			HashType.SHA3_512_KECCAK,
+			HashType.BLAKE3_256,
+			HashType.SHA2_512,
+			HashType.SHA3_256_FIPS202,
+			HashType.SHA3_256_KECCAK,
+			HashType.SHA2_256,
+			HashType.MD5_128,
+		];
+
+		foreach(HashType type in priority)
+		{
+			if(computedHashes.TryGetValue(type, out string? hash))
+			{
+				return hash;
+			}
+		}
+
+		return computedHashes.Values.FirstOrDefault();
+	}
 }

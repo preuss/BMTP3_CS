@@ -9,7 +9,7 @@ internal class BackupMemoryRecordRepository : IBackupRecordRepository
 	{
 		ArgumentNullException.ThrowIfNull(record);
 
-		if (_records.Any(existing => existing.Item.Id == record.Item.Id))
+		if(_records.Any(existing => existing.Item.Id == record.Item.Id))
 		{
 			throw new InvalidOperationException($"A backup record with id '{record.Item.Id}' already exists.");
 		}

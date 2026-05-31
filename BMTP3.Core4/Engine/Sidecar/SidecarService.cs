@@ -1,6 +1,6 @@
-using System.Text;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Hashing;
+using System.Text;
 
 namespace BMTP3.Core4.Engine.Sidecar;
 
