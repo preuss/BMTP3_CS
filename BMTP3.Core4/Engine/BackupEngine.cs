@@ -283,8 +283,7 @@ public sealed class BackupEngine : IBackupEngine
 				computeHashProgress.Report(0);
 
 				List<HashAlgorithmType> allAlgorithms =
-					plan.ComparisonHashAlgorithmTypes!
-					.Concat(plan.VerificationHashAlgorithmTypes!)
+					(plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>()).Concat(plan.VerificationHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>())
 					.Distinct()
 					.ToList();
 
