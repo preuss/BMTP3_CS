@@ -65,7 +65,8 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 			.Where(HasValidDate)
 			.Aggregate(
 				new EarliestTimestampResolutionResult(),
-				PickBetter);
+				PickBetter
+			);
 
 		if(best.Timestamp.HasValue)
 		{
@@ -74,14 +75,20 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 
 			if(enableTimestampCorrection)
 			{
-				DateTime utc = best.Timestamp.Value.UtcDateTime;
-				request.TimestampCorrectionTarget.CreationTimeUtc = utc;
-				request.TimestampCorrectionTarget.LastWriteTimeUtc = utc;
-				request.TimestampCorrectionTarget.LastAccessTimeUtc = utc;
+				BackupItem item = request.Item;
 
-				request.Item.DateCreated = best.Timestamp;
-				request.Item.DateModified = best.Timestamp;
-				request.Item.DateAccessed = best.Timestamp;
+				// Only date not in filesystem - We assume that "authored" corresponds to the most meaningful timestamp for the content, and that filesystem dates should be aligned to it.
+				item.DateAuthored = best.Timestamp;
+
+				// Same as filesystem dates - we set them all to the same value for consistency, as we cannot be sure which one (created, modified, accessed) is more "correct" without additional context. This also simplifies the logic and avoids confusion from having different filesystem dates that are close but not identical.
+				item.DateCreated = best.Timestamp;
+				item.DateModified = best.Timestamp;
+				item.DateAccessed = best.Timestamp;
+
+				// Update filesystem timestamps to match the resolved timestamp. We use the same value for all three to avoid confusion and maintain consistency.
+				request.TimestampCorrectionTarget.CreationTimeUtc = item.DateCreated.Value.UtcDateTime;
+				request.TimestampCorrectionTarget.LastWriteTimeUtc = item.DateModified.Value.UtcDateTime;
+				request.TimestampCorrectionTarget.LastAccessTimeUtc = item.DateAccessed.Value.UtcDateTime;
 			}
 		}
 
