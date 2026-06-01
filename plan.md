@@ -26,10 +26,12 @@
 ### Høj prioritet
 
 - [x] E6 — Per-item try-catch i processing loop (BackupEngine.cs), markér failed items som Failed, re-throw (fail-fast)
+- [x] I6 — Post-write hash verification efter MoveTo (kun Hash, Binary fjernet — giver ikke mening efter MoveTo)
+- [x] `PostWriteVerificationType.Binary` fjernet — kun None/Hash tilbage
 
 ### Medium prioritet
 
-- [ ] I6 — Post-write verification efter fil-flytning
+- [x] I6 — Post-write verification efter fil-flytning
 
 ### Lav prioritet / fremtid
 

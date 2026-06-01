@@ -26,6 +26,7 @@
 | Step numbering jump (8→10) | ✅ **FIXED** | `// 10.` → `// 9. Return BackupResult`. |
 | DeleteEmptyDirectories | ✅ **ALREADY DONE** | Allerede implementeret via `CleanupSessionTempDirectory` + `TryDeleteIfEmpty` i finally block. |
 | E6: Per-item try-catch | ✅ **FIXED** | Per-item try-catch i processing loop. Failed items markeres som Failed, exception re-thrown (fail-fast). |
+| I6: Post-write verification | ✅ **FIXED** | Hash verification efter sidecar, før Success. `PostWriteVerificationType.Binary` fjernet — kun None/Hash. |
 
 ---
 
@@ -121,7 +122,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | 11 | `BackupMaster` / `BackupHelper` / `ConfigurationHandler` | ❌ | Orchestrator/helper — nogle dele mangler i Core4 |
 | 12 | `MediaDeviceServiceProd` / `IMediaDeviceService` | ❌ | MTP kaster `NotSupportedException` i Core4 |
 | 13 | `NExifTool` / `MetadataExtractorFileInfo` / `AbstractMetadataFileInfo` | ➡️ | Core4 bruger MetadataExtractor i stedet for ExifTool |
-| 14 | `VerifyBackupHandler` | ❌ | Post-write verification mangler i Core4 (`IPostWriteVerification`) |
+| 14 | `VerifyBackupHandler` | ⚠️ | Core4 har inline hash verification i `BackupEngine` (`plan.PostWriteVerification == Hash`). Ingen separat handler/interface. |
 | 15 | `BackupRecordDataStore` / `BackupRecordDataStorePathResolver` | ✅ | Core4 har `BackupJsonSummaryStore` / `SessionStateService` |
 | 16 | TOML config (`BackupSettingsImpl`, `BackupSettingsReader`, `ConfigModel`) | ❌ | Core4 bruger programmatisk `BackupPlan` — ingen TOML-reader |
 | 17 | `IMasterTypeRegistrar` / `ServiceLocator` (custom DI) | ➡️ | Core4 bruger MS.DependencyInjection |
@@ -134,7 +135,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | # | Feature | Status | Noter |
 |---|---|---|---|
 | 1 | `BackupEngine` / `BackupEngineSequentiel` | ➡️ | Core2 har 7-step pipeline; Core4 har strategi-baseret loop |
-| 2 | `SequentialItemPipeline` + 7 `PipelineStep` (Init→Hash→Compare→Copy→Verify→Sidecar→Finalize) | ⚠️ | Core4 har lignende flow men ikke step-klasser; verify-step mangler |
+| 2 | `SequentialItemPipeline` + 7 `PipelineStep` (Init→Hash→Compare→Copy→Verify→Sidecar→Finalize) | ⚠️ | Core4 har lignende flow men ikke step-klasser; verify-step er inline hash check |
 | 3 | `PathGenerator` (path resolution) | ✅ | Core4 har `TargetPathResolver` med PreserveHierarchy/Flat/Custom |
 | 4 | `CollisionResolver` (rename/overwrite/skip) | ✅ | Core4 har `CollisionResolver` + `RenameCollisionResolver` |
 | 5 | `DestinationInspector` | ❌ | Destination inspection/scoping mangler i Core4 |
@@ -187,7 +188,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | Område | Hvad mangler |
 |---|---|
 | **Scanner** | `ScannerGathererStub` — ikke implementeret; MTP traversal kaster `NotSupportedException` |
-| **Verify** | `IPostWriteVerification` — ingen post-write hash check |
+| **Verify** | ⚠️ | Hash verification implementeret inline i `BackupEngine`. Ingen separat `IPostWriteVerification`. |
 | **Resilience** | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
 | **MTP** | `NotSupportedException` — ingen MTP device support |
 | **TOML config** | Ingen TOML-reader; kun programmatisk `BackupPlan` |

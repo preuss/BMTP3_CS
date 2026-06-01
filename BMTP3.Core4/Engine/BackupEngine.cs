@@ -393,6 +393,28 @@ public sealed class BackupEngine : IBackupEngine
 						await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
 					}
 
+				if (plan.PostWriteVerification == PostWriteVerificationType.Hash)
+				{
+					Dictionary<HashType, string> verifyHashes = await _hashService.ComputeHashesAsync(
+						record.Item.Content,
+						record.Item.RelativePath,
+						allAlgorithms,
+						null,
+						cancellationToken
+					);
+
+					foreach (KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
+					{
+						if (verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
+							!string.Equals(kvp.Value, verifyValue, StringComparison.OrdinalIgnoreCase))
+						{
+							throw new InvalidOperationException(
+								$"Post-write verification failed for '{record.Item.SourcePath}': " +
+								$"{kvp.Key} hash mismatch.");
+						}
+					}
+				}
+
 					record.Status = BackupItemStatus.Succeeded;
 				}
 				catch (Exception ex) when (ex is not OperationCanceledException)
