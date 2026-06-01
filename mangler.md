@@ -47,15 +47,45 @@
 
 ### Medium
 
+- **E5: DownloadService redundant timestamp-logik**
+  - `DownloadService.cs:23-38` — bruger gammel `TimestampHelpers.FindEarliestValidDate` med `backupStartTime` som fallback.
+  - `EarliestTimestampResolutionService` overskriver det bagefter — ren kosmetisk.
+  - Fix: fjern timestamp-kald + filesystem writes fra `DownloadService`.
+
+- **E7: Temp cleanup sletter kun tomme dirs**
+  - `TempDirectoryHelper.cs:270` — `CleanupSessionTempDirectory` kalder `TryDeleteIfEmpty` som kun sletter hvis ingen `.tmp`-filer findes.
+  - Orphaned temp-filer efter crash akkumuleres.
+  - Fix: slet individuelle `.tmp`-filer i stedet for kun tomme dirs.
+
 - **Include/Exclude patterns not implemented**
   - `SourceTraversalRequest` has `IncludePatterns`/`ExcludePatterns` fields, but `FileSystemTraversal` ignores them.
 
 - **DryRun not implemented**
   - `BackupPlan.DryRun` exists but engine doesn't check it; would still download and move.
 
+- **JSON sidecar** — `NotImplementedException` i `SidecarService` (linje 14)
+
+- **I5: Sidecar metadata richness**
+  - Missing `[DeviceDetails]` / `[DriveDetails]` sections.
+  - Missing `[PathMapping]` section (original → sanitized path).
+  - Missing backup timestamp `BackupDateTime` (uses `StartTime`).
+
+- **N1: Destination inspection / cross-run dedup**
+  - Læs sidecar hash ved collision for at skip identiske filer.
+
+- **N5: Ryd op ubrugte `BackupRunner`-klasser**
+  - Wire eller fjern `BackupRunner`, `ParallelBackupRunner`, `LimitedParallelBackupRunner`.
+
+- **N6: Tests**
+  - Skriv tests for HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator.
+
+- **Wire Core4 into Consoles**
+  - Consoles programmet bruger stadig Core2.
+
 ### Low / Deferred
 
-- **C4: BackupPlanValidator blocks all plans** — tier-gating blokerer selv minimale plans. Skal fikses når engine er testet og features bekræftet virker. (Deferred: gør til sidst.)
+- **Validator-gates: BackupPlanValidator blokerer implementerede features** — `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. er blokeret på trods af at engine understøtter dem. **Røres ikke før alt andet er færdigt.**
+- **C4: BackupPlanValidator blocks all plans** — tier-gating blokerer selv minimale plans. **Gøres allersidst**, når engine er testet og alle features bekræftet virker.
 - **JSON sidecar** — `NotImplementedException` in `SidecarService` (line 14)
 - **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
 - **Runner subsystem** — `IBackupRunnerFactory`/`IBackupRunner` exist but not wired (intentional — parallelism deferred)

@@ -33,19 +33,23 @@
 
 - [x] I6 — Post-write verification efter fil-flytning
 
-### Lav prioritet / fremtid
+### Lav prioritet (gøres i denne rækkefølge)
 
-- [ ] C4 — Fix `BackupPlanValidator` tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans)
-- [ ] E5 — Fjern redundant timestamp-logik fra `DownloadService` (overrides af `EarliestTimestampResolutionService`)
-- [ ] E7 — Overvej at slette individuelle `.tmp`-filer i `CleanupSessionTempDirectory` i stedet for kun tomme dirs
+- [ ] E5 — Fjern redundant timestamp-logik fra `DownloadService`
+- [ ] E7 — Slet individuelle `.tmp`-filer i `CleanupSessionTempDirectory` i stedet for kun tomme dirs
+- [ ] — Implement Include/Exclude patterns i `FileSystemTraversal`
+- [ ] — Implement DryRun — skip writes når `plan.DryRun` er true
+- [ ] — JSON sidecar (currently `NotImplementedException`)
+- [ ] I5 — Device metadata i sidecar (`[DeviceDetails]`, `[PathMapping]`)
 - [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup)
-- [ ] N2 — Device metadata i sidecar (`[DeviceDetails]`, `[PathMapping]`)
 - [ ] N5 — Ryd op: wire eller fjern ubrugte `BackupRunner`-klasser
 - [ ] N6 — Skriv tests (HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator)
-- [ ] — JSON sidecar (currently `NotImplementedException`)
 - [ ] — Wire Core4 into Consoles (Consoles still uses Core2)
-- [ ] — Implement DryRun (plan field exists but engine ignores it)
-- [ ] — Implement Include/Exclude patterns (plan fields exist but traversal ignores them)
+
+### Allersidst (når alt andet er færdigt og testet)
+
+- [ ] — **Fjern validator-gates**: `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
+- [ ] C4 — Fix `BackupPlanValidator` tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans)
 
 ## Ref
 
