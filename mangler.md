@@ -73,7 +73,6 @@ Gennemgang af CancellationToken-flow, error recovery, temp cleanup og I/O edge c
 |:--|-------|------|----------|--------|
 | E1 | `CompositeTimestampReader` ignores CancellationToken | ~~`CompositeTimestampReader.cs:44-48` → `:73`~~ | **High** | ✅ **FIXED** — `CancellationToken` passes nu. Nyt interface-design: `ICompositeTimestampReader` + `TryReadCollect`. |
 | E2 | No `ThrowIfCancellationRequested()` at processing loop top | ~~`Engine/BackupEngine.cs:219`~~ | Low | ✅ **FIXED** — tilføjet i starten af foreach-loop. |
-| E3 | No `catch(OperationCanceledException)` anywhere — cancellation propagates unhandled; no graceful `BackupResult.Cancelled` | `Engine/BackupEngine.cs:215-418` | **Medium** | ❌ **Pending** |
 
 ### Bug Fixes Needed
 

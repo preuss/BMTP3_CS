@@ -29,7 +29,6 @@
 
 ### Medium prioritet
 
-- [ ] E3 — Tilføj `catch(OperationCanceledException)` i BackupEngine så cancellation returnerer `BackupResult.Cancelled` i stedet for unhandled exception
 - [ ] I6 — Post-write verification efter fil-flytning
 
 ### Lav prioritet / fremtid
