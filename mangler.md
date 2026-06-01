@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> Generated 31 May 2026. Updated after full codebase cross-reference audit.
+> **Opdateret 1 Jun 2026** — efter implementering af I4/E4, E1, E2, FileContent cleanup, earliest/ResolveDate fix, step-number fix.
 
 ---
 
@@ -18,6 +18,13 @@
 | Real filesystem traversal (C3) | ✅ **DONE** | `FileSystemTraversal` — recursive walk with SafeGetFiles/SafeGetDirectories/SafeGetDate. |
 | All dates on temp file (I3a) | ✅ **DONE** | `EarliestTimestampResolutionService` sets `CreationTimeUtc`, `LastWriteTimeUtc`, `LastAccessTimeUtc` on target file. |
 | Timestamp correction after MoveTo (I4 in old plan.md — not to be confused with I4 below) | ✅ **DONE** | Applied in `ResolveAndApplyEarliestAsync` — not in the engine's MoveTo step (the file is corrected pre-move at temp stage, survives move). |
+| I4/E4: MoveableFileContent.MoveTo overwrite bug | ✅ **FIXED** | `FileInfo.MoveTo(dest, false)` → `FileInfo.MoveTo(dest, overwrite)` — parameteren bruges nu. |
+| E1: CompositeTimestampReader CancellationToken | ✅ **FIXED + REDESIGNED** | `CancellationToken` passes nu til sub-readers. Nyt interface-design: `ITimestampReader` (fail-fast), `ICompositeTimestampReader` (TryReadCollect med bool + out errors), `TimestampReaderException` (custom exception med ReaderType). Gammel `out (Type, Exception)` overload fjernet. |
+| E2: ThrowIfCancellationRequested | ✅ **DONE** | `cancellationToken.ThrowIfCancellationRequested()` tilføjet i starten af foreach-loop (BackupEngine.cs). |
+| FileContent cleanup | ✅ **DONE** | Volatile fjernet fra `_disposed`. Dispose simplificeret (ingen indirektion). Doc comments genindsat. |
+| Ubrugt variable `earliest` | ✅ **FIXED** | `earliest.Timestamp` bruges nu direkte på linje 301 i stedet for redundant `ResolveDate()`. Kaster exception hvis null. `ResolveDate()` fjernet. |
+| Step numbering jump (8→10) | ✅ **FIXED** | `// 10.` → `// 9. Return BackupResult`. |
+| DeleteEmptyDirectories | ✅ **ALREADY DONE** | Allerede implementeret via `CleanupSessionTempDirectory` + `TryDeleteIfEmpty` i finally block. |
 
 ---
 
@@ -36,11 +43,7 @@
   - `IncludePatterns`/`ExcludePatterns` — feature-gated (lines 99-103)
   - Several more...
 
-- **I4: MoveableFileContent.MoveTo ignores overwrite parameter**
-  - File: `Models/MoveableFileContent.cs:26`
-  - `FileInfo.MoveTo(destinationPath, false)` — `overwrite` hardcoded to `false`
-  - Any run with `CollisionStrategy.Overwrite` crashes with IOException.
-  - The fix: change `false` → `overwrite`.
+
 
 ### Important
 
@@ -56,17 +59,6 @@
   - Missing backup timestamp `BackupDateTime` (uses `StartTime`).
 
 ### Medium
-
-- **Unused variable `earliest` in BackupEngine.cs:268**
-  - `EarliestTimestampResolutionResult earliest = await ...`
-  - Variable assigned but never read. Service now updates metadata directly.
-
-- **DeleteEmptyDirectories post-run missing**
-  - Original Core cleans up empty source directories after backup.
-  - Not implemented in Core4.
-
-- **Step numbering jump in BackupEngine (8 → 10)**
-  - Comments skip step 9 (cosmetic).
 
 - **Include/Exclude patterns not implemented**
   - `SourceTraversalRequest` has `IncludePatterns`/`ExcludePatterns` fields, but `FileSystemTraversal` ignores them.
@@ -91,19 +83,19 @@ Gennemgang af CancellationToken-flow, error recovery, temp cleanup og I/O edge c
 
 ### CancellationToken Issues
 
-| # | Issue | File | Severity |
-|---|-------|------|----------|
-| E1 | `CompositeTimestampReader` ignores CancellationToken — `Read(FileInfo, CancellationToken)` delegates to overload that passes `CancellationToken.None` to all sub-readers | `Engine/TimeStamp/Readers/CompositeTimestampReader.cs:44-48` → `:73` | **High** |
-| E2 | No `ThrowIfCancellationRequested()` at processing loop top — cancellation between items proceeds until the next async call | `Engine/BackupEngine.cs:219` | Low |
-| E3 | No `catch(OperationCanceledException)` anywhere — cancellation propagates unhandled; no graceful `BackupResult.Cancelled` | `Engine/BackupEngine.cs:215-418` | **Medium** |
+| # | Issue | File | Severity | Status |
+|:--|-------|------|----------|--------|
+| E1 | `CompositeTimestampReader` ignores CancellationToken | ~~`CompositeTimestampReader.cs:44-48` → `:73`~~ | **High** | ✅ **FIXED** — `CancellationToken` passes nu. Nyt interface-design: `ICompositeTimestampReader` + `TryReadCollect`. |
+| E2 | No `ThrowIfCancellationRequested()` at processing loop top | ~~`Engine/BackupEngine.cs:219`~~ | Low | ✅ **FIXED** — tilføjet i starten af foreach-loop. |
+| E3 | No `catch(OperationCanceledException)` anywhere — cancellation propagates unhandled; no graceful `BackupResult.Cancelled` | `Engine/BackupEngine.cs:215-418` | **Medium** | ❌ **Pending** |
 
 ### Bug Fixes Needed
 
-| # | Issue | File | Severity |
-|---|-------|------|----------|
-| E4 | `MoveableFileContent.MoveTo` hardcodes `FileInfo.MoveTo(destinationPath, false)` ignoring the `overwrite` parameter — `CollisionStrategy.Overwrite` crashes with IOException | `Models/MoveableFileContent.cs:26` | **Critical** (same as I4 above) |
-| E5 | `DownloadService` uses `TimestampHelpers.FindEarliestValidDate` with `backupStartTime` as fallback — contradicts new `ResolveDate` design. Redundant filesystem + item date writes overwritten by `EarliestTimestampResolutionService` | `Engine/Downloader/DownloadService.cs:23-38` | Low (cosmetic/redundant work) |
-| E6 | No per-item try-catch in processing loop — any exception (download, hash, move, sidecar) aborts the entire backup, not just that one item | `Engine/BackupEngine.cs:219-397` | **High** |
+| # | Issue | File | Severity | Status |
+|:--|-------|------|----------|--------|
+| E4 | `MoveableFileContent.MoveTo` hardcodes `FileInfo.MoveTo(destinationPath, false)` ignoring the `overwrite` parameter | `Models/MoveableFileContent.cs:26` | **Critical** (same as I4 above) | ✅ **FIXED** — `overwrite` parameteren bruges nu. |
+| E5 | `DownloadService` uses `TimestampHelpers.FindEarliestValidDate` with `backupStartTime` as fallback — redundant now that `EarliestTimestampResolutionService` handles all timestamp logic. Redundant filesystem + item date writes. | `Engine/Downloader/DownloadService.cs:23-38` | Low (cosmetic/redundant work) | ❌ **Pending** |
+| E6 | No per-item try-catch in processing loop — any exception (download, hash, move, sidecar) aborts the entire backup, not just that one item | `Engine/BackupEngine.cs:219-397` | **High** | ❌ **Pending** |
 
 ### Temp Cleanup
 

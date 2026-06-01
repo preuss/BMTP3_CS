@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 31 May 2026** — efter fuld cross-reference audit. Mange items er nu implementeret.
+> **Opdateret 1 Jun 2026** — efter implementering af I4/E4, E1, E2, FileContent cleanup, og diverse smårettelser.
 
 ## Færdige opgaver
 
@@ -13,23 +13,26 @@
 - [x] C3 — Implementer real filesystem traversal og scanner — ✅ `FileSystemTraversal` + `BackupScanner`
 - [x] I5 — Binary compare (identisk fil-detektion) i collision resolution — ✅ `FileCompareService` + 5 algorithms + `BinaryFileComparerSelector` + wired in `RenameCollisionResolver`
 - [x] N4 — Ryd op: fjern `EarliestTimestampResolutionServiceAnother.cs` — ✅ deleted
+- [x] I4/E4 — Fix `MoveableFileContent.MoveTo` overwrite bug — `FileInfo.MoveTo(dest, false)` → `overwrite`
+- [x] E1 — Fix `CompositeTimestampReader` CancellationToken + redesign: `ITimestampReader` / `ICompositeTimestampReader` / `TimestampReaderException` / `TryReadCollect`
+- [x] E2 — Tilføj `ThrowIfCancellationRequested()` i starten af foreach-loop (BackupEngine.cs:219)
+- [x] FileContent cleanup — fjernet Volatile, simplificeret dispose-logik, doc comments genindsat
+- [x] Ubrugt `earliest` — nu brugt på linje 301; `ResolveDate()` fjernet; kaster exception hvis null
+- [x] Step-number jump (8→10) — rettet til `// 9. Return BackupResult`
+- [x] DeleteEmptyDirectories — allerede implementeret via `CleanupSessionTempDirectory` i finally block
 
 ## Næste opgaver (prioriteret)
 
 ### Høj prioritet
 
 - [ ] C4 — Fix `BackupPlanValidator` tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans)
-- [ ] I4/E4 — Fix `MoveableFileContent.MoveTo` overwrite bug (`FileInfo.MoveTo(dest, false)` hardcoded)
-- [ ] E1 — Fix `CompositeTimestampReader` så CancellationToken faktisk passes til sub-readers
 - [ ] E6 — Tilføj per-item try-catch i processing loop (BackupEngine.cs:219), markér failed items som Failed, fortsæt med næste
 - [ ] I2 — Source/output access probe i pre-flight
-- [ ] N3 — Cleanup af tomme temp-mapper i post-run
 
 ### Medium prioritet
 
 - [ ] E3 — Tilføj `catch(OperationCanceledException)` i BackupEngine så cancellation returnerer `BackupResult.Cancelled` i stedet for unhandled exception
 - [ ] I6 — Post-write verification efter fil-flytning
-- [ ] E2 — Overvej `ThrowIfCancellationRequested()` i starten af foreach-loop (BackupEngine.cs:219)
 
 ### Lav prioritet / fremtid
 

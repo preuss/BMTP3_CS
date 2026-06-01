@@ -218,6 +218,8 @@ public sealed class BackupEngine : IBackupEngine
 
 			foreach (BackupRecord record in pendingRecords)
 			{
+				cancellationToken.ThrowIfCancellationRequested();
+
 				if (record.Metadata is null)
 				{
 					record.Metadata = new ItemMetadata();
