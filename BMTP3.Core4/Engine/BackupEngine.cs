@@ -193,6 +193,12 @@ public sealed class BackupEngine : IBackupEngine
 		await _diskSpaceValidator.EnsureSufficientBackupCapacityAsync(plan.Destination, totalBytesRequired, cancellationToken);
 
 		// ------------------------------------------------------------
+		// 5d. Dry-run — report discovered items, skip writes
+		// ------------------------------------------------------------
+
+		if(plan.DryRun) return BuildDryRunResult(repository, _currentProgress, progress, plan);
+
+		// ------------------------------------------------------------
 		// 6. Process pending items
 		//    - Download content to temp file
 		//    - Extract earliest timestamp from metadata
@@ -483,8 +489,7 @@ public sealed class BackupEngine : IBackupEngine
 				State = MapItemState(record.Status),
 			});
 
-			if(record.Status == BackupItemStatus.Failed)
-				anyFailed = true;
+			if(record.Status == BackupItemStatus.Failed) anyFailed = true;
 		}
 
 		BackupResult result = new()
@@ -537,6 +542,50 @@ public sealed class BackupEngine : IBackupEngine
 		}
 
 		return pending;
+	}
+
+	private static BackupResult BuildDryRunResult(
+		IBackupRecordRepository repository,
+		BackupProgress currentProgress,
+		IProgress<BackupProgress>? progress,
+		BackupPlan plan
+	)
+	{
+		IReadOnlyList<BackupRecord> allRecords = repository.GetAll();
+
+		currentProgress = currentProgress with
+		{
+			CurrentPhase = BackupProgressPhase.Completed,
+			FilesSucceeded = allRecords.Count(r => r.Status == BackupItemStatus.Succeeded),
+			FilesSkipped = allRecords.Count(r => r.Status == BackupItemStatus.Skipped),
+			FilesFailed = allRecords.Count(r => r.Status == BackupItemStatus.Failed),
+		};
+		progress?.Report(currentProgress);
+
+		List<BackupResultItem> itemResults = new(allRecords.Count);
+		bool anyFailed = false;
+
+		foreach(BackupRecord record in allRecords)
+		{
+			itemResults.Add(new BackupResultItem
+			{
+				Id = record.Item.Id,
+				SourcePath = record.Item.SourcePath,
+				DestinationPath = record.DestinationPath,
+				Length = (long)record.Item.Content.Length,
+				State = MapItemState(record.Status),
+			});
+
+			if(record.Status == BackupItemStatus.Failed) anyFailed = true;
+		}
+
+		return new BackupResult
+		{
+			Name = plan.Name,
+			State = anyFailed ? BackupResultState.Failed : BackupResultState.Completed,
+			IsDryRun = true,
+			ItemResults = itemResults.AsReadOnly(),
+		};
 	}
 
 	private static string? GetStrongestHash(Dictionary<HashType, string>? computedHashes)

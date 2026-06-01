@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 1 Jun 2026** — C4 degraderet til Lav prioritet (gøres sidst).
+> **Opdateret 1 Jun 2026** — DryRun implemented. C4 degraderet til Lav prioritet (gøres sidst).
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -29,6 +29,7 @@
 | DeleteEmptyDirectories | ✅ **ALREADY DONE** | Allerede implementeret via `CleanupSessionTempDirectory` + `TryDeleteIfEmpty` i finally block. |
 | E6: Per-item try-catch | ✅ **FIXED** | Per-item try-catch i processing loop. Failed items markeres som Failed, exception re-thrown (fail-fast). |
 | I6: Post-write verification | ✅ **FIXED** | Hash verification efter sidecar, før Success. `PostWriteVerificationType.Binary` fjernet — kun None/Hash. |
+| **DryRun not implemented** | ✅ **DONE** | Short-circuit med `BuildDryRunResult` helper. Ingen writes, result bygget fra repository. `BackupResult.IsDryRun = true`. |
 
 ---
 
@@ -63,8 +64,6 @@
   - Patterns er glob patterns, matchet mod filnavn via `System.IO.Enumeration.FileSystemName.MatchesPattern`.
   - Exclude har precedence over include.
 
-- **DryRun not implemented**
-  - `BackupPlan.DryRun` exists but engine doesn't check it; would still download and move.
 
 - **JSON sidecar** — `NotImplementedException` i `SidecarService` (linje 14)
 
@@ -89,7 +88,6 @@
 
 - **Validator-gates: BackupPlanValidator blokerer implementerede features** — `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. er blokeret på trods af at engine understøtter dem. **Røres ikke før alt andet er færdigt.**
 - **C4: BackupPlanValidator blocks all plans** — tier-gating blokerer selv minimale plans. **Gøres allersidst**, når engine er testet og alle features bekræftet virker.
-- **JSON sidecar** — `NotImplementedException` in `SidecarService` (line 14)
 - **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
 - **Runner subsystem** — `IBackupRunnerFactory`/`IBackupRunner` exist but not wired (intentional — parallelism deferred)
 - **Progress reporting** — per-item `BytesProcessed` only updated during download/hash, not final state
@@ -226,7 +224,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **MTP** | `NotSupportedException` — ingen MTP device support |
 | **TOML config** | Ingen TOML-reader; kun programmatisk `BackupPlan` |
 | **INI sidecar** | `NotImplementedException` |
-| **DryRun** | `BackupPlan.DryRun` ignoreres |
+| **DryRun** | ✅ **DONE** — `BuildDryRunResult` helper, short-circuit |
 | **Parallel runner** | `BackupRunner` framework eksisterer men ikke implementeret |
 | **Include/Exclude patterns** | `FileSystemTraversal` ignorerer dem |
 | **Dedup/FileCategory** | Ingen dedup på tværs af sessioner |

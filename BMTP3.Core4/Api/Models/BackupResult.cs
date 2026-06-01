@@ -4,35 +4,41 @@ using System.Collections.Immutable;
 
 namespace BMTP3.Core4.Api.Models;
 
-/// <summary>
-/// Represents the final result of a completed backup job.
-/// This is an immutable summary describing the outcome and statistics
-/// of a single backup execution.
-/// </summary>
-public sealed record BackupResult
-{
-	// ---------------------------------------------------------------------
-	// Identification
-	// ---------------------------------------------------------------------
-
 	/// <summary>
-	/// The name of the backup job.
+	/// Represents the final result of a completed backup job.
+	/// This is an immutable summary describing the outcome and statistics
+	/// of a single backup execution.
 	/// </summary>
-	public string Name { get; init; } = string.Empty;
+	public sealed record BackupResult
+	{
+		// ---------------------------------------------------------------------
+		// Identification
+		// ---------------------------------------------------------------------
 
-	// ---------------------------------------------------------------------
-	// Outcome
-	// ---------------------------------------------------------------------
-	public BackupResultState State { get; init; }
-	public BackupResultFailureReason? FailureReason { get; init; }
+		/// <summary>
+		/// The name of the backup job.
+		/// </summary>
+		public string Name { get; init; } = string.Empty;
 
-	// ---------------------------------------------------------------------
-	// Discovery summary
-	// ---------------------------------------------------------------------
+		// ---------------------------------------------------------------------
+		// Outcome
+		// ---------------------------------------------------------------------
+		public BackupResultState State { get; init; }
+		public BackupResultFailureReason? FailureReason { get; init; }
 
-	// ---------------------------------------------------------------------
-	// Processing summary
-	// ---------------------------------------------------------------------
+		/// <summary>
+		/// When <c>true</c>, this result is from a dry run —
+		/// items were discovered but no writes were performed.
+		/// </summary>
+		public bool IsDryRun { get; init; }
 
-	public IReadOnlyList<BackupResultItem> ItemResults { get; init; } = ImmutableList<BackupResultItem>.Empty;
-}
+		// ---------------------------------------------------------------------
+		// Discovery summary
+		// ---------------------------------------------------------------------
+
+		// ---------------------------------------------------------------------
+		// Processing summary
+		// ---------------------------------------------------------------------
+
+		public IReadOnlyList<BackupResultItem> ItemResults { get; init; } = ImmutableList<BackupResultItem>.Empty;
+	}

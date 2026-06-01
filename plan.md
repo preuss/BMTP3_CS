@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 1 Jun 2026** — I7 done. Næste: DryRun, JSON sidecar, device metadata.
+> **Opdateret 1 Jun 2026** — DryRun done. Næste: JSON sidecar, device metadata.
 
 ## Færdige opgaver
 
@@ -39,7 +39,7 @@
 - [x] E5 — Fjern redundant timestamp-logik fra `DownloadService`
 - [x] E7 — Ikke en bug — `TryDeleteIfEmpty` er korrekt. `.tmp`-filer er forensic evidence
 - [x] I7 — Implement Include/Exclude patterns i `FileSystemTraversal` — `GlobMatcher.IsIncluded` i loopet, gates ikke fjernet
-- [ ] — Implement DryRun — skip writes når `plan.DryRun` er true
+- [x] — Implement DryRun — short-circuit med `BuildDryRunResult` helper før processing loop
 - [ ] — JSON sidecar (currently `NotImplementedException`)
 - [ ] I5 — Device metadata i sidecar (`[DeviceDetails]`, `[PathMapping]`)
 - [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup)
