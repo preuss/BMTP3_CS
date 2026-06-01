@@ -158,7 +158,7 @@ public sealed class BackupEngine : IBackupEngine
 			progress?.Report(_currentProgress);
 		});
 
-		await foreach(BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
+		await foreach (BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 			BackupRecord record = new()
@@ -216,9 +216,9 @@ public sealed class BackupEngine : IBackupEngine
 		{
 			TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
 
-			foreach(BackupRecord record in pendingRecords)
+			foreach (BackupRecord record in pendingRecords)
 			{
-				if(record.Metadata is null)
+				if (record.Metadata is null)
 				{
 					record.Metadata = new ItemMetadata();
 				}
@@ -269,6 +269,14 @@ public sealed class BackupEngine : IBackupEngine
 					earliestTimestampRequest, plan.EnableTimestampCorrection, cancellationToken
 				);
 
+				// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
+				if (!earliest.Timestamp.HasValue)
+				{
+					throw new InvalidOperationException($"Could not resolve valid timestamp for '{record.Item.SourcePath}'.");
+				}
+
+				DateTimeOffset createFileDate = earliest.Timestamp.Value;
+
 				// Compute hashes.
 				IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
 				{
@@ -298,7 +306,6 @@ public sealed class BackupEngine : IBackupEngine
 				// ------------------------------------------------------------
 				// Commit: resolve path → move file → write sidecar
 				// ------------------------------------------------------------
-				DateTimeOffset createFileDate = ResolveDate(record.Item.DateAuthored, record.Item.DateCreated, record.Metadata.AuthoredDateTime, record.Metadata.CreatedDateTime);
 				string? strongHash = GetStrongestHash(record.Metadata.ComputedHashes);
 				TargetPathResolveRequest targetPathResolveRequest = new(
 					DestinationRoot: plan.Destination,
@@ -314,7 +321,7 @@ public sealed class BackupEngine : IBackupEngine
 
 				CollisionResult? collisionResult = null;
 
-				if(File.Exists(intendedPath))
+				if (File.Exists(intendedPath))
 				{
 					// collision
 					CollisionResolveRequest collisionRequest = new()
@@ -342,7 +349,7 @@ public sealed class BackupEngine : IBackupEngine
 
 					collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
 
-					switch(collisionResult.Action)
+					switch (collisionResult.Action)
 					{
 						case CollisionResolutionAction.Skip:
 							record.Status = BackupItemStatus.Skipped;
@@ -358,7 +365,7 @@ public sealed class BackupEngine : IBackupEngine
 				bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
 
 				string? targetDir = Path.GetDirectoryName(targetPath);
-				if(!string.IsNullOrEmpty(targetDir))
+				if (!string.IsNullOrEmpty(targetDir))
 				{
 					Directory.CreateDirectory(targetDir);
 				}
@@ -369,7 +376,7 @@ public sealed class BackupEngine : IBackupEngine
 				record.Item.ReplaceContentProvider(movedContent);
 				record.DestinationPath = targetPath;
 
-				if(plan.SidecarFormat != SidecarFormat.None)
+				if (plan.SidecarFormat != SidecarFormat.None)
 				{
 					SidecarRequest sidecarRequest = new()
 					{
@@ -395,22 +402,24 @@ public sealed class BackupEngine : IBackupEngine
 				};
 				progress?.Report(_currentProgress);
 			}
-		} finally
+		}
+		finally
 		{
 			await sessionState.SaveAsync(repository.GetAll(), sessionKey);
 
 			// Do this even when exception or cancel.
 			// Do not let cleanup errors mask original failure.
-			if(sessionTempDir.Exists)
+			if (sessionTempDir.Exists)
 			{
 				try
 				{
 					bool removed = TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
-					if(!removed)
+					if (!removed)
 					{
 						_logger.LogDebug("Session temp directory not empty, kept: {sessionTempDir}", sessionTempDir.FullName);
 					}
-				} catch(Exception ex)
+				}
+				catch (Exception ex)
 				{
 					_logger.LogWarning(ex, "Could not clean session temp directory: {sessionTempDir}", sessionTempDir.FullName);
 				}
@@ -444,7 +453,7 @@ public sealed class BackupEngine : IBackupEngine
 		List<BackupResultItem> itemResults = new(allRecords.Count);
 		bool anyFailed = false;
 
-		foreach(BackupRecord record in allRecords)
+		foreach (BackupRecord record in allRecords)
 		{
 			itemResults.Add(new BackupResultItem
 			{
@@ -455,7 +464,7 @@ public sealed class BackupEngine : IBackupEngine
 				State = MapItemState(record.Status),
 			});
 
-			if(record.Status == BackupItemStatus.Failed)
+			if (record.Status == BackupItemStatus.Failed)
 				anyFailed = true;
 		}
 
@@ -467,7 +476,7 @@ public sealed class BackupEngine : IBackupEngine
 		};
 
 		// ------------------------------------------------------------
-		// 10. Return BackupResult
+		// 9. Return BackupResult
 		// ------------------------------------------------------------
 
 		return result;
@@ -488,9 +497,9 @@ public sealed class BackupEngine : IBackupEngine
 	{
 		List<BackupRecord> pending = new();
 
-		foreach(BackupRecord record in records)
+		foreach (BackupRecord record in records)
 		{
-			switch(record.Status)
+			switch (record.Status)
 			{
 				case BackupItemStatus.Succeeded:
 					currentProgress = currentProgress with { FilesSucceeded = currentProgress.FilesSucceeded + 1 };
@@ -511,27 +520,9 @@ public sealed class BackupEngine : IBackupEngine
 		return pending;
 	}
 
-	private static DateTimeOffset ResolveDate(params DateTimeOffset?[] dates)
-	{
-		DateTimeOffset unixEpoch = new(1970, 1, 1, 0, 0, 0, TimeSpan.Zero);
-
-		DateTimeOffset earliest = dates
-			.Where(d => d.HasValue && d.Value > unixEpoch)
-			.Select(d => d!.Value)
-			.DefaultIfEmpty()
-			.Min();
-
-		if(earliest <= unixEpoch)
-		{
-			throw new InvalidOperationException("No valid authored or created date found in item or metadata.");
-		}
-
-		return earliest;
-	}
-
 	private static string? GetStrongestHash(Dictionary<HashType, string>? computedHashes)
 	{
-		if(computedHashes == null || computedHashes.Count == 0)
+		if (computedHashes == null || computedHashes.Count == 0)
 		{
 			return null;
 		}
@@ -549,9 +540,9 @@ public sealed class BackupEngine : IBackupEngine
 			HashType.MD5_128,
 		];
 
-		foreach(HashType type in priority)
+		foreach (HashType type in priority)
 		{
-			if(computedHashes.TryGetValue(type, out string? hash))
+			if (computedHashes.TryGetValue(type, out string? hash))
 			{
 				return hash;
 			}

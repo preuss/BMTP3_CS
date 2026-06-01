@@ -33,7 +33,7 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 
 	private static readonly DateTime UnixEpoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-	private readonly ICompositeTimestampReader _reader;
+	private readonly ICompositeTimestampReader _compositeTimestampReader;
 
 	public EarliestTimestampResolutionService()
 		: this(new CompositeTimestampReader())
@@ -42,7 +42,7 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 
 	public EarliestTimestampResolutionService(ICompositeTimestampReader reader)
 	{
-		_reader = reader ?? throw new ArgumentNullException(nameof(reader));
+		_compositeTimestampReader = reader ?? throw new ArgumentNullException(nameof(reader));
 	}
 
 	/// <inheritdoc />
@@ -63,7 +63,7 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 		}
 
 		// The real metadata extraction.
-		IReadOnlyList<TimestampCandidate> candidates = _reader.Read(file, cancellationToken);
+		IReadOnlyList<TimestampCandidate> candidates = _compositeTimestampReader.Read(file, cancellationToken);
 
 		EarliestTimestampResolutionResult best = candidates
 			.Select(ResolveCandidate)
