@@ -220,183 +220,187 @@ public sealed class BackupEngine : IBackupEngine
 			{
 				cancellationToken.ThrowIfCancellationRequested();
 
-				if (record.Metadata is null)
+				try
 				{
-					record.Metadata = new ItemMetadata();
-				}
+					// Create temp file path for this item.
+					FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
-				// Create temp file path for this item.
-				FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
-
-				// Download content to temp file with progress reporting.
-				BackupProgressItem currentProgressItem = new()
-				{
-					RelativePath = record.Item.RelativePath,
-					Length = (long)record.Item.Content.Length,
-					Phase = BackupProgressItemPhase.Transferring,
-				};
-				_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
-				progress?.Report(_currentProgress);
-
-				IProgress<ulong> downloadProgress = new Progress<ulong>(bytesRead =>
-				{
-					currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
-					_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
-					progress?.Report(_currentProgress);
-				});
-				downloadProgress.Report(0);
-
-				DownloadRequest downloadRequest = new()
-				{
-					Destination = tempFile,
-					Item = record.Item,
-					BackupStartTime = backupStartTime,
-				};
-
-				await _downloadService.DownloadAsync(
-					downloadRequest,
-					downloadProgress,
-					cancellationToken
-				);
-
-				EarliestTimestampResolutionRequest earliestTimestampRequest = new()
-				{
-					Content = record.Item.Content,
-					TimestampCorrectionTarget = tempFile,
-					Item = record.Item,
-					Metadata = record.Metadata,
-				};
-
-				EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveAndApplyEarliestAsync(
-					earliestTimestampRequest, plan.EnableTimestampCorrection, cancellationToken
-				);
-
-				// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
-				if (!earliest.Timestamp.HasValue)
-				{
-					throw new InvalidOperationException($"Could not resolve valid timestamp for '{record.Item.SourcePath}'.");
-				}
-
-				DateTimeOffset createFileDate = earliest.Timestamp.Value;
-
-				// Compute hashes.
-				IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
-				{
-					currentProgressItem = currentProgressItem with
+					// Download content to temp file with progress reporting.
+					BackupProgressItem currentProgressItem = new()
 					{
-						BytesProcessed = (long)bytesComputed,
-						Phase = BackupProgressItemPhase.Hashing,
+						RelativePath = record.Item.RelativePath,
+						Length = (long)record.Item.Content.Length,
+						Phase = BackupProgressItemPhase.Transferring,
 					};
 					_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
 					progress?.Report(_currentProgress);
-				});
-				computeHashProgress.Report(0);
 
-				List<HashAlgorithmType> allAlgorithms =
-					(plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>()).Concat(plan.VerificationHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>())
-					.Distinct()
-					.ToList();
-
-				record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
-					record.Item.Content,
-					record.Item.RelativePath,
-					allAlgorithms,
-					computeHashProgress,
-					cancellationToken
-				);
-
-				// ------------------------------------------------------------
-				// Commit: resolve path → move file → write sidecar
-				// ------------------------------------------------------------
-				string? strongHash = GetStrongestHash(record.Metadata.ComputedHashes);
-				TargetPathResolveRequest targetPathResolveRequest = new(
-					DestinationRoot: plan.Destination,
-					RelativePath: record.Item.RelativePath,
-					FileName: record.Item.FileName,
-					CreateFileDate: createFileDate,
-					StrongHash: strongHash,
-					ItemId: record.Item.Id,
-					OutputStructureStrategy: plan.OutputStructureStrategy,
-					CustomPattern: plan.CustomOutputPattern
-				);
-				string intendedPath = _targetPathResolver.Resolve(targetPathResolveRequest);
-
-				CollisionResult? collisionResult = null;
-
-				if (File.Exists(intendedPath))
-				{
-					// collision
-					CollisionResolveRequest collisionRequest = new()
+					IProgress<ulong> downloadProgress = new Progress<ulong>(bytesRead =>
 					{
-						SourcePath = tempFile.FullName,
-						IntendedTargetPath = intendedPath,
+						currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
+						_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+						progress?.Report(_currentProgress);
+					});
+					downloadProgress.Report(0);
 
-						RelativePath = record.Item.RelativePath,
-						CreateFileDate = createFileDate,
-						ItemId = record.Item.Id,
-
-						StrongHash = strongHash,
-						DeviceName = null,
-						DeviceModel = null,
-
-						Strategy = plan.CollisionStrategy,
-
-						ComparisonType = plan.CollisionComparisonType,
-
-						RenameStrategy = plan.RenameStrategy,
-						CustomRenamePattern = plan.CustomOutputCollisionPattern,
-
-						ComparisonHashAlgorithmTypes = plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>(),
-					};
-
-					collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
-
-					switch (collisionResult.Action)
+					DownloadRequest downloadRequest = new()
 					{
-						case CollisionResolutionAction.Skip:
-							record.Status = BackupItemStatus.Skipped;
-							continue;
-
-						case CollisionResolutionAction.Move:
-						case CollisionResolutionAction.Overwrite:
-							break;
-					}
-				}
-
-				string targetPath = collisionResult?.TargetPath ?? intendedPath;
-				bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
-
-				string? targetDir = Path.GetDirectoryName(targetPath);
-				if (!string.IsNullOrEmpty(targetDir))
-				{
-					Directory.CreateDirectory(targetDir);
-				}
-
-				// We know that record.Item.Content is IMoveableContent because it was created by the BackupScanner which always creates items with moveable content.
-				IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
-				IContent movedContent = moveableContent.MoveTo(targetPath, overwrite: overwrite);
-				record.Item.ReplaceContentProvider(movedContent);
-				record.DestinationPath = targetPath;
-
-				if (plan.SidecarFormat != SidecarFormat.None)
-				{
-					SidecarRequest sidecarRequest = new()
-					{
-						Format = plan.SidecarFormat,
-						OriginalFileName = record.Item.FileName,
-						RelativePath = record.Item.RelativePath,
-						CreateDateTime = record.Metadata.CreatedDateTime,
-						AccessDateTime = record.Metadata.AccessedDateTime,
-						ModifyDateTime = record.Metadata.ModifiedDateTime,
-						AuthoredDateTime = record.Metadata.AuthoredDateTime,
-						Hashes = record.Metadata.ComputedHashes,
+						Destination = tempFile,
+						Item = record.Item,
 						BackupStartTime = backupStartTime,
 					};
 
-					await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
-				}
+					await _downloadService.DownloadAsync(
+						downloadRequest,
+						downloadProgress,
+						cancellationToken
+					);
 
-				record.Status = BackupItemStatus.Succeeded;
+					EarliestTimestampResolutionRequest earliestTimestampRequest = new()
+					{
+						Content = record.Item.Content,
+						TimestampCorrectionTarget = tempFile,
+						Item = record.Item,
+						Metadata = record.Metadata,
+					};
+
+					EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveAndApplyEarliestAsync(
+						earliestTimestampRequest, plan.EnableTimestampCorrection, cancellationToken
+					);
+
+					// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
+					if (!earliest.Timestamp.HasValue)
+					{
+						throw new InvalidOperationException($"Could not resolve valid timestamp for '{record.Item.SourcePath}'.");
+					}
+
+					DateTimeOffset createFileDate = earliest.Timestamp.Value;
+
+					// Compute hashes.
+					IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
+					{
+						currentProgressItem = currentProgressItem with
+						{
+							BytesProcessed = (long)bytesComputed,
+							Phase = BackupProgressItemPhase.Hashing,
+						};
+						_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+						progress?.Report(_currentProgress);
+					});
+					computeHashProgress.Report(0);
+
+					List<HashAlgorithmType> allAlgorithms =
+						(plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>()).Concat(plan.VerificationHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>())
+						.Distinct()
+						.ToList();
+
+					record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
+						record.Item.Content,
+						record.Item.RelativePath,
+						allAlgorithms,
+						computeHashProgress,
+						cancellationToken
+					);
+
+					// ------------------------------------------------------------
+					// Commit: resolve path → move file → write sidecar
+					// ------------------------------------------------------------
+					string? strongHash = GetStrongestHash(record.Metadata.ComputedHashes);
+					TargetPathResolveRequest targetPathResolveRequest = new(
+						DestinationRoot: plan.Destination,
+						RelativePath: record.Item.RelativePath,
+						FileName: record.Item.FileName,
+						CreateFileDate: createFileDate,
+						StrongHash: strongHash,
+						ItemId: record.Item.Id,
+						OutputStructureStrategy: plan.OutputStructureStrategy,
+						CustomPattern: plan.CustomOutputPattern
+					);
+					string intendedPath = _targetPathResolver.Resolve(targetPathResolveRequest);
+
+					CollisionResult? collisionResult = null;
+
+					if (File.Exists(intendedPath))
+					{
+						// collision
+						CollisionResolveRequest collisionRequest = new()
+						{
+							SourcePath = tempFile.FullName,
+							IntendedTargetPath = intendedPath,
+
+							RelativePath = record.Item.RelativePath,
+							CreateFileDate = createFileDate,
+							ItemId = record.Item.Id,
+
+							StrongHash = strongHash,
+							DeviceName = null,
+							DeviceModel = null,
+
+							Strategy = plan.CollisionStrategy,
+
+							ComparisonType = plan.CollisionComparisonType,
+
+							RenameStrategy = plan.RenameStrategy,
+							CustomRenamePattern = plan.CustomOutputCollisionPattern,
+
+							ComparisonHashAlgorithmTypes = plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>(),
+						};
+
+						collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
+
+						switch (collisionResult.Action)
+						{
+							case CollisionResolutionAction.Skip:
+								record.Status = BackupItemStatus.Skipped;
+								continue;
+
+							case CollisionResolutionAction.Move:
+							case CollisionResolutionAction.Overwrite:
+								break;
+						}
+					}
+
+					string targetPath = collisionResult?.TargetPath ?? intendedPath;
+					bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
+
+					string? targetDir = Path.GetDirectoryName(targetPath);
+					if (!string.IsNullOrEmpty(targetDir))
+					{
+						Directory.CreateDirectory(targetDir);
+					}
+
+					// We know that record.Item.Content is IMoveableContent because it was created by the BackupScanner which always creates items with moveable content.
+					IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
+					IContent movedContent = moveableContent.MoveTo(targetPath, overwrite: overwrite);
+					record.Item.ReplaceContentProvider(movedContent);
+					record.DestinationPath = targetPath;
+
+					if (plan.SidecarFormat != SidecarFormat.None)
+					{
+						SidecarRequest sidecarRequest = new()
+						{
+							Format = plan.SidecarFormat,
+							OriginalFileName = record.Item.FileName,
+							RelativePath = record.Item.RelativePath,
+							CreateDateTime = record.Metadata.CreatedDateTime,
+							AccessDateTime = record.Metadata.AccessedDateTime,
+							ModifyDateTime = record.Metadata.ModifiedDateTime,
+							AuthoredDateTime = record.Metadata.AuthoredDateTime,
+							Hashes = record.Metadata.ComputedHashes,
+							BackupStartTime = backupStartTime,
+						};
+
+						await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
+					}
+
+					record.Status = BackupItemStatus.Succeeded;
+				}
+				catch (Exception ex) when (ex is not OperationCanceledException)
+				{
+					record.Status = BackupItemStatus.Failed;
+					_logger.LogError(ex, "Item failed: {Path}", record.Item.SourcePath);
+					throw;
+				}
 
 				_currentProgress = _currentProgress with
 				{

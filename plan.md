@@ -25,7 +25,7 @@
 
 ### Høj prioritet
 
-- [ ] E6 — Tilføj per-item try-catch i processing loop (BackupEngine.cs:219), markér failed items som Failed, fortsæt med næste
+- [x] E6 — Per-item try-catch i processing loop (BackupEngine.cs), markér failed items som Failed, re-throw (fail-fast)
 - [ ] I2 — Source/output access probe i pre-flight
 
 ### Medium prioritet

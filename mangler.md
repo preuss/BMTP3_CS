@@ -25,6 +25,7 @@
 | Ubrugt variable `earliest` | ✅ **FIXED** | `earliest.Timestamp` bruges nu direkte på linje 301 i stedet for redundant `ResolveDate()`. Kaster exception hvis null. `ResolveDate()` fjernet. |
 | Step numbering jump (8→10) | ✅ **FIXED** | `// 10.` → `// 9. Return BackupResult`. |
 | DeleteEmptyDirectories | ✅ **ALREADY DONE** | Allerede implementeret via `CleanupSessionTempDirectory` + `TryDeleteIfEmpty` i finally block. |
+| E6: Per-item try-catch | ✅ **FIXED** | Per-item try-catch i processing loop. Failed items markeres som Failed, exception re-thrown (fail-fast). |
 
 ---
 
@@ -81,7 +82,7 @@ Gennemgang af CancellationToken-flow, error recovery, temp cleanup og I/O edge c
 |:--|-------|------|----------|--------|
 | E4 | `MoveableFileContent.MoveTo` hardcodes `FileInfo.MoveTo(destinationPath, false)` ignoring the `overwrite` parameter | `Models/MoveableFileContent.cs:26` | **Critical** (same as I4 above) | ✅ **FIXED** — `overwrite` parameteren bruges nu. |
 | E5 | `DownloadService` uses `TimestampHelpers.FindEarliestValidDate` with `backupStartTime` as fallback — redundant now that `EarliestTimestampResolutionService` handles all timestamp logic. Redundant filesystem + item date writes. | `Engine/Downloader/DownloadService.cs:23-38` | Low (cosmetic/redundant work) | ❌ **Pending** |
-| E6 | No per-item try-catch in processing loop — any exception (download, hash, move, sidecar) aborts the entire backup, not just that one item | `Engine/BackupEngine.cs:219-397` | **High** | ❌ **Pending** |
+| E6 | No per-item try-catch in processing loop — any exception (download, hash, move, sidecar) aborts the entire backup, not just that one item | ~~`Engine/BackupEngine.cs:219-397`~~ | **High** | ✅ **FIXED** — per-item try-catch tilføjet. Failed items markeres som Failed, exception re-thrown (fail-fast). |
 
 ### Temp Cleanup
 
