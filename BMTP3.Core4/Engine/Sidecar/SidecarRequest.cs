@@ -8,10 +8,11 @@ internal record SidecarRequest
 	public required SidecarFormat Format { get; init; }
 	public required string OriginalFileName { get; init; }
 	public required string RelativePath { get; init; }
+	public DateTimeOffset? AuthoredDateTime { get; init; }
 	public DateTimeOffset? CreateDateTime { get; init; }
 	public DateTimeOffset? AccessDateTime { get; init; }
 	public DateTimeOffset? ModifyDateTime { get; init; }
-	public DateTimeOffset? AuthoredDateTime { get; init; }
+	public DateTimeOffset? ResolvedDateTime { get; init; }
 	public IReadOnlyDictionary<HashType, string>? Hashes { get; init; }
 	public required DateTimeOffset BackupStartTime { get; init; }
 }

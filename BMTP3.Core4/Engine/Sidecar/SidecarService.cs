@@ -20,19 +20,20 @@ internal sealed class SidecarService : ISidecarService
 
 	private static string BuildIniContent(SidecarRequest request)
 	{
-		var sb = new StringBuilder();
+		StringBuilder sb = new();
 
 		sb.AppendLine("[Settings]");
 		sb.AppendLine($"OriginalFileName={request.OriginalFileName}");
+		sb.AppendLine($"MediaTakenDateTime={request.AuthoredDateTime?.ToString("O")}");
 		sb.AppendLine($"CreateDateTime={request.CreateDateTime?.ToString("O")}");
 		sb.AppendLine($"LastAccessDateTime={request.AccessDateTime?.ToString("O")}");
 		sb.AppendLine($"LastWriteDateTime={request.ModifyDateTime?.ToString("O")}");
-		sb.AppendLine($"MediaTakenDateTime={request.AuthoredDateTime?.ToString("O")}");
 		sb.AppendLine($"RelativePath={request.RelativePath}");
 		sb.AppendLine();
 
 		sb.AppendLine("[BackupInfo]");
 		sb.AppendLine($"BackupDateTime={request.BackupStartTime:O}");
+		sb.AppendLine($"ResolvedDateTime={request.ResolvedDateTime?.ToString("O")}");
 		sb.AppendLine();
 
 		if(request.Hashes is { Count: > 0 })

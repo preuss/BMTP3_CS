@@ -35,8 +35,8 @@
 
 ### Lav prioritet (gøres i denne rækkefølge)
 
-- [ ] E5 — Fjern redundant timestamp-logik fra `DownloadService`
-- [ ] E7 — Slet individuelle `.tmp`-filer i `CleanupSessionTempDirectory` i stedet for kun tomme dirs
+- [x] E5 — Fjern redundant timestamp-logik fra `DownloadService`
+- [x] E7 — Ikke en bug — `TryDeleteIfEmpty` er korrekt. `.tmp`-filer er forensic evidence
 - [ ] — Implement Include/Exclude patterns i `FileSystemTraversal`
 - [ ] — Implement DryRun — skip writes når `plan.DryRun` er true
 - [ ] — JSON sidecar (currently `NotImplementedException`)

@@ -244,10 +244,15 @@ internal static class TempDirectoryHelper
 	private static readonly Regex SessionTempDirPattern = new(@"^\d{8}_\d{6}_.+$", RegexOptions.Compiled);
 
 	/// <summary>
-	///     Deletes the session temp directory and all its empty subdirectories.
-	///     Only deletes if the directory contains no files.
-	///     Validates the directory name matches {timestamp}_{sessionId} format
-	///     as a safety guard against accidental deletion of arbitrary paths.
+	/// Attempts to delete the session temp directory and all empty subdirectories.
+	///
+	/// Only deletes if the directory contains no files. If any files remain
+	/// (e.g., orphaned .tmp files from a failed MoveTo), the directory is
+	/// preserved intact to retain forensic evidence for debugging.
+	///
+	/// The directory name is validated against the {timestamp}_{sessionId}
+	/// pattern format as a safety guard against accidental deletion of
+	/// arbitrary paths.
 	/// </summary>
 	/// <exception cref="ArgumentNullException"><paramref name="sessionTempDir"/> is null.</exception>
 	/// <exception cref="InvalidOperationException">Directory name does not match expected format.</exception>
@@ -264,6 +269,16 @@ internal static class TempDirectoryHelper
 		return TryDeleteIfEmpty(sessionTempDir);
 	}
 
+	/// <summary>
+	/// Recursively deletes the directory and its empty subdirectories.
+	///
+	/// A subdirectory is only deleted if it contains no files. If any file
+	/// exists at any level — whether a .tmp file from a failed write or an
+	/// unknown file — the entire branch is preserved. This ensures no data is
+	/// silently destroyed during cleanup and leaves forensic evidence intact.
+	/// </summary>
+	/// <param name="dir">The directory to attempt to delete.</param>
+	/// <returns>True if the directory was deleted; otherwise, false.</returns>
 	private static bool TryDeleteIfEmpty(DirectoryInfo dir)
 	{
 		// If this directory has any files, it cannot be deleted

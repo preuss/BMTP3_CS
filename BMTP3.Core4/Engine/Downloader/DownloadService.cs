@@ -1,5 +1,4 @@
-﻿using BMTP3.Core4.Engine.Helpers;
-using BMTP3.Core4.Models;
+﻿using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Downloader;
 internal sealed class DownloadService : IDownloadService
@@ -20,22 +19,10 @@ internal sealed class DownloadService : IDownloadService
 			progress?.Report(totalBytesRead);
 		}
 
-		DateTimeOffset appliedDate = TimestampHelpers.FindEarliestValidDate(
-			request.Item.DateAuthored,
-			request.Item.DateCreated,
-			request.Item.DateModified,
-			request.Item.DateAccessed,
-			request.BackupStartTime
-		);
-		DateTime sourceLocal = appliedDate.LocalDateTime;
-
-		request.Destination.CreationTime = sourceLocal;
-		request.Destination.LastAccessTime = sourceLocal;
-		request.Destination.LastWriteTime = sourceLocal;
-
-		request.Item.DateCreated = appliedDate;
-		request.Item.DateModified = appliedDate;
-		request.Item.DateAccessed = appliedDate;
+		DateTime backupDateTime = request.BackupStartTime.LocalDateTime;
+		request.Destination.CreationTime = request.Item.DateCreated?.LocalDateTime ?? backupDateTime;
+		request.Destination.LastWriteTime = request.Item.DateModified?.LocalDateTime ?? backupDateTime;
+		request.Destination.LastAccessTime = request.Item.DateAccessed?.LocalDateTime ?? backupDateTime;
 
 		request.Item.ReplaceContentProvider(new MoveableFileContent(request.Destination.FullName));
 	}

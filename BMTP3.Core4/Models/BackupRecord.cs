@@ -30,5 +30,5 @@ internal sealed record BackupRecord
 	/// <summary>
 	/// Item-level metadata (hashes, timestamps, etc.) accumulated during processing.
 	/// </summary>
-	public ItemMetadata Metadata { get; set; } = new();
+	public ItemMetadata Metadata { get; } = new();
 }

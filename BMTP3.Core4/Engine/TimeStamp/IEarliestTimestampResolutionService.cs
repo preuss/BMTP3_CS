@@ -37,5 +37,6 @@ internal interface IEarliestTimestampResolutionService
 	Task<EarliestTimestampResolutionResult> ResolveAndApplyEarliestAsync(
 		EarliestTimestampResolutionRequest request,
 		bool enableTimestampCorrection,
-		CancellationToken cancellationToken);
+		CancellationToken cancellationToken
+	);
 }

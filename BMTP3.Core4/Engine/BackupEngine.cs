@@ -158,19 +158,12 @@ public sealed class BackupEngine : IBackupEngine
 			progress?.Report(_currentProgress);
 		});
 
-		await foreach (BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
+		await foreach(BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 			BackupRecord record = new()
 			{
 				Item = item,
-				Metadata = new ItemMetadata
-				{
-					AuthoredDateTime = item.DateAuthored,
-					CreatedDateTime = item.DateCreated,
-					ModifiedDateTime = item.DateModified,
-					AccessedDateTime = item.DateAccessed,
-				},
 			};
 
 			repository.Add(record);
@@ -216,7 +209,7 @@ public sealed class BackupEngine : IBackupEngine
 		{
 			TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
 
-			foreach (BackupRecord record in pendingRecords)
+			foreach(BackupRecord record in pendingRecords)
 			{
 				cancellationToken.ThrowIfCancellationRequested();
 
@@ -269,7 +262,7 @@ public sealed class BackupEngine : IBackupEngine
 					);
 
 					// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
-					if (!earliest.Timestamp.HasValue)
+					if(!earliest.Timestamp.HasValue)
 					{
 						throw new InvalidOperationException($"Could not resolve valid timestamp for '{record.Item.SourcePath}'.");
 					}
@@ -320,7 +313,7 @@ public sealed class BackupEngine : IBackupEngine
 
 					CollisionResult? collisionResult = null;
 
-					if (File.Exists(intendedPath))
+					if(File.Exists(intendedPath))
 					{
 						// collision
 						CollisionResolveRequest collisionRequest = new()
@@ -348,7 +341,7 @@ public sealed class BackupEngine : IBackupEngine
 
 						collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
 
-						switch (collisionResult.Action)
+						switch(collisionResult.Action)
 						{
 							case CollisionResolutionAction.Skip:
 								record.Status = BackupItemStatus.Skipped;
@@ -364,7 +357,7 @@ public sealed class BackupEngine : IBackupEngine
 					bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
 
 					string? targetDir = Path.GetDirectoryName(targetPath);
-					if (!string.IsNullOrEmpty(targetDir))
+					if(!string.IsNullOrEmpty(targetDir))
 					{
 						Directory.CreateDirectory(targetDir);
 					}
@@ -375,17 +368,18 @@ public sealed class BackupEngine : IBackupEngine
 					record.Item.ReplaceContentProvider(movedContent);
 					record.DestinationPath = targetPath;
 
-					if (plan.SidecarFormat != SidecarFormat.None)
+					if(plan.SidecarFormat != SidecarFormat.None)
 					{
 						SidecarRequest sidecarRequest = new()
 						{
 							Format = plan.SidecarFormat,
 							OriginalFileName = record.Item.FileName,
 							RelativePath = record.Item.RelativePath,
-							CreateDateTime = record.Metadata.CreatedDateTime,
-							AccessDateTime = record.Metadata.AccessedDateTime,
-							ModifyDateTime = record.Metadata.ModifiedDateTime,
-							AuthoredDateTime = record.Metadata.AuthoredDateTime,
+							CreateDateTime = record.Item.DateCreated,
+							AccessDateTime = record.Item.DateAccessed,
+							ModifyDateTime = record.Item.DateModified,
+							AuthoredDateTime = record.Item.DateAuthored,
+							ResolvedDateTime = record.Metadata.ResolvedDateTime,
 							Hashes = record.Metadata.ComputedHashes,
 							BackupStartTime = backupStartTime,
 						};
@@ -393,31 +387,30 @@ public sealed class BackupEngine : IBackupEngine
 						await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
 					}
 
-				if (plan.PostWriteVerification == PostWriteVerificationType.Hash)
-				{
-					Dictionary<HashType, string> verifyHashes = await _hashService.ComputeHashesAsync(
-						record.Item.Content,
-						record.Item.RelativePath,
-						allAlgorithms,
-						null,
-						cancellationToken
-					);
-
-					foreach (KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
+					if(plan.PostWriteVerification == PostWriteVerificationType.Hash)
 					{
-						if (verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
-							!string.Equals(kvp.Value, verifyValue, StringComparison.OrdinalIgnoreCase))
+						Dictionary<HashType, string> verifyHashes = await _hashService.ComputeHashesAsync(
+							record.Item.Content,
+							record.Item.RelativePath,
+							allAlgorithms,
+							null,
+							cancellationToken
+						);
+
+						foreach(KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
 						{
-							throw new InvalidOperationException(
-								$"Post-write verification failed for '{record.Item.SourcePath}': " +
-								$"{kvp.Key} hash mismatch.");
+							if(verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
+								!string.Equals(kvp.Value, verifyValue, StringComparison.OrdinalIgnoreCase))
+							{
+								throw new InvalidOperationException(
+									$"Post-write verification failed for '{record.Item.SourcePath}': " +
+									$"{kvp.Key} hash mismatch.");
+							}
 						}
 					}
-				}
 
 					record.Status = BackupItemStatus.Succeeded;
-				}
-				catch (Exception ex) when (ex is not OperationCanceledException)
+				} catch(Exception ex) when(ex is not OperationCanceledException)
 				{
 					record.Status = BackupItemStatus.Failed;
 					_logger.LogError(ex, "Item failed: {Path}", record.Item.SourcePath);
@@ -430,24 +423,22 @@ public sealed class BackupEngine : IBackupEngine
 				};
 				progress?.Report(_currentProgress);
 			}
-		}
-		finally
+		} finally
 		{
 			await sessionState.SaveAsync(repository.GetAll(), sessionKey);
 
 			// Do this even when exception or cancel.
 			// Do not let cleanup errors mask original failure.
-			if (sessionTempDir.Exists)
+			if(sessionTempDir.Exists)
 			{
 				try
 				{
 					bool removed = TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
-					if (!removed)
+					if(!removed)
 					{
 						_logger.LogDebug("Session temp directory not empty, kept: {sessionTempDir}", sessionTempDir.FullName);
 					}
-				}
-				catch (Exception ex)
+				} catch(Exception ex)
 				{
 					_logger.LogWarning(ex, "Could not clean session temp directory: {sessionTempDir}", sessionTempDir.FullName);
 				}
@@ -481,7 +472,7 @@ public sealed class BackupEngine : IBackupEngine
 		List<BackupResultItem> itemResults = new(allRecords.Count);
 		bool anyFailed = false;
 
-		foreach (BackupRecord record in allRecords)
+		foreach(BackupRecord record in allRecords)
 		{
 			itemResults.Add(new BackupResultItem
 			{
@@ -492,7 +483,7 @@ public sealed class BackupEngine : IBackupEngine
 				State = MapItemState(record.Status),
 			});
 
-			if (record.Status == BackupItemStatus.Failed)
+			if(record.Status == BackupItemStatus.Failed)
 				anyFailed = true;
 		}
 
@@ -525,9 +516,9 @@ public sealed class BackupEngine : IBackupEngine
 	{
 		List<BackupRecord> pending = new();
 
-		foreach (BackupRecord record in records)
+		foreach(BackupRecord record in records)
 		{
-			switch (record.Status)
+			switch(record.Status)
 			{
 				case BackupItemStatus.Succeeded:
 					currentProgress = currentProgress with { FilesSucceeded = currentProgress.FilesSucceeded + 1 };
@@ -550,7 +541,7 @@ public sealed class BackupEngine : IBackupEngine
 
 	private static string? GetStrongestHash(Dictionary<HashType, string>? computedHashes)
 	{
-		if (computedHashes == null || computedHashes.Count == 0)
+		if(computedHashes == null || computedHashes.Count == 0)
 		{
 			return null;
 		}
@@ -568,9 +559,9 @@ public sealed class BackupEngine : IBackupEngine
 			HashType.MD5_128,
 		];
 
-		foreach (HashType type in priority)
+		foreach(HashType type in priority)
 		{
-			if (computedHashes.TryGetValue(type, out string? hash))
+			if(computedHashes.TryGetValue(type, out string? hash))
 			{
 				return hash;
 			}

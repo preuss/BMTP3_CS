@@ -47,15 +47,14 @@
 
 ### Medium
 
-- **E5: DownloadService redundant timestamp-logik**
-  - `DownloadService.cs:23-38` — bruger gammel `TimestampHelpers.FindEarliestValidDate` med `backupStartTime` som fallback.
-  - `EarliestTimestampResolutionService` overskriver det bagefter — ren kosmetisk.
-  - Fix: fjern timestamp-kald + filesystem writes fra `DownloadService`.
+- **E5: DownloadService redundant timestamp-logik** — ✅ **FIXED**
+  - `DownloadService.cs` — sætter nu temp-filens `CreationTime`/`LastWriteTime`/`LastAccessTime` individuelt fra `Item.Date*` med `backupStartTime` som per-field fallback.
+  - Ingen `TimestampHelpers.FindEarliestValidDate` — ingen overskrivning af `Item.Date*`.
 
-- **E7: Temp cleanup sletter kun tomme dirs**
-  - `TempDirectoryHelper.cs:270` — `CleanupSessionTempDirectory` kalder `TryDeleteIfEmpty` som kun sletter hvis ingen `.tmp`-filer findes.
-  - Orphaned temp-filer efter crash akkumuleres.
-  - Fix: slet individuelle `.tmp`-filer i stedet for kun tomme dirs.
+- **E7: Temp cleanup sletter kun tomme dirs** — ❌ **WONTFIX (korrekt adfærd)**
+  - `TryDeleteIfEmpty` gør præcis hvad navnet siger — sletter kun hvis tom.
+  - `.tmp`-filer er **forensic evidence** efter crash — at slette dem ville ødelægge debug-sporet.
+  - Mappen bevares bevidst til fejlfinding.
 
 - **Include/Exclude patterns not implemented**
   - `SourceTraversalRequest` has `IncludePatterns`/`ExcludePatterns` fields, but `FileSystemTraversal` ignores them.

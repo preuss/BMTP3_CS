@@ -79,10 +79,10 @@ internal sealed class BackupRunner : IBackupRunner
 
 		sb.AppendLine("[Settings]");
 		sb.AppendLine($"OriginalFileName={record.Item.FileName}");
-		sb.AppendLine($"CreateDateTime={record.Metadata.CreatedDateTime?.ToString("O")}");
-		sb.AppendLine($"LastAccessDateTime={record.Metadata.AccessedDateTime?.ToString("O")}");
-		sb.AppendLine($"LastWriteDateTime={record.Metadata.ModifiedDateTime?.ToString("O")}");
-		sb.AppendLine($"MediaTakenDateTime={record.Metadata.AuthoredDateTime?.ToString("O")}");
+		sb.AppendLine($"CreateDateTime={record.Item.DateCreated?.ToString("O")}");
+		sb.AppendLine($"LastAccessDateTime={record.Item.DateAccessed?.ToString("O")}");
+		sb.AppendLine($"LastWriteDateTime={record.Item.DateModified?.ToString("O")}");
+		sb.AppendLine($"MediaTakenDateTime={record.Item.DateAuthored?.ToString("O")}");
 		sb.AppendLine($"RelativePath={record.Item.RelativePath}");
 		sb.AppendLine();
 
