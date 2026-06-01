@@ -3,11 +3,25 @@ using BMTP3.Core4.Engine.TimeStamp.Candidates;
 namespace BMTP3.Core4.Engine.TimeStamp.Readers;
 
 /// <summary>
-///     A master reader that aggregates timestamp candidates from all supported metadata formats.
-///     - Each sub-reader MUST return an empty IReadOnlyList&lt;TimestampCandidate&gt; when no candidates are found.
-///     - CompositeTimestampReader will continue if an individual reader throws, but will capture the exception.
+///     Aggregates timestamp candidates from all supported metadata formats
+///     (filesystem dates, EXIF, XMP, IPTC, GPS, QuickTime).
+///     Individual sub-reader failures are collected and do not interrupt the overall read.
 /// </summary>
-internal sealed class CompositeTimestampReader : ITimestampReader
+/// <remarks>
+///     Implements <see cref="ICompositeTimestampReader"/> which extends <see cref="ITimestampReader"/>.
+///     <list type="bullet">
+///         <item>
+///             <see cref="Read"/> — throws <see cref="TimestampReaderException"/>
+///             when <em>all</em> sub-readers fail (fail-fast).
+///         </item>
+///         <item>
+///             <see cref="TryReadCollect"/> — never throws from sub-reader errors;
+///             returns <c>false</c> when all sub-readers fail, and reports
+///             per-reader errors via <c>out</c> parameters.
+///         </item>
+///     </list>
+/// </remarks>
+internal sealed class CompositeTimestampReader : ICompositeTimestampReader
 {
 	private readonly List<ITimestampReader> _readers;
 
@@ -26,11 +40,11 @@ internal sealed class CompositeTimestampReader : ITimestampReader
 
 	public CompositeTimestampReader(IList<ITimestampReader> readers)
 	{
-		if(readers == null)
+		if (readers == null)
 		{
 			throw new ArgumentNullException(nameof(readers));
 		}
-		if(!readers.Any())
+		if (!readers.Any())
 		{
 			throw new ArgumentException("At least one reader is required.", nameof(readers));
 		}
@@ -39,47 +53,78 @@ internal sealed class CompositeTimestampReader : ITimestampReader
 	}
 
 	/// <summary>
-	///     ITimestampReader contract - returns combined candidates and discards reader errors.
+	///     Reads timestamp candidates from all sub-readers.
 	/// </summary>
+	/// <exception cref="TimestampReaderException">
+	///     Thrown when <em>all</em> sub-readers fail to produce any candidates.
+	///     The inner exception is an <see cref="AggregateException"/> containing
+	///     each individual <see cref="TimestampReaderException"/>.
+	/// </exception>
 	public IReadOnlyList<TimestampCandidate> Read(FileInfo fileInfo, CancellationToken cancellationToken)
 	{
-		// silently ignore errors when using the parameterless Read method.
-		return Read(fileInfo, out IReadOnlyList<(Type ReaderType, Exception Error)> _);
+		if (!TryReadCollect(fileInfo, out var candidates, out var errors, cancellationToken))
+		{
+			throw new TimestampReaderException(typeof(CompositeTimestampReader), "All sub-readers failed to produce timestamp candidates.", new AggregateException(errors));
+		}
+		return candidates;
 	}
 
 	/// <summary>
-	///     Reads timestamp candidates from the given file and outputs a list of any errors encountered.
+	///     Attempts to read timestamp candidates from all sub-readers.
+	///     Individual reader failures are collected in <paramref name="errors"/>
+	///     and do not interrupt reading from other readers.
 	/// </summary>
 	/// <param name="fileInfo">The file to read metadata from.</param>
-	/// <param name="errors">A list of exceptions thrown by individual readers, along with the reader type.</param>
-	/// <returns>A combined list of all successfully read candidates.</returns>
-	public IReadOnlyList<TimestampCandidate> Read(FileInfo fileInfo, out IReadOnlyList<(Type ReaderType, Exception Error)> errors)
+	/// <param name="candidates">All successfully read candidates, or an empty list if all readers failed.</param>
+	/// <param name="errors">
+	///     Per-reader errors wrapped in <see cref="TimestampReaderException"/>.
+	///     Empty when all readers succeeded or returned no candidates without error.
+	/// </param>
+	/// <param name="cancellationToken">Cancellation token passed to each sub-reader.</param>
+	/// <returns>
+	///     <c>true</c> if at least one sub-reader produced candidates;
+	///     <c>false</c> if all sub-readers failed.
+	/// </returns>
+	/// <exception cref="ArgumentNullException"><paramref name="fileInfo"/> is <c>null</c>.</exception>
+	/// <exception cref="FileNotFoundException"><paramref name="fileInfo"/> does not exist.</exception>
+	/// <exception cref="OperationCanceledException">Thrown if <paramref name="cancellationToken"/> is cancelled.</exception>
+	public bool TryReadCollect(
+		FileInfo fileInfo,
+		out IReadOnlyList<TimestampCandidate> candidates,
+		out IReadOnlyList<TimestampReaderException> errors,
+		CancellationToken cancellationToken)
 	{
-		if(fileInfo == null)
+		if (fileInfo == null)
 		{
 			throw new ArgumentNullException(nameof(fileInfo));
 		}
 
-		// Defensive initialisation: ensure 'errors' is never null for normal returns.
-		errors = Array.Empty<(Type ReaderType, Exception Error)>();
+		if (!fileInfo.Exists)
+		{
+			throw new FileNotFoundException("The specified file does not exist.", fileInfo.FullName);
+		}
 
 		List<TimestampCandidate> allCandidates = new();
-		List<(Type ReaderType, Exception Error)> encounteredErrors = new();
+		List<TimestampReaderException> encounteredErrors = new();
 
-		foreach(ITimestampReader reader in _readers)
+		foreach (ITimestampReader reader in _readers)
 		{
 			try
 			{
-				allCandidates.AddRange(reader.Read(fileInfo, CancellationToken.None));
-			} catch(Exception ex)
+				allCandidates.AddRange(reader.Read(fileInfo, cancellationToken));
+			}
+			catch (OperationCanceledException)
 			{
-				// Keep going if a reader throws unexpectedly, but record the error it threw.
-				encounteredErrors.Add((reader.GetType(), ex));
+				throw;
+			}
+			catch (Exception ex)
+			{
+				encounteredErrors.Add(new TimestampReaderException(reader.GetType(), ex.Message, ex));
 			}
 		}
 
-		// Expose collected errors (readonly view)
+		candidates = allCandidates.AsReadOnly();
 		errors = encounteredErrors.AsReadOnly();
-		return allCandidates;
+		return allCandidates.Count > 0;
 	}
 }

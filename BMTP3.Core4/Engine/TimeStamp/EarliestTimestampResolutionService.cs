@@ -33,11 +33,16 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 
 	private static readonly DateTime UnixEpoch = new(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
 
-	private readonly CompositeTimestampReader _reader;
+	private readonly ICompositeTimestampReader _reader;
 
 	public EarliestTimestampResolutionService()
+		: this(new CompositeTimestampReader())
 	{
-		_reader = new CompositeTimestampReader();
+	}
+
+	public EarliestTimestampResolutionService(ICompositeTimestampReader reader)
+	{
+		_reader = reader ?? throw new ArgumentNullException(nameof(reader));
 	}
 
 	/// <inheritdoc />

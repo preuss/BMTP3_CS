@@ -58,11 +58,11 @@ internal class FileContent : IContent, IFileInfoSource
 	}
 
 	/// <summary>
-	///		Marks this instance as disposed. There is no managed resource to free; the returned streams are owned and disposed by the caller.
+	///		Marks this instance as disposed. No managed resources to free; streams are owned by the caller.
 	/// </summary>
 	public void Dispose()
 	{
-		MarkDisposed();
+		_disposed = true;
 	}
 
 	/// <summary>
@@ -128,8 +128,7 @@ internal class FileContent : IContent, IFileInfoSource
 	/// </summary>
 	protected void ThrowIfDisposed()
 	{
-		// Volatile.Read ensures correct memory ordering for the boolean flag.
-		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed), this);
+		ObjectDisposedException.ThrowIf(_disposed, this);
 	}
 
 	/// <summary>
@@ -137,6 +136,6 @@ internal class FileContent : IContent, IFileInfoSource
 	/// </summary>
 	protected void MarkDisposed()
 	{
-		Volatile.Write(ref _disposed, true);
+		_disposed = true;
 	}
 }

@@ -1,4 +1,5 @@
 ﻿namespace BMTP3.Core4.Models;
+
 internal class MoveableFileContent : FileContent, IMoveableContent
 {
 	public MoveableFileContent(string filePath) : this(new FileInfo(filePath))
@@ -16,14 +17,14 @@ internal class MoveableFileContent : FileContent, IMoveableContent
 
 		// Make sure the destination directory exists
 		string? destDir = Path.GetDirectoryName(destinationPath);
-		if(!string.IsNullOrEmpty(destDir))
+		if (!string.IsNullOrEmpty(destDir))
 		{
 			Directory.CreateDirectory(destDir);
 		}
 
 		// Perform atomic move (very fast on same volume)
 		// Note: If it's across volumes (e.g. C: to D:), .NET automatically falls back to copy-delete, which is also fine.
-		FileInfo.MoveTo(destinationPath, false);
+		FileInfo.MoveTo(destinationPath, overwrite);
 
 		// Mark this instance as disposed/invalid after the move.
 		MarkDisposed();
