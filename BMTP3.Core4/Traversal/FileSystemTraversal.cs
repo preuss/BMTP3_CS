@@ -1,4 +1,5 @@
 using System.Runtime.CompilerServices;
+using BMTP3.Core4.Utilities;
 
 namespace BMTP3.Core4.Traversal;
 
@@ -31,6 +32,10 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 			DateTimeOffset? created = SafeGetDate(file, f => f.CreationTimeUtc);
 			DateTimeOffset? modified = SafeGetDate(file, f => f.LastWriteTimeUtc);
 			DateTimeOffset? accessed = SafeGetDate(file, f => f.LastAccessTimeUtc);
+
+			string relPath = Path.GetRelativePath(rootDir.FullName, file.FullName);
+			if(!GlobMatcher.IsIncluded(relPath, request.IncludePatterns, request.ExcludePatterns))
+				continue;
 
 			yield return new SourceTraversalItem
 			{
