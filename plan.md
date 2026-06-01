@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 1 Jun 2026** — C4 flyttet til Lav prioritet (gøres sidst).
+> **Opdateret 1 Jun 2026** — I7 done. Næste: DryRun, JSON sidecar, device metadata.
 
 ## Færdige opgaver
 
@@ -20,6 +20,7 @@
 - [x] Ubrugt `earliest` — nu brugt på linje 301; `ResolveDate()` fjernet; kaster exception hvis null
 - [x] Step-number jump (8→10) — rettet til `// 9. Return BackupResult`
 - [x] DeleteEmptyDirectories — allerede implementeret via `CleanupSessionTempDirectory` i finally block
+- [x] GlobMatcher (Core4) — brace expansion + bugfixes. Samme fixes backportet til GlobConverter (Consoles) og GlobMatcher (Core2)
 
 ## Næste opgaver (prioriteret)
 
@@ -37,7 +38,7 @@
 
 - [x] E5 — Fjern redundant timestamp-logik fra `DownloadService`
 - [x] E7 — Ikke en bug — `TryDeleteIfEmpty` er korrekt. `.tmp`-filer er forensic evidence
-- [ ] I7 — Implement Include/Exclude patterns i `FileSystemTraversal`
+- [x] I7 — Implement Include/Exclude patterns i `FileSystemTraversal` — `GlobMatcher.IsIncluded` i loopet, gates ikke fjernet
 - [ ] — Implement DryRun — skip writes når `plan.DryRun` er true
 - [ ] — JSON sidecar (currently `NotImplementedException`)
 - [ ] I5 — Device metadata i sidecar (`[DeviceDetails]`, `[PathMapping]`)
