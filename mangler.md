@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 1 Jun 2026** — efter implementering af I4/E4, E1, E2, FileContent cleanup, earliest/ResolveDate fix, step-number fix.
+> **Opdateret 1 Jun 2026** — C4 degraderet til Lav prioritet (gøres sidst).
 
 ---
 
@@ -30,21 +30,6 @@
 
 ## Remaining Issues
 
-### Critical
-
-- **C4: BackupPlanValidator blocks all plans**
-  - Tier-gates prevent even minimal plans from reaching the engine.
-  - `CollisionStrategy` — only `Error` allowed (line 75-76)
-  - `CollisionComparisonType` — all non-`None` blocked (lines 78-82)
-  - `SidecarFormat` — `None` and `Json` reject (lines 90-94)
-  - `ComparisonHashAlgorithmTypes` — requires non-empty (line 58-59) BUT then also blocks as feature-not-implemented (line 114-115) — **contradictory**
-  - `VerificationHashAlgorithmTypes` — feature-gated (line 117-118)
-  - `EnableMetadata` — feature-gated (line 120-121)
-  - `IncludePatterns`/`ExcludePatterns` — feature-gated (lines 99-103)
-  - Several more...
-
-
-
 ### Important
 
 - **I3: Post-write verification missing**
@@ -68,6 +53,7 @@
 
 ### Low / Deferred
 
+- **C4: BackupPlanValidator blocks all plans** — tier-gating blokerer selv minimale plans. Skal fikses når engine er testet og features bekræftet virker. (Deferred: gør til sidst.)
 - **JSON sidecar** — `NotImplementedException` in `SidecarService` (line 14)
 - **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
 - **Runner subsystem** — `IBackupRunnerFactory`/`IBackupRunner` exist but not wired (intentional — parallelism deferred)

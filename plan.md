@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 1 Jun 2026** — efter implementering af I4/E4, E1, E2, FileContent cleanup, og diverse smårettelser.
+> **Opdateret 1 Jun 2026** — C4 flyttet til Lav prioritet (gøres sidst).
 
 ## Færdige opgaver
 
@@ -25,7 +25,6 @@
 
 ### Høj prioritet
 
-- [ ] C4 — Fix `BackupPlanValidator` tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans)
 - [ ] E6 — Tilføj per-item try-catch i processing loop (BackupEngine.cs:219), markér failed items som Failed, fortsæt med næste
 - [ ] I2 — Source/output access probe i pre-flight
 
@@ -36,6 +35,7 @@
 
 ### Lav prioritet / fremtid
 
+- [ ] C4 — Fix `BackupPlanValidator` tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans)
 - [ ] E5 — Fjern redundant timestamp-logik fra `DownloadService` (overrides af `EarliestTimestampResolutionService`)
 - [ ] E7 — Overvej at slette individuelle `.tmp`-filer i `CleanupSessionTempDirectory` i stedet for kun tomme dirs
 - [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup)
