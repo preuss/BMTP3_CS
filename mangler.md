@@ -58,7 +58,6 @@
 - **JSON sidecar** — `NotImplementedException` in `SidecarService` (line 14)
 - **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
 - **Runner subsystem** — `IBackupRunnerFactory`/`IBackupRunner` exist but not wired (intentional — parallelism deferred)
-- **Source/output access probe** — missing, but fail-first is acceptable for now
 - **Progress reporting** — per-item `BytesProcessed` only updated during download/hash, not final state
 - **Wire Core4 into Consoles** — `ServiceCollectionExtensions.AddBMTP3Core4` exists but Consoles program still uses Core2
 
