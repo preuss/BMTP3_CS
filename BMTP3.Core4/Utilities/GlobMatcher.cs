@@ -12,6 +12,7 @@ namespace BMTP3.Core4.Utilities;
 ///         <item><c>**</c> — matches zero or more directory segments</item>
 ///         <item><c>[abc]</c> / <c>[a-z]</c> — character classes</item>
 ///         <item><c>[!abc]</c> — negated character classes</item>
+///         <item><c>{a,b}</c> — brace expansion: any comma-separated alternative</item>
 ///         <item><c>@(a|b)</c> — extglob: exactly one of the alternatives</item>
 ///         <item><c>*(a|b)</c> — extglob: zero or more</item>
 ///         <item><c>+(a|b)</c> — extglob: one or more</item>
@@ -101,6 +102,16 @@ public static class GlobMatcher
 	/// </summary>
 	public static string GlobToRegex(string globPattern)
 	{
+		// Brace expansion: {a,b,c} → @(a|b|c)
+		// Only expands braces containing at least one comma
+		// (avoiding conflict with regex-style {n} quantifiers).
+		globPattern = Regex.Replace(globPattern, @"\{([^{},]+,[^{}]*)\}", m =>
+		{
+			string inner = m.Groups[1].Value;
+			string alts = string.Join("|", inner.Split(','));
+			return "@(" + alts + ")";
+		});
+
 		// Special-case: pattern starting with extglob alternation like @(a|b)rest
 		if(globPattern.StartsWith("@(") && globPattern.Contains(')'))
 		{
@@ -127,8 +138,8 @@ public static class GlobMatcher
 		if(globPattern.StartsWith("!(") && globPattern.EndsWith(')'))
 		{
 			string positivePattern = globPattern.Substring(2, globPattern.Length - 3);
-			string positiveRegex = ConvertCore(positivePattern, true);
-			return $"^(?!{positiveRegex}$).*$";
+			string positiveRegex = ConvertCore(positivePattern, true).Replace("\\|", "|");
+			return $"^(?!(?:{positiveRegex})$).*$";
 		}
 
 		// Extended suffix negation: *.!(ext)
@@ -140,10 +151,10 @@ public static class GlobMatcher
 			if(negStart > 0 && negEnd == globPattern.Length - 1)
 			{
 				string negSuffix = globPattern.Substring(negStart + 2, negEnd - (negStart + 2));
-				string negRegex = Regex.Escape(negSuffix).Replace(@"\*", ".*").Replace(@"\?", ".");
+				string negRegex = Regex.Escape(negSuffix).Replace(@"\*", ".*").Replace(@"\?", ".").Replace("\\|", "|");
 				string prefixGlob = globPattern.Substring(0, negStart);
 				string prefixRegex = ConvertCore(prefixGlob, true);
-				return $"^{prefixRegex}(?!{negRegex}$)(.*)$";
+				return $"^{prefixRegex}(?!(?:{negRegex})$)(.*)$";
 			}
 		}
 
@@ -158,11 +169,11 @@ public static class GlobMatcher
 		r = r.Replace(@"\[", "[").Replace(@"\]", "]");
 		r = Regex.Replace(r, @"\[!(.+?)\]", "[^$1]");
 
-		// Extglob operators
-		r = Regex.Replace(r, @"\\\*\\\((.+?)\\\)", "($1)*");
-		r = Regex.Replace(r, @"\\\@\\\((.+?)\\\)", "($1)");
-		r = Regex.Replace(r, @"\\\+\\\((.+?)\\\)", "($1)+");
-		r = Regex.Replace(r, @"\\\?\\\((.+?)\\\)", "($1)?");
+		// Extglob operators — unescape | inside groups so alternation works
+		r = Regex.Replace(r, @"\\\*\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})*");
+		r = Regex.Replace(r, @"@\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})");
+		r = Regex.Replace(r, @"\\\+\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})+");
+		r = Regex.Replace(r, @"\\\?\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})?");
 
 		// Literal path separators → flexible separator regex
 		r = Regex.Replace(r, @"\\{2}", SeparatorRegex); // escaped backslash

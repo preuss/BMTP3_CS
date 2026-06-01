@@ -127,8 +127,8 @@ public static class GlobMatcher
 		if (globPattern.StartsWith("!(") && globPattern.EndsWith(')'))
 		{
 			string positivePattern = globPattern.Substring(2, globPattern.Length - 3);
-			string positiveRegex = ConvertCore(positivePattern, true);
-			return $"^(?!{positiveRegex}$).*$";
+			string positiveRegex = ConvertCore(positivePattern, true).Replace("\\|", "|");
+			return $"^(?!(?:{positiveRegex})$).*$";
 		}
 
 		// Extended suffix negation: *.!(ext)
@@ -140,10 +140,10 @@ public static class GlobMatcher
 			if (negStart > 0 && negEnd == globPattern.Length - 1)
 			{
 				string negSuffix = globPattern.Substring(negStart + 2, negEnd - (negStart + 2));
-				string negRegex = Regex.Escape(negSuffix).Replace(@"\*", ".*").Replace(@"\?", ".");
+				string negRegex = Regex.Escape(negSuffix).Replace(@"\*", ".*").Replace(@"\?", ".").Replace("\\|", "|");
 				string prefixGlob = globPattern.Substring(0, negStart);
 				string prefixRegex = ConvertCore(prefixGlob, true);
-				return $"^{prefixRegex}(?!{negRegex}$)(.*)$";
+				return $"^{prefixRegex}(?!(?:{negRegex})$)(.*)$";
 			}
 		}
 
@@ -158,13 +158,11 @@ public static class GlobMatcher
 		r = r.Replace(@"\[", "[").Replace(@"\]", "]");
 		r = Regex.Replace(r, @"\[!(.+?)\]", "[^$1]");
 
-		// Extglob operators
-		// NOTE: Regex.Escape above has already escaped *, +, ?, @, (, ) to \*, \+, \?, \@, \(, \)
-		// so the patterns below must match the escaped forms.
-		r = Regex.Replace(r, @"\\\*\\\((.+?)\\\)", "($1)*");
-		r = Regex.Replace(r, @"\\\@\\\((.+?)\\\)", "($1)");
-		r = Regex.Replace(r, @"\\\+\\\((.+?)\\\)", "($1)+");
-		r = Regex.Replace(r, @"\\\?\\\((.+?)\\\)", "($1)?");
+		// Extglob operators — unescape | inside groups so alternation works
+		r = Regex.Replace(r, @"\\\*\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})*");
+		r = Regex.Replace(r, @"@\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})");
+		r = Regex.Replace(r, @"\\\+\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})+");
+		r = Regex.Replace(r, @"\\\?\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})?");
 
 		// Literal path separators → flexible separator regex
 		r = Regex.Replace(r, @"\\{2}", SeparatorRegex); // escaped backslash

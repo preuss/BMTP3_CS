@@ -125,6 +125,63 @@ public class GlobMatcherTests
 	}
 
 	// -----------------------------------------------------------------------
+	// Brace expansion: {a,b}
+	// -----------------------------------------------------------------------
+
+	[Theory]
+	[InlineData("file.jpg", "*.{jpg,png}", true)]
+	[InlineData("file.png", "*.{jpg,png}", true)]
+	[InlineData("file.gif", "*.{jpg,png}", false)]
+	public void BraceExpansion_SimpleAlternatives(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("foo.txt", "{foo,bar}.txt", true)]
+	[InlineData("bar.txt", "{foo,bar}.txt", true)]
+	[InlineData("baz.txt", "{foo,bar}.txt", false)]
+	public void BraceExpansion_Prefix(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("src/a/file.cs", "src/{a,b}/file.cs", true)]
+	[InlineData("src/b/file.cs", "src/{a,b}/file.cs", true)]
+	[InlineData("src/c/file.cs", "src/{a,b}/file.cs", false)]
+	public void BraceExpansion_DirectorySegment(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Fact]
+	public void BraceExpansion_WithStar()
+	{
+		Assert.True(GlobMatcher.Matches("data.txt", "*.{csv,txt}"));
+		Assert.True(GlobMatcher.Matches("data.csv", "*.{csv,txt}"));
+		Assert.False(GlobMatcher.Matches("data.pdf", "*.{csv,txt}"));
+	}
+
+	[Theory]
+	[InlineData("3", "{1,2,3}", true)]
+	[InlineData("1", "{1,2,3}", true)]
+	[InlineData("4", "{1,2,3}", false)]
+	public void BraceExpansion_ThreeAlternatives(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("photo{img}.jpg", "photo{img}.jpg", true)] // no comma → literal braces
+	[InlineData("file.jpg", "*.{jpg}", false)] // no comma → {jpg} is literal text
+	public void BraceExpansion_SingleAlternativeNoComma(string path, string pattern, bool expected)
+	{
+		// Without a comma the braces are treated as literal characters
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	// -----------------------------------------------------------------------
 	// Windows absolute paths (backslash)
 	// -----------------------------------------------------------------------
 

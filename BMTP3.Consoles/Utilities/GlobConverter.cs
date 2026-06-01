@@ -45,10 +45,10 @@ public static class GlobConverter
 		{
 			string positivePattern = globPattern.Substring(2, globPattern.Length - 3);
 			// Internal conversion without anchors, as the Lookahead will anchor the entire string.
-			string positiveRegex = ConvertCoreGlobToRegex(positivePattern, true);
+			string positiveRegex = ConvertCoreGlobToRegex(positivePattern, true).Replace("\\|", "|");
 			// Global negation logic: Match anything that is NOT the positive pattern.
 			// We use a negative lookahead anchored to the full string.
-			return $"^(?!{positiveRegex}$).*$";
+			return $"^(?!(?:{positiveRegex})$).*$";
 		}
 
 		// 2. Handle Extended Suffix Negation: *.!(jpg)
@@ -62,13 +62,13 @@ public static class GlobConverter
 			{
 				string negatedSuffix = globPattern.Substring(negationStart + 2, negationEnd - (negationStart + 2));
 				// Convert the suffix to be negated into its Regex form. We only care about literal matching here.
-				string negatedRegex = Regex.Escape(negatedSuffix).Replace(@"\*", ".*").Replace(@"\?", ".");
+				string negatedRegex = Regex.Escape(negatedSuffix).Replace(@"\*", ".*").Replace(@"\?", ".").Replace("\\|", "|");
 
 				string prefixGlob = globPattern.Substring(0, negationStart);
 				string prefixRegex = ConvertCoreGlobToRegex(prefixGlob, true);
 
 				// Local negation logic: ^prefix(?!suffix$).*
-				return $"^{prefixRegex}(?!{negatedRegex}$)(.*)$";
+				return $"^{prefixRegex}(?!(?:{negatedRegex})$)(.*)$";
 			}
 		}
 
@@ -100,17 +100,11 @@ public static class GlobConverter
 		// NOTE: Regex.Escape above has already escaped *, +, ?, @, (, ) to \*, \+, \?, \@, \(, \)
 		// so the patterns below must match the escaped forms.
 
-		// *(a|b) -> (a|b)*   [escaped form: \*\(...\)]
-		regexPattern = Regex.Replace(regexPattern, @"\\\*\\\((.+?)\\\)", "($1)*");
-
-		// @(a|b) -> (a|b)    [escaped form: \@\(...\)]
-		regexPattern = Regex.Replace(regexPattern, @"\\\@\\\((.+?)\\\)", "($1)");
-
-		// +(a|b) -> (a|b)+   [escaped form: \+\(...\)]
-		regexPattern = Regex.Replace(regexPattern, @"\\\+\\\((.+?)\\\)", "($1)+");
-
-		// ?(a|b) -> (a|b)?   [escaped form: \?\(...\)]
-		regexPattern = Regex.Replace(regexPattern, @"\\\?\\\((.+?)\\\)", "($1)?");
+		// Extglob operators — unescape | inside groups so alternation works
+		regexPattern = Regex.Replace(regexPattern, @"\\\*\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})*");
+		regexPattern = Regex.Replace(regexPattern, @"@\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})");
+		regexPattern = Regex.Replace(regexPattern, @"\\\+\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})+");
+		regexPattern = Regex.Replace(regexPattern, @"\\\?\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})?");
 
 		// --- Separator and Recursive Wildcard Conversion ---
 
