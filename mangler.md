@@ -56,8 +56,10 @@
   - `.tmp`-filer er **forensic evidence** efter crash — at slette dem ville ødelægge debug-sporet.
   - Mappen bevares bevidst til fejlfinding.
 
-- **Include/Exclude patterns not implemented**
+- **I7: Include/Exclude patterns not implemented**
   - `SourceTraversalRequest` has `IncludePatterns`/`ExcludePatterns` fields, but `FileSystemTraversal` ignores them.
+  - Patterns er glob patterns, matchet mod filnavn via `System.IO.Enumeration.FileSystemName.MatchesPattern`.
+  - Exclude har precedence over include.
 
 - **DryRun not implemented**
   - `BackupPlan.DryRun` exists but engine doesn't check it; would still download and move.
