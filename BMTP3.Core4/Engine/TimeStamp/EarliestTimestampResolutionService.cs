@@ -75,7 +75,7 @@ internal sealed class EarliestTimestampResolutionService : IEarliestTimestampRes
 
 		if(best.Timestamp.HasValue)
 		{
-			request.Metadata.ResolvedDateTime = best.Timestamp;
+			request.Metadata.MediaTakenDateTime = best.Timestamp;
 
 			if(enableTimestampCorrection)
 			{

@@ -255,6 +255,12 @@ public sealed class BackupEngine : IBackupEngine
 						cancellationToken
 					);
 
+					// Capture original source dates before timestamp correction overwrites them.
+					record.Metadata.AuthoredDateTime = record.Item.DateAuthored;
+					record.Metadata.CreatedDateTime = record.Item.DateCreated;
+					record.Metadata.ModifiedDateTime = record.Item.DateModified;
+					record.Metadata.AccessedDateTime = record.Item.DateAccessed;
+
 					EarliestTimestampResolutionRequest earliestTimestampRequest = new()
 					{
 						Content = record.Item.Content,
@@ -379,15 +385,24 @@ public sealed class BackupEngine : IBackupEngine
 						SidecarRequest sidecarRequest = new()
 						{
 							Format = plan.SidecarFormat,
-							OriginalFileName = record.Item.FileName,
-							RelativePath = record.Item.RelativePath,
-							CreateDateTime = record.Item.DateCreated,
-							AccessDateTime = record.Item.DateAccessed,
-							ModifyDateTime = record.Item.DateModified,
-							AuthoredDateTime = record.Item.DateAuthored,
-							ResolvedDateTime = record.Metadata.ResolvedDateTime,
+							SourceType = plan.SourceType switch
+							{
+								BackupSourceType.MediaDevice => "MtpDevice",
+								BackupSourceType.FileSystem => "Drive",
+								_ => "Unknown",
+							},
+							SourceFileName = record.Item.FileName,
+							SourceFullPath = record.Item.SourcePath,
+							MediaTakenDateTime = record.Metadata.MediaTakenDateTime,
+							AuthoredDateTime = record.Metadata.AuthoredDateTime,
+							CreateDateTime = record.Metadata.CreatedDateTime,
+							LastWriteDateTime = record.Metadata.ModifiedDateTime,
+							LastAccessDateTime = record.Metadata.AccessedDateTime,
+							BackupStartDateTime = backupStartTime,
+							SourceRelativePath = record.Item.RelativePath,
+							SanitizedSourceRelativePath = record.Item.RelativePath?.Replace(':', '_'),
+							TargetRelativePath = Path.GetRelativePath(plan.Destination, targetPath),
 							Hashes = record.Metadata.ComputedHashes,
-							BackupStartTime = backupStartTime,
 						};
 
 						await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
