@@ -40,12 +40,13 @@
 - [x] E7 — Ikke en bug — `TryDeleteIfEmpty` er korrekt. `.tmp`-filer er forensic evidence
 - [x] I7 — Implement Include/Exclude patterns i `FileSystemTraversal` — `GlobMatcher.IsIncluded` i loopet, gates ikke fjernet
 - [x] — Implement DryRun — short-circuit med `BuildDryRunResult` helper før processing loop
+- [ ] — Ctrl+C: `BackupEngine.RunAsync` fanger `OperationCanceledException` og returnerer `BackupResult` med `State = Cancelled` i stedet for at re-throw (del 1)
 - [ ] — JSON sidecar (currently `NotImplementedException`)
 - [ ] I5 — Device metadata i sidecar (`[DeviceDetails]`, `[PathMapping]`)
 - [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup)
 - [x] N5 — Ryd op: `ParallelBackupRunner` + `LimitedParallelBackupRunner` slettet. `BackupRunner` beholdt til senere refactor.
 - [ ] N6 — Skriv tests (HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator)
-- [ ] — Wire Core4 into Consoles (Consoles still uses Core2)
+- [ ] — Wire Core4 into Consoles (incl. `Console.CancelKeyPress` → linked token — del 2 af Ctrl+C)
 
 ### Allersidst (når alt andet er færdigt og testet)
 

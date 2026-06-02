@@ -38,6 +38,12 @@
 
 ### Important
 
+- **Ctrl+C handling mangler i Core4**
+  - `BackupEngine.RunAsync` re-thrower `OperationCanceledException` — caller får aldrig et `BackupResult` med `State = Cancelled`.
+  - Ingen `Console.CancelKeyPress`-wiring i Consoles-kommandoen for Core4 (hører sammen med "Wire Core4 into Consoles").
+  - Del 1: Engine fanger OCE og returnerer Cancelled-result.
+  - Del 2: Console-kommando registrerer CancelKeyPress → linked token.
+
 - **I3: Post-write verification missing**
   - No `IPostWriteVerification` interface exists in Core4.
   - After `MoveTo`, no re-read or re-hash of the destination file.
