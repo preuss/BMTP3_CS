@@ -6,7 +6,6 @@ using BMTP3.Core4.Engine.Compare.Algorithms;
 using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
-using BMTP3.Core4.Engine.Runner;
 using BMTP3.Core4.Engine.Sidecar;
 using BMTP3.Core4.Engine.Strategies;
 using BMTP3.Core4.Engine.TimeStamp;
@@ -15,6 +14,7 @@ using BMTP3.Core4.Scanner;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace BMTP3.Core4.DependencyInjection;
 
@@ -33,8 +33,6 @@ public static class ServiceCollectionExtensions
 		services.TryAddSingleton<IDownloadService, DownloadService>();
 		services.TryAddSingleton<IEarliestTimestampResolutionService, EarliestTimestampResolutionService>();
 		services.TryAddSingleton<ISidecarService, SidecarService>();
-		services.TryAddSingleton<IBackupRunnerFactory, BackupRunnerFactory>();
-		services.TryAddTransient<IBackupRunner, BackupRunner>();
 
 		// Traversal & scanner
 		services.TryAddSingleton<ISourceTraversalFactory, SourceTraversalFactory>();
@@ -57,7 +55,30 @@ public static class ServiceCollectionExtensions
 		services.TryAddSingleton<IFileCompareService, FileCompareService>();
 
 		// Engine
-		services.TryAddSingleton<IBackupEngine, BackupEngine>();
+		services.TryAddSingleton<IBackupEngine>(sp =>
+		{
+			IBackupScanner scanner = sp.GetRequiredService<IBackupScanner>();
+			ISourceTraversalFactory sourceTraversalFactory = sp.GetRequiredService<ISourceTraversalFactory>();
+			IDownloadService downloadService = sp.GetRequiredService<IDownloadService>();
+			IHashService hashService = sp.GetRequiredService<IHashService>();
+			IEarliestTimestampResolutionService earliestTimestampService = sp.GetRequiredService<IEarliestTimestampResolutionService>();
+			ISidecarService sidecarService = sp.GetRequiredService<ISidecarService>();
+			IDiskSpaceValidator diskSpaceValidator = sp.GetRequiredService<IDiskSpaceValidator>();
+			ILogger<BackupEngine> logger = sp.GetRequiredService<ILogger<BackupEngine>>();
+			ITargetPathResolver targetPathResolver = sp.GetRequiredService<ITargetPathResolver>();
+			ICollisionResolver collisionResolver = sp.GetRequiredService<ICollisionResolver>();
+			return new BackupEngine(
+				scanner,
+				sourceTraversalFactory,
+				downloadService,
+				hashService,
+				earliestTimestampService,
+				sidecarService,
+				diskSpaceValidator,
+				logger,
+				targetPathResolver,
+				collisionResolver);
+		});
 
 		return services;
 	}

@@ -30,6 +30,7 @@
 | E6: Per-item try-catch | ✅ **FIXED** | Per-item try-catch i processing loop. Failed items markeres som Failed, exception re-thrown (fail-fast). |
 | I6: Post-write verification | ✅ **FIXED** | Hash verification efter sidecar, før Success. `PostWriteVerificationType.Binary` fjernet — kun None/Hash. |
 | **DryRun not implemented** | ✅ **DONE** | Short-circuit med `BuildDryRunResult` helper. Ingen writes, result bygget fra repository. `BackupResult.IsDryRun = true`. |
+| **N5: Ryd op BackupRunner** | ✅ **DONE** | `ParallelBackupRunner` + `LimitedParallelBackupRunner` slettet. `BackupRunner` beholdt til senere refactor. |
 
 ---
 
@@ -89,7 +90,6 @@
 - **Validator-gates: BackupPlanValidator blokerer implementerede features** — `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. er blokeret på trods af at engine understøtter dem. **Røres ikke før alt andet er færdigt.**
 - **C4: BackupPlanValidator blocks all plans** — tier-gating blokerer selv minimale plans. **Gøres allersidst**, når engine er testet og alle features bekræftet virker.
 - **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
-- **Runner subsystem** — `IBackupRunnerFactory`/`IBackupRunner` exist but not wired (intentional — parallelism deferred)
 - **Progress reporting** — per-item `BytesProcessed` only updated during download/hash, not final state
 - **Wire Core4 into Consoles** — `ServiceCollectionExtensions.AddBMTP3Core4` exists but Consoles program still uses Core2
 
@@ -225,7 +225,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **TOML config** | Ingen TOML-reader; kun programmatisk `BackupPlan` |
 | **INI sidecar** | `NotImplementedException` |
 | **DryRun** | ✅ **DONE** — `BuildDryRunResult` helper, short-circuit |
-| **Parallel runner** | `BackupRunner` framework eksisterer men ikke implementeret |
+| **Parallel runner** | `BackupRunner` beholdt. `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
 | **Include/Exclude patterns** | `FileSystemTraversal` ignorerer dem |
 | **Dedup/FileCategory** | Ingen dedup på tværs af sessioner |
 | **State machines** | Core4 har ikke eksplicit state machine (inline status) |

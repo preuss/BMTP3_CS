@@ -43,7 +43,7 @@
 - [ ] — JSON sidecar (currently `NotImplementedException`)
 - [ ] I5 — Device metadata i sidecar (`[DeviceDetails]`, `[PathMapping]`)
 - [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup)
-- [ ] N5 — Ryd op: wire eller fjern ubrugte `BackupRunner`-klasser
+- [x] N5 — Ryd op: `ParallelBackupRunner` + `LimitedParallelBackupRunner` slettet. `BackupRunner` beholdt til senere refactor.
 - [ ] N6 — Skriv tests (HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator)
 - [ ] — Wire Core4 into Consoles (Consoles still uses Core2)
 
