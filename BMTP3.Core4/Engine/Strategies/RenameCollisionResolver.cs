@@ -77,6 +77,30 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 			{
 				return new RenameCollisionResult(CollisionResolutionAction.Skip, candidateTargetPath);
 			}
+
+
+			// Hash strategy generates a deterministic path (no _{count}).
+			// If we reach here, the file exists with different content → hash prefix collision.
+			if(request.RenameStrategy is RenameStrategy.Hash)
+			{
+				throw new IOException(
+					$"Hash prefix collision: short hash '{GetHashShort(request)}' " +
+					$"is not unique for '{request.IntendedTargetPath}'. " +
+					$"File at '{candidateTargetPath}' has different content. " +
+					"The 6-character hash prefix cannot distinguish the files. " +
+					"Consider using a longer hash or a different rename strategy.");
+			}
+			// Timestamp strategy generates a deterministic path (no _{count}).
+			// If we reach here, the file exists with different content → timestamp collision.
+			if(request.RenameStrategy is RenameStrategy.Timestamp)
+			{
+				throw new IOException(
+					$"Timestamp collision: '{request.CreateFileDate:yyyyMMdd_HHmmss}' " +
+					$"is not unique for '{request.IntendedTargetPath}'. " +
+					$"File at '{candidateTargetPath}' has different content. " +
+					"Consider using a different rename strategy that includes a counter.");
+			}
+
 		}
 
 		throw new IOException($"Could not resolve rename collision after {MaxAttempts} attempts for: {request.IntendedTargetPath}");
@@ -93,8 +117,8 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 		return request.RenameStrategy switch
 		{
 			RenameStrategy.Increment => Path.Combine(dir, $"{nameWithoutExt}_{count}{extension}"),
-			RenameStrategy.Timestamp => Path.Combine(dir, $"{nameWithoutExt}_{request.CreateFileDate:yyyyMMdd_HHmmss}_{count}{extension}"),
-			RenameStrategy.Hash => Path.Combine(dir, $"{nameWithoutExt}_{GetHashShort(request)}_{count}{extension}"),
+			RenameStrategy.Timestamp => Path.Combine(dir, $"{nameWithoutExt}_{request.CreateFileDate:yyyyMMdd_HHmmss}{extension}"),
+			RenameStrategy.Hash => Path.Combine(dir, $"{nameWithoutExt}_{GetHashShort(request)}{extension}"),
 			RenameStrategy.Custom => GenerateCustomCandidate(dir, count, request),
 			_ => throw new ArgumentOutOfRangeException(nameof(request.RenameStrategy), request.RenameStrategy, "Unknown rename strategy."),
 		};
@@ -203,22 +227,27 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 	{
 		IReadOnlyList<HashAlgorithmType> hashTypes = request.ComparisonHashAlgorithmTypes;
 
-		if(hashTypes.Count == 0)
+		if(hashTypes == null || hashTypes.Count == 0)
 		{
-			return false;
+			throw new InvalidOperationException("ComparisonHashAlgorithmTypes must be provided when ComparisonType is Hash.");
 		}
 
-		// TODO N1: temp hash already in request.StrongHash, but target hash is re-computed from disk below.
-		// If target has a sidecar from a previous run, read that hash instead.
+		if(request.ComputedHashes == null || request.ComputedHashes.Count == 0)
+		{
+			throw new InvalidOperationException("ComputedHashes must be provided when ComparisonType is Hash.");
+		}
+
+		// TODO: temp hash can already be in request.ComputedHashes, but target hash is re-computed from disk below. This should work.
+		// TODO: Perhaps if target has sidecar from a previous run, read that hash instead. Not so secure.
 		try
 		{
 			FileContent candidateContent = new(candidatePath);
 
 			Dictionary<HashType, string> candidateHashes = await _hashService.ComputeHashesAsync(
 				candidateContent,
-				relativePath: "",
+				request.RelativePath,
 				hashTypes,
-				progress: null,
+				progress: null, // TODO: In the future think about progress reporting for collision resolver
 				cancellationToken: ct
 			);
 
@@ -231,7 +260,8 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 					return false;
 				}
 
-				if(!string.Equals(request.StrongHash, candidateHash, StringComparison.OrdinalIgnoreCase))
+				if(!request.ComputedHashes.TryGetValue(hashType, out string? sourceHash) ||
+					!string.Equals(sourceHash, candidateHash, StringComparison.OrdinalIgnoreCase))
 				{
 					return false;
 				}

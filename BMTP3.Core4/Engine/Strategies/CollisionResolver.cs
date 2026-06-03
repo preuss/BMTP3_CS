@@ -37,6 +37,7 @@ internal sealed class CollisionResolver : ICollisionResolver
 			CustomRenamePattern: request.CustomRenamePattern,
 			ComparisonType: request.ComparisonType,
 			ComparisonHashAlgorithmTypes: request.ComparisonHashAlgorithmTypes,
+			ComputedHashes: request.ComputedHashes,
 			DeviceName: request.DeviceName,
 			DeviceModel: request.DeviceModel
 		);

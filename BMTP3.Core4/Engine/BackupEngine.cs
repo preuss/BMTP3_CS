@@ -224,6 +224,9 @@ public sealed class BackupEngine : IBackupEngine
 					// Create temp file path for this item.
 					FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
+					// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
+					if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+
 					// Download content to temp file with progress reporting.
 					BackupProgressItem currentProgressItem = new()
 					{
@@ -299,6 +302,9 @@ public sealed class BackupEngine : IBackupEngine
 						.Distinct()
 						.ToList();
 
+					// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
+					if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+
 					record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
 						record.Item.Content,
 						record.Item.RelativePath,
@@ -338,6 +344,7 @@ public sealed class BackupEngine : IBackupEngine
 							ItemId = record.Item.Id,
 
 							StrongHash = strongHash,
+							ComputedHashes = record.Metadata.ComputedHashes,
 							DeviceName = null,
 							DeviceModel = null,
 
@@ -410,10 +417,18 @@ public sealed class BackupEngine : IBackupEngine
 
 					if(plan.PostWriteVerification == PostWriteVerificationType.Hash)
 					{
+						// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
+						if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+
+						if(plan.VerificationHashAlgorithmTypes == null || plan.VerificationHashAlgorithmTypes.Count == 0)
+						{
+							throw new InvalidOperationException("VerificationHashAlgorithmTypes must be specified for hash-based post-write verification.");
+						}
+
 						Dictionary<HashType, string> verifyHashes = await _hashService.ComputeHashesAsync(
 							record.Item.Content,
 							record.Item.RelativePath,
-							allAlgorithms,
+							plan.VerificationHashAlgorithmTypes,
 							null,
 							cancellationToken
 						);

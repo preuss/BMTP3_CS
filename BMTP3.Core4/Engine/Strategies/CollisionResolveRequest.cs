@@ -1,4 +1,5 @@
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Hashing;
 
 namespace BMTP3.Core4.Engine.Strategies;
 
@@ -12,6 +13,7 @@ internal sealed record CollisionResolveRequest
 	public required string ItemId { get; init; }
 
 	public string? StrongHash { get; init; }
+	public IReadOnlyDictionary<HashType, string>? ComputedHashes { get; init; }
 	public string? DeviceName { get; init; }
 	public string? DeviceModel { get; init; }
 

@@ -1,4 +1,5 @@
 ﻿using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Hashing;
 
 namespace BMTP3.Core4.Engine.Strategies;
 
@@ -14,6 +15,7 @@ internal sealed record RenameCollisionRequest(
 	string? CustomRenamePattern,
 	CollisionComparisonType ComparisonType,
 	IReadOnlyList<HashAlgorithmType> ComparisonHashAlgorithmTypes,
+	IReadOnlyDictionary<HashType, string>? ComputedHashes,
 	string? DeviceName,
 	string? DeviceModel
 );
