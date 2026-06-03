@@ -21,7 +21,7 @@ public sealed class SidecarSection
 	{
 		ArgumentNullException.ThrowIfNull(property);
 		int existingIndex = _properties.FindIndex(p => string.Equals(p.Key, property.Key, StringComparison.Ordinal));
-		if(existingIndex >= 0)
+		if (existingIndex >= 0)
 		{
 			_properties[existingIndex] = property;
 		}
@@ -75,7 +75,7 @@ public sealed class SidecarSection
 		// to maintain a predictable output order:
 		//   1) weight >= 0 first (false < true), then by weight, then by key
 		//   2) weight < 0 last, then by key (weight falls back to 0 within this group)
-		if(_properties.Any(p => p.Weight >= 0))
+		if (_properties.Any(p => p.Weight >= 0))
 		{
 			return _properties
 				.OrderBy(p => p.Weight < 0)

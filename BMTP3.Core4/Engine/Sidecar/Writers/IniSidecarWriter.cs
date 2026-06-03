@@ -1,73 +1,124 @@
-using System.Text;
 using BMTP3.Core4.Engine.Sidecar.Document;
+using System.Text;
 
 namespace BMTP3.Core4.Engine.Sidecar.Writers;
 
 internal sealed class IniSidecarWriter : ISidecarWriter
 {
-	public async Task WriteToFileAsync(SidecarDocument document, string filePath, CancellationToken cancellationToken)
-	{
-		ArgumentNullException.ThrowIfNull(document);
-		ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
+	// Use deterministic CRLF line endings for INI output.
+	private const string NewlineCrlf = "\r\n";
 
-		string content = WriteToString(document);
-		await File.WriteAllTextAsync(filePath, content, Encoding.UTF8, cancellationToken);
+	private static readonly Encoding Utf8NoBom = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+
+	private readonly IniSidecarWriterOptions options;
+
+	public IniSidecarWriter() : this(options: null)
+	{
+	}
+	public IniSidecarWriter(IniSidecarWriterOptions? options)
+	{
+		this.options = options ?? new IniSidecarWriterOptions();
 	}
 
-	public static string WriteToString(SidecarDocument document)
+	public async Task WriteToStreamAsync(SidecarDocument document, Stream stream, CancellationToken cancellationToken)
+	{
+		ArgumentNullException.ThrowIfNull(document);
+		ArgumentNullException.ThrowIfNull(stream);
+
+		cancellationToken.ThrowIfCancellationRequested();
+
+		await using StreamWriter writer = new(stream, Utf8NoBom, bufferSize: 1024, leaveOpen: true)
+		{
+			NewLine = NewlineCrlf,
+		};
+
+		WriteToTextWriter(document, writer, options);
+
+		await writer.FlushAsync(cancellationToken);
+	}
+
+	public string WriteToString(SidecarDocument document)
 	{
 		ArgumentNullException.ThrowIfNull(document);
 
-		StringBuilder sb = new();
-
-		if(document.HeaderComment is { Count: > 0 })
+		using StringWriter writer = new()
 		{
-			foreach(string headerLine in document.HeaderComment)
+			NewLine = NewlineCrlf,
+		};
+
+		WriteToTextWriter(document, writer, options);
+		return writer.ToString();
+	}
+
+	private static void WriteToTextWriter(
+		SidecarDocument document,
+		TextWriter writer,
+		IniSidecarWriterOptions options)
+	{
+		ArgumentNullException.ThrowIfNull(document);
+		ArgumentNullException.ThrowIfNull(writer);
+		ArgumentNullException.ThrowIfNull(options);
+
+		if (document.HeaderComment is { Count: > 0 })
+		{
+			foreach (string headerLine in document.HeaderComment)
 			{
-				if(headerLine.Contains('\n'))
-				{
-					foreach(string line in headerLine.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-					{
-						sb.AppendLine($"# {line.TrimEnd('\r')}");
-					}
-				}
-				else
-				{
-					sb.AppendLine($"# {headerLine}");
-				}
+				WriteCommentBlock(writer, headerLine, options.PreserveEmptyCommentLines);
 			}
 
-			sb.AppendLine();
+			writer.WriteLine();
 		}
 
-		foreach(SidecarSection section in document.GetSortedSections())
+		foreach (SidecarSection section in document.GetSortedSections())
 		{
-			if(section.Comment is not null)
+			if (section.Comment is not null)
 			{
-				foreach(string commentLine in section.Comment.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-				{
-					sb.AppendLine($"# {commentLine.TrimEnd('\r')}");
-				}
+				WriteCommentBlock(writer, section.Comment, options.PreserveEmptyCommentLines);
 			}
 
-			sb.AppendLine($"[{section.Name}]");
+			writer.WriteLine($"[{section.Name}]");
 
-			foreach(SidecarProperty property in section.GetSortedProperties())
+			foreach (SidecarProperty property in section.GetSortedProperties())
 			{
-				if(property.Comment is not null)
+				if (property.Comment is not null)
 				{
-					foreach(string commentLine in property.Comment.Split('\n', StringSplitOptions.RemoveEmptyEntries))
-					{
-						sb.AppendLine($"# {commentLine.TrimEnd('\r')}");
-					}
+					WriteCommentBlock(writer, property.Comment, options.PreserveEmptyCommentLines);
 				}
 
-				sb.AppendLine($"{property.Key}={property.Value}");
+				if (property.Value is null && !options.WriteKeysWithNullValues)
+				{
+					continue;
+				}
+
+				writer.WriteLine($"{property.Key}={property.Value ?? string.Empty}");
 			}
 
-			sb.AppendLine();
+			// Intentionally keep a blank line after every section, including the last one.
+			writer.WriteLine();
 		}
+	}
 
-		return sb.ToString();
+	private static void WriteCommentBlock(TextWriter writer, string comment, bool preserveEmptyCommentLines)
+	{
+		ArgumentNullException.ThrowIfNull(writer);
+		ArgumentNullException.ThrowIfNull(comment);
+
+		using StringReader reader = new(comment);
+
+		string? line;
+		while ((line = reader.ReadLine()) is not null)
+		{
+			if (line.Length == 0)
+			{
+				if (preserveEmptyCommentLines)
+				{
+					writer.WriteLine("#");
+				}
+
+				continue;
+			}
+
+			writer.WriteLine($"# {line}");
+		}
 	}
 }
