@@ -26,6 +26,7 @@
 | `ItemMetadata` udvidet med originale datoer | ✅ **DONE** | `AuthoredDateTime`, `CreatedDateTime`, `ModifiedDateTime`, `AccessedDateTime` added. Captured before timestamp correction. |
 | Sidecar læser datoer fra `ItemMetadata` i stedet for `Item` | ✅ **DONE** | `BackupEngine` sidecar construction uses `record.Metadata.*`. |
 | Sidecar comments på engelsk | ✅ **DONE** | All comments translated to English. |
+| I7: Include/Exclude patterns | ✅ **DONE** | `GlobMatcher.IsIncluded` i `FileSystemTraversal`. Gates beholdt (regel). |
 
 ---
 
@@ -39,12 +40,6 @@
   - Del 1: Engine fanger OCE og returnerer Cancelled-result.
   - Del 2: Console-kommando registrerer CancelKeyPress → linked token.
 
-- **I3: Post-write verification missing**
-  - No `IPostWriteVerification` interface exists in Core4.
-  - After `MoveTo`, no re-read or re-hash of the destination file.
-  - Cannot detect silent corruption or failed writes.
-  - `BackupPlan.PostWriteVerification` field exists but is not implemented.
-
 ### Medium
 
 - **E5: DownloadService redundant timestamp-logik** — ✅ **FIXED**
@@ -56,26 +51,24 @@
   - `.tmp`-filer er **forensic evidence** efter crash — at slette dem ville ødelægge debug-sporet.
   - Mappen bevares bevidst til fejlfinding.
 
-- **I7: Include/Exclude patterns not implemented**
-  - `SourceTraversalRequest` has `IncludePatterns`/`ExcludePatterns` fields, but `FileSystemTraversal` ignores them.
-  - Patterns er glob patterns, matchet mod filnavn via `GlobMatcher`.
-
-- **N1: Destination inspection / cross-run dedup**
-  - Læs sidecar hash ved collision for at skip identiske filer.
-
 - **N6: Tests**
-  - Skriv tests for HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator, SidecarService.
+  - HashServiceTests ✅, DITests ✅, CollisionResolverTests ✅, RenameCollisionResolverTests ✅
+  - Mangler: SidecarServiceTests
 
 - **Wire Core4 into Consoles**
   - Consoles programmet bruger stadig Core2.
 
 ### Low / Deferred
 
+- **N1: Destination inspection / cross-run dedup**
+  - Læs sidecar hash ved collision for at skip identiske filer.
+  - TODO i `RenameCollisionResolver.cs:213` — prøv sidecar før `FileContent`/`ComputeHashesAsync`.
+  - Se Core2 reference: `Engine/Strategies/SidecarReader.cs`, `IDestinationInspector.cs`, `DestinationInspectorItemStep.cs`.
+  - Kræver: `ISidecarReader` interface, INI/JSON parser for `[Hashes]`, injection i `RenameCollisionResolver`.
 - **Validator-gates: BackupPlanValidator blokerer implementerede features** — `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. er blokeret på trods af at engine understøtter dem. **Røres ikke før alt andet er færdigt.**
 - **C4: BackupPlanValidator blocks all plans** — tier-gating blokerer selv minimale plans. **Gøres allersidst**, når engine er testet og alle features bekræftet virker.
 - **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
 - **Progress reporting** — per-item `BytesProcessed` only updated during download/hash, not final state
-- **Wire Core4 into Consoles** — `ServiceCollectionExtensions.AddBMTP3Core4` exists but Consoles program still uses Core2
 
 ---
 
@@ -95,7 +88,7 @@ Gennemgang af CancellationToken-flow, error recovery, temp cleanup og I/O edge c
 | # | Issue | File | Severity | Status |
 |:--|-------|------|----------|--------|
 | E4 | `MoveableFileContent.MoveTo` hardcodes `FileInfo.MoveTo(destinationPath, false)` ignoring the `overwrite` parameter | `Models/MoveableFileContent.cs:26` | **Critical** (same as I4 above) | ✅ **FIXED** — `overwrite` parameteren bruges nu. |
-| E5 | `DownloadService` uses `TimestampHelpers.FindEarliestValidDate` with `backupStartTime` as fallback — redundant now that `EarliestTimestampResolutionService` handles all timestamp logic. Redundant filesystem + item date writes. | `Engine/Downloader/DownloadService.cs:23-38` | Low (cosmetic/redundant work) | ❌ **Pending** |
+| E5 | `DownloadService` uses `TimestampHelpers.FindEarliestValidDate` with `backupStartTime` as fallback — redundant now that `EarliestTimestampResolutionService` handles all timestamp logic. Redundant filesystem + item date writes. | `Engine/Downloader/DownloadService.cs:23-38` | Low (cosmetic/redundant work) | ✅ **FIXED** |
 | E6 | No per-item try-catch in processing loop — any exception (download, hash, move, sidecar) aborts the entire backup, not just that one item | ~~`Engine/BackupEngine.cs:219-397`~~ | **High** | ✅ **FIXED** — per-item try-catch tilføjet. Failed items markeres som Failed, exception re-thrown (fail-fast). |
 
 ### Temp Cleanup
@@ -210,6 +203,6 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **INI/JSON sidecar** | ✅ **DONE** — Full Document/Section/Property model + Ini + Json writers |
 | **DryRun** | ✅ **DONE** — `BuildDryRunResult` helper, short-circuit |
 | **Parallel runner** | `BackupRunner` beholdt. `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
-| **Include/Exclude patterns** | `FileSystemTraversal` ignorerer dem |
+| **Include/Exclude patterns** | `GlobMatcher.IsIncluded` i `FileSystemTraversal`. Gates ikke fjernet (regel). |
 | **Dedup/FileCategory** | Ingen dedup på tværs af sessioner |
 | **State machines** | Core4 har ikke eksplicit state machine (inline status) |

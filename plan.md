@@ -46,12 +46,12 @@
 
 ### Medium prioritet
 
-- [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup)
-- [ ] N6 — Skriv tests (HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator, SidecarService)
+- [ ] N6 — Skriv tests (HashServiceTests ✅, DITests ✅, CollisionResolverTests ✅, RenameCollisionResolverTests ✅ — mangler: SidecarServiceTests)
 - [ ] — Wire Core4 into Consoles (incl. `Console.CancelKeyPress` → linked token — del 2 af Ctrl+C)
 
 ### Allersidst (når alt andet er færdigt og testet)
 
+- [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup). TODO i `RenameCollisionResolver.cs:213`. Kræver `ISidecarReader` + INI/JSON parser. Core2 ref: `SidecarReader.cs`, `DestinationInspector.cs`.
 - [ ] — **Fjern validator-gates**: `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
 - [ ] C4 — Fix `BackupPlanValidator` tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans)
 
