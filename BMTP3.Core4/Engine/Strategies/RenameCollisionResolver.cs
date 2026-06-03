@@ -208,6 +208,8 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 			return false;
 		}
 
+		// TODO N1: temp hash already in request.StrongHash, but target hash is re-computed from disk below.
+		// If target has a sidecar from a previous run, read that hash instead.
 		try
 		{
 			FileContent candidateContent = new(candidatePath);
