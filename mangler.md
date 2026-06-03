@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 1 Jun 2026** — DryRun implemented. C4 degraderet til Lav prioritet (gøres sidst).
+> **Opdateret 3 Jun 2026** — Sidecar redesign completed. DryRun done. ItemMetadata udvidet med originale datoer.
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -10,27 +10,22 @@
 
 | Item | Status | Evidence |
 |------|--------|----------|
-| Binary/hash comparison in collision handling (I2) | ✅ **DONE** | `FileCompareService` + `BinaryFileComparerSelector` + 5 algorithms (WholeFile, ChunkedSequenceEqual, ChunkedVector, ChunkedEightByte, ChunkedAvx2). `RenameCollisionResolver.ContentCompareAsync` uses it. All in `Engine/Compare/` and DI-registered. |
-| Timestamp correction (ResolveAndApplyEarliestAsync) | ✅ Applied to file + Item.Date* + Metadata | `EarliestTimestampResolutionService.ResolveAndApplyEarliestAsync` — sets all 4 timestamps on item + 3 filesystem timestamps on target file when `enableTimestampCorrection` is true. |
-| BackupPlanValidator `EnableTimestampCorrection` gate | ✅ Gate removed | Confirmed: no tier-gate for timestamp correction. |
-| `EarliestTimestampResolutionServiceAnother.cs` | ✅ Deleted (dead code) | Confirmed deleted per earlier session. |
-| `ConvertToDateTimeOffset` dead method | ✅ Removed | Confirmed removed. |
-| Post-run persistence (C1) | ✅ **DONE** | `sessionState.SaveAsync()` in `finally` block at BackupEngine.cs:400. |
-| File-backed SummaryStore (C2) | ✅ **DONE** | `BackupJsonSummaryStore` — writes JSON to `.bmtp3/{sessionId}.json` with temp-file + replace atomicity. |
-| Real filesystem traversal (C3) | ✅ **DONE** | `FileSystemTraversal` — recursive walk with SafeGetFiles/SafeGetDirectories/SafeGetDate. |
-| All dates on temp file (I3a) | ✅ **DONE** | `EarliestTimestampResolutionService` sets `CreationTimeUtc`, `LastWriteTimeUtc`, `LastAccessTimeUtc` on target file. |
-| Timestamp correction after MoveTo (I4 in old plan.md — not to be confused with I4 below) | ✅ **DONE** | Applied in `ResolveAndApplyEarliestAsync` — not in the engine's MoveTo step (the file is corrected pre-move at temp stage, survives move). |
-| I4/E4: MoveableFileContent.MoveTo overwrite bug | ✅ **FIXED** | `FileInfo.MoveTo(dest, false)` → `FileInfo.MoveTo(dest, overwrite)` — parameteren bruges nu. |
-| E1: CompositeTimestampReader CancellationToken | ✅ **FIXED + REDESIGNED** | `CancellationToken` passes nu til sub-readers. Nyt interface-design: `ITimestampReader` (fail-fast), `ICompositeTimestampReader` (TryReadCollect med bool + out errors), `TimestampReaderException` (custom exception med ReaderType). Gammel `out (Type, Exception)` overload fjernet. |
-| E2: ThrowIfCancellationRequested | ✅ **DONE** | `cancellationToken.ThrowIfCancellationRequested()` tilføjet i starten af foreach-loop (BackupEngine.cs). |
-| FileContent cleanup | ✅ **DONE** | Volatile fjernet fra `_disposed`. Dispose simplificeret (ingen indirektion). Doc comments genindsat. |
-| Ubrugt variable `earliest` | ✅ **FIXED** | `earliest.Timestamp` bruges nu direkte på linje 301 i stedet for redundant `ResolveDate()`. Kaster exception hvis null. `ResolveDate()` fjernet. |
-| Step numbering jump (8→10) | ✅ **FIXED** | `// 10.` → `// 9. Return BackupResult`. |
-| DeleteEmptyDirectories | ✅ **ALREADY DONE** | Allerede implementeret via `CleanupSessionTempDirectory` + `TryDeleteIfEmpty` i finally block. |
-| E6: Per-item try-catch | ✅ **FIXED** | Per-item try-catch i processing loop. Failed items markeres som Failed, exception re-thrown (fail-fast). |
-| I6: Post-write verification | ✅ **FIXED** | Hash verification efter sidecar, før Success. `PostWriteVerificationType.Binary` fjernet — kun None/Hash. |
-| **DryRun not implemented** | ✅ **DONE** | Short-circuit med `BuildDryRunResult` helper. Ingen writes, result bygget fra repository. `BackupResult.IsDryRun = true`. |
-| **N5: Ryd op BackupRunner** | ✅ **DONE** | `ParallelBackupRunner` + `LimitedParallelBackupRunner` slettet. `BackupRunner` beholdt til senere refactor. |
+| DryRun not implemented | ✅ **DONE** | `BuildDryRunResult` helper, short-circuit før processing loop. `BackupResult.IsDryRun = true`. |
+| ParallelBackupRunner cleanup | ✅ **DONE** | `ParallelBackupRunner` + `LimitedParallelBackupRunner` slettet. `BackupRunner` beholdt. |
+| N5: Ryd op ubrugte `BackupRunner`-klasser | ✅ **DONE** | `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
+| Sidecar redesign: Document/Section/Property model | ✅ **DONE** | `SidecarProperty`, `SidecarSection`, `SidecarDocument` (fluent API + weight-sortering). |
+| `#` comment support i INI sidecar | ✅ **DONE** | `IniSidecarWriter` skriver `#` kommentarer (multi-line split). |
+| INI sidecar `NotImplementedException` | ✅ **DONE** | INI writer fully implemented. |
+| JSON sidecar `NotImplementedException` | ✅ **DONE** | `JsonSidecarWriter` implemented. |
+| Sidecar format: `[Source]`, `[SourceDevice]`, `[SourceDrive]`, `[Backup]`, `[Path]`, `[Hashes]` | ✅ **DONE** | Matcher brugerens spec. |
+| Sidecar: alle hashes altid til stede | ✅ **DONE** | Alle HashType keys + `SHA3_512` alias for `SHA3_512_FIPS202`. |
+| Sidecar: `MD5` i stedet for `MD5_128` | ✅ **DONE** | Key name mapping i `SidecarService`. |
+| I5: Sidecar metadata richness (device/drive details) | ✅ **DONE** | `SourceDetailsSectionName` + `SourceDetails` i `SidecarRequest`. |
+| I5: `[Path]` med SourceRelativePath / SanitizedSourceRelativePath / TargetRelativePath | ✅ **DONE** | All three paths in sidecar. |
+| `ResolvedDateTime` → `MediaTakenDateTime` rename (Core4) | ✅ **DONE** | `ItemMetadata.cs`, `EarliestTimestampResolutionService.cs`, `BackupEngine.cs`. |
+| `ItemMetadata` udvidet med originale datoer | ✅ **DONE** | `AuthoredDateTime`, `CreatedDateTime`, `ModifiedDateTime`, `AccessedDateTime` added. Captured before timestamp correction. |
+| Sidecar læser datoer fra `ItemMetadata` i stedet for `Item` | ✅ **DONE** | `BackupEngine` sidecar construction uses `record.Metadata.*`. |
+| Sidecar comments på engelsk | ✅ **DONE** | All comments translated to English. |
 
 ---
 
@@ -50,11 +45,6 @@
   - Cannot detect silent corruption or failed writes.
   - `BackupPlan.PostWriteVerification` field exists but is not implemented.
 
-- **I5: Sidecar does not match Original Core metadata richness**
-  - Missing `[DeviceDetails]` / `[DriveDetails]` sections.
-  - Missing `[PathMapping]` section (original → sanitized path).
-  - Missing backup timestamp `BackupDateTime` (uses `StartTime`).
-
 ### Medium
 
 - **E5: DownloadService redundant timestamp-logik** — ✅ **FIXED**
@@ -68,25 +58,13 @@
 
 - **I7: Include/Exclude patterns not implemented**
   - `SourceTraversalRequest` has `IncludePatterns`/`ExcludePatterns` fields, but `FileSystemTraversal` ignores them.
-  - Patterns er glob patterns, matchet mod filnavn via `System.IO.Enumeration.FileSystemName.MatchesPattern`.
-  - Exclude har precedence over include.
-
-
-- **JSON sidecar** — `NotImplementedException` i `SidecarService` (linje 14)
-
-- **I5: Sidecar metadata richness**
-  - Missing `[DeviceDetails]` / `[DriveDetails]` sections.
-  - Missing `[PathMapping]` section (original → sanitized path).
-  - Missing backup timestamp `BackupDateTime` (uses `StartTime`).
+  - Patterns er glob patterns, matchet mod filnavn via `GlobMatcher`.
 
 - **N1: Destination inspection / cross-run dedup**
   - Læs sidecar hash ved collision for at skip identiske filer.
 
-- **N5: Ryd op ubrugte `BackupRunner`-klasser**
-  - Wire eller fjern `BackupRunner`, `ParallelBackupRunner`, `LimitedParallelBackupRunner`.
-
 - **N6: Tests**
-  - Skriv tests for HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator.
+  - Skriv tests for HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator, SidecarService.
 
 - **Wire Core4 into Consoles**
   - Consoles programmet bruger stadig Core2.
@@ -149,7 +127,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | 1 | `IBackupHandler` / handler-hierarki (Device, Drive, MediaDevice, Print, Verify) | ➡️ | Core4 har samlet `BackupEngine` i stedet for per-source handlers |
 | 2 | `IBackupScanner` / `ScannerGatherer` | ⚠️ | Core4 har `IBackupScanner` men `ScannerGathererStub` — scanner-logik mangler |
 | 3 | `IFileComparer` + 8 chunked compare algoritmer + `Md5Comparer` | ✅ | Core4 har `IFileCompareService` + `BinaryFileComparerSelector` + 5 algoritmer |
-| 4 | `ISideCarDocumentBuilder` / `ISideCarMetaDataBuilder` | ➡️ | Core4 har `ISidecarService` / `SidecarService` — anderledes interface |
+| 4 | `ISideCarDocumentBuilder` / `ISideCarMetaDataBuilder` | ➡️ | Core4 har `ISidecarService` / `SidecarService` — Document/Section/Property model |
 | 5 | `BackupTimeStamp` / `BackupTimeStampForDevice` / `BackupTimeStampForDrive` | ➡️ | Core4 har `IEarliestTimestampResolutionService` — langt mere avanceret |
 | 6 | `IHashCode` / `IHashCodeStringBuilder` / `HashCalculator` / `HashCode` | ✅ | Core4 har `IHashGenerator` / `IHashService` / `StreamHashGenerator` |
 | 7 | `IMessageFormatter` + `StringVariableSubstitution.Template` | ✅ | Fælles i `BMTP3.Common.MessageFormatterParser` |
@@ -178,7 +156,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | 5 | `DestinationInspector` | ❌ | Destination inspection/scoping mangler i Core4 |
 | 6 | `MetadataReader` / `TimestampWaterfall` | ⚠️ | Core4 har `EarliestTimestampResolutionService` — mere avanceret |
 | 7 | `ItemHasher` | ✅ | Core4 har `HashService` / `StreamHashGenerator` |
-| 8 | `SidecarGenerators` (`.hash` sidecar) | ⚠️ | Core4 har `SidecarService` — JSON/INI/TEXT, INI ikke implementeret |
+| 8 | `SidecarGenerators` (`.hash` sidecar) | ✅ | Core4 har `SidecarService` — INI/JSON/TEXT |
 | 9 | `IHashAdapter` + 8 implementeringer (MD5, SHA1, SHA256, SHA512, BLAKE3, XXH3, CRC32, CRC64) | ⚠️ | Core4 har 9 hash-typer (incl. 2 x SHA3, 2 x BLAKE3) men ikke CRC/XXH3/SHA1 |
 | 10 | `ITransferEngine` / `FileTransferEngine` | ➡️ | Core4 har `IDownloadService` + `IMoveableContent` |
 | 11 | `IFileTraversalService` / `FileTraversalService` / `TraversalConfig` | ⚠️ | Core4 har `ISourceTraversal` + `FileSystemTraversal` — ligner |
@@ -190,7 +168,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | 17 | `IContent` / `FileContent` / `MediaFileContent` / `GatekeptStream` / `IMoveableContent` | ✅ | Core4 har samme mønster: `IContent` / `FileContent` / `IMoveableContent` / `MoveableFileContent` |
 | 18 | `IFileScanner` / `IMediaFileScanner` / `DirectoryScanner` / `MediaFileScanner` | ⚠️ | Core4 har `FileSystemTraversal` — scanner-logik mangler for MTP/media |
 | 19 | `MTPGatekeeperService` / `MTPMtpDeviceSession` / `MTPMtpDeviceSessionFactory` / `MtpDeviceUtils` | ❌ | Core4: MTP kaster `NotSupportedException` |
-| 20 | `PathNormalizer` / `GlobMatcher` | ⚠️ | Core4 har `NormalizeRelativeDirectory`/`NormalizeCustomRelativePath` — GlobMatcher mangler |
+| 20 | `PathNormalizer` / `GlobMatcher` | ⚠️ | Core4 har `NormalizeRelativeDirectory`/`NormalizeCustomRelativePath` + `GlobMatcher` |
 | 21 | `exifreader` (15 parsers, 11 readers, 14 candidates, tag definitions, formatter) | ✅ | Core4 har timestamp subsystem i `Engine/TimeStamp/` — samme kodebase flyttet |
 | 22 | `IBackupItemRepository` / `BackupItemRepository` / `IFileAttributeRepository` / `ITimestampRepository` | ❌ | Core4 har `IBackupRecordRepository` / `SessionStateService` — anderledes scope |
 | 23 | `BackupJob` / `JobState` / `BackupError` / `BackupErrorType` | ⚠️ | Core4 har `BackupPlan` / `BackupResult` / `BackupResultItem` — lignende |
@@ -214,7 +192,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | 5 | `IFileTransfer` / `SimpleFileTransfer` (buffered copy + collision) | ➡️ | Core4 har `IDownloadService` + `IMoveableContent.MoveTo()` |
 | 6 | `IHashGenerator` / `IItemHasher` / `StreamHashGenerator` + `Blake3Digest` | ✅ | Core4 har samme mønster i `Engine/Hashing/` |
 | 7 | `IMetadataReader` / `FileMetadataReader` (basic FileInfo metadata) | ➡️ | Core4 har `EarliestTimestampResolutionService` — langt mere |
-| 8 | `ISidecarGenerator` / `SimpleSidecarGenerator` (INI .sidecar) | ⚠️ | Core4 har `SidecarService` — INI skrivning er NotImplemented |
+| 8 | `ISidecarGenerator` / `SimpleSidecarGenerator` (INI .sidecar) | ✅ | Core4 har `SidecarService` — INI + JSON + Document model |
 | 9 | `BackupItem` (immutable record with With* helpers) | ➡️ | Core4 har `BackupItem` (mutable class) — forskelligt mønster |
 | 10 | `BackupJobResult` / `BackupError` | ✅ | Core4 har `BackupResult` / `BackupResultItem` |
 | 11 | `BackupPlan` / `CollisionStrategy` / `HashType` | ✅ | Core4 har alle tre, mere udvidede |
@@ -229,7 +207,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **Resilience** | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
 | **MTP** | `NotSupportedException` — ingen MTP device support |
 | **TOML config** | Ingen TOML-reader; kun programmatisk `BackupPlan` |
-| **INI sidecar** | `NotImplementedException` |
+| **INI/JSON sidecar** | ✅ **DONE** — Full Document/Section/Property model + Ini + Json writers |
 | **DryRun** | ✅ **DONE** — `BuildDryRunResult` helper, short-circuit |
 | **Parallel runner** | `BackupRunner` beholdt. `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
 | **Include/Exclude patterns** | `FileSystemTraversal` ignorerer dem |

@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 1 Jun 2026** — DryRun done. Næste: JSON sidecar, device metadata.
+> **Opdateret 3 Jun 2026** — Sidecar redesign completed. ItemMetadata udvidet med originale datoer. ResolvedDateTime → MediaTakenDateTime.
 
 ## Færdige opgaver
 
@@ -21,31 +21,33 @@
 - [x] Step-number jump (8→10) — rettet til `// 9. Return BackupResult`
 - [x] DeleteEmptyDirectories — allerede implementeret via `CleanupSessionTempDirectory` i finally block
 - [x] GlobMatcher (Core4) — brace expansion + bugfixes. Samme fixes backportet til GlobConverter (Consoles) og GlobMatcher (Core2)
+- [x] E6 — Per-item try-catch i processing loop (BackupEngine.cs), markér failed items som Failed, re-throw (fail-fast)
+- [x] I6 — Post-write hash verification efter MoveTo (kun Hash, Binary fjernet — giver ikke mening efter MoveTo)
+- [x] `PostWriteVerificationType.Binary` fjernet — kun None/Hash tilbage
+- [x] E5 — Fjern redundant timestamp-logik fra `DownloadService`
+- [x] I7 — Implement Include/Exclude patterns i `FileSystemTraversal` — `GlobMatcher.IsIncluded` i loopet, gates ikke fjernet
+- [x] — DryRun — short-circuit med `BuildDryRunResult` helper før processing loop
+- [x] — Sidecar redesign: Document/Section/Property model (fluent API + weight-sortering)
+- [x] — INI sidecar writer med `#` kommentar-støtte (multi-line)
+- [x] — JSON sidecar writer
+- [x] — Sidecar format: `[Source]`, `[SourceDevice]`/`[SourceDrive]`, `[Backup]`, `[Path]`, `[Hashes]` (matcher brugerens spec)
+- [x] — `MD5` i stedet for `MD5_128` i hashes sektion
+- [x] — Alle hashes altid til stede i `[Hashes]` + `SHA3_512` alias
+- [x] — `ResolvedDateTime` → `MediaTakenDateTime` rename i hele Core4
+- [x] — `ItemMetadata` udvidet med originale datoer: `AuthoredDateTime`, `CreatedDateTime`, `ModifiedDateTime`, `AccessedDateTime`
+- [x] — Originale datoer captured før timestamp correction
+- [x] — Sidecar læser datoer fra `ItemMetadata` i stedet for `Item`
 
 ## Næste opgaver (prioriteret)
 
 ### Høj prioritet
 
-- [x] E6 — Per-item try-catch i processing loop (BackupEngine.cs), markér failed items som Failed, re-throw (fail-fast)
-- [x] I6 — Post-write hash verification efter MoveTo (kun Hash, Binary fjernet — giver ikke mening efter MoveTo)
-- [x] `PostWriteVerificationType.Binary` fjernet — kun None/Hash tilbage
+- [ ] — Ctrl+C: `BackupEngine.RunAsync` fanger `OperationCanceledException` og returnerer `BackupResult` med `State = Cancelled` i stedet for at re-throw (del 1)
 
 ### Medium prioritet
 
-- [x] I6 — Post-write verification efter fil-flytning
-
-### Lav prioritet (gøres i denne rækkefølge)
-
-- [x] E5 — Fjern redundant timestamp-logik fra `DownloadService`
-- [x] E7 — Ikke en bug — `TryDeleteIfEmpty` er korrekt. `.tmp`-filer er forensic evidence
-- [x] I7 — Implement Include/Exclude patterns i `FileSystemTraversal` — `GlobMatcher.IsIncluded` i loopet, gates ikke fjernet
-- [x] — Implement DryRun — short-circuit med `BuildDryRunResult` helper før processing loop
-- [ ] — Ctrl+C: `BackupEngine.RunAsync` fanger `OperationCanceledException` og returnerer `BackupResult` med `State = Cancelled` i stedet for at re-throw (del 1)
-- [ ] — JSON sidecar (currently `NotImplementedException`)
-- [ ] I5 — Device metadata i sidecar (`[DeviceDetails]`, `[PathMapping]`)
 - [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup)
-- [x] N5 — Ryd op: `ParallelBackupRunner` + `LimitedParallelBackupRunner` slettet. `BackupRunner` beholdt til senere refactor.
-- [ ] N6 — Skriv tests (HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator)
+- [ ] N6 — Skriv tests (HashService, DI, SummaryStore, CollisionHelpers, DiskSpaceValidator, SidecarService)
 - [ ] — Wire Core4 into Consoles (incl. `Console.CancelKeyPress` → linked token — del 2 af Ctrl+C)
 
 ### Allersidst (når alt andet er færdigt og testet)
