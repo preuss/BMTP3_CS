@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 3 Jun 2026** — Sidecar redesign completed. DryRun done. ItemMetadata udvidet med originale datoer.
+> **Opdateret 3 Jun 2026** — Sidecar redesign completed. DryRun done. ItemMetadata udvidet med originale datoer. Writer Stream refactoring + tests completed. Ctrl+C Del 1 completed.
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -27,6 +27,11 @@
 | Sidecar læser datoer fra `ItemMetadata` i stedet for `Item` | ✅ **DONE** | `BackupEngine` sidecar construction uses `record.Metadata.*`. |
 | Sidecar comments på engelsk | ✅ **DONE** | All comments translated to English. |
 | I7: Include/Exclude patterns | ✅ **DONE** | `GlobMatcher.IsIncluded` i `FileSystemTraversal`. Gates beholdt (regel). |
+| Writer Stream refactoring | ✅ **DONE** | `ISidecarWriter.WriteToFileAsync` → `WriteToStreamAsync(Stream)`. `IniSidecarWriter`/`JsonSidecarWriter` skriver til Stream. `SidecarService` åbner `FileStream`. |
+| IniSidecarWriter forbedret | ✅ **DONE** | `WriteCommentBlock` ekstraheret med `StringReader.ReadLine()`. `IniSidecarWriterOptions` (PreserveEmptyCommentLines, WriteKeysWithNullValues). CRLF line endings. |
+| JsonSidecarWriter forbedret | ✅ **DONE** | `CreateSerializableModel` ekstraheret. `SerializeAsync(stream)` — ingen mellemstring. |
+| N6: SidecarServiceTests | ✅ **DONE** | SidecarServiceTests (6), IniSidecarWriterTests (14), JsonSidecarWriterTests (10) = 30 nye tests. I alt 160 tests. |
+| Ctrl+C Del 1: BackupEngine catch OCE → Cancelled | ✅ **DONE** | `try { ... } catch(OperationCanceledException)` returnerer `BackupResult` med `State = BackupResultState.Cancelled`. `BuildItemResults` udtrukket. |
 
 ---
 
@@ -34,11 +39,11 @@
 
 ### Important
 
-- **Ctrl+C handling mangler i Core4**
-  - `BackupEngine.RunAsync` re-thrower `OperationCanceledException` — caller får aldrig et `BackupResult` med `State = Cancelled`.
-  - Ingen `Console.CancelKeyPress`-wiring i Consoles-kommandoen for Core4 (hører sammen med "Wire Core4 into Consoles").
-  - Del 1: Engine fanger OCE og returnerer Cancelled-result.
-  - Del 2: Console-kommando registrerer CancelKeyPress → linked token.
+- **Ctrl+C — Del 1 ✅ (Engine), Del 2 mangler**
+  - Del 1 ✅: `BackupEngine.RunAsync` fanger `OperationCanceledException` → returnerer `BackupResult` med `State = Cancelled`.
+  - Del 2 ❌: `ConsoleEventHandler` (kernel32 + CancelKeyPress) mangler i Core4.
+  - Del 3 ❌: Wiring i Consoles entry point.
+  - Del 4 ❌: Tests (blokeret af validator-gates).
 
 ### Medium
 
@@ -51,9 +56,12 @@
   - `.tmp`-filer er **forensic evidence** efter crash — at slette dem ville ødelægge debug-sporet.
   - Mappen bevares bevidst til fejlfinding.
 
-- **N6: Tests**
+- **N6: Tests** ✅ **DONE** — 30 nye tests
   - HashServiceTests ✅, DITests ✅, CollisionResolverTests ✅, RenameCollisionResolverTests ✅
-  - Mangler: SidecarServiceTests
+  - SidecarServiceTests ✅ (6 tests)
+  - IniSidecarWriterTests ✅ (14 tests)
+  - JsonSidecarWriterTests ✅ (10 tests)
+  - I alt: **160 tests**
 
 - **Wire Core4 into Consoles**
   - Consoles programmet bruger stadig Core2.

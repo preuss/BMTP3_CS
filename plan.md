@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 3 Jun 2026** — Sidecar redesign completed. ItemMetadata udvidet med originale datoer. ResolvedDateTime → MediaTakenDateTime.
+> **Opdateret 3 Jun 2026** — Sidecar redesign completed. ItemMetadata udvidet med originale datoer. ResolvedDateTime → MediaTakenDateTime. Writer Stream refactoring + tests completed. Ctrl+C Del 1 completed.
 
 ## Færdige opgaver
 
@@ -37,17 +37,24 @@
 - [x] — `ItemMetadata` udvidet med originale datoer: `AuthoredDateTime`, `CreatedDateTime`, `ModifiedDateTime`, `AccessedDateTime`
 - [x] — Originale datoer captured før timestamp correction
 - [x] — Sidecar læser datoer fra `ItemMetadata` i stedet for `Item`
+- [x] — Writer Stream refactoring: `ISidecarWriter.WriteToFileAsync` → `WriteToStreamAsync(Stream)`
+- [x] — `IniSidecarWriter` forbedret: `WriteCommentBlock` + options (CRLF, PreserveEmptyCommentLines, WriteKeysWithNullValues)
+- [x] — `JsonSidecarWriter` forbedret: `CreateSerializableModel` + `SerializeAsync(stream)` — ingen mellemstring
+- [x] — N6: SidecarServiceTests (6), IniSidecarWriterTests (14), JsonSidecarWriterTests (10) = 30 nye tests. I alt 160.
+- [x] — Ctrl+C Del 1: `BackupEngine.RunAsync` fanger `OperationCanceledException` → `BackupResult` med `State = Cancelled`
 
 ## Næste opgaver (prioriteret)
 
 ### Høj prioritet
 
-- [ ] — Ctrl+C: `BackupEngine.RunAsync` fanger `OperationCanceledException` og returnerer `BackupResult` med `State = Cancelled` i stedet for at re-throw (del 1)
+- [ ] — Ctrl+C Del 2: `ConsoleEventHandler` (kernel32 SetConsoleCtrlHandler + Console.CancelKeyPress) + `CancellationTokenGenerator`
+- [ ] — Ctrl+C Del 3: Wire ConsoleEventHandler ind i entry point
+- [ ] — [BLOKERING] Fiks validator-gates: `BackupPlanValidator` blokerer implementerede features — skal fixes før engine-tests kan skrives
 
 ### Medium prioritet
 
-- [ ] N6 — Skriv tests (HashServiceTests ✅, DITests ✅, CollisionResolverTests ✅, RenameCollisionResolverTests ✅ — mangler: SidecarServiceTests)
-- [ ] — Wire Core4 into Consoles (incl. `Console.CancelKeyPress` → linked token — del 2 af Ctrl+C)
+- [ ] — Ctrl+C Del 4: Tests — pre-cancelled token → Cancelled state (kræver validator-fix først)
+- [ ] — Wire Core4 into Consoles (incl. console cancel-wiring)
 
 ### Allersidst (når alt andet er færdigt og testet)
 
