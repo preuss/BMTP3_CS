@@ -24,6 +24,7 @@ public class RenameCollisionResolverTests
 		CustomRenamePattern: null,
 		ComparisonType: CollisionComparisonType.None,
 		ComparisonHashAlgorithmTypes: Array.Empty<HashAlgorithmType>(),
+		ComputedHashes: null,
 		DeviceName: null,
 		DeviceModel: null
 	);

@@ -112,403 +112,458 @@ public sealed class BackupEngine : IBackupEngine
 		BackupJsonSummaryStore summaryStore = new(metadataPath, sessionKey.SessionId);
 		SessionStateService sessionState = new(summaryStore);
 
-		// ------------------------------------------------------------
-		// 3b. Validate disk space — minimum free space for application
-		//      (logs, metadata, temp files).
-		// ------------------------------------------------------------
-		await _diskSpaceValidator.EnsureMinimumFreeSpaceAsync(plan.Destination, cancellationToken);
-
-		// ------------------------------------------------------------
-		// 4. Open source traversal (filesystem or media device)
-		//    - Establish access to source via ISourceTraversal
-		//    - Fail if source is not accessible
-		// ------------------------------------------------------------
-		SourceTraversalFactoryCreateRequest sourceTraversalFactoryCreateRequest = new()
-		{
-			SourceType = plan.SourceType,
-			SourcePath = plan.SourcePath,
-		};
-
-		await using ISourceTraversal traversal = _sourceTraversalFactory.Create(sourceTraversalFactoryCreateRequest);
-
-		// ------------------------------------------------------------
-		// 5. Scan source
-		//    - Enumerate directories and files
-		//    - Apply include / exclude rules
-		//    - Count files and total bytes
-		//    - Update progress (phase = Scanning)
-		// ------------------------------------------------------------
-
-		BackupScanRequest scanRequest = new()
-		{
-			SourcePath = plan.SourcePath,
-			Recursive = plan.Recursive,
-			IncludePatterns = plan.IncludePatterns,
-			ExcludePatterns = plan.ExcludePatterns,
-		};
-
-		Progress<BackupScanProgress> scanProgress = new(sp =>
-		{
-			_currentProgress = _currentProgress with
-			{
-				CurrentPhase = BackupProgressPhase.Scanning,
-				DirectoriesTraversed = sp.DirectoriesTraversed,
-				FilesDiscovered = sp.FilesDiscovered,
-			};
-			progress?.Report(_currentProgress);
-		});
-
-		await foreach(BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
-		{
-			cancellationToken.ThrowIfCancellationRequested();
-			BackupRecord record = new()
-			{
-				Item = item,
-			};
-
-			repository.Add(record);
-		}
-
-		// Update progress with total selected files.
-		_currentProgress = _currentProgress with
-		{
-			TotalFilesSelected = repository.GetAll().Count,
-		};
-		progress?.Report(_currentProgress);
-
-		// ------------------------------------------------------------
-		// 5b. Resume — match scanned items against persisted summary
-		//      to restore DestinationPath and processing Status
-		// ------------------------------------------------------------
-
-		await sessionState.ApplyResumeAsync(repository.GetAll(), sessionKey, plan.ResumeBehavior, cancellationToken);
-
-		List<BackupRecord> pendingRecords = FilterPendingRecords(repository.GetAll(), ref _currentProgress, progress);
-
-		// ------------------------------------------------------------
-		// 5c. Validate disk space — sufficient capacity for backup content
-		//      (total file size + overhead buffer).
-		// ------------------------------------------------------------
-		long totalBytesRequired = pendingRecords.Sum(r => (long)r.Item.Content.Length);
-		await _diskSpaceValidator.EnsureSufficientBackupCapacityAsync(plan.Destination, totalBytesRequired, cancellationToken);
-
-		// ------------------------------------------------------------
-		// 5d. Dry-run — report discovered items, skip writes
-		// ------------------------------------------------------------
-
-		if(plan.DryRun) return BuildDryRunResult(repository, _currentProgress, progress, plan);
-
-		// ------------------------------------------------------------
-		// 6. Process pending items
-		//    - Download content to temp file
-		//    - Extract earliest timestamp from metadata
-		//    - Compute hashes (comparison + verification)
-		//    - Resolve destination path (collision handling)
-		//    - Move file from temp to destination
-		//    - Write sidecar file
-		//    - Update progress (phase = Transferring / Hashing)
-		// ------------------------------------------------------------
-
-		DirectoryInfo sessionTempDir = TempDirectoryHelper.ResolveTempDirectoryPath(plan.Destination, backupStartTime, sessionKey);
-
 		try
 		{
-			TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
+			// ------------------------------------------------------------
+			// 3b. Validate disk space — minimum free space for application
+			//      (logs, metadata, temp files).
+			// ------------------------------------------------------------
+			await _diskSpaceValidator.EnsureMinimumFreeSpaceAsync(plan.Destination, cancellationToken);
 
-			foreach(BackupRecord record in pendingRecords)
+			// ------------------------------------------------------------
+			// 4. Open source traversal (filesystem or media device)
+			//    - Establish access to source via ISourceTraversal
+			//    - Fail if source is not accessible
+			// ------------------------------------------------------------
+			SourceTraversalFactoryCreateRequest sourceTraversalFactoryCreateRequest = new()
+			{
+				SourceType = plan.SourceType,
+				SourcePath = plan.SourcePath,
+			};
+
+			await using ISourceTraversal traversal = _sourceTraversalFactory.Create(sourceTraversalFactoryCreateRequest);
+
+			// ------------------------------------------------------------
+			// 5. Scan source
+			//    - Enumerate directories and files
+			//    - Apply include / exclude rules
+			//    - Count files and total bytes
+			//    - Update progress (phase = Scanning)
+			// ------------------------------------------------------------
+
+			BackupScanRequest scanRequest = new()
+			{
+				SourcePath = plan.SourcePath,
+				Recursive = plan.Recursive,
+				IncludePatterns = plan.IncludePatterns,
+				ExcludePatterns = plan.ExcludePatterns,
+			};
+
+			Progress<BackupScanProgress> scanProgress = new(sp =>
+			{
+				_currentProgress = _currentProgress with
+				{
+					CurrentPhase = BackupProgressPhase.Scanning,
+					DirectoriesTraversed = sp.DirectoriesTraversed,
+					FilesDiscovered = sp.FilesDiscovered,
+				};
+				progress?.Report(_currentProgress);
+			});
+
+			await foreach (BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
 			{
 				cancellationToken.ThrowIfCancellationRequested();
-
-				try
+				BackupRecord record = new()
 				{
-					// Create temp file path for this item.
-					FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
+					Item = item,
+				};
 
-					// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-					if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+				repository.Add(record);
+			}
 
-					// Download content to temp file with progress reporting.
-					BackupProgressItem currentProgressItem = new()
+			// Update progress with total selected files.
+			_currentProgress = _currentProgress with
+			{
+				TotalFilesSelected = repository.GetAll().Count,
+			};
+			progress?.Report(_currentProgress);
+
+			// ------------------------------------------------------------
+			// 5b. Resume — match scanned items against persisted summary
+			//      to restore DestinationPath and processing Status
+			// ------------------------------------------------------------
+
+			await sessionState.ApplyResumeAsync(repository.GetAll(), sessionKey, plan.ResumeBehavior, cancellationToken);
+
+			List<BackupRecord> pendingRecords = FilterPendingRecords(repository.GetAll(), ref _currentProgress, progress);
+
+			// ------------------------------------------------------------
+			// 5c. Validate disk space — sufficient capacity for backup content
+			//      (total file size + overhead buffer).
+			// ------------------------------------------------------------
+			long totalBytesRequired = pendingRecords.Sum(r => (long)r.Item.Content.Length);
+			await _diskSpaceValidator.EnsureSufficientBackupCapacityAsync(plan.Destination, totalBytesRequired, cancellationToken);
+
+			// ------------------------------------------------------------
+			// 5d. Dry-run — report discovered items, skip writes
+			// ------------------------------------------------------------
+
+			if (plan.DryRun) return BuildDryRunResult(repository, _currentProgress, progress, plan);
+
+			// ------------------------------------------------------------
+			// 6. Process pending items
+			//    - Download content to temp file
+			//    - Extract earliest timestamp from metadata
+			//    - Compute hashes (comparison + verification)
+			//    - Resolve destination path (collision handling)
+			//    - Move file from temp to destination
+			//    - Write sidecar file
+			//    - Update progress (phase = Transferring / Hashing)
+			// ------------------------------------------------------------
+
+			DirectoryInfo sessionTempDir = TempDirectoryHelper.ResolveTempDirectoryPath(plan.Destination, backupStartTime, sessionKey);
+
+			try
+			{
+				TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
+
+				foreach (BackupRecord record in pendingRecords)
+				{
+					cancellationToken.ThrowIfCancellationRequested();
+
+					try
 					{
-						RelativePath = record.Item.RelativePath,
-						Length = (long)record.Item.Content.Length,
-						Phase = BackupProgressItemPhase.Transferring,
-					};
-					_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
-					progress?.Report(_currentProgress);
+						// Create temp file path for this item.
+						FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
-					IProgress<ulong> downloadProgress = new Progress<ulong>(bytesRead =>
-					{
-						currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
-						_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
-						progress?.Report(_currentProgress);
-					});
-					downloadProgress.Report(0);
-
-					DownloadRequest downloadRequest = new()
-					{
-						Destination = tempFile,
-						Item = record.Item,
-						BackupStartTime = backupStartTime,
-					};
-
-					await _downloadService.DownloadAsync(
-						downloadRequest,
-						downloadProgress,
-						cancellationToken
-					);
-
-					// Capture original source dates before timestamp correction overwrites them.
-					record.Metadata.AuthoredDateTime = record.Item.DateAuthored;
-					record.Metadata.CreatedDateTime = record.Item.DateCreated;
-					record.Metadata.ModifiedDateTime = record.Item.DateModified;
-					record.Metadata.AccessedDateTime = record.Item.DateAccessed;
-
-					EarliestTimestampResolutionRequest earliestTimestampRequest = new()
-					{
-						Content = record.Item.Content,
-						TimestampCorrectionTarget = tempFile,
-						Item = record.Item,
-						Metadata = record.Metadata,
-					};
-
-					EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveAndApplyEarliestAsync(
-						earliestTimestampRequest, plan.EnableTimestampCorrection, cancellationToken
-					);
-
-					// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
-					if(!earliest.Timestamp.HasValue)
-					{
-						throw new InvalidOperationException($"Could not resolve valid timestamp for '{record.Item.SourcePath}'.");
-					}
-
-					DateTimeOffset createFileDate = earliest.Timestamp.Value;
-
-					// Compute hashes.
-					IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
-					{
-						currentProgressItem = currentProgressItem with
-						{
-							BytesProcessed = (long)bytesComputed,
-							Phase = BackupProgressItemPhase.Hashing,
-						};
-						_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
-						progress?.Report(_currentProgress);
-					});
-					computeHashProgress.Report(0);
-
-					List<HashAlgorithmType> allAlgorithms =
-						(plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>()).Concat(plan.VerificationHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>())
-						.Distinct()
-						.ToList();
-
-					// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-					if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
-
-					record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
-						record.Item.Content,
-						record.Item.RelativePath,
-						allAlgorithms,
-						computeHashProgress,
-						cancellationToken
-					);
-
-					// ------------------------------------------------------------
-					// Commit: resolve path → move file → write sidecar
-					// ------------------------------------------------------------
-					string? strongHash = GetStrongestHash(record.Metadata.ComputedHashes);
-					TargetPathResolveRequest targetPathResolveRequest = new(
-						DestinationRoot: plan.Destination,
-						RelativePath: record.Item.RelativePath,
-						FileName: record.Item.FileName,
-						CreateFileDate: createFileDate,
-						StrongHash: strongHash,
-						ItemId: record.Item.Id,
-						OutputStructureStrategy: plan.OutputStructureStrategy,
-						CustomPattern: plan.CustomOutputPattern
-					);
-					string intendedPath = _targetPathResolver.Resolve(targetPathResolveRequest);
-
-					CollisionResult? collisionResult = null;
-
-					if(File.Exists(intendedPath))
-					{
-						// collision
-						CollisionResolveRequest collisionRequest = new()
-						{
-							SourcePath = tempFile.FullName,
-							IntendedTargetPath = intendedPath,
-
-							RelativePath = record.Item.RelativePath,
-							CreateFileDate = createFileDate,
-							ItemId = record.Item.Id,
-
-							StrongHash = strongHash,
-							ComputedHashes = record.Metadata.ComputedHashes,
-							DeviceName = null,
-							DeviceModel = null,
-
-							Strategy = plan.CollisionStrategy,
-
-							ComparisonType = plan.CollisionComparisonType,
-
-							RenameStrategy = plan.RenameStrategy,
-							CustomRenamePattern = plan.CustomOutputCollisionPattern,
-
-							ComparisonHashAlgorithmTypes = plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>(),
-						};
-
-						collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
-
-						switch(collisionResult.Action)
-						{
-							case CollisionResolutionAction.Skip:
-								record.Status = BackupItemStatus.Skipped;
-								continue;
-
-							case CollisionResolutionAction.Move:
-							case CollisionResolutionAction.Overwrite:
-								break;
-						}
-					}
-
-					string targetPath = collisionResult?.TargetPath ?? intendedPath;
-					bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
-
-					string? targetDir = Path.GetDirectoryName(targetPath);
-					if(!string.IsNullOrEmpty(targetDir))
-					{
-						Directory.CreateDirectory(targetDir);
-					}
-
-					// We know that record.Item.Content is IMoveableContent because it was created by the BackupScanner which always creates items with moveable content.
-					IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
-					IContent movedContent = moveableContent.MoveTo(targetPath, overwrite: overwrite);
-					record.Item.ReplaceContentProvider(movedContent);
-					record.DestinationPath = targetPath;
-
-					if(plan.SidecarFormat != SidecarFormat.None)
-					{
-						SidecarRequest sidecarRequest = new()
-						{
-							Format = plan.SidecarFormat,
-							SourceType = plan.SourceType switch
-							{
-								BackupSourceType.MediaDevice => "MtpDevice",
-								BackupSourceType.FileSystem => "Drive",
-								_ => "Unknown",
-							},
-							SourceFileName = record.Item.FileName,
-							SourceFullPath = record.Item.SourcePath,
-							MediaTakenDateTime = record.Metadata.MediaTakenDateTime,
-							AuthoredDateTime = record.Metadata.AuthoredDateTime,
-							CreateDateTime = record.Metadata.CreatedDateTime,
-							LastWriteDateTime = record.Metadata.ModifiedDateTime,
-							LastAccessDateTime = record.Metadata.AccessedDateTime,
-							BackupStartDateTime = backupStartTime,
-							SourceRelativePath = record.Item.RelativePath,
-							SanitizedSourceRelativePath = record.Item.RelativePath?.Replace(':', '_'),
-							TargetRelativePath = Path.GetRelativePath(plan.Destination, targetPath),
-							Hashes = record.Metadata.ComputedHashes,
-						};
-
-						await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
-					}
-
-					if(plan.PostWriteVerification == PostWriteVerificationType.Hash)
-					{
 						// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-						if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+						if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
 
-						if(plan.VerificationHashAlgorithmTypes == null || plan.VerificationHashAlgorithmTypes.Count == 0)
+						// Download content to temp file with progress reporting.
+						BackupProgressItem currentProgressItem = new()
 						{
-							throw new InvalidOperationException("VerificationHashAlgorithmTypes must be specified for hash-based post-write verification.");
-						}
+							RelativePath = record.Item.RelativePath,
+							Length = (long)record.Item.Content.Length,
+							Phase = BackupProgressItemPhase.Transferring,
+						};
+						_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+						progress?.Report(_currentProgress);
 
-						Dictionary<HashType, string> verifyHashes = await _hashService.ComputeHashesAsync(
-							record.Item.Content,
-							record.Item.RelativePath,
-							plan.VerificationHashAlgorithmTypes,
-							null,
+						IProgress<ulong> downloadProgress = new Progress<ulong>(bytesRead =>
+						{
+							currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
+							_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+							progress?.Report(_currentProgress);
+						});
+						downloadProgress.Report(0);
+
+						DownloadRequest downloadRequest = new()
+						{
+							Destination = tempFile,
+							Item = record.Item,
+							BackupStartTime = backupStartTime,
+						};
+
+						await _downloadService.DownloadAsync(
+							downloadRequest,
+							downloadProgress,
 							cancellationToken
 						);
 
-						foreach(KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
+						// Capture original source dates before timestamp correction overwrites them.
+						record.Metadata.AuthoredDateTime = record.Item.DateAuthored;
+						record.Metadata.CreatedDateTime = record.Item.DateCreated;
+						record.Metadata.ModifiedDateTime = record.Item.DateModified;
+						record.Metadata.AccessedDateTime = record.Item.DateAccessed;
+
+						EarliestTimestampResolutionRequest earliestTimestampRequest = new()
 						{
-							if(verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
-								!string.Equals(kvp.Value, verifyValue, StringComparison.OrdinalIgnoreCase))
+							Content = record.Item.Content,
+							TimestampCorrectionTarget = tempFile,
+							Item = record.Item,
+							Metadata = record.Metadata,
+						};
+
+						EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveAndApplyEarliestAsync(
+							earliestTimestampRequest, plan.EnableTimestampCorrection, cancellationToken
+						);
+
+						// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
+						if (!earliest.Timestamp.HasValue)
+						{
+							throw new InvalidOperationException($"Could not resolve valid timestamp for '{record.Item.SourcePath}'.");
+						}
+
+						DateTimeOffset createFileDate = earliest.Timestamp.Value;
+
+						// Compute hashes.
+						IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
+						{
+							currentProgressItem = currentProgressItem with
 							{
-								throw new InvalidOperationException(
-									$"Post-write verification failed for '{record.Item.SourcePath}': " +
-									$"{kvp.Key} hash mismatch.");
+								BytesProcessed = (long)bytesComputed,
+								Phase = BackupProgressItemPhase.Hashing,
+							};
+							_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
+							progress?.Report(_currentProgress);
+						});
+						computeHashProgress.Report(0);
+
+						List<HashAlgorithmType> allAlgorithms =
+							(plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>()).Concat(plan.VerificationHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>())
+							.Distinct()
+							.ToList();
+
+						// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
+						if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+
+						record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
+							record.Item.Content,
+							record.Item.RelativePath,
+							allAlgorithms,
+							computeHashProgress,
+							cancellationToken
+						);
+
+						// ------------------------------------------------------------
+						// Commit: resolve path → move file → write sidecar
+						// ------------------------------------------------------------
+						string? strongHash = GetStrongestHash(record.Metadata.ComputedHashes);
+						TargetPathResolveRequest targetPathResolveRequest = new(
+							DestinationRoot: plan.Destination,
+							RelativePath: record.Item.RelativePath,
+							FileName: record.Item.FileName,
+							CreateFileDate: createFileDate,
+							StrongHash: strongHash,
+							ItemId: record.Item.Id,
+							OutputStructureStrategy: plan.OutputStructureStrategy,
+							CustomPattern: plan.CustomOutputPattern
+						);
+						string intendedPath = _targetPathResolver.Resolve(targetPathResolveRequest);
+
+						CollisionResult? collisionResult = null;
+
+						if (File.Exists(intendedPath))
+						{
+							// collision
+							CollisionResolveRequest collisionRequest = new()
+							{
+								SourcePath = tempFile.FullName,
+								IntendedTargetPath = intendedPath,
+
+								RelativePath = record.Item.RelativePath,
+								CreateFileDate = createFileDate,
+								ItemId = record.Item.Id,
+
+								StrongHash = strongHash,
+								ComputedHashes = record.Metadata.ComputedHashes,
+								DeviceName = null,
+								DeviceModel = null,
+
+								Strategy = plan.CollisionStrategy,
+
+								ComparisonType = plan.CollisionComparisonType,
+
+								RenameStrategy = plan.RenameStrategy,
+								CustomRenamePattern = plan.CustomOutputCollisionPattern,
+
+								ComparisonHashAlgorithmTypes = plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>(),
+							};
+
+							collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
+
+							switch (collisionResult.Action)
+							{
+								case CollisionResolutionAction.Skip:
+									record.Status = BackupItemStatus.Skipped;
+									continue;
+
+								case CollisionResolutionAction.Move:
+								case CollisionResolutionAction.Overwrite:
+									break;
 							}
 						}
+
+						string targetPath = collisionResult?.TargetPath ?? intendedPath;
+						bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
+
+						string? targetDir = Path.GetDirectoryName(targetPath);
+						if (!string.IsNullOrEmpty(targetDir))
+						{
+							Directory.CreateDirectory(targetDir);
+						}
+
+						// We know that record.Item.Content is IMoveableContent because it was created by the BackupScanner which always creates items with moveable content.
+						IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
+						IContent movedContent = moveableContent.MoveTo(targetPath, overwrite: overwrite);
+						record.Item.ReplaceContentProvider(movedContent);
+						record.DestinationPath = targetPath;
+
+						if (plan.SidecarFormat != SidecarFormat.None)
+						{
+							SidecarRequest sidecarRequest = new()
+							{
+								Format = plan.SidecarFormat,
+								SourceType = plan.SourceType switch
+								{
+									BackupSourceType.MediaDevice => "MtpDevice",
+									BackupSourceType.FileSystem => "Drive",
+									_ => "Unknown",
+								},
+								SourceFileName = record.Item.FileName,
+								SourceFullPath = record.Item.SourcePath,
+								MediaTakenDateTime = record.Metadata.MediaTakenDateTime,
+								AuthoredDateTime = record.Metadata.AuthoredDateTime,
+								CreateDateTime = record.Metadata.CreatedDateTime,
+								LastWriteDateTime = record.Metadata.ModifiedDateTime,
+								LastAccessDateTime = record.Metadata.AccessedDateTime,
+								BackupStartDateTime = backupStartTime,
+								SourceRelativePath = record.Item.RelativePath,
+								SanitizedSourceRelativePath = record.Item.RelativePath?.Replace(':', '_'),
+								TargetRelativePath = Path.GetRelativePath(plan.Destination, targetPath),
+								Hashes = record.Metadata.ComputedHashes,
+							};
+
+							await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
+						}
+
+						if (plan.PostWriteVerification == PostWriteVerificationType.Hash)
+						{
+							// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
+							if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+
+							if (plan.VerificationHashAlgorithmTypes == null || plan.VerificationHashAlgorithmTypes.Count == 0)
+							{
+								throw new InvalidOperationException("VerificationHashAlgorithmTypes must be specified for hash-based post-write verification.");
+							}
+
+							Dictionary<HashType, string> verifyHashes = await _hashService.ComputeHashesAsync(
+								record.Item.Content,
+								record.Item.RelativePath,
+								plan.VerificationHashAlgorithmTypes,
+								null,
+								cancellationToken
+							);
+
+							foreach (KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
+							{
+								if (verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
+									!string.Equals(kvp.Value, verifyValue, StringComparison.OrdinalIgnoreCase))
+								{
+									throw new InvalidOperationException(
+										$"Post-write verification failed for '{record.Item.SourcePath}': " +
+										$"{kvp.Key} hash mismatch.");
+								}
+							}
+						}
+
+						record.Status = BackupItemStatus.Succeeded;
 					}
-
-					record.Status = BackupItemStatus.Succeeded;
-				} catch(Exception ex) when(ex is not OperationCanceledException)
-				{
-					record.Status = BackupItemStatus.Failed;
-					_logger.LogError(ex, "Item failed: {Path}", record.Item.SourcePath);
-					throw;
-				}
-
-				_currentProgress = _currentProgress with
-				{
-					ActiveFiles = Array.Empty<BackupProgressItem>(),
-				};
-				progress?.Report(_currentProgress);
-			}
-		} finally
-		{
-			await sessionState.SaveAsync(repository.GetAll(), sessionKey);
-
-			// Do this even when exception or cancel.
-			// Do not let cleanup errors mask original failure.
-			if(sessionTempDir.Exists)
-			{
-				try
-				{
-					bool removed = TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
-					if(!removed)
+					catch (Exception ex) when (ex is not OperationCanceledException)
 					{
-						_logger.LogDebug("Session temp directory not empty, kept: {sessionTempDir}", sessionTempDir.FullName);
+						record.Status = BackupItemStatus.Failed;
+						_logger.LogError(ex, "Item failed: {Path}", record.Item.SourcePath);
+						throw;
 					}
-				} catch(Exception ex)
-				{
-					_logger.LogWarning(ex, "Could not clean session temp directory: {sessionTempDir}", sessionTempDir.FullName);
+
+					_currentProgress = _currentProgress with
+					{
+						ActiveFiles = Array.Empty<BackupProgressItem>(),
+					};
+					progress?.Report(_currentProgress);
 				}
 			}
+			finally
+			{
+				await sessionState.SaveAsync(repository.GetAll(), sessionKey);
+
+				// Do this even when exception or cancel.
+				// Do not let cleanup errors mask original failure.
+				if (sessionTempDir.Exists)
+				{
+					try
+					{
+						bool removed = TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
+						if (!removed)
+						{
+							_logger.LogDebug("Session temp directory not empty, kept: {sessionTempDir}", sessionTempDir.FullName);
+						}
+					}
+					catch (Exception ex)
+					{
+						_logger.LogWarning(ex, "Could not clean session temp directory: {sessionTempDir}", sessionTempDir.FullName);
+					}
+				}
+			}
+
+			// ------------------------------------------------------------
+			// 7. Final progress report
+			// ------------------------------------------------------------
+
+			IReadOnlyList<BackupRecord> allRecords = repository.GetAll();
+
+			_currentProgress = _currentProgress with
+			{
+				CurrentPhase = BackupProgressPhase.Completed,
+				FilesSucceeded = allRecords.Count(r => r.Status == BackupItemStatus.Succeeded),
+				FilesSkipped = allRecords.Count(r => r.Status == BackupItemStatus.Skipped),
+				FilesFailed = allRecords.Count(r => r.Status == BackupItemStatus.Failed),
+			};
+			progress?.Report(_currentProgress);
+
+			// ------------------------------------------------------------
+			// 8. Finalize backup result
+			//    - Collect item results from all records
+			//    - Determine final state (Completed / Failed / Cancelled)
+			//    - Set failure reason if applicable
+			// ------------------------------------------------------------
+
+
+
+			List<BackupResultItem> itemResults = new(allRecords.Count);
+			bool anyFailed = false;
+
+			foreach (BackupRecord record in allRecords)
+			{
+				itemResults.Add(new BackupResultItem
+				{
+					Id = record.Item.Id,
+					SourcePath = record.Item.SourcePath,
+					DestinationPath = record.DestinationPath,
+					Length = (long)record.Item.Content.Length,
+					State = MapItemState(record.Status),
+				});
+
+				if (record.Status == BackupItemStatus.Failed) anyFailed = true;
+			}
+
+			BackupResult result = new()
+			{
+				Name = plan.Name,
+				State = anyFailed ? BackupResultState.Failed : BackupResultState.Completed,
+				ItemResults = itemResults.AsReadOnly(),
+			};
+
+			// ------------------------------------------------------------
+			// 9. Return BackupResult
+			// ------------------------------------------------------------
+
+			return result;
 		}
-
-		// ------------------------------------------------------------
-		// 7. Final progress report
-		// ------------------------------------------------------------
-
-		IReadOnlyList<BackupRecord> allRecords = repository.GetAll();
-
-		_currentProgress = _currentProgress with
+		catch (OperationCanceledException)
 		{
-			CurrentPhase = BackupProgressPhase.Completed,
-			FilesSucceeded = allRecords.Count(r => r.Status == BackupItemStatus.Succeeded),
-			FilesSkipped = allRecords.Count(r => r.Status == BackupItemStatus.Skipped),
-			FilesFailed = allRecords.Count(r => r.Status == BackupItemStatus.Failed),
-		};
-		progress?.Report(_currentProgress);
+			_logger.LogInformation("Backup cancelled by user.");
 
-		// ------------------------------------------------------------
-		// 8. Finalize backup result
-		//    - Collect item results from all records
-		//    - Determine final state (Completed / Failed / Cancelled)
-		//    - Set failure reason if applicable
-		// ------------------------------------------------------------
+			_currentProgress = _currentProgress with
+			{
+				CurrentPhase = BackupProgressPhase.Completed,
+			};
+			progress?.Report(_currentProgress);
 
+			return new BackupResult
+			{
+				Name = plan.Name,
+				State = BackupResultState.Cancelled,
+				ItemResults = BuildItemResults(repository.GetAll()),
+			};
+		}
+	}
 
+	private static IReadOnlyList<BackupResultItem> BuildItemResults(IReadOnlyList<BackupRecord> records)
+	{
+		List<BackupResultItem> itemResults = new(records.Count);
 
-		List<BackupResultItem> itemResults = new(allRecords.Count);
-		bool anyFailed = false;
-
-		foreach(BackupRecord record in allRecords)
+		foreach (BackupRecord record in records)
 		{
 			itemResults.Add(new BackupResultItem
 			{
@@ -518,22 +573,9 @@ public sealed class BackupEngine : IBackupEngine
 				Length = (long)record.Item.Content.Length,
 				State = MapItemState(record.Status),
 			});
-
-			if(record.Status == BackupItemStatus.Failed) anyFailed = true;
 		}
 
-		BackupResult result = new()
-		{
-			Name = plan.Name,
-			State = anyFailed ? BackupResultState.Failed : BackupResultState.Completed,
-			ItemResults = itemResults.AsReadOnly(),
-		};
-
-		// ------------------------------------------------------------
-		// 9. Return BackupResult
-		// ------------------------------------------------------------
-
-		return result;
+		return itemResults.AsReadOnly();
 	}
 
 	private static BackupResultItemState MapItemState(BackupItemStatus status) => status switch
@@ -551,9 +593,9 @@ public sealed class BackupEngine : IBackupEngine
 	{
 		List<BackupRecord> pending = new();
 
-		foreach(BackupRecord record in records)
+		foreach (BackupRecord record in records)
 		{
-			switch(record.Status)
+			switch (record.Status)
 			{
 				case BackupItemStatus.Succeeded:
 					currentProgress = currentProgress with { FilesSucceeded = currentProgress.FilesSucceeded + 1 };
@@ -595,7 +637,7 @@ public sealed class BackupEngine : IBackupEngine
 		List<BackupResultItem> itemResults = new(allRecords.Count);
 		bool anyFailed = false;
 
-		foreach(BackupRecord record in allRecords)
+		foreach (BackupRecord record in allRecords)
 		{
 			itemResults.Add(new BackupResultItem
 			{
@@ -606,7 +648,7 @@ public sealed class BackupEngine : IBackupEngine
 				State = MapItemState(record.Status),
 			});
 
-			if(record.Status == BackupItemStatus.Failed) anyFailed = true;
+			if (record.Status == BackupItemStatus.Failed) anyFailed = true;
 		}
 
 		return new BackupResult
@@ -620,7 +662,7 @@ public sealed class BackupEngine : IBackupEngine
 
 	private static string? GetStrongestHash(Dictionary<HashType, string>? computedHashes)
 	{
-		if(computedHashes == null || computedHashes.Count == 0)
+		if (computedHashes == null || computedHashes.Count == 0)
 		{
 			return null;
 		}
@@ -638,9 +680,9 @@ public sealed class BackupEngine : IBackupEngine
 			HashType.MD5_128,
 		];
 
-		foreach(HashType type in priority)
+		foreach (HashType type in priority)
 		{
-			if(computedHashes.TryGetValue(type, out string? hash))
+			if (computedHashes.TryGetValue(type, out string? hash))
 			{
 				return hash;
 			}
