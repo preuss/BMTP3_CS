@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace BMTP3.Core4.SignalInterrupts;
-	
+
 [Flags]
 public enum SignalInterruptKind
 {

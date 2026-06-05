@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 3 Jun 2026** — Sidecar redesign completed. DryRun done. ItemMetadata udvidet med originale datoer. Writer Stream refactoring + tests completed. Ctrl+C Del 1 completed.
+> **Opdateret 5 Jun 2026** — Sidecar redesign completed. DryRun done. ItemMetadata udvidet med originale datoer. Writer Stream refactoring + tests completed. Ctrl+C Del 1 + Del 2 completed. Gammel event-kode (CtrlTypes, ISignalInterruptEventHandler, SignalInterruptEventArgs, SignalInterruptEventEventHandler, ISignalInterruptHandler, ISignalInterruptService) slettet. SignalInterruptEngine er den nye standard.
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -39,11 +39,11 @@
 
 ### Important
 
-- **Ctrl+C — Del 1 ✅ (Engine), Del 2 mangler**
+- **Ctrl+C — Del 1 ✅ (Engine), Del 2 ✅ (SignalInterrupts), Del 3 ⏳, Del 4 ✅**
   - Del 1 ✅: `BackupEngine.RunAsync` fanger `OperationCanceledException` → returnerer `BackupResult` med `State = Cancelled`.
-  - Del 2 ❌: `ConsoleEventHandler` (kernel32 + CancelKeyPress) mangler i Core4.
-  - Del 3 ❌: Wiring i Consoles entry point.
-  - Del 4 ❌: Tests (blokeret af validator-gates).
+  - Del 2 ✅: `SignalInterruptEngine` (singleton subscription engine) + `SignalInterrupts` static entry point + `SignalInterruptRegistrationBuilder`. 6 filer i `Engine/SignalInterrupts/`. Gammel event-kode slettet.
+  - Del 3 ⏳: Wiring i Consoles entry point — udskudt til Core4-in-Consoles integration.
+  - Del 4 ✅: SignalInterruptContextTests + SignalInterruptKindTests + SignalInterruptRegistrationBuilderTests + WindowsCtrlTypeTests skrevet.
 
 ### Medium
 
