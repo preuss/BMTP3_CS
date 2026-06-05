@@ -38,7 +38,8 @@ internal interface ISessionStateService
 	/// <param name="sessionKey">Identifies the session.</param>
 	Task SaveAsync(
 		IReadOnlyList<BackupRecord> records,
-		BackupSessionKey sessionKey
+		BackupSessionKey sessionKey,
+		CancellationToken cancellationToken
 	);
 
 	/// <summary>

@@ -28,7 +28,7 @@ public sealed class SignalInterruptRegistrationBuilder
 		return this;
 	}
 
-	public IDisposable Create()
+	public ISignalSubscription Create()
 	{
 		Validate();
 

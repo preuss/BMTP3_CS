@@ -71,7 +71,7 @@ internal sealed class SignalInterruptEngine : IDisposable
 	/// <exception cref="ArgumentException"><paramref name="signals"/> is <see cref="SignalInterruptKind.None"/>.</exception>
 	/// <exception cref="PlatformNotSupportedException">The OS is not Windows.</exception>
 	/// <exception cref="InvalidOperationException">Failed to register kernel32 handler.</exception>
-	public IDisposable Register(
+	public ISignalSubscription Register(
 		SignalInterruptKind signals,
 		Action<SignalInterruptContext> handler
 	)
@@ -360,7 +360,7 @@ internal sealed class SignalInterruptEngine : IDisposable
 	///
 	/// Disposing this instance unregisters it from the engine.
 	/// </summary>
-	private sealed class SignalSubscription : IDisposable
+	private sealed class SignalSubscription : ISignalSubscription
 	{
 		private readonly SignalInterruptEngine _owner;
 		private bool _disposed;

@@ -29,8 +29,7 @@ internal sealed class SessionStateService : ISessionStateService
 	)
 	{
 		BackupSummary? summary = await _store.LoadAsync();
-		if(summary is null)
-			return;
+		if(summary is null) return;
 
 		Dictionary<string, BackupSummaryItem> summaryById = summary.Items.ToDictionary(i => i.Id);
 		HashSet<string> summaryIds = new(summaryById.Keys);
@@ -60,6 +59,7 @@ internal sealed class SessionStateService : ISessionStateService
 
 		foreach(BackupRecord record in records)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			if(summaryById.TryGetValue(record.Item.Id, out BackupSummaryItem? match))
 			{
 				record.DestinationPath = match.DestinationPath;
@@ -71,6 +71,7 @@ internal sealed class SessionStateService : ISessionStateService
 		// Post-resume guard: Active/Failed must not survive resume
 		foreach(BackupRecord record in records)
 		{
+			cancellationToken.ThrowIfCancellationRequested();
 			switch(record.Status)
 			{
 				case BackupItemStatus.Pending:
@@ -92,13 +93,14 @@ internal sealed class SessionStateService : ISessionStateService
 		}
 
 		// Persist updated state so summary matches records after resume
-		await SaveAsync(records, sessionKey);
+		await SaveAsync(records, sessionKey, cancellationToken);
 	}
 
 	/// <inheritdoc />
 	public async Task SaveAsync(
 		IReadOnlyList<BackupRecord> records,
-		BackupSessionKey sessionKey
+		BackupSessionKey sessionKey,
+		CancellationToken cancellationToken
 	)
 	{
 		BackupSummary summary = new()
@@ -109,7 +111,7 @@ internal sealed class SessionStateService : ISessionStateService
 			Items = records.Select(ToSummaryItem).ToList(),
 		};
 
-		await _store.SaveAsync(summary);
+		await _store.SaveAsync(summary, cancellationToken);
 	}
 
 	/// <inheritdoc />

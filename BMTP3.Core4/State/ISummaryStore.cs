@@ -2,7 +2,7 @@
 
 internal interface ISummaryStore
 {
-	Task SaveAsync(BackupSummary summary);
+	Task SaveAsync(BackupSummary summary, CancellationToken cancellationToken);
 	Task<BackupSummary?> LoadAsync();
 	Task DeleteAsync();
 }

@@ -22,11 +22,11 @@ internal sealed class BackupJsonSummaryStore : ISummaryStore
 		WriteIndented = true,
 	};
 
-	public async Task SaveAsync(BackupSummary summary)
+	public async Task SaveAsync(BackupSummary summary, CancellationToken cancellationToken)
 	{
 		string json = JsonSerializer.Serialize(summary, JsonOptions);
 		string tempPath = FilePath + ".tmp";
-		await File.WriteAllTextAsync(tempPath, json);
+		await File.WriteAllTextAsync(tempPath, json, cancellationToken);
 		File.Move(tempPath, FilePath, overwrite: true);
 	}
 

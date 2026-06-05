@@ -17,6 +17,7 @@ using BMTP3.Core4.SignalInterrupts;
 using BMTP3.Core4.State;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.Logging;
+using static BMTP3.Core4.SignalInterrupts.SignalInterruptEngine;
 
 namespace BMTP3.Core4.Engine;
 
@@ -99,8 +100,11 @@ public sealed class BackupEngine : IBackupEngine
 		CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 		cancellationToken = cancellationTokenSource.Token; // Shadow callers token.
 
-		// TODO: Add Handler to gracefully handle shutdown signals and cancel the backup operation. Save the current state so that the backup can be resumed later.
-		SignalInterrupt.On(SignalInterruptKind.All).Bind(cancellationTokenSource).Create();
+		// Finally saves when Cancel() is called and OperationCanceledException (OCE) is thrown.
+		using ISignalSubscription signalRegistration = SignalInterrupt.On(SignalInterruptKind.All).Handler(context =>
+		{
+			cancellationTokenSource.Cancel();
+		}).Create();
 
 		IBackupRecordRepository repository = new BackupMemoryRecordRepository();
 
@@ -471,7 +475,8 @@ public sealed class BackupEngine : IBackupEngine
 			}
 			finally
 			{
-				await sessionState.SaveAsync(repository.GetAll(), sessionKey);
+				// We need to force save the session state here to capture any progress made on items in case of cancellation or unhandled exceptions. This ensures that when the user resumes, they won't lose all progress since the last save point.
+				await sessionState.SaveAsync(repository.GetAll(), sessionKey, default(CancellationToken));
 
 				// Do this even when exception or cancel.
 				// Do not let cleanup errors mask original failure.

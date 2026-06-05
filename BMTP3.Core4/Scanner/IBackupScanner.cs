@@ -17,5 +17,6 @@ internal interface IBackupScanner
 		ISourceTraversal traversal,
 		BackupScanRequest request,
 		IProgress<BackupScanProgress>? progress,
-		CancellationToken cancellationToken);
+		CancellationToken cancellationToken
+	);
 }

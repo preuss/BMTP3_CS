@@ -10,7 +10,8 @@ internal sealed class BackupScanner : IBackupScanner
 		ISourceTraversal traversal,
 		BackupScanRequest request,
 		IProgress<BackupScanProgress>? progress,
-		[EnumeratorCancellation] CancellationToken cancellationToken)
+		[EnumeratorCancellation] CancellationToken cancellationToken
+	)
 	{
 		ArgumentNullException.ThrowIfNull(traversal);
 		ArgumentNullException.ThrowIfNull(request);

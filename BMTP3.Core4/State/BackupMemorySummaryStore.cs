@@ -4,8 +4,9 @@ internal sealed class BackupMemorySummaryStore : ISummaryStore
 {
 	private BackupSummary? _summary;
 
-	public Task SaveAsync(BackupSummary summary)
+	public Task SaveAsync(BackupSummary summary, CancellationToken cancellationToken)
 	{
+		cancellationToken.ThrowIfCancellationRequested();
 		_summary = summary;
 		return Task.CompletedTask;
 	}
