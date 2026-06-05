@@ -2,25 +2,21 @@
 
 namespace BMTP3.Core4.SignalInterrupts;
 
+
 /// <summary>
 /// Singleton engine that manages OS signal/interrupt subscriptions.
 ///
 /// Registers a single <c>kernel32.SetConsoleCtrlHandler</c> callback on first
-/// subscription and dispatches incoming signals to all registered handlers via
-/// <see cref="Register"/>.
+/// subscription and dispatches incoming signals to registered handlers.
 ///
 /// Flow:
-/// - OS sends a console control event → <see cref="Kernel32Handler"/> runs on a
-///   native thread → creates a <see cref="SignalInterruptContext"/> describing the
-///   event → dispatches to all <see cref="SignalSubscription"/> instances registered
-///   for that signal (reverse order, supports <see cref="SignalInterruptContext.StopPropagation"/>).
-/// - After dispatch, the engine's built-in <see cref="CancellationTokenSource"/> is
-///   cancelled unless a handler set <see cref="SignalInterruptContext.RequestCancellation"/>
-///   to <c>false</c>.
-/// - Returns <see cref="SignalInterruptContext.SuppressDefaultHandling"/> to Windows.
+/// - OS sends a console control event → <see cref="Kernel32Handler"/> runs on a native thread.
+/// - A <see cref="SignalInterruptContext"/> is created describing the event.
+/// - All matching <see cref="SignalSubscription"/> instances are invoked in reverse order.
+/// - Dispatch stops if <see cref="SignalInterruptContext.StopPropagation"/> is set.
+/// - The result of <see cref="SignalInterruptContext.SuppressDefaultHandling"/> is returned to Windows.
 ///
-/// Thread safety: all subscription modifications are guarded by <see cref="_gate"/>.
-/// See <see cref="SignalInterruptEventHandler"/> for an event-based alternative.
+/// Thread safety: all subscription modifications are protected by <see cref="_gate"/>.
 /// </summary>
 internal sealed class SignalInterruptEngine : IDisposable
 {
@@ -41,18 +37,10 @@ internal sealed class SignalInterruptEngine : IDisposable
 		[SignalInterruptKind.Shutdown] = new(),
 	};
 
-	private readonly CancellationTokenSource _cancellationTokenSource = new();
 	private readonly ConsoleEventDelegate _kernel32Callback;
 
 	private bool _registered;
 	private bool _disposed;
-
-	/// <summary>
-	/// A <see cref="System.Threading.CancellationToken"/> that is cancelled when
-	/// any OS control signal is received (unless all handlers set
-	/// <see cref="SignalInterruptContext.RequestCancellation"/> to <c>false</c>).
-	/// </summary>
-	public CancellationToken CancellationToken => _cancellationTokenSource.Token;
 
 	private delegate bool ConsoleEventDelegate(WindowsCtrlType eventType);
 
@@ -67,18 +55,22 @@ internal sealed class SignalInterruptEngine : IDisposable
 
 	/// <summary>
 	/// Registers a handler for one or more <see cref="SignalInterruptKind"/> signals.
-	/// The returned <see cref="IDisposable"/> unregisters this specific handler when disposed.
 	///
-	/// The native kernel32 callback is registered lazily on the first call to <see cref="Register"/>,
-	/// and unregistered when the last subscription is disposed (ref-counted).
+	/// The native kernel32 callback is registered lazily on the first call,
+	/// and unregistered automatically when the last subscription is disposed.
+	///
 	/// </summary>
-	/// <param name="signals">One or more <see cref="SignalInterruptKind"/> flags to listen for.</param>
-	/// <param name="handler">Callback invoked with a <see cref="SignalInterruptContext"/> describing the event.</param>
-	/// <returns>An <see cref="IDisposable"/> — dispose to unregister this handler.</returns>
+	/// <param name="signals">One or more <see cref="SignalInterruptKind"/> flags.</param>
+	/// <param name="handler">Callback invoked when the signal occurs.</param>
+	/// <returns>
+	/// An <see cref="IDisposable"/> representing the registration.
+	/// Dispose it to unregister the handler.
+	/// </returns>
 	/// <exception cref="ObjectDisposedException">The engine has been disposed.</exception>
+	/// <exception cref="ArgumentNullException"><paramref name="handler"/> is null.</exception>
 	/// <exception cref="ArgumentException"><paramref name="signals"/> is <see cref="SignalInterruptKind.None"/>.</exception>
-	/// <exception cref="PlatformNotSupportedException">The current OS is not Windows.</exception>
-	/// <exception cref="InvalidOperationException"><c>SetConsoleCtrlHandler</c> failed.</exception>
+	/// <exception cref="PlatformNotSupportedException">The OS is not Windows.</exception>
+	/// <exception cref="InvalidOperationException">Failed to register kernel32 handler.</exception>
 	public IDisposable Register(
 		SignalInterruptKind signals,
 		Action<SignalInterruptContext> handler
@@ -108,8 +100,10 @@ internal sealed class SignalInterruptEngine : IDisposable
 	}
 
 	/// <summary>
-	/// Registers <c>SetConsoleCtrlHandler</c> if not already registered.
-	/// Windows-only; throws <see cref="PlatformNotSupportedException"/> on other OS.
+	/// Ensures that the native <c>SetConsoleCtrlHandler</c> callback is registered.
+	///
+	/// This method is called lazily when the first subscription is added.
+	/// Throws if the current platform is not Windows.
 	/// </summary>
 	private void EnsureNativeRegistered()
 	{
@@ -134,7 +128,8 @@ internal sealed class SignalInterruptEngine : IDisposable
 	}
 
 	/// <summary>
-	/// Removes a <see cref="SignalSubscription"/> from all signal lists.
+	/// Removes a subscription from all associated signal lists.
+	///
 	/// If no subscriptions remain, the native kernel32 callback is unregistered.
 	/// </summary>
 	private void Unregister(SignalSubscription subscription)
@@ -179,16 +174,17 @@ internal sealed class SignalInterruptEngine : IDisposable
 
 	// https://learn.microsoft.com/en-us/windows/console/handlerroutine
 	/// <summary>
-	/// Called by the OS on a native handler thread when a console control event is received.
+	/// Native callback invoked by Windows when a console control event is received.
 	///
-	/// Creates a <see cref="SignalInterruptContext"/> via <see cref="CreateContext"/>,
-	/// dispatches to all registered handlers via <see cref="Dispatch"/>, then cancels
-	/// the engine's <see cref="CancellationTokenSource"/> unless a handler set
-	/// <see cref="SignalInterruptContext.RequestCancellation"/> to <c>false</c>.
+	/// Creates a <see cref="SignalInterruptContext"/> from the incoming event,
+	/// dispatches it to all registered handlers in reverse order, and returns the final
+	/// <see cref="SignalInterruptContext.SuppressDefaultHandling"/> value.
 	///
-	/// Returns <see cref="SignalInterruptContext.SuppressDefaultHandling"/> to Windows:
-	/// <c>true</c> = signal handled, stop handler chain; <c>false</c> = continue to next handler.
-	/// On exception, returns <c>false</c> (let Windows handle it).
+	/// Returning:
+	/// - <c>true</c>  → signal handled, stop handler chain.
+	/// - <c>false</c> → continue with next handler/default Windows behavior.
+	///
+	/// Exceptions are swallowed and treated as <c>false</c>.
 	/// </summary>
 	private bool Kernel32Handler(WindowsCtrlType eventType)
 	{
@@ -198,25 +194,22 @@ internal sealed class SignalInterruptEngine : IDisposable
 
 			Dispatch(context);
 
-			if(context.RequestCancellation)
-			{
-				_cancellationTokenSource.Cancel();
-			}
-
 			return context.SuppressDefaultHandling;
-		} catch
+		} catch(Exception)
 		{
+			// TODO: optional logging hook
+			//_logger?.LogError(ex, "Unhandled exception in signal handler");
 			return false;
 		}
+
 	}
 
 	/// <summary>
-	/// Invokes all registered <see cref="SignalSubscription"/> handlers for the
-	/// signal specified in <paramref name="context"/>.
+	/// Dispatches a signal to all registered handlers for the given context.
 	///
-	/// Handlers are called in reverse registration order.
-	/// If any handler sets <see cref="SignalInterruptContext.StopPropagation"/> to <c>true</c>,
-	/// remaining handlers are skipped.
+	/// Handlers are invoked in reverse registration order.
+	/// If a handler sets <see cref="SignalInterruptContext.StopPropagation"/> to <c>true</c>,
+	/// remaining handlers are not invoked.
 	/// </summary>
 	private void Dispatch(SignalInterruptContext context)
 	{
@@ -241,20 +234,18 @@ internal sealed class SignalInterruptEngine : IDisposable
 	}
 
 	/// <summary>
-	/// Creates a <see cref="SignalInterruptContext"/> from a <see cref="WindowsCtrlType"/>.
+	/// Creates a <see cref="SignalInterruptContext"/> from a Windows control event.
 	///
-	/// Maps:
-	/// - <see cref="WindowsCtrlType.CTRL_C_EVENT"/> → <see cref="SignalInterruptKind.Interrupt"/>
-	///   (no timeout, not imminent, suppress default).
-	/// - <see cref="WindowsCtrlType.CTRL_BREAK_EVENT"/> → <see cref="SignalInterruptKind.Break"/>
-	///   (no timeout, not imminent, suppress default).
-	/// - <see cref="WindowsCtrlType.CTRL_CLOSE_EVENT"/> → <see cref="SignalInterruptKind.ConsoleClose"/>
-	///   (5s timeout, imminent, no suppress).
-	/// - <see cref="WindowsCtrlType.CTRL_LOGOFF_EVENT"/> → <see cref="SignalInterruptKind.Logoff"/>
-	///   (5s timeout, imminent, no suppress).
-	/// - <see cref="WindowsCtrlType.CTRL_SHUTDOWN_EVENT"/> → <see cref="SignalInterruptKind.Shutdown"/>
-	///   (5s timeout, imminent, no suppress).
+	/// Mapping:
+	/// - CTRL_C_EVENT      → Interrupt (not imminent, no timeout, suppress default).
+	/// - CTRL_BREAK_EVENT  → Break (not imminent, no timeout, suppress default).
+	/// - CTRL_CLOSE_EVENT  → ConsoleClose (imminent, ~5s timeout).
+	/// - CTRL_LOGOFF_EVENT → Logoff (imminent, ~5s timeout).
+	/// - CTRL_SHUTDOWN_EVENT → Shutdown (imminent, ~5s timeout).
+	///
+	/// For termination signals, <see cref="SignalInterruptContext.IsTerminationImminent"/> is true.
 	/// </summary>
+
 	private static SignalInterruptContext CreateContext(WindowsCtrlType eventType)
 	{
 		return eventType switch
@@ -302,9 +293,10 @@ internal sealed class SignalInterruptEngine : IDisposable
 	}
 
 	/// <summary>
-	/// Expands a combined <see cref="SignalInterruptKind"/> flags value into individual
-	/// signal values. Used to register/unregister a subscription across all relevant
-	/// signal lists.
+	/// Expands a combined <see cref="SignalInterruptKind"/> flag value into
+	/// its individual signal components.
+	///
+	/// Used to register or unregister a subscription across multiple signal lists.
 	/// </summary>
 	private static IEnumerable<SignalInterruptKind> ExpandSignals(SignalInterruptKind signals)
 	{
@@ -335,8 +327,9 @@ internal sealed class SignalInterruptEngine : IDisposable
 	}
 
 	/// <summary>
-	/// Disposes the engine: unregisters the native callback and clears all subscriptions.
-	/// After disposal, the engine cannot be used for new registrations.
+	/// Disposes the engine by unregistering the native handler and clearing all subscriptions.
+	///
+	/// After disposal, no further registrations are allowed.
 	/// </summary>
 	public void Dispose()
 	{
@@ -359,14 +352,13 @@ internal sealed class SignalInterruptEngine : IDisposable
 				subscriptions.Clear();
 			}
 		}
-
-		_cancellationTokenSource.Dispose();
 	}
 
 	/// <summary>
-	/// Represents a single registration — a combination of <see cref="SignalInterruptKind"/>
-	/// flags and an <see cref="Action{T}"/> callback.
-	/// Disposing the subscription unregisters it from the engine.
+	/// Represents a single signal registration, including the subscribed signals
+	/// and the associated handler.
+	///
+	/// Disposing this instance unregisters it from the engine.
 	/// </summary>
 	private sealed class SignalSubscription : IDisposable
 	{
