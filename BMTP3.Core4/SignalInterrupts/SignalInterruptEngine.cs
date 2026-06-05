@@ -114,7 +114,7 @@ internal sealed class SignalInterruptEngine : IDisposable
 
 		if(!OperatingSystem.IsWindows())
 		{
-			throw new PlatformNotSupportedException("SignalInterrupts currently only supports Windows.");
+			throw new PlatformNotSupportedException("SignalInterrupt currently only supports Windows.");
 		}
 
 		if(!SetConsoleCtrlHandler(_kernel32Callback, true))

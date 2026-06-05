@@ -13,6 +13,7 @@ using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
+using BMTP3.Core4.SignalInterrupts;
 using BMTP3.Core4.State;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.Logging;
@@ -94,6 +95,14 @@ public sealed class BackupEngine : IBackupEngine
 		progress?.Report(_currentProgress);
 
 		DateTimeOffset backupStartTime = DateTimeOffset.UtcNow;
+
+		CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+			cancellationToken
+		);
+
+		global::SignalInterrupt.On(SignalInterruptKind.All).Bind(cancellationTokenSource).Create();
+
+		cancellationToken = cancellationTokenSource.Token;
 
 		IBackupRecordRepository repository = new BackupMemoryRecordRepository();
 

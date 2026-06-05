@@ -7,7 +7,7 @@ public class SignalInterruptsEntryPointTests
 	[Fact]
 	public void On_ReturnsBuilder()
 	{
-		SignalInterruptRegistrationBuilder builder = global::SignalInterrupts.On(SignalInterruptKind.Interrupt);
+		SignalInterruptRegistrationBuilder builder = global::SignalInterrupt.On(SignalInterruptKind.Interrupt);
 
 		Assert.NotNull(builder);
 	}
@@ -15,7 +15,7 @@ public class SignalInterruptsEntryPointTests
 	[Fact]
 	public void On_WithNone_ReturnsBuilder()
 	{
-		SignalInterruptRegistrationBuilder builder = global::SignalInterrupts.On(SignalInterruptKind.None);
+		SignalInterruptRegistrationBuilder builder = global::SignalInterrupt.On(SignalInterruptKind.None);
 
 		Assert.NotNull(builder);
 	}
@@ -25,7 +25,7 @@ public class SignalInterruptsEntryPointTests
 	{
 		using var cts = new CancellationTokenSource();
 
-		SignalInterruptRegistrationBuilder builder = global::SignalInterrupts.Bind(cts);
+		SignalInterruptRegistrationBuilder builder = global::SignalInterrupt.Bind(cts);
 
 		Assert.NotNull(builder);
 	}
@@ -35,7 +35,7 @@ public class SignalInterruptsEntryPointTests
 	{
 		try
 		{
-			using IDisposable registration = global::SignalInterrupts.Create(
+			using IDisposable registration = global::SignalInterrupt.Create(
 				SignalInterruptKind.Interrupt,
 				ctx => { });
 
@@ -53,7 +53,7 @@ public class SignalInterruptsEntryPointTests
 
 		try
 		{
-			using IDisposable registration = global::SignalInterrupts.Create(
+			using IDisposable registration = global::SignalInterrupt.Create(
 				SignalInterruptKind.Break,
 				handler: null,
 				cts: cts);
@@ -70,7 +70,7 @@ public class SignalInterruptsEntryPointTests
 	{
 		try
 		{
-			using IDisposable registration = global::SignalInterrupts.Create(
+			using IDisposable registration = global::SignalInterrupt.Create(
 				SignalInterruptKind.All,
 				ctx => { });
 
@@ -85,7 +85,7 @@ public class SignalInterruptsEntryPointTests
 	public void Create_WithoutHandlerOrCts_ThrowsInvalidOperationException()
 	{
 		Assert.Throws<InvalidOperationException>(() =>
-			global::SignalInterrupts.Create(SignalInterruptKind.Interrupt, handler: null));
+			global::SignalInterrupt.Create(SignalInterruptKind.Interrupt, handler: null));
 	}
 
 	[Fact]
@@ -94,6 +94,6 @@ public class SignalInterruptsEntryPointTests
 		using var cts = new CancellationTokenSource();
 
 		Assert.Throws<InvalidOperationException>(() =>
-			global::SignalInterrupts.Create(SignalInterruptKind.None, handler: null, cts: cts));
+			global::SignalInterrupt.Create(SignalInterruptKind.None, handler: null, cts: cts));
 	}
 }

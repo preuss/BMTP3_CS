@@ -6,16 +6,16 @@
 /// <example>
 /// <code>
 /// // Cancel a CancellationTokenSource on Ctrl+C:
-/// using var _ = SignalInterrupts.On(SignalInterruptKind.Interrupt).Bind(cts).Create();
+/// using var _ = SignalInterrupt.On(SignalInterruptKind.Interrupt).Bind(cts).Create();
 ///
 /// // Custom handler with CTS cancel on Ctrl+C or Ctrl+Break:
-/// using var _ = SignalInterrupts.Create(
+/// using var _ = SignalInterrupt.Create(
 ///     SignalInterruptKind.Interrupt | SignalInterruptKind.Break,
 ///     ctx => Console.WriteLine("Interrupt received"),
 ///     cts);
 /// </code>
 /// </example>
-public static class SignalInterrupts
+public static class SignalInterrupt
 {
 	/// <summary>
 	/// Begins a fluent registration for the specified <paramref name="signal"/>.
