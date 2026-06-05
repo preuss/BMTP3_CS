@@ -6,10 +6,13 @@
 /// <example>
 /// <code>
 /// // Cancel a CancellationTokenSource on Ctrl+C:
-/// using var _ = SignalInterrupt.On(SignalInterruptKind.Interrupt).Bind(cts).Create();
+/// using ISignalSubscription _ = SignalInterrupt
+///     .On(SignalInterruptKind.Interrupt)
+///     .Handler(ctx => cts.Cancel())
+///     .Create();
 ///
-/// // Custom handler with CTS cancel on Ctrl+C or Ctrl+Break:
-/// using var _ = SignalInterrupt.Create(
+/// // Custom handler on Ctrl+C or Ctrl+Break:
+/// using ISignalSubscription _ = SignalInterrupt.Create(
 ///     SignalInterruptKind.Interrupt | SignalInterruptKind.Break,
 ///     ctx => Console.WriteLine("Interrupt received"),
 ///     cts);
@@ -49,13 +52,13 @@ public static class SignalInterrupt
 	/// <summary>
 	/// Creates a registration that invokes <paramref name="handler"/> and/or cancels
 	/// <paramref name="cts"/> when any of the specified <paramref name="signals"/> is received.
-	/// Dispose the returned <see cref="IDisposable"/> to unregister.
+	/// Dispose the returned <see cref="ISignalSubscription"/> to unregister.
 	/// </summary>
 	/// <param name="signals">One or more <see cref="SignalInterruptKind"/> flags to listen for.</param>
 	/// <param name="handler">Optional callback invoked with a <see cref="SignalInterruptContext"/> describing the event.</param>
 	/// <param name="cts">Optional <see cref="CancellationTokenSource"/> to cancel on signal.</param>
-	/// <returns>An <see cref="IDisposable"/> — dispose to unregister the handler.</returns>
-	public static IDisposable Create(SignalInterruptKind signals, Action<SignalInterruptContext>? handler, CancellationTokenSource? cts = null)
+	/// <returns>An <see cref="ISignalSubscription"/> — dispose to unregister the handler.</returns>
+	public static ISignalSubscription Create(SignalInterruptKind signals, Action<SignalInterruptContext>? handler, CancellationTokenSource? cts = null)
 	{
 		return new SignalInterruptRegistrationBuilder()
 			.On(signals)

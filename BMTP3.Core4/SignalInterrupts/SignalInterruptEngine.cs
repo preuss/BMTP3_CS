@@ -63,7 +63,7 @@ internal sealed class SignalInterruptEngine : IDisposable
 	/// <param name="signals">One or more <see cref="SignalInterruptKind"/> flags.</param>
 	/// <param name="handler">Callback invoked when the signal occurs.</param>
 	/// <returns>
-	/// An <see cref="IDisposable"/> representing the registration.
+	/// An <see cref="ISignalSubscription"/> representing the registration.
 	/// Dispose it to unregister the handler.
 	/// </returns>
 	/// <exception cref="ObjectDisposedException">The engine has been disposed.</exception>
