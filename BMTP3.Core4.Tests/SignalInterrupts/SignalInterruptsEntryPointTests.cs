@@ -96,4 +96,41 @@ public class SignalInterruptsEntryPointTests
 		Assert.Throws<InvalidOperationException>(() =>
 			global::SignalInterrupt.Create(SignalInterruptKind.None, handler: null, cts: cts));
 	}
+
+	[Fact]
+	public void Bind_DoesNotCancelCtsPrematurely()
+	{
+		using var cts = new CancellationTokenSource();
+
+		Assert.False(cts.IsCancellationRequested);
+
+		SignalInterruptRegistrationBuilder builder = global::SignalInterrupt.Bind(cts);
+
+		Assert.NotNull(builder);
+		Assert.False(cts.IsCancellationRequested,
+			"Bind should not cancel the CTS — only the handler does that on signal dispatch.");
+	}
+
+	[Fact]
+	public void OnBindCreate_DoesNotCancelCtsPrematurely()
+	{
+		using var cts = new CancellationTokenSource();
+
+		Assert.False(cts.IsCancellationRequested);
+
+		try
+		{
+			using IDisposable registration = global::SignalInterrupt
+				.On(SignalInterruptKind.Interrupt)
+				.Bind(cts)
+				.Create();
+
+			Assert.NotNull(registration);
+			Assert.False(cts.IsCancellationRequested,
+				"Create should NOT cancel the CTS — only a signal event should trigger cancellation.");
+		} catch(PlatformNotSupportedException)
+		{
+			// Not running on Windows — kernel32 unavailable
+		}
+	}
 }

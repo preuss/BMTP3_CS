@@ -96,13 +96,11 @@ public sealed class BackupEngine : IBackupEngine
 
 		DateTimeOffset backupStartTime = DateTimeOffset.UtcNow;
 
-		CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
-			cancellationToken
-		);
+		CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		cancellationToken = cancellationTokenSource.Token; // Shadow callers token.
 
-		global::SignalInterrupt.On(SignalInterruptKind.All).Bind(cancellationTokenSource).Create();
-
-		cancellationToken = cancellationTokenSource.Token;
+		// TODO: Add Handler to gracefully handle shutdown signals and cancel the backup operation. Save the current state so that the backup can be resumed later.
+		SignalInterrupt.On(SignalInterruptKind.All).Bind(cancellationTokenSource).Create();
 
 		IBackupRecordRepository repository = new BackupMemoryRecordRepository();
 
@@ -171,7 +169,6 @@ public sealed class BackupEngine : IBackupEngine
 
 			await foreach (BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
 			{
-				cancellationToken.ThrowIfCancellationRequested();
 				BackupRecord record = new()
 				{
 					Item = item,
@@ -228,8 +225,6 @@ public sealed class BackupEngine : IBackupEngine
 
 				foreach (BackupRecord record in pendingRecords)
 				{
-					cancellationToken.ThrowIfCancellationRequested();
-
 					try
 					{
 						// Create temp file path for this item.
@@ -284,7 +279,9 @@ public sealed class BackupEngine : IBackupEngine
 						};
 
 						EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveAndApplyEarliestAsync(
-							earliestTimestampRequest, plan.EnableTimestampCorrection, cancellationToken
+							earliestTimestampRequest, 
+							plan.EnableTimestampCorrection, 
+							cancellationToken
 						);
 
 						// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
