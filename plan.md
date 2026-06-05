@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 3 Jun 2026** — Sidecar redesign completed. ItemMetadata udvidet med originale datoer. ResolvedDateTime → MediaTakenDateTime. Writer Stream refactoring + tests completed. Ctrl+C Del 1 completed.
+> **Opdateret 5 Jun 2026** — Ctrl+C Del 1 + Del 2 completed. SignalInterruptEngine (6 filer) er standard. Gammel event-kode slettet. 37 SignalInterrupts-tests tilføjet. I alt 197 tests.
 
 ## Færdige opgaver
 
@@ -42,19 +42,19 @@
 - [x] — `JsonSidecarWriter` forbedret: `CreateSerializableModel` + `SerializeAsync(stream)` — ingen mellemstring
 - [x] — N6: SidecarServiceTests (6), IniSidecarWriterTests (14), JsonSidecarWriterTests (10) = 30 nye tests. I alt 160.
 - [x] — Ctrl+C Del 1: `BackupEngine.RunAsync` fanger `OperationCanceledException` → `BackupResult` med `State = Cancelled`
+- [x] — Ctrl+C Del 2: SignalInterruptEngine (singleton subscription engine) + SignalInterrupts static entry + SignalInterruptRegistrationBuilder. 6 filer. Gammel event-kode (CtrlTypes, ISignalInterruptEventHandler, SignalInterruptEventArgs, SignalInterruptEventEventHandler, ISignalInterruptHandler, ISignalInterruptService) slettet.
+- [x] — Ctrl+C Del 4: SignalInterrupts-tests (37): enum (5), context (10), builder (12), entry point (10)
 
 ## Næste opgaver (prioriteret)
 
 ### Høj prioritet
 
-- [ ] — Ctrl+C Del 2: `ConsoleEventHandler` (kernel32 SetConsoleCtrlHandler + Console.CancelKeyPress) + `CancellationTokenGenerator`
-- [ ] — Ctrl+C Del 3: Wire ConsoleEventHandler ind i entry point
+- [ ] — Ctrl+C Del 3: Wire SignalInterruptEngine ind i Consoles entry point
 - [ ] — [BLOKERING] Fiks validator-gates: `BackupPlanValidator` blokerer implementerede features — skal fixes før engine-tests kan skrives
 
 ### Medium prioritet
 
-- [ ] — Ctrl+C Del 4: Tests — pre-cancelled token → Cancelled state (kræver validator-fix først)
-- [ ] — Wire Core4 into Consoles (incl. console cancel-wiring)
+- [ ] — Wire Core4 into Consoles (incl. SignalInterrupts cancel-wiring)
 
 ### Allersidst (når alt andet er færdigt og testet)
 

@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 5 Jun 2026** — Sidecar redesign completed. DryRun done. ItemMetadata udvidet med originale datoer. Writer Stream refactoring + tests completed. Ctrl+C Del 1 + Del 2 completed. Gammel event-kode (CtrlTypes, ISignalInterruptEventHandler, SignalInterruptEventArgs, SignalInterruptEventEventHandler, ISignalInterruptHandler, ISignalInterruptService) slettet. SignalInterruptEngine er den nye standard.
+> **Opdateret 5 Jun 2026** — Ctrl+C Del 1 + Del 2 completed. SignalInterruptEngine er standard (6 filer). Gammel event-kode slettet. SignalInterrupts tests (37) tilføjet. I alt 197 tests.
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -32,6 +32,8 @@
 | JsonSidecarWriter forbedret | ✅ **DONE** | `CreateSerializableModel` ekstraheret. `SerializeAsync(stream)` — ingen mellemstring. |
 | N6: SidecarServiceTests | ✅ **DONE** | SidecarServiceTests (6), IniSidecarWriterTests (14), JsonSidecarWriterTests (10) = 30 nye tests. I alt 160 tests. |
 | Ctrl+C Del 1: BackupEngine catch OCE → Cancelled | ✅ **DONE** | `try { ... } catch(OperationCanceledException)` returnerer `BackupResult` med `State = BackupResultState.Cancelled`. `BuildItemResults` udtrukket. |
+| Ctrl+C Del 2: SignalInterruptEngine (subscription engine) | ✅ **DONE** | 6 filer: `SignalInterruptContext`, `SignalInterruptKind`, `SignalInterruptEngine`, `SignalInterruptRegistrationBuilder`, `SignalInterrupts` (static entry), `WindowsCtrlType`. Gammel event-kode slettet (CtrlTypes, ISignalInterruptEventHandler, SignalInterruptEventArgs, SignalInterruptEventEventHandler, ISignalInterruptHandler, ISignalInterruptService). |
+| Ctrl+C Del 4: SignalInterrupts tests | ✅ **DONE** | 37 tests: `SignalInterruptKindTests` (5), `SignalInterruptContextTests` (10), `SignalInterruptRegistrationBuilderTests` (12), `SignalInterruptsEntryPointTests` (10). |
 
 ---
 
@@ -39,11 +41,11 @@
 
 ### Important
 
-- **Ctrl+C — Del 1 ✅ (Engine), Del 2 ✅ (SignalInterrupts), Del 3 ⏳, Del 4 ✅**
+- **Ctrl+C — Del 1 ✅ (Engine), Del 2 ✅ (SignalInterrupts), Del 3 ⏳, Del 4 ✅ (tests)**
   - Del 1 ✅: `BackupEngine.RunAsync` fanger `OperationCanceledException` → returnerer `BackupResult` med `State = Cancelled`.
   - Del 2 ✅: `SignalInterruptEngine` (singleton subscription engine) + `SignalInterrupts` static entry point + `SignalInterruptRegistrationBuilder`. 6 filer i `Engine/SignalInterrupts/`. Gammel event-kode slettet.
   - Del 3 ⏳: Wiring i Consoles entry point — udskudt til Core4-in-Consoles integration.
-  - Del 4 ✅: SignalInterruptContextTests + SignalInterruptKindTests + SignalInterruptRegistrationBuilderTests + WindowsCtrlTypeTests skrevet.
+  - Del 4 ✅: 37 SignalInterrupts-tests (enum, context, builder, entry point).
 
 ### Medium
 
@@ -56,12 +58,13 @@
   - `.tmp`-filer er **forensic evidence** efter crash — at slette dem ville ødelægge debug-sporet.
   - Mappen bevares bevidst til fejlfinding.
 
-- **N6: Tests** ✅ **DONE** — 30 nye tests
+- **N6: Tests** ✅ **DONE**
   - HashServiceTests ✅, DITests ✅, CollisionResolverTests ✅, RenameCollisionResolverTests ✅
   - SidecarServiceTests ✅ (6 tests)
   - IniSidecarWriterTests ✅ (14 tests)
   - JsonSidecarWriterTests ✅ (10 tests)
-  - I alt: **160 tests**
+  - SignalInterruptsTests ✅ (37 tests) — SignalInterruptKindTests (5), SignalInterruptContextTests (10), SignalInterruptRegistrationBuilderTests (12), SignalInterruptsEntryPointTests (10)
+  - I alt: **197 tests**
 
 - **Wire Core4 into Consoles**
   - Consoles programmet bruger stadig Core2.
