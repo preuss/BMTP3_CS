@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 5 Jun 2026** — Ctrl+C Del 3 completed. Shadow af `cancellationToken`, `ISignalSubscription` interface, handler-baseret registrering i BackupEngine. 204 tests.
+> **Opdateret 5 Jun 2026** — Engine erklæret færdig. N1 skipped by design. `using static` ryddet. Doc comments opdateret til `ISignalSubscription`. 204 tests.
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -39,37 +39,23 @@
 | BackupEngine cancellation pattern tests | ✅ **DONE** | 5 tests i `Engine/BackupEngineCancellationTests.cs` — linked token source pattern. |
 | SessionState SaveAsync bruger `default(CancellationToken)` | ✅ **DONE** | Finally-blokken kalder `SaveAsync` med `default(CancellationToken)` så state altid gemmes — også ved cancel. |
 | Fjernet redundante `ThrowIfCancellationRequested()` | ✅ **DONE** | Både i scan-foreach og processing-foreach — async kaldene har selv token. |
+| `using static` fjernet fra BackupEngine.cs | ✅ **DONE** | Ubrugt import ryddet. |
+| Doc comments: SignalInterrupt.cs + SignalInterruptEngine.cs | ✅ **DONE** | XML kommentarer opdateret fra `IDisposable` til `ISignalSubscription`. |
 
 ---
 
 ## Remaining Issues
 
-### Important
+### Allersidst (når engine er erklæret færdig)
 
-- **Ctrl+C — Del 1 ✅ (Engine), Del 2 ✅ (SignalInterrupts), Del 3 ✅ (shadow + handler), Del 4 ✅ (tests)**
-  - Del 1 ✅: `BackupEngine.RunAsync` fanger `OperationCanceledException` → returnerer `BackupResult` med `State = Cancelled`.
-  - Del 2 ✅: `SignalInterruptEngine` (singleton subscription engine) + `SignalInterrupt` static entry point + `SignalInterruptRegistrationBuilder`. 7 filer (inkl. `ISignalSubscription`). Gammel event-kode slettet.
-  - Del 3 ✅: Shadow af `cancellationToken = cancellationTokenSource.Token`. Handler-baseret registrering i stedet for `Bind(cts)`. `using ISignalSubscription`.
-  - Del 4 ✅: 37 SignalInterrupts-tests + 5 cancellation pattern tests.
-
-### Medium
-
-- **Wire Core4 into Consoles**
-  - Consoles programmet bruger stadig Core2.
-  - `ISignalSubscription` return type — opdater doc comments i `SignalInterrupt.cs` og `SignalInterruptEngine.cs` (XML kommentarer nævner stadig `IDisposable`).
+- **Wire Core4 into Consoles** — Consoles bruger stadig Core2.
+- **Fjern validator-gates** — `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
 
 ### Low / Deferred
 
-- **N1: Destination inspection / cross-run dedup**
-  - Læs sidecar hash ved collision for at skip identiske filer.
-  - TODO i `RenameCollisionResolver.cs:213` — prøv sidecar før `FileContent`/`ComputeHashesAsync`.
-  - Se Core2 reference: `Engine/Strategies/SidecarReader.cs`, `IDestinationInspector.cs`, `DestinationInspectorItemStep.cs`.
-  - Kræver: `ISidecarReader` interface, INI/JSON parser for `[Hashes]`, injection i `RenameCollisionResolver`.
-- **Validator-gates: BackupPlanValidator blokerer implementerede features** — `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. er blokeret på trods af at engine understøtter dem. **Røres ikke før alt andet er færdigt.**
-- **C4: BackupPlanValidator blocks all plans** — tier-gating blokerer selv minimale plans. **Gøres allersidst**, når engine er testet og alle features bekræftet virker.
+- ~~**N1: Cross-run dedup** — skipped by design. Hash fra backup records (session state), ikke sidecar.~~
 - **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
-- **Progress reporting** — per-item `BytesProcessed` only updated during download/hash, not final state
-- **`using static`** — `using static BMTP3.Core4.SignalInterrupts.SignalInterruptEngine` i BackupEngine.cs er tilføjet men ikke brugt — kan fjernes eller bruges til `Register()` direkte.
+- **Progress reporting** — top-level `BytesProcessed` er aldrig sat (altid 0). Per-file `BytesProcessed` opdateres under download (linje 251) og hashing (linje 303) men akkumuleres ikke op til `_currentProgress.BytesProcessed`.
 
 ---
 

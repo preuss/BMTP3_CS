@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 5 Jun 2026** — Ctrl+C Del 3 completed. Shadow af `cancellationToken`, `ISignalSubscription` interface, handler-baseret registrering i BackupEngine. I alt 204 tests.
+> **Opdateret 5 Jun 2026** — Engine erklæret færdig. N1 skipped by design. `using static` ryddet. Doc comments opdateret til `ISignalSubscription`. I alt 204 tests.
 
 ## Færdige opgaver
 
@@ -47,17 +47,18 @@
 - [x] — Ctrl+C Del 4: SignalInterrupts-tests (37): enum (5), context (10), builder (12), entry point (10). + BackupEngine cancellation pattern tests (5). I alt 204 tests.
 - [x] — `ISignalSubscription : IDisposable` interface med `Signals` + `Handler` properties
 - [x] — `Create()`/`Register()` returnerer `ISignalSubscription` i stedet for `IDisposable`
+- [x] — `using static` fjernet fra BackupEngine.cs (ubrugt)
+- [x] — Doc comments i `SignalInterrupt.cs` og `SignalInterruptEngine.cs` opdateret til `ISignalSubscription`
 
 ## Næste opgaver (prioriteret)
 
-### Medium prioritet
+### Høj prioritet — engine-færdiggørelse
+
+- [x] ~~N1 — Cross-run dedup (skipped by design). Sidecar kan ændre sig eksternt. Hash fra backup records (session state) er vejen frem jf. TODO i `RenameCollisionResolver.cs:241`.~~
+
+### Allersidst (når engine er erklæret færdig)
 
 - [ ] — Wire Core4 into Consoles (incl. SignalInterrupts cancel-wiring)
-- [ ] — Opdater SignalInterrupt doc comments til at reflektere `ISignalSubscription` return type
-
-### Allersidst (når alt andet er færdigt og testet)
-
-- [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup). TODO i `RenameCollisionResolver.cs:213`. Kræver `ISidecarReader` + INI/JSON parser. Core2 ref: `SidecarReader.cs`, `DestinationInspector.cs`.
 - [ ] — **Fjern validator-gates**: `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem. Inkl. C4: Fix tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans).
 
 ## Ref

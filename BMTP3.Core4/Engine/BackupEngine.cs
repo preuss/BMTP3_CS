@@ -17,7 +17,6 @@ using BMTP3.Core4.SignalInterrupts;
 using BMTP3.Core4.State;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.Logging;
-using static BMTP3.Core4.SignalInterrupts.SignalInterruptEngine;
 
 namespace BMTP3.Core4.Engine;
 
@@ -171,7 +170,7 @@ public sealed class BackupEngine : IBackupEngine
 				progress?.Report(_currentProgress);
 			});
 
-			await foreach (BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
+			await foreach(BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
 			{
 				BackupRecord record = new()
 				{
@@ -208,7 +207,7 @@ public sealed class BackupEngine : IBackupEngine
 			// 5d. Dry-run — report discovered items, skip writes
 			// ------------------------------------------------------------
 
-			if (plan.DryRun) return BuildDryRunResult(repository, _currentProgress, progress, plan);
+			if(plan.DryRun) return BuildDryRunResult(repository, _currentProgress, progress, plan);
 
 			// ------------------------------------------------------------
 			// 6. Process pending items
@@ -227,7 +226,7 @@ public sealed class BackupEngine : IBackupEngine
 			{
 				TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
 
-				foreach (BackupRecord record in pendingRecords)
+				foreach(BackupRecord record in pendingRecords)
 				{
 					try
 					{
@@ -235,7 +234,7 @@ public sealed class BackupEngine : IBackupEngine
 						FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
 						// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-						if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+						if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
 
 						// Download content to temp file with progress reporting.
 						BackupProgressItem currentProgressItem = new()
@@ -283,13 +282,13 @@ public sealed class BackupEngine : IBackupEngine
 						};
 
 						EarliestTimestampResolutionResult earliest = await _earliestTimestampService.ResolveAndApplyEarliestAsync(
-							earliestTimestampRequest, 
-							plan.EnableTimestampCorrection, 
+							earliestTimestampRequest,
+							plan.EnableTimestampCorrection,
 							cancellationToken
 						);
 
 						// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
-						if (!earliest.Timestamp.HasValue)
+						if(!earliest.Timestamp.HasValue)
 						{
 							throw new InvalidOperationException($"Could not resolve valid timestamp for '{record.Item.SourcePath}'.");
 						}
@@ -315,7 +314,7 @@ public sealed class BackupEngine : IBackupEngine
 							.ToList();
 
 						// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-						if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+						if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
 
 						record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
 							record.Item.Content,
@@ -343,7 +342,7 @@ public sealed class BackupEngine : IBackupEngine
 
 						CollisionResult? collisionResult = null;
 
-						if (File.Exists(intendedPath))
+						if(File.Exists(intendedPath))
 						{
 							// collision
 							CollisionResolveRequest collisionRequest = new()
@@ -372,7 +371,7 @@ public sealed class BackupEngine : IBackupEngine
 
 							collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
 
-							switch (collisionResult.Action)
+							switch(collisionResult.Action)
 							{
 								case CollisionResolutionAction.Skip:
 									record.Status = BackupItemStatus.Skipped;
@@ -388,7 +387,7 @@ public sealed class BackupEngine : IBackupEngine
 						bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
 
 						string? targetDir = Path.GetDirectoryName(targetPath);
-						if (!string.IsNullOrEmpty(targetDir))
+						if(!string.IsNullOrEmpty(targetDir))
 						{
 							Directory.CreateDirectory(targetDir);
 						}
@@ -399,7 +398,7 @@ public sealed class BackupEngine : IBackupEngine
 						record.Item.ReplaceContentProvider(movedContent);
 						record.DestinationPath = targetPath;
 
-						if (plan.SidecarFormat != SidecarFormat.None)
+						if(plan.SidecarFormat != SidecarFormat.None)
 						{
 							SidecarRequest sidecarRequest = new()
 							{
@@ -427,12 +426,12 @@ public sealed class BackupEngine : IBackupEngine
 							await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
 						}
 
-						if (plan.PostWriteVerification == PostWriteVerificationType.Hash)
+						if(plan.PostWriteVerification == PostWriteVerificationType.Hash)
 						{
 							// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-							if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+							if(record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
 
-							if (plan.VerificationHashAlgorithmTypes == null || plan.VerificationHashAlgorithmTypes.Count == 0)
+							if(plan.VerificationHashAlgorithmTypes == null || plan.VerificationHashAlgorithmTypes.Count == 0)
 							{
 								throw new InvalidOperationException("VerificationHashAlgorithmTypes must be specified for hash-based post-write verification.");
 							}
@@ -445,21 +444,28 @@ public sealed class BackupEngine : IBackupEngine
 								cancellationToken
 							);
 
-							foreach (KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
+							foreach(KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
 							{
-								if (verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
+								if(verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
 									!string.Equals(kvp.Value, verifyValue, StringComparison.OrdinalIgnoreCase))
 								{
 									throw new InvalidOperationException(
 										$"Post-write verification failed for '{record.Item.SourcePath}': " +
-										$"{kvp.Key} hash mismatch.");
+										$"{kvp.Key} hash mismatch."
+									);
 								}
 							}
 						}
 
 						record.Status = BackupItemStatus.Succeeded;
-					}
-					catch (Exception ex) when (ex is not OperationCanceledException)
+
+						_currentProgress = _currentProgress with
+						{
+							FilesSucceeded = _currentProgress.FilesSucceeded + 1,
+							BytesProcessed = _currentProgress.BytesProcessed + (long)record.Item.Content.Length,
+						};
+						progress?.Report(_currentProgress);
+					} catch(Exception ex) when(ex is not OperationCanceledException)
 					{
 						record.Status = BackupItemStatus.Failed;
 						_logger.LogError(ex, "Item failed: {Path}", record.Item.SourcePath);
@@ -472,25 +478,23 @@ public sealed class BackupEngine : IBackupEngine
 					};
 					progress?.Report(_currentProgress);
 				}
-			}
-			finally
+			} finally
 			{
 				// We need to force save the session state here to capture any progress made on items in case of cancellation or unhandled exceptions. This ensures that when the user resumes, they won't lose all progress since the last save point.
 				await sessionState.SaveAsync(repository.GetAll(), sessionKey, default(CancellationToken));
 
 				// Do this even when exception or cancel.
 				// Do not let cleanup errors mask original failure.
-				if (sessionTempDir.Exists)
+				if(sessionTempDir.Exists)
 				{
 					try
 					{
 						bool removed = TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
-						if (!removed)
+						if(!removed)
 						{
 							_logger.LogDebug("Session temp directory not empty, kept: {sessionTempDir}", sessionTempDir.FullName);
 						}
-					}
-					catch (Exception ex)
+					} catch(Exception ex)
 					{
 						_logger.LogWarning(ex, "Could not clean session temp directory: {sessionTempDir}", sessionTempDir.FullName);
 					}
@@ -524,7 +528,7 @@ public sealed class BackupEngine : IBackupEngine
 			List<BackupResultItem> itemResults = new(allRecords.Count);
 			bool anyFailed = false;
 
-			foreach (BackupRecord record in allRecords)
+			foreach(BackupRecord record in allRecords)
 			{
 				itemResults.Add(new BackupResultItem
 				{
@@ -535,7 +539,7 @@ public sealed class BackupEngine : IBackupEngine
 					State = MapItemState(record.Status),
 				});
 
-				if (record.Status == BackupItemStatus.Failed) anyFailed = true;
+				if(record.Status == BackupItemStatus.Failed) anyFailed = true;
 			}
 
 			BackupResult result = new()
@@ -550,8 +554,7 @@ public sealed class BackupEngine : IBackupEngine
 			// ------------------------------------------------------------
 
 			return result;
-		}
-		catch (OperationCanceledException)
+		} catch(OperationCanceledException)
 		{
 			_logger.LogInformation("Backup cancelled by user.");
 
@@ -574,7 +577,7 @@ public sealed class BackupEngine : IBackupEngine
 	{
 		List<BackupResultItem> itemResults = new(records.Count);
 
-		foreach (BackupRecord record in records)
+		foreach(BackupRecord record in records)
 		{
 			itemResults.Add(new BackupResultItem
 			{
@@ -604,9 +607,9 @@ public sealed class BackupEngine : IBackupEngine
 	{
 		List<BackupRecord> pending = new();
 
-		foreach (BackupRecord record in records)
+		foreach(BackupRecord record in records)
 		{
-			switch (record.Status)
+			switch(record.Status)
 			{
 				case BackupItemStatus.Succeeded:
 					currentProgress = currentProgress with { FilesSucceeded = currentProgress.FilesSucceeded + 1 };
@@ -648,7 +651,7 @@ public sealed class BackupEngine : IBackupEngine
 		List<BackupResultItem> itemResults = new(allRecords.Count);
 		bool anyFailed = false;
 
-		foreach (BackupRecord record in allRecords)
+		foreach(BackupRecord record in allRecords)
 		{
 			itemResults.Add(new BackupResultItem
 			{
@@ -659,7 +662,7 @@ public sealed class BackupEngine : IBackupEngine
 				State = MapItemState(record.Status),
 			});
 
-			if (record.Status == BackupItemStatus.Failed) anyFailed = true;
+			if(record.Status == BackupItemStatus.Failed) anyFailed = true;
 		}
 
 		return new BackupResult
@@ -673,7 +676,7 @@ public sealed class BackupEngine : IBackupEngine
 
 	private static string? GetStrongestHash(Dictionary<HashType, string>? computedHashes)
 	{
-		if (computedHashes == null || computedHashes.Count == 0)
+		if(computedHashes == null || computedHashes.Count == 0)
 		{
 			return null;
 		}
@@ -691,9 +694,9 @@ public sealed class BackupEngine : IBackupEngine
 			HashType.MD5_128,
 		];
 
-		foreach (HashType type in priority)
+		foreach(HashType type in priority)
 		{
-			if (computedHashes.TryGetValue(type, out string? hash))
+			if(computedHashes.TryGetValue(type, out string? hash))
 			{
 				return hash;
 			}
