@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 5 Jun 2026** — Ctrl+C Del 1 + Del 2 completed. SignalInterruptEngine er standard (6 filer). Gammel event-kode slettet. SignalInterrupts tests (37) tilføjet. I alt 197 tests.
+> **Opdateret 5 Jun 2026** — Ctrl+C Del 3 completed. Shadow af `cancellationToken`, `ISignalSubscription` interface, handler-baseret registrering i BackupEngine. 204 tests.
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -32,8 +32,13 @@
 | JsonSidecarWriter forbedret | ✅ **DONE** | `CreateSerializableModel` ekstraheret. `SerializeAsync(stream)` — ingen mellemstring. |
 | N6: SidecarServiceTests | ✅ **DONE** | SidecarServiceTests (6), IniSidecarWriterTests (14), JsonSidecarWriterTests (10) = 30 nye tests. I alt 160 tests. |
 | Ctrl+C Del 1: BackupEngine catch OCE → Cancelled | ✅ **DONE** | `try { ... } catch(OperationCanceledException)` returnerer `BackupResult` med `State = BackupResultState.Cancelled`. `BuildItemResults` udtrukket. |
-| Ctrl+C Del 2: SignalInterruptEngine (subscription engine) | ✅ **DONE** | 6 filer: `SignalInterruptContext`, `SignalInterruptKind`, `SignalInterruptEngine`, `SignalInterruptRegistrationBuilder`, `SignalInterrupts` (static entry), `WindowsCtrlType`. Gammel event-kode slettet (CtrlTypes, ISignalInterruptEventHandler, SignalInterruptEventArgs, SignalInterruptEventEventHandler, ISignalInterruptHandler, ISignalInterruptService). |
+| Ctrl+C Del 2: SignalInterruptEngine (subscription engine) | ✅ **DONE** | 6 filer: `SignalInterruptContext`, `SignalInterruptKind`, `SignalInterruptEngine`, `SignalInterruptRegistrationBuilder`, `SignalInterrupt` (static entry), `WindowsCtrlType`. Gammel event-kode slettet. |
+| Ctrl+C Del 3: Shadow + handler-baseret registrering | ✅ **DONE** | Shadow af `cancellationToken = cancellationTokenSource.Token`. `SignalInterrupt.On(All).Handler(ctx => { cts.Cancel(); }).Create()` i stedet for `Bind(cts)`. `using ISignalSubscription` sikrer cleanup. TODO om at finally gemmer state. |
 | Ctrl+C Del 4: SignalInterrupts tests | ✅ **DONE** | 37 tests: `SignalInterruptKindTests` (5), `SignalInterruptContextTests` (10), `SignalInterruptRegistrationBuilderTests` (12), `SignalInterruptsEntryPointTests` (10). |
+| `ISignalSubscription` interface | ✅ **DONE** | `ISignalSubscription : IDisposable` med `Signals` + `Handler`. `Create()`/`Register()` returnerer `ISignalSubscription`. |
+| BackupEngine cancellation pattern tests | ✅ **DONE** | 5 tests i `Engine/BackupEngineCancellationTests.cs` — linked token source pattern. |
+| SessionState SaveAsync bruger `default(CancellationToken)` | ✅ **DONE** | Finally-blokken kalder `SaveAsync` med `default(CancellationToken)` så state altid gemmes — også ved cancel. |
+| Fjernet redundante `ThrowIfCancellationRequested()` | ✅ **DONE** | Både i scan-foreach og processing-foreach — async kaldene har selv token. |
 
 ---
 
@@ -41,33 +46,17 @@
 
 ### Important
 
-- **Ctrl+C — Del 1 ✅ (Engine), Del 2 ✅ (SignalInterrupts), Del 3 ⏳, Del 4 ✅ (tests)**
+- **Ctrl+C — Del 1 ✅ (Engine), Del 2 ✅ (SignalInterrupts), Del 3 ✅ (shadow + handler), Del 4 ✅ (tests)**
   - Del 1 ✅: `BackupEngine.RunAsync` fanger `OperationCanceledException` → returnerer `BackupResult` med `State = Cancelled`.
-  - Del 2 ✅: `SignalInterruptEngine` (singleton subscription engine) + `SignalInterrupts` static entry point + `SignalInterruptRegistrationBuilder`. 6 filer i `Engine/SignalInterrupts/`. Gammel event-kode slettet.
-  - Del 3 ⏳: Wiring i Consoles entry point — udskudt til Core4-in-Consoles integration.
-  - Del 4 ✅: 37 SignalInterrupts-tests (enum, context, builder, entry point).
+  - Del 2 ✅: `SignalInterruptEngine` (singleton subscription engine) + `SignalInterrupt` static entry point + `SignalInterruptRegistrationBuilder`. 7 filer (inkl. `ISignalSubscription`). Gammel event-kode slettet.
+  - Del 3 ✅: Shadow af `cancellationToken = cancellationTokenSource.Token`. Handler-baseret registrering i stedet for `Bind(cts)`. `using ISignalSubscription`.
+  - Del 4 ✅: 37 SignalInterrupts-tests + 5 cancellation pattern tests.
 
 ### Medium
 
-- **E5: DownloadService redundant timestamp-logik** — ✅ **FIXED**
-  - `DownloadService.cs` — sætter nu temp-filens `CreationTime`/`LastWriteTime`/`LastAccessTime` individuelt fra `Item.Date*` med `backupStartTime` som per-field fallback.
-  - Ingen `TimestampHelpers.FindEarliestValidDate` — ingen overskrivning af `Item.Date*`.
-
-- **E7: Temp cleanup sletter kun tomme dirs** — ❌ **WONTFIX (korrekt adfærd)**
-  - `TryDeleteIfEmpty` gør præcis hvad navnet siger — sletter kun hvis tom.
-  - `.tmp`-filer er **forensic evidence** efter crash — at slette dem ville ødelægge debug-sporet.
-  - Mappen bevares bevidst til fejlfinding.
-
-- **N6: Tests** ✅ **DONE**
-  - HashServiceTests ✅, DITests ✅, CollisionResolverTests ✅, RenameCollisionResolverTests ✅
-  - SidecarServiceTests ✅ (6 tests)
-  - IniSidecarWriterTests ✅ (14 tests)
-  - JsonSidecarWriterTests ✅ (10 tests)
-  - SignalInterruptsTests ✅ (37 tests) — SignalInterruptKindTests (5), SignalInterruptContextTests (10), SignalInterruptRegistrationBuilderTests (12), SignalInterruptsEntryPointTests (10)
-  - I alt: **197 tests**
-
 - **Wire Core4 into Consoles**
   - Consoles programmet bruger stadig Core2.
+  - `ISignalSubscription` return type — opdater doc comments i `SignalInterrupt.cs` og `SignalInterruptEngine.cs` (XML kommentarer nævner stadig `IDisposable`).
 
 ### Low / Deferred
 
@@ -80,6 +69,7 @@
 - **C4: BackupPlanValidator blocks all plans** — tier-gating blokerer selv minimale plans. **Gøres allersidst**, når engine er testet og alle features bekræftet virker.
 - **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
 - **Progress reporting** — per-item `BytesProcessed` only updated during download/hash, not final state
+- **`using static`** — `using static BMTP3.Core4.SignalInterrupts.SignalInterruptEngine` i BackupEngine.cs er tilføjet men ikke brugt — kan fjernes eller bruges til `Register()` direkte.
 
 ---
 
@@ -92,7 +82,7 @@ Gennemgang af CancellationToken-flow, error recovery, temp cleanup og I/O edge c
 | # | Issue | File | Severity | Status |
 |:--|-------|------|----------|--------|
 | E1 | `CompositeTimestampReader` ignores CancellationToken | ~~`CompositeTimestampReader.cs:44-48` → `:73`~~ | **High** | ✅ **FIXED** — `CancellationToken` passes nu. Nyt interface-design: `ICompositeTimestampReader` + `TryReadCollect`. |
-| E2 | No `ThrowIfCancellationRequested()` at processing loop top | ~~`Engine/BackupEngine.cs:219`~~ | Low | ✅ **FIXED** — tilføjet i starten af foreach-loop. |
+| E2 | No `ThrowIfCancellationRequested()` at processing loop top | ~~`Engine/BackupEngine.cs:219`~~ | Low | ✅ **FIXED & REMOVED** — tilføjet, senere fjernet som redundant (async kald har selv token). |
 
 ### Bug Fixes Needed
 

@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 5 Jun 2026** — Ctrl+C Del 1 + Del 2 completed. SignalInterruptEngine (6 filer) er standard. Gammel event-kode slettet. 37 SignalInterrupts-tests tilføjet. I alt 197 tests.
+> **Opdateret 5 Jun 2026** — Ctrl+C Del 3 completed. Shadow af `cancellationToken`, `ISignalSubscription` interface, handler-baseret registrering i BackupEngine. I alt 204 tests.
 
 ## Færdige opgaver
 
@@ -15,7 +15,7 @@
 - [x] N4 — Ryd op: fjern `EarliestTimestampResolutionServiceAnother.cs` — ✅ deleted
 - [x] I4/E4 — Fix `MoveableFileContent.MoveTo` overwrite bug — `FileInfo.MoveTo(dest, false)` → `overwrite`
 - [x] E1 — Fix `CompositeTimestampReader` CancellationToken + redesign: `ITimestampReader` / `ICompositeTimestampReader` / `TimestampReaderException` / `TryReadCollect`
-- [x] E2 — Tilføj `ThrowIfCancellationRequested()` i starten af foreach-loop (BackupEngine.cs:219)
+- [x] E2 — Tilføj `ThrowIfCancellationRequested()` i starten af foreach-loop (BackupEngine.cs:219) — ✅ senere fjernet som redundant
 - [x] FileContent cleanup — fjernet Volatile, simplificeret dispose-logik, doc comments genindsat
 - [x] Ubrugt `earliest` — nu brugt på linje 301; `ResolveDate()` fjernet; kaster exception hvis null
 - [x] Step-number jump (8→10) — rettet til `// 9. Return BackupResult`
@@ -42,18 +42,18 @@
 - [x] — `JsonSidecarWriter` forbedret: `CreateSerializableModel` + `SerializeAsync(stream)` — ingen mellemstring
 - [x] — N6: SidecarServiceTests (6), IniSidecarWriterTests (14), JsonSidecarWriterTests (10) = 30 nye tests. I alt 160.
 - [x] — Ctrl+C Del 1: `BackupEngine.RunAsync` fanger `OperationCanceledException` → `BackupResult` med `State = Cancelled`
-- [x] — Ctrl+C Del 2: SignalInterruptEngine (singleton subscription engine) + SignalInterrupts static entry + SignalInterruptRegistrationBuilder. 6 filer. Gammel event-kode (CtrlTypes, ISignalInterruptEventHandler, SignalInterruptEventArgs, SignalInterruptEventEventHandler, ISignalInterruptHandler, ISignalInterruptService) slettet.
-- [x] — Ctrl+C Del 4: SignalInterrupts-tests (37): enum (5), context (10), builder (12), entry point (10)
+- [x] — Ctrl+C Del 2: SignalInterruptEngine (singleton subscription engine) + SignalInterrupt static entry + SignalInterruptRegistrationBuilder. 6 filer. Gammel event-kode slettet. `ISignalSubscription` interface tilføjet.
+- [x] — Ctrl+C Del 3: Shadow af `cancellationToken = cancellationTokenSource.Token`. Handler-baseret registrering: `SignalInterrupt.On(All).Handler(ctx => { cts.Cancel(); }).Create()`. `using ISignalSubscription` sikrer cleanup. TODO: "Finally saves when Cancel() is called."
+- [x] — Ctrl+C Del 4: SignalInterrupts-tests (37): enum (5), context (10), builder (12), entry point (10). + BackupEngine cancellation pattern tests (5). I alt 204 tests.
+- [x] — `ISignalSubscription : IDisposable` interface med `Signals` + `Handler` properties
+- [x] — `Create()`/`Register()` returnerer `ISignalSubscription` i stedet for `IDisposable`
 
 ## Næste opgaver (prioriteret)
-
-### Høj prioritet
-
-- [ ] — Ctrl+C Del 3: Wire SignalInterruptEngine ind i Consoles entry point
 
 ### Medium prioritet
 
 - [ ] — Wire Core4 into Consoles (incl. SignalInterrupts cancel-wiring)
+- [ ] — Opdater SignalInterrupt doc comments til at reflektere `ISignalSubscription` return type
 
 ### Allersidst (når alt andet er færdigt og testet)
 
