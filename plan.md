@@ -50,7 +50,6 @@
 ### Høj prioritet
 
 - [ ] — Ctrl+C Del 3: Wire SignalInterruptEngine ind i Consoles entry point
-- [ ] — [BLOKERING] Fiks validator-gates: `BackupPlanValidator` blokerer implementerede features — skal fixes før engine-tests kan skrives
 
 ### Medium prioritet
 
@@ -59,8 +58,7 @@
 ### Allersidst (når alt andet er færdigt og testet)
 
 - [ ] N1 — Destination inspection / sidecar hash read-back (cross-run dedup). TODO i `RenameCollisionResolver.cs:213`. Kræver `ISidecarReader` + INI/JSON parser. Core2 ref: `SidecarReader.cs`, `DestinationInspector.cs`.
-- [ ] — **Fjern validator-gates**: `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
-- [ ] C4 — Fix `BackupPlanValidator` tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans)
+- [ ] — **Fjern validator-gates**: `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem. Inkl. C4: Fix tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans).
 
 ## Ref
 
