@@ -1,6 +1,8 @@
 # Core4 — Mangler / Issues
 
 > **Opdateret 5 Jun 2026** — MTP/MediaDevice support i gang. `MediaDevices.dll` reference tilføjet. `BytesProcessed` fix i Completed. 204 tests.
+> 
+> ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -41,6 +43,7 @@
 | Fjernet redundante `ThrowIfCancellationRequested()` | ✅ **DONE** | Både i scan-foreach og processing-foreach — async kaldene har selv token. |
 | `using static` fjernet fra BackupEngine.cs | ✅ **DONE** | Ubrugt import ryddet. |
 | Doc comments: SignalInterrupt.cs + SignalInterruptEngine.cs | ✅ **DONE** | XML kommentarer opdateret fra `IDisposable` til `ISignalSubscription`. |
+| FileSystemTraversal: yield break ved manglende source → fail-first | ✅ **DONE** | `yield break` → `throw DirectoryNotFoundException`. Linje 17-18. |
 
 ---
 
@@ -48,6 +51,7 @@
 
 ### Høj prioritet — MTP/MediaDevice support
 
+- **MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`. Returnér device name + sti. Ren parsing, ingen device-logik.
 - **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang)
 - **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)

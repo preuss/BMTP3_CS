@@ -12,6 +12,7 @@ internal interface ISourceTraversal : IAsyncDisposable
 	/// </summary>
 	IAsyncEnumerable<SourceTraversalItem> TraverseAsync(
 		SourceTraversalRequest request,
-		IProgress<SourceTraversalProgress>? progress = null,
-		CancellationToken cancellationToken = default);
+		IProgress<SourceTraversalProgress>? progress,
+		CancellationToken cancellationToken
+	);
 }

@@ -1,5 +1,5 @@
-using System.Runtime.CompilerServices;
 using BMTP3.Core4.Utilities;
+using System.Runtime.CompilerServices;
 
 namespace BMTP3.Core4.Traversal;
 
@@ -7,15 +7,16 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 {
 	public async IAsyncEnumerable<SourceTraversalItem> TraverseAsync(
 		SourceTraversalRequest request,
-		IProgress<SourceTraversalProgress>? progress = null,
-		[EnumeratorCancellation] CancellationToken cancellationToken = default)
+		IProgress<SourceTraversalProgress>? progress,
+		[EnumeratorCancellation] CancellationToken cancellationToken
+	)
 	{
 		ArgumentNullException.ThrowIfNull(request);
 
 		DirectoryInfo rootDir = new(request.SourcePath);
 
 		if(!rootDir.Exists)
-			yield break;
+			throw new DirectoryNotFoundException($"Source path does not exist: {request.SourcePath}");
 
 		int dirCount = 0;
 		int fileCount = 0;
@@ -79,8 +80,7 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 		try
 		{
 			return dir.EnumerateFiles();
-		}
-		catch
+		} catch
 		{
 			return Array.Empty<FileInfo>();
 		}
@@ -91,8 +91,7 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 		try
 		{
 			return dir.EnumerateDirectories();
-		}
-		catch
+		} catch
 		{
 			return Array.Empty<DirectoryInfo>();
 		}
@@ -103,8 +102,7 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 		try
 		{
 			return new DateTimeOffset(selector(file), TimeSpan.Zero);
-		}
-		catch
+		} catch
 		{
 			return null;
 		}

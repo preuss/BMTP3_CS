@@ -1,6 +1,8 @@
 # BMTP3.Core4 — Plan
 
 > **Opdateret 5 Jun 2026** — MTP/MediaDevice support i gang. `MediaDevices.dll` reference tilføjet. `BytesProcessed` fix i Completed. I alt 204 tests.
+> 
+> ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
 ## Færdige opgaver
 
@@ -51,11 +53,13 @@
 - [x] — Doc comments i `SignalInterrupt.cs` og `SignalInterruptEngine.cs` opdateret til `ISignalSubscription`
 - [x] — `BytesProcessed` akkumuleres nu live i Completed-fasen
 - [x] — `MediaDevices.dll` reference tilføjet til Core4.csproj
+- [x] — `FileSystemTraversal`: `yield break` → `throw DirectoryNotFoundException` når source ikke findes (fail-first)
 
 ## Næste opgaver (prioriteret)
 
 ### Høj prioritet — MTP/MediaDevice support
 
+- [ ] **MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`. Returnér device name + sti. Ren parsing, ingen device-logik.
 - [ ] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang)
 - [ ] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - [ ] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
@@ -63,6 +67,7 @@
 - [ ] **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
 - [ ] **MTP Del 6:** DI registration + `MtpDeviceService`
 - [ ] **MTP Del 7:** Tests
+- [ ] **MTP arkitektur:** `BackupScanner` skal kunne håndtere MTP URI'er i `Path.GetRelativePath` — `MediaDeviceTraversal` returnerer `SourcePath` som fuld MTP URI, `BackupScanner` udregner `relativePath` ved at fjerne `request.SourcePath` prefix (eller traversal udregner selv)
 
 ### Allersidst
 
