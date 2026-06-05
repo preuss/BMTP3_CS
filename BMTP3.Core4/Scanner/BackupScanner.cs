@@ -1,6 +1,6 @@
-using System.Runtime.CompilerServices;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Traversal;
+using System.Runtime.CompilerServices;
 
 namespace BMTP3.Core4.Scanner;
 
@@ -38,15 +38,12 @@ internal sealed class BackupScanner : IBackupScanner
 				FilesDiscovered = fileCount,
 			});
 
-			string relativePath = Path.GetRelativePath(request.SourcePath, sourceItem.SourcePath);
-			string fileName = Path.GetFileName(sourceItem.SourcePath);
-
 			BackupItem item = new(sourceItem.Content)
 			{
-				Id = relativePath,
+				Id = sourceItem.Id,
 				SourcePath = sourceItem.SourcePath,
-				RelativePath = relativePath,
-				FileName = fileName,
+				RelativePath = sourceItem.RelativePath,
+				FileName = sourceItem.FileName,
 				DateCreated = sourceItem.DateCreated,
 				DateModified = sourceItem.DateModified,
 				DateAuthored = sourceItem.DateAuthored,

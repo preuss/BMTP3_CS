@@ -44,6 +44,7 @@
 | `using static` fjernet fra BackupEngine.cs | ✅ **DONE** | Ubrugt import ryddet. |
 | Doc comments: SignalInterrupt.cs + SignalInterruptEngine.cs | ✅ **DONE** | XML kommentarer opdateret fra `IDisposable` til `ISignalSubscription`. |
 | FileSystemTraversal: yield break ved manglende source → fail-first | ✅ **DONE** | `yield break` → `throw DirectoryNotFoundException`. Linje 17-18. |
+| MTP arkitektur: `SourceTraversalItem.RelativePath` | ✅ **DONE** | Ny property. `MediaDeviceTraversal` sætter den eksplicit; `BackupScanner` bruger den med fallback til `Path.GetRelativePath`. |
 
 ---
 

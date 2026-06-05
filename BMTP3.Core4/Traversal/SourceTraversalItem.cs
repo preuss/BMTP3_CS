@@ -19,6 +19,16 @@ internal sealed record SourceTraversalItem
 	public required string SourcePath { get; init; }
 
 	/// <summary>
+	///     Path relative to the traversal root, including the file name.
+	/// </summary>
+	public required string RelativePath { get; init; }
+
+	/// <summary>
+	///     File name (last segment) of the source item.
+	/// </summary>
+	public required string FileName { get; init; }
+
+	/// <summary>
 	///     Provides access to the item's byte content.
 	/// </summary>
 	public required IContent Content { get; init; }
