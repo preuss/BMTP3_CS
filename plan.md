@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 5 Jun 2026** — Engine erklæret færdig. N1 skipped by design. `using static` ryddet. Doc comments opdateret til `ISignalSubscription`. I alt 204 tests.
+> **Opdateret 5 Jun 2026** — MTP/MediaDevice support i gang. `MediaDevices.dll` reference tilføjet. `BytesProcessed` fix i Completed. I alt 204 tests.
 
 ## Færdige opgaver
 
@@ -49,17 +49,25 @@
 - [x] — `Create()`/`Register()` returnerer `ISignalSubscription` i stedet for `IDisposable`
 - [x] — `using static` fjernet fra BackupEngine.cs (ubrugt)
 - [x] — Doc comments i `SignalInterrupt.cs` og `SignalInterruptEngine.cs` opdateret til `ISignalSubscription`
+- [x] — `BytesProcessed` akkumuleres nu live i Completed-fasen
+- [x] — `MediaDevices.dll` reference tilføjet til Core4.csproj
 
 ## Næste opgaver (prioriteret)
 
-### Høj prioritet — engine-færdiggørelse
+### Høj prioritet — MTP/MediaDevice support
 
-- [x] ~~N1 — Cross-run dedup (skipped by design). Sidecar kan ændre sig eksternt. Hash fra backup records (session state) er vejen frem jf. TODO i `RenameCollisionResolver.cs:241`.~~
+- [ ] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang)
+- [ ] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
+- [ ] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
+- [ ] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
+- [ ] **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
+- [ ] **MTP Del 6:** DI registration + `MtpDeviceService`
+- [ ] **MTP Del 7:** Tests
 
-### Allersidst (når engine er erklæret færdig)
+### Allersidst
 
 - [ ] — Wire Core4 into Consoles (incl. SignalInterrupts cancel-wiring)
-- [ ] — **Fjern validator-gates**: `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem. Inkl. C4: Fix tier-gating så den matcher hvad engine faktisk understøtter (currently blocks ALL plans).
+- [ ] — **Fjern validator-gates**: `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
 
 ## Ref
 

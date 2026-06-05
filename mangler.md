@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 5 Jun 2026** — Engine erklæret færdig. N1 skipped by design. `using static` ryddet. Doc comments opdateret til `ISignalSubscription`. 204 tests.
+> **Opdateret 5 Jun 2026** — MTP/MediaDevice support i gang. `MediaDevices.dll` reference tilføjet. `BytesProcessed` fix i Completed. 204 tests.
 
 > ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
@@ -46,7 +46,17 @@
 
 ## Remaining Issues
 
-### Allersidst (når engine er erklæret færdig)
+### Høj prioritet — MTP/MediaDevice support
+
+- **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang)
+- **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
+- **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
+- **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
+- **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
+- **MTP Del 6:** DI registration + `MtpDeviceService`
+- **MTP Del 7:** Tests
+
+### Allersidst
 
 - **Wire Core4 into Consoles** — Consoles bruger stadig Core2.
 - **Fjern validator-gates** — `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
@@ -54,8 +64,7 @@
 ### Low / Deferred
 
 - ~~**N1: Cross-run dedup** — skipped by design. Hash fra backup records (session state), ikke sidecar.~~
-- **MTP/MediaDevice support** — `NotSupportedException` in `SourceTraversalFactory`
-- **Progress reporting** — top-level `BytesProcessed` er aldrig sat (altid 0). Per-file `BytesProcessed` opdateres under download (linje 251) og hashing (linje 303) men akkumuleres ikke op til `_currentProgress.BytesProcessed`.
+- ~~**Progress reporting** — `BytesProcessed` akkumuleres nu live i Completed-fasen.~~
 
 ---
 
