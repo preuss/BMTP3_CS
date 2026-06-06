@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 6 Jun 2026** — MTP Del 0-4 done. `ISourceTraversal` fjernet `IAsyncDisposable`. `MediaDeviceTraversal` implementeret. 265 tests.
+> **Opdateret 6 Jun 2026** — MTP Del 0-4 done. Del 5 rullet tilbage — forkert factory-tilgang. Skal redesignes med `IOpenedSource`/`ISourceScope` abstraktion. 265 tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -49,6 +49,7 @@
 | MTP Del 0: `MtpUriParser` | ✅ **DONE** | `MtpUriParser` + `MtpUriParseResult`. Parse `mtp://Device/Path`. 15 tests. |
 | MTP Del 1: `IMtpGatekeeper` + `MtpGatekeeper` | ✅ **DONE** | `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)` med `TimeoutException`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests. |
 | MTP Del 2: `IMtpDeviceSession` + `MtpDeviceSession` | ✅ **DONE** | Connect/disconnect, `[SupportedOSPlatform("windows7.0")]`. 235 total. |
+| MTP Del 5 factory approach | ❌ **ROLLED BACK** | Forkert tilgang — traversalen skal ikke være disposable. Skal redesignes med `IOpenedSource`/`ISourceScope`. |
 
 ---
 
@@ -61,9 +62,9 @@
 - ~~**MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect).~~ ✅ **DONE**
 - ~~**MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming).~~ ✅ **DONE**
 - ~~**MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal).~~ ✅ **DONE**
-- **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
-- **MTP Del 6:** DI registration + `MtpDeviceService`
-- **MTP Del 7:** Tests
+- ~~**MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`~~ ❌ **ROLLED BACK** — forkert tilgang. Skal redesignes.
+- **MTP Del 6:** `MtpDeviceService` — higher-level service wrapping device discovery + session + traversal. Optional: DI refinements.
+- **MTP Del 7:** Integration tests (kræver connected MTP device).
 - **MTP Del 8:** `ISourceDiscovery` — liste devices (MTP + filesystem + kombineret) til brugervalg. Sub-services: `IMtpDeviceDiscovery`, `IFileSystemSourceDiscovery`, `ICombinedSourceDiscovery`.
 
 ### Allersidst

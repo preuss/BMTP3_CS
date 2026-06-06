@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 6 Jun 2026** — MTP Del 0-4 done. `ISourceTraversal` fjernet `IAsyncDisposable`. `MediaDeviceTraversal` implementeret. 265 tests.
+> **Opdateret 6 Jun 2026** — MTP Del 0-4 done. Del 5 rullet tilbage — forkert factory-tilgang. Skal redesignes med `IOpenedSource`/`ISourceScope` abstraktion. 265 tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -69,7 +69,7 @@
 - [x] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - [x] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
 - [x] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
-- [ ] **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
+- [ ] **MTP Del 5:** Redesign — `IOpenedSource`/`ISourceScope` abstraktion der ejer session lifetime. Traversal forbliver ikke-disposable.
 - [ ] **MTP Del 6:** DI registration + `MtpDeviceService`
 - [ ] **MTP Del 7:** Tests
 - [ ] **MTP Del 8:** `ISourceDiscovery` — liste MTP devices, filesystem drev, og kombineret view så brugeren kan vælge source. Services: `IMtpDeviceDiscovery` (MTP), `IFileSystemSourceDiscovery` (drives), `ICombinedSourceDiscovery` (begge).
