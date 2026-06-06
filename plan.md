@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 5 Jun 2026** — MTP Del 0 (parser) done. `SourceTraversalItem` redesignet med `RelativePath` + `FileName`. 219 tests.
+> **Opdateret 5 Jun 2026** — MTP Del 1 (gatekeeper) done. `SourceTraversalItem` redesignet med `RelativePath` + `FileName`. 228 tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -57,13 +57,15 @@
 - [x] — `SourceTraversalItem`: `FileName` + `RelativePath` (begge `required`) — traversal leverer alt, `BackupScanner` mapper kun properties
 - [x] — `BackupScanner` renset: ingen `Path.*` kald, `Id = sourceItem.Id` i stedet for `relativePath`
 - [x] — `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests.
+- [x] — `IMtpGatekeeper` + `MtpGatekeeper` — `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests.
 
 ## Næste opgaver (prioriteret)
 
 ### Høj prioritet — MTP/MediaDevice support
 
-- [x] **MTP Del 0:** `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests. 219 total.
-- [ ] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang)
+- [x] **MTP Del 0:** `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests.
+- [x] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` — `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, CancellationToken)` med `TimeoutException`, `ThrowIfDisposed`. 9 tests. 228 total.
+- [ ] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - [ ] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - [ ] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
 - [ ] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)

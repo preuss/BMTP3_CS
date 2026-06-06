@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 5 Jun 2026** — MTP Del 0 (parser) done. `MediaDevices.dll` reference tilføjet. 219 tests.
+> **Opdateret 5 Jun 2026** — MTP Del 1 (gatekeeper) done. `MediaDevices.dll` reference tilføjet. 228 tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -46,7 +46,8 @@
 | FileSystemTraversal: yield break ved manglende source → fail-first | ✅ **DONE** | `yield break` → `throw DirectoryNotFoundException`. Linje 17-18. |
 | MTP arkitektur: `SourceTraversalItem.RelativePath` + `FileName` | ✅ **DONE** | Begge `required`. `BackupScanner` mapper properties — ingen `Path.*` kald. |
 | `BackupItem.Id` fiks | ✅ **DONE** | `Id = sourceItem.Id` i stedet for `relativePath` (unik på tværs af source roots). |
-| MTP Del 0: `MtpUriParser` | ✅ **DONE** | `MtpUriParser` + `MtpUriParseResult`. Parse `mtp://Device/Path`. 15 tests. 219 total. |
+| MTP Del 0: `MtpUriParser` | ✅ **DONE** | `MtpUriParser` + `MtpUriParseResult`. Parse `mtp://Device/Path`. 15 tests. |
+| MTP Del 1: `IMtpGatekeeper` + `MtpGatekeeper` | ✅ **DONE** | `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)` med `TimeoutException`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests. 228 total. |
 
 ---
 
@@ -54,8 +55,9 @@
 
 ### Høj prioritet — MTP/MediaDevice support
 
-- ~~**MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`. Returnér device name + sti. Ren parsing, ingen device-logik.~~ ✅ **DONE**
-- **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang)
+- ~~**MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`.~~ ✅ **DONE**
+- ~~**MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang).~~ ✅ **DONE**
+- **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
 - **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
