@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 5 Jun 2026** — MTP/MediaDevice support i gang. `MediaDevices.dll` reference tilføjet. `BytesProcessed` fix i Completed. I alt 204 tests.
+> **Opdateret 5 Jun 2026** — MTP Del 0 (parser) done. `SourceTraversalItem` redesignet med `RelativePath` + `FileName`. 219 tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -54,12 +54,15 @@
 - [x] — `BytesProcessed` akkumuleres nu live i Completed-fasen
 - [x] — `MediaDevices.dll` reference tilføjet til Core4.csproj
 - [x] — `FileSystemTraversal`: `yield break` → `throw DirectoryNotFoundException` når source ikke findes (fail-first)
+- [x] — `SourceTraversalItem`: `FileName` + `RelativePath` (begge `required`) — traversal leverer alt, `BackupScanner` mapper kun properties
+- [x] — `BackupScanner` renset: ingen `Path.*` kald, `Id = sourceItem.Id` i stedet for `relativePath`
+- [x] — `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests.
 
 ## Næste opgaver (prioriteret)
 
 ### Høj prioritet — MTP/MediaDevice support
 
-- [ ] **MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`. Returnér device name + sti. Ren parsing, ingen device-logik.
+- [x] **MTP Del 0:** `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests. 219 total.
 - [ ] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang)
 - [ ] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - [ ] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)

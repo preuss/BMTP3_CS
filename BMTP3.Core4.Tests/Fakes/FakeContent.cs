@@ -1,5 +1,5 @@
-using System.Text;
 using BMTP3.Core4.Models;
+using System.Text;
 
 namespace BMTP3.Core4.Tests.Fakes;
 

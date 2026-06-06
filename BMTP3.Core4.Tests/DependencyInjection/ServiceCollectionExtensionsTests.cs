@@ -1,6 +1,5 @@
 using BMTP3.Core4.Api;
 using BMTP3.Core4.DependencyInjection;
-using BMTP3.Core4.Engine;
 using BMTP3.Core4.Engine.Compare;
 using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
@@ -10,7 +9,6 @@ using BMTP3.Core4.Engine.Strategies;
 using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Scanner;
-using BMTP3.Core4.State;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 

@@ -17,7 +17,7 @@ internal sealed class FakeHashService : IHashService
 		CancellationToken ct)
 	{
 		Dictionary<HashType, string> results = new();
-		foreach (HashAlgorithmType algorithm in algorithms)
+		foreach(HashAlgorithmType algorithm in algorithms)
 		{
 			string hex = Convert.ToHexString(
 				SHA256.HashData(Encoding.UTF8.GetBytes("fake-data-" + algorithm))

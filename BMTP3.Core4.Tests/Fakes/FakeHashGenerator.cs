@@ -11,7 +11,7 @@ internal sealed class FakeHashGenerator : IHashGenerator
 		CancellationToken ct)
 	{
 		Dictionary<HashType, string> results = new();
-		foreach (HashType type in hashTypes.Distinct())
+		foreach(HashType type in hashTypes.Distinct())
 		{
 			results[type] = $"fake-{type}";
 		}

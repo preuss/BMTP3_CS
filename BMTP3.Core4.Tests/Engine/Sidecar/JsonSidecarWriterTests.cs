@@ -1,6 +1,6 @@
-using System.Text;
 using BMTP3.Core4.Engine.Sidecar.Document;
 using BMTP3.Core4.Engine.Sidecar.Writers;
+using System.Text;
 
 namespace BMTP3.Core4.Tests.Engine.Sidecar;
 

@@ -1,8 +1,8 @@
+using BMTP3.Common.MessageFormatterParser;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Compare;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Strategies;
-using BMTP3.Common.MessageFormatterParser;
 using BMTP3.Core4.Tests.Fakes;
 
 namespace BMTP3.Core4.Tests.Engine.Strategies;

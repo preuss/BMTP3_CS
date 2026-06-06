@@ -151,8 +151,7 @@ public class SidecarServiceTests
 
 		public void Dispose()
 		{
-			try { Directory.Delete(Path, recursive: true); }
-			catch { /* ignore cleanup failures */ }
+			try { Directory.Delete(Path, recursive: true); } catch { /* ignore cleanup failures */ }
 		}
 	}
 }
