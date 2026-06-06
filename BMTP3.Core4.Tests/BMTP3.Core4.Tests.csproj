@@ -32,4 +32,10 @@
     <ProjectReference Include="..\BMTP3.Core4\BMTP3.Core4.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="MediaDevices">
+      <HintPath>..\libs\MediaDevices.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
 </Project>

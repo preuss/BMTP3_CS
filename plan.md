@@ -58,14 +58,16 @@
 - [x] — `BackupScanner` renset: ingen `Path.*` kald, `Id = sourceItem.Id` i stedet for `relativePath`
 - [x] — `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests.
 - [x] — `IMtpGatekeeper` + `MtpGatekeeper` — `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests.
+- [x] — `IMtpDeviceSession` + `MtpDeviceSession` — connect/disconnect, `[SupportedOSPlatform("windows7.0")]`
 
 ## Næste opgaver (prioriteret)
 
 ### Høj prioritet — MTP/MediaDevice support
 
-- [x] **MTP Del 0:** `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests.
-- [x] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` — `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, CancellationToken)` med `TimeoutException`, `ThrowIfDisposed`. 9 tests. 228 total.
-- [ ] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
+- [x] **MTP Del 0:** `MtpUriParser` + `MtpUriParseResult`
+- [x] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper`
+- [x] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
+- [ ] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
 - [ ] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - [ ] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
 - [ ] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)

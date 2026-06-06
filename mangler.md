@@ -47,7 +47,8 @@
 | MTP arkitektur: `SourceTraversalItem.RelativePath` + `FileName` | ✅ **DONE** | Begge `required`. `BackupScanner` mapper properties — ingen `Path.*` kald. |
 | `BackupItem.Id` fiks | ✅ **DONE** | `Id = sourceItem.Id` i stedet for `relativePath` (unik på tværs af source roots). |
 | MTP Del 0: `MtpUriParser` | ✅ **DONE** | `MtpUriParser` + `MtpUriParseResult`. Parse `mtp://Device/Path`. 15 tests. |
-| MTP Del 1: `IMtpGatekeeper` + `MtpGatekeeper` | ✅ **DONE** | `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)` med `TimeoutException`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests. 228 total. |
+| MTP Del 1: `IMtpGatekeeper` + `MtpGatekeeper` | ✅ **DONE** | `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)` med `TimeoutException`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests. |
+| MTP Del 2: `IMtpDeviceSession` + `MtpDeviceSession` | ✅ **DONE** | Connect/disconnect, `[SupportedOSPlatform("windows7.0")]`. 235 total. |
 
 ---
 
@@ -57,7 +58,8 @@
 
 - ~~**MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`.~~ ✅ **DONE**
 - ~~**MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang).~~ ✅ **DONE**
-- **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
+- ~~**MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect).~~ ✅ **DONE**
+- **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
 - **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
 - **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
