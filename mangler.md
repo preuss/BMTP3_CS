@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 5 Jun 2026** — MTP Del 1 (gatekeeper) done. `MediaDevices.dll` reference tilføjet. 228 tests.
+> **Opdateret 6 Jun 2026** — MTP Del 0-4 done. `ISourceTraversal` fjernet `IAsyncDisposable`. `MediaDeviceTraversal` implementeret. 265 tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
