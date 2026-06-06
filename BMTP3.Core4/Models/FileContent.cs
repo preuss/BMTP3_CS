@@ -1,11 +1,12 @@
 ﻿namespace BMTP3.Core4.Models;
+
 internal class FileContent : IContent, IFileInfoSource
 {
-	private bool _disposed;
-	private const int bufferSize = 128 * 1024; // Default is 4096, this is 128 kb - larger buffer size can improve performance for large files.
+	private int _invalidated;
+	private const int BufferSize = 128 * 1024; // Default is 4096; 128 KB can improve performance for large sequential reads.
 
 	/// <summary>
-	///		Creates a <see cref="FileContent"/> that represents a regular file on disk.
+	///     Creates a <see cref="FileContent"/> that represents a regular file on disk.
 	/// </summary>
 	/// <param name="filePath">Full path to the file.</param>
 	/// <exception cref="ArgumentNullException"><paramref name="filePath"/> is <c>null</c>.</exception>
@@ -15,7 +16,7 @@ internal class FileContent : IContent, IFileInfoSource
 	}
 
 	/// <summary>
-	///		Creates a <see cref="FileContent"/> from an existing <see cref="FileInfo"/>.
+	///     Creates a <see cref="FileContent"/> from an existing <see cref="FileInfo"/>.
 	/// </summary>
 	/// <param name="fileInfo">The <see cref="FileInfo"/> describing the file. Must exist.</param>
 	/// <exception cref="ArgumentNullException"><paramref name="fileInfo"/> is <c>null</c>.</exception>
@@ -23,119 +24,128 @@ internal class FileContent : IContent, IFileInfoSource
 	public FileContent(FileInfo fileInfo)
 	{
 		ArgumentNullException.ThrowIfNull(fileInfo);
+
 		if(!fileInfo.Exists)
 		{
 			throw new FileNotFoundException($"File not found: {fileInfo.FullName}", fileInfo.FullName);
 		}
+
 		FileInfo = fileInfo;
 	}
 
 	/// <summary>
-	///		The underlying <see cref="FileInfo"/> for this content.
-	///		This property is protected so that only derived types can access the file metadata and perform operations that require the <see cref="FileInfo"/>.
+	///     The underlying <see cref="FileInfo"/> for this content.
+	///     This property is protected so derived types can access file metadata
+	///     and perform file operations such as atomic move.
 	/// </summary>
 	protected FileInfo FileInfo { get; }
 
 	/// <summary>
-	///		Length of the underlying file in bytes.
+	///     Length of the underlying file in bytes.
 	/// </summary>
 	/// <remarks>
-	///		Throws <see cref="ObjectDisposedException"/> if this instance has been disposed.
+	///     Throws <see cref="InvalidOperationException"/> if this instance has been invalidated.
 	/// </remarks>
 	public ulong Length
 	{
 		get
 		{
-			ThrowIfDisposed();
+			ThrowIfInvalidated();
 			return (ulong)FileInfo.Length;
 		}
 	}
 
+	/// <summary>
+	///     Tries to expose the underlying <see cref="FileInfo"/>.
+	/// </summary>
+	/// <param name="fileInfo">When this method returns, contains the underlying <see cref="FileInfo"/>.</param>
+	/// <returns><c>true</c> for file-backed content.</returns>
+	/// <remarks>
+	///     Throws <see cref="InvalidOperationException"/> if this instance has been invalidated.
+	/// </remarks>
 	public bool TryGetFileInfo(out FileInfo fileInfo)
 	{
+		ThrowIfInvalidated();
 		fileInfo = FileInfo;
 		return true;
 	}
 
 	/// <summary>
-	///		Marks this instance as disposed. No managed resources to free; streams are owned by the caller.
+	///     Opens a synchronous <see cref="Stream"/> for reading.
 	/// </summary>
-	public void Dispose()
-	{
-		_disposed = true;
-	}
-
-	/// <summary>
-	///		Asynchronous dispose. Equivalent to <see cref="Dispose"/> for this implementation.
-	/// </summary>
-	public ValueTask DisposeAsync()
-	{
-		Dispose();
-		return ValueTask.CompletedTask;
-	}
-
-	/// <summary>
-	///		Open a synchronous <see cref="Stream"/> for reading.
-	/// </summary>
-	/// <returns>An open <see cref="FileStream"/> for reading. Caller must dispose the stream.</returns>
-	/// <exception cref="ObjectDisposedException">If this instance has been disposed.</exception>
+	/// <returns>
+	///     An open <see cref="FileStream"/> for reading.
+	///     The caller is responsible for disposing the returned stream.
+	/// </returns>
+	/// <exception cref="InvalidOperationException">This instance has been invalidated.</exception>
 	public Stream OpenRead()
 	{
-		ThrowIfDisposed();
+		ThrowIfInvalidated();
 
 		return new FileStream(
 			FileInfo.FullName,
 			FileMode.Open,
 			FileAccess.Read,
 			FileShare.Read,
-			bufferSize
-		);
+			BufferSize);
 	}
 
 	/// <summary>
-	///		Open a <see cref="Stream"/> configured for asynchronous read operations.
+	///     Opens a <see cref="Stream"/> configured for asynchronous read operations.
 	/// </summary>
-	/// <param name="ct">Cancellation token (currently not used for opening the stream, provided for API symmetry).</param>
+	/// <param name="ct">
+	///     Cancellation token. Currently not used while opening the stream itself,
+	///     but provided for API symmetry with other <see cref="IContent"/> implementations.
+	/// </param>
 	/// <returns>
-	///		A <see cref="Task{Stream}"/> that returns an open <see cref="FileStream"/> configured with
-	///		<see cref="FileOptions.Asynchronous"/> and <see cref="FileOptions.SequentialScan"/>.
-	///		Caller is responsible for disposing the returned stream.
+	///     A <see cref="Task{TResult}"/> that returns an open <see cref="FileStream"/>
+	///     configured with <see cref="FileOptions.Asynchronous"/> and
+	///     <see cref="FileOptions.SequentialScan"/>.
+	///     The caller is responsible for disposing the returned stream.
 	/// </returns>
 	/// <remarks>
-	///		The method performs a synchronous open and returns a task-wrapped stream to conform to the async interface.
-	///		Throws <see cref="ObjectDisposedException"/> if this instance has been disposed.
+	///     The open itself is still synchronous; the returned stream is simply configured
+	///     for efficient asynchronous reads.
 	/// </remarks>
-	public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
+	/// <exception cref="InvalidOperationException">This instance has been invalidated.</exception>
+	public Task<Stream> OpenReadAsync(CancellationToken ct)
 	{
-		ThrowIfDisposed();
+		ThrowIfInvalidated();
 
-		// Return a FileStream opened directly from the path configured for async I/O.
 		Stream fs = new FileStream(
 			FileInfo.FullName,
 			FileMode.Open,
 			FileAccess.Read,
 			FileShare.Read,
-			bufferSize,
-			FileOptions.Asynchronous | FileOptions.SequentialScan
-		);
+			BufferSize,
+			FileOptions.Asynchronous | FileOptions.SequentialScan);
 
-		return Task.FromResult<Stream>(fs);
+		return Task.FromResult(fs);
 	}
 
 	/// <summary>
-	///		Checks whether the instance is disposed and throws <see cref="ObjectDisposedException"/> if so.
-	///		Protected to allow derived types to reuse the check without exposing the flag.
+	///     Throws if this content instance has been invalidated and must no longer be used.
 	/// </summary>
-	protected void ThrowIfDisposed()
+	/// <remarks>
+	///     Protected so derived types can reuse the guard consistently.
+	/// </remarks>
+	protected void ThrowIfInvalidated()
 	{
-		ObjectDisposedException.ThrowIf(_disposed, this);
+		if(Volatile.Read(ref _invalidated) != 0)
+		{
+			throw new InvalidOperationException("This content instance is no longer valid.");
+		}
 	}
 
 	/// <summary>
-	///		Marks the instance as disposed. Protected so derived types can invalidate the instance (e.g. after a move).
+	///     Invalidates this instance so that subsequent operations fail.
 	/// </summary>
-	protected void MarkDisposed()
+	/// <remarks>
+	///     Intended for derived types that perform state-changing operations,
+	///     such as moving the underlying file and transferring ownership to a new instance.
+	/// </remarks>
+	protected void Invalidate()
 	{
-		_disposed = true;
+		Interlocked.Exchange(ref _invalidated, 1);
 	}
 }

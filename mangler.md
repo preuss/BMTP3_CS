@@ -59,7 +59,7 @@
 - ~~**MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`.~~ ✅ **DONE**
 - ~~**MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang).~~ ✅ **DONE**
 - ~~**MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect).~~ ✅ **DONE**
-- **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
+- ~~**MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming).~~ ✅ **DONE**
 - **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
 - **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
 - **MTP Del 6:** DI registration + `MtpDeviceService`

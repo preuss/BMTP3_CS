@@ -25,7 +25,7 @@ internal sealed class HashService : IHashService
 		try
 		{
 			List<HashType> hashTypes = algorithms.Select(ToHashType).ToList();
-			await using Stream stream = await content.OpenReadStreamAsync(cancellationToken);
+			await using Stream stream = await content.OpenReadAsync(cancellationToken);
 			return await _hashGenerator.ComputeHashesAsync(stream, hashTypes, progress, cancellationToken);
 		} catch(OperationCanceledException)
 		{

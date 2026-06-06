@@ -7,7 +7,7 @@ internal sealed class DownloadService : IDownloadService
 
 	public async Task DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken)
 	{
-		await using Stream sourceStream = await request.Item.Content.OpenReadStreamAsync(cancellationToken);
+		await using Stream sourceStream = await request.Item.Content.OpenReadAsync(cancellationToken);
 		await using FileStream destStream = request.Destination.Create();
 		ulong totalBytesRead = 0;
 		byte[] buffer = new byte[BufferSize];

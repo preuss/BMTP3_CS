@@ -10,8 +10,8 @@ public sealed class MtpGatekeeper : IMtpGatekeeper, IDisposable
 		ArgumentNullException.ThrowIfNull(action);
 		ThrowIfDisposed();
 
-		using IDisposable lease = await AcquireAsync(ct);
-		return await action(ct);
+		using IDisposable lease = await AcquireAsync(ct).ConfigureAwait(false);
+		return await action(ct).ConfigureAwait(false);
 	}
 
 	public async Task ExecuteAsync(Func<CancellationToken, Task> action, CancellationToken ct)
@@ -19,32 +19,47 @@ public sealed class MtpGatekeeper : IMtpGatekeeper, IDisposable
 		ArgumentNullException.ThrowIfNull(action);
 		ThrowIfDisposed();
 
-		using IDisposable lease = await AcquireAsync(ct);
-		await action(ct);
+		using IDisposable lease = await AcquireAsync(ct).ConfigureAwait(false);
+		await action(ct).ConfigureAwait(false);
 	}
 
 	public async Task<IDisposable> AcquireAsync(CancellationToken ct)
 	{
 		ThrowIfDisposed();
 
-		await _semaphore.WaitAsync(ct);
+		await _semaphore.WaitAsync(ct).ConfigureAwait(false);
 		return new SemaphoreLease(_semaphore);
 	}
 
-	// Optional: opt-in timeout only when explicitly requested
 	public async Task<IDisposable> AcquireAsync(TimeSpan timeout, CancellationToken ct)
 	{
 		ThrowIfDisposed();
 
-		using CancellationTokenSource cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-		cts.CancelAfter(timeout);
+		bool entered = await _semaphore.WaitAsync(timeout, ct).ConfigureAwait(false);
+		if(!entered)
+		{
+			throw new TimeoutException("Timed out waiting to acquire the MTP gatekeeper.");
+		}
 
-		try
+		return new SemaphoreLease(_semaphore);
+	}
+
+	public IDisposable Acquire(CancellationToken ct)
+	{
+		ThrowIfDisposed();
+
+		_semaphore.Wait(ct);
+		return new SemaphoreLease(_semaphore);
+	}
+
+	public IDisposable Acquire(TimeSpan timeout, CancellationToken ct)
+	{
+		ThrowIfDisposed();
+
+		bool entered = _semaphore.Wait(timeout, ct);
+		if(!entered)
 		{
-			await _semaphore.WaitAsync(cts.Token);
-		} catch(OperationCanceledException) when(!ct.IsCancellationRequested)
-		{
-			throw new TimeoutException("Timed out waiting to acquire MTP gatekeeper.");
+			throw new TimeoutException("Timed out waiting to acquire the MTP gatekeeper.");
 		}
 
 		return new SemaphoreLease(_semaphore);
@@ -52,15 +67,14 @@ public sealed class MtpGatekeeper : IMtpGatekeeper, IDisposable
 
 	public void Dispose()
 	{
-		if(Interlocked.Exchange(ref _disposed, 1) == 0)
-		{
-			_semaphore.Dispose();
-		}
+		// Logical disposal only:
+		// prevents new acquisitions but allows existing leases to release safely.
+		Interlocked.Exchange(ref _disposed, 1);
 	}
 
 	private void ThrowIfDisposed()
 	{
-		ObjectDisposedException.ThrowIf(_disposed != 0, this);
+		ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
 	}
 
 	private sealed class SemaphoreLease : IDisposable

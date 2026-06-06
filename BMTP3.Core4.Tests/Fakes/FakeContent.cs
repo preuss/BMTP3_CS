@@ -21,7 +21,7 @@ internal sealed class FakeContent : IContent
 
 	public Stream OpenRead() => new MemoryStream(_data);
 
-	public Task<Stream> OpenReadStreamAsync(CancellationToken ct)
+	public Task<Stream> OpenReadAsync(CancellationToken ct)
 	{
 		ct.ThrowIfCancellationRequested();
 		return Task.FromResult<Stream>(new MemoryStream(_data));

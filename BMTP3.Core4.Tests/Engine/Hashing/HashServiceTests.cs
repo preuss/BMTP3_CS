@@ -82,7 +82,7 @@ public class HashServiceTests
 		public void Dispose() { }
 		public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 		public Stream OpenRead() => throw new IOException("disk error");
-		public Task<Stream> OpenReadStreamAsync(CancellationToken ct) =>
+		public Task<Stream> OpenReadAsync(CancellationToken ct) =>
 			throw new IOException("disk error");
 	}
 }
