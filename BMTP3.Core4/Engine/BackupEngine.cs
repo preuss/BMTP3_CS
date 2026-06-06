@@ -141,7 +141,7 @@ public sealed class BackupEngine : IBackupEngine
 				SourcePath = plan.SourcePath,
 			};
 
-			await using ISourceTraversal traversal = _sourceTraversalFactory.Create(sourceTraversalFactoryCreateRequest);
+			ISourceTraversal traversal = _sourceTraversalFactory.Create(sourceTraversalFactoryCreateRequest);
 
 			// ------------------------------------------------------------
 			// 5. Scan source

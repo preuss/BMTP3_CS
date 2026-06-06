@@ -4,7 +4,7 @@ namespace BMTP3.Core4.Traversal;
 ///     Source-agnostic abstraction for traversing a hierarchical source
 ///     (filesystem, MTP device, etc.).
 /// </summary>
-internal interface ISourceTraversal : IAsyncDisposable
+internal interface ISourceTraversal
 {
 	/// <summary>
 	///     Traverses the source according to <paramref name="request" />

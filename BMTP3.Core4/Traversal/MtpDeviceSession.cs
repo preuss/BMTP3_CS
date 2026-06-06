@@ -56,6 +56,8 @@ internal sealed class MtpDeviceSession : IMtpDeviceSession
 		}
 	}
 
+	internal MediaDevice Device => _device;
+
 	private void ThrowIfDisposed()
 	{
 		ObjectDisposedException.ThrowIf(_disposed != 0, this);

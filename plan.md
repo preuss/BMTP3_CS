@@ -68,7 +68,7 @@
 - [x] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper`
 - [x] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
 - [x] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
-- [ ] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
+- [x] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
 - [ ] **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
 - [ ] **MTP Del 6:** DI registration + `MtpDeviceService`
 - [ ] **MTP Del 7:** Tests

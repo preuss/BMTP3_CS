@@ -174,8 +174,7 @@ public class MediaDeviceContentTests
 		try
 		{
 			return device.GetDirectoryInfo(@"\").EnumerateFiles().FirstOrDefault();
-		}
-		finally
+		} finally
 		{
 			device.Disconnect();
 		}

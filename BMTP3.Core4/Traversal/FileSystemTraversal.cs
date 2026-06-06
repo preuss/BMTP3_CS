@@ -109,6 +109,4 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 			return null;
 		}
 	}
-
-	public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 }
