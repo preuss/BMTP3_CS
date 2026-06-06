@@ -1,6 +1,7 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 6 Jun 2026** — MTP Del 0-4 done. Del 5 rullet tilbage — forkert factory-tilgang. Skal redesignes med `IOpenedSource`/`ISourceScope` abstraktion. 265 tests.
+> **Opdateret 7 Jun 2026** — MTP Del 0-4 + `IBackupDriveInfo` done. MTP tests fjernet (krævede real device). NSubstitute 5.3.0 + xunit.v3 3.2.2 tilføjet. 249 tests.
+> Del 5 rullet tilbage — forkert factory-tilgang. Skal redesignes med `IOpenedSource`/`ISourceScope` abstraktion.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -48,12 +49,23 @@
 | `BackupItem.Id` fiks | ✅ **DONE** | `Id = sourceItem.Id` i stedet for `relativePath` (unik på tværs af source roots). |
 | MTP Del 0: `MtpUriParser` | ✅ **DONE** | `MtpUriParser` + `MtpUriParseResult`. Parse `mtp://Device/Path`. 15 tests. |
 | MTP Del 1: `IMtpGatekeeper` + `MtpGatekeeper` | ✅ **DONE** | `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)` med `TimeoutException`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests. |
-| MTP Del 2: `IMtpDeviceSession` + `MtpDeviceSession` | ✅ **DONE** | Connect/disconnect, `[SupportedOSPlatform("windows7.0")]`. 235 total. |
+| MTP Del 2: `IMtpDeviceSession` + `MtpDeviceSession` | ✅ **DONE** | Connect/disconnect, `[SupportedOSPlatform("windows7.0")]`. |
 | MTP Del 5 factory approach | ❌ **ROLLED BACK** | Forkert tilgang — traversalen skal ikke være disposable. Skal redesignes med `IOpenedSource`/`ISourceScope`. |
+| **IFileStore redesign → IBackupDriveInfo** | ✅ **DONE** | `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `Name.TrimStart('\\')` som `DriveName`). Omdøbt fra `FileSystemFileStore`/`MediaDeviceFileStore`. `Id ≠ RootPath`. |
+| **MTP test cleanup** | ✅ **DONE** | 16 tests fjernet der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. |
+| **NSubstitute 5.3.0** | ✅ **DONE** | Tilføjet til testprojekt. Installerbar når NuGet PackageSourceMapping opdateres med `<package pattern="NSubstitute" />`. |
+| **xunit.v3 3.2.2** | ✅ **DONE** | Opgraderet. `Microsoft.NET.Test.Sdk` 18.6.0, `coverlet.collector` 10.0.1. |
 
 ---
 
 ## Remaining Issues
+
+### Høj prioritet — Refactor MTP kode for mockable tests
+
+- **Refactor `MediaDeviceTraversal`** — skift konstruktør fra `MtpDeviceSession` til `IMtpDeviceSession` (interfacet findes allerede).
+- **Refactor `MtpDeviceSession.Open()`** — indfør `IMediaDeviceHandle` wrapper omkring `MediaDevice` så `Open()` kan mockes.
+- **Refactor `MediaDeviceContent`** — indfør `IMediaFile` wrapper omkring `MediaFileInfo` så content kan mockes.
+- **Genopret 16 MTP tests** — omskriv med NSubstitute + wrapper interfaces.
 
 ### Høj prioritet — MTP/MediaDevice support
 
@@ -63,14 +75,16 @@
 - ~~**MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming).~~ ✅ **DONE**
 - ~~**MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal).~~ ✅ **DONE**
 - ~~**MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`~~ ❌ **ROLLED BACK** — forkert tilgang. Skal redesignes.
-- **MTP Del 6:** `MtpDeviceService` — higher-level service wrapping device discovery + session + traversal. Optional: DI refinements.
-- **MTP Del 7:** Integration tests (kræver connected MTP device).
-- **MTP Del 8:** `ISourceDiscovery` — liste devices (MTP + filesystem + kombineret) til brugervalg. Sub-services: `IMtpDeviceDiscovery`, `IFileSystemSourceDiscovery`, `ICombinedSourceDiscovery`.
+- **MTP Del 5:** Redesign — `IOpenedSource`/`ISourceScope` abstraktion der ejer session lifetime. Traversal forbliver ikke-disposable.
+- **MTP Del 6:** DI registration + `MtpDeviceService`
+- **MTP Del 7:** Tests
+- **MTP Del 8:** `ISourceDiscovery` — liste MTP devices, filesystem drev, og kombineret view så brugeren kan vælge source. Services: `IMtpDeviceDiscovery` (MTP), `IFileSystemSourceDiscovery` (drives), `ICombinedSourceDiscovery` (begge).
 
 ### Allersidst
 
 - **Wire Core4 into Consoles** — Consoles bruger stadig Core2.
 - **Fjern validator-gates** — `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
+- **Opdater NuGet PackageSourceMapping** — tilføj `<package pattern="NSubstitute" />` til `%APPDATA%\NuGet\NuGet.Config` så NSubstitute kan installeres.
 
 ### Low / Deferred
 

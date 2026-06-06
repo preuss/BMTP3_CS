@@ -1,7 +1,7 @@
-# IFileStore — Research & Architectural Decisions
+# IBackupDriveInfo — Research & Architectural Decisions
 
-> **Dato:** 6 Jun 2026
-> **Formål:** Dokumentere designet af `IFileStore` — en fælles metadata-wrapper over `DriveInfo` (filesystem) og `MediaDevice` (MTP). Sikre at fremtidige beslutninger træffes med fuld forståelse af tidligere overvejelser.
+> **Dato:** 7 Jun 2026
+> **Formål:** Dokumentere designet af `IBackupDriveInfo` — en fælles metadata-wrapper over `DriveInfo` (filesystem) og `MediaDevice`/`MediaDriveInfo` (MTP). Sikre at fremtidige beslutninger træffes med fuld forståelse af tidligere overvejelser. Tidligere kendt som `IFileStore` (redesignet efter review).
 
 ---
 
@@ -9,7 +9,7 @@
 
 Core4 har to fundamentalt forskellige source-typer:
 - **FileSystem** — lokale/network drives, repræsenteret ved `System.IO.DriveInfo`
-- **MediaDevice** — MTP-enheder (telefoner, kameraer), repræsenteret ved `MediaDevices.MediaDevice`
+- **MediaDevice** — MTP-enheder (telefoner, kameraer), repræsenteret ved `MediaDevices.MediaDevice` + `MediaDriveInfo`
 
 Begge er "steder med filer" — de har et navn, en kapacitet, ledig plads, og en rod man kan traverse fra. Men deres API'er er helt forskellige.
 
@@ -21,165 +21,103 @@ Der mangler en **fælles, letvægtsrepræsentation** som:
 
 ---
 
-## 2. Designfilosofi: Top-down, ikke bottom-up
+## 2. Interface-hierarki
 
-### Hvad vi lærte af Del 5-fejlen
+### 2.1 Base: IBackupDriveInfo
 
-Første forsøg på MTP Del 5 var en factory-tilgang:
-```
-SourceTraversalFactory → MediaDeviceTraversalFactory → MediaDeviceTraversal
-```
-
-Problemet: vi byggede **nedefra og op**. Factory'en skulle oprette en session og et traversal, men hvem ejer session lifetime? Løsningen blev at gøre `MediaDeviceTraversal` disposable — hvilket modsiger den tidligere beslutning om at `ISourceTraversal` **ikke** skal være disposable.
-
-**Konklusion:** Man skal designe oppefra og ned. Først definere hvad brugeren/calleen ser, derefter hvordan det opdages, og til sidst hvordan det traverseres.
-
-### Løsningen: IFileStore
-
-`IFileStore` er en **lille metadata-wrapper**. Ikke mere. Den løser et afgrænset problem: "hvordan repræsenterer jeg en valgbare filenhed på tværs af filesystem og MTP?"
-
-Den er IKKE:
-- En traversal
-- Et root directory
-- En session/connection
-- En storage platform
-- En provider/service
-
----
-
-## 3. IFileStore — interfacet
-
-### Designregler
-
-1. **Kun metadata** — ingen metoder, kun properties
-2. **Immutable snapshot** — værdier bestemmes ved oprettelse, ingen live-opslag i getters
-3. **Valgbart objekt** — repræsenterer kun aktuelt opdagede, brugbare stores
-4. **Ingen traversal-logik** — `Open()`, `CreateTraversal()`, `GetRootDirectory()` hører ikke til her
-5. **Tynd wrapper** — den underliggende platformstype gemmes internt, men eksponeres ikke gennem interfacet
-
-### Interfacet
+Fælles properties for alle source-typer.
 
 ```csharp
-internal interface IFileStore
+internal interface IBackupDriveInfo
 {
-    /// <summary>
-    /// Stable identity for this file store.
-    /// Currently identical to <see cref="StorePathPrefix"/>.
-    /// </summary>
     string Id { get; }
-
-    /// <summary>
-    /// Short name for this file store.
-    /// Examples: "C:" or "Pixel 7".
-    /// </summary>
-    string Name { get; }
-
-    /// <summary>
-    /// User-friendly display name.
-    /// Examples: "Local Disk (C:)" or "Google Pixel 7 (Internal Storage)".
-    /// </summary>
+    string DriveName { get; }
     string DisplayName { get; }
-
-    /// <summary>
-    /// The underlying source type for this file store.
-    /// </summary>
     BackupSourceType SourceType { get; }
-
-    /// <summary>
-    /// Canonical path prefix that identifies this file store.
-    /// Examples: "C:\" or "mtp://Pixel 7/Internal Storage".
-    /// </summary>
-    string StorePathPrefix { get; }
-
-    /// <summary>
-    /// Total capacity in bytes, if known.
-    /// </summary>
-    ulong? TotalSize { get; }
-
-    /// <summary>
-    /// Available free space in bytes, if known.
-    /// </summary>
-    ulong? AvailableFreeSpace { get; }
+    string RootPath { get; }
+    long TotalSize { get; }
+    long AvailableFreeSpace { get; }
 }
 ```
 
-### Diskussion af hvert medlem
+### 2.2 Filesystem: IBackupFileSystemDriveInfo
 
-#### `Id`
-- **Hvad:** Maskinel identitet, stabil og kanonisk
-- **Hvorfor:** `Name` og `DisplayName` er ikke unikke nok — to MTP-enheder kan have samme friendly name
-- **Beslutning:** `Id = StorePathPrefix`. Én kilde til sandhed. Ingen separat ID-syntaks.
-- **Begrundelse:** Undgår duplikat semantik, parsing-problemer, og "to kilder til sandhed"-risiko.
-- **Fremtid:** Hvis det senere viser sig nødvendigt med en separat intern nøgle (fx et device-GUID), kan de skilles ad. Interfacet har begge properties.
+```csharp
+internal interface IBackupFileSystemDriveInfo : IBackupDriveInfo
+{
+    string VolumeLabel { get; }
+    string DriveFormat { get; }
+    DriveType DriveType { get; }
+}
+```
 
-#### `Name`
-- **Kort navn** til identifikation i UI og logs
-- Eksempler: `"C:"`, `"Pixel 7"`
-- For filesystem: `DriveInfo.Name.TrimEnd('\\')`
-- For MTP: `MediaDevice.FriendlyName`
+### 2.3 MTP: IBackupMediaDriveInfo
 
-#### `DisplayName`
-- **Brugervenligt navn** til præsentation for brugeren
-- Eksempler: `"Local Disk (C:)"`, `"Google Pixel 7 (Internal Storage)"`
-- For filesystem: `"{VolumeLabel} ({Name})"` med fallback til `Name` hvis VolumeLabel er tom
-- For MTP: `"{deviceName} ({storageName})"`
+```csharp
+internal interface IBackupMediaDriveInfo : IBackupDriveInfo
+{
+    string DeviceId { get; }
+    string FriendlyName { get; }
+    string? Description { get; }
+    string? Manufacturer { get; }
+    string? Model { get; }
+    string? SerialNumber { get; }
+}
+```
 
-#### `SourceType`
-- Diskriminator: `BackupSourceType.FileSystem` eller `BackupSourceType.MediaDevice`
-- Gør det muligt at dispatche til korrekt traversal uden `is`/`as` checks
+### Designbeslutninger
 
-#### `StorePathPrefix`
-- **Det vigtigste felt i interfacet.**
-- Den kanoniske sti der identificerer denne file store som udgangspunkt for traversal.
-- Eksempler: `"C:\"`, `"mtp://Pixel 7/Internal Storage"`
-- **Bruges til:**
-  1. Prefix-match mod `BackupPlan.SourcePath` for at finde hvilken `IFileStore` der matcher
-  2. Udledning af relativ sti under store'en (til traversal)
-  3. Stabil identitet (via `Id`)
-- **Krav:** Skal være strengt kanonisk — ens format hver gang, ingen tilfældig variation
+### Id vs RootPath
 
-#### `TotalSize` / `AvailableFreeSpace`
-- `ulong?` — null betyder "ukendt / ikke tilgængelig"
-- For filesystem: læses fra `DriveInfo` (defensivt via try/catch)
-- For MTP: modtages som argument i konstruktøren (hentet fra `MediaDriveInfo` eller `MediaStorageInfo` under discovery)
-- **Vigtigt:** Aldrig 0 som fake-unknown — null er semantisk korrekt
+Tidligere (`IFileStore`) var `Id = StorePathPrefix`. Det er ændret:
 
-### Hvad der IKKE er i IFileStore
+| Felt | Filesystem | MTP |
+|------|-----------|-----|
+| `Id` | `"C:"` | `"Apple iPad/Internal Storage"` |
+| `RootPath` | `"C:\"` | `"mtp://Apple iPad/Internal Storage"` |
 
-| Feature | Fravalgt fordi |
-|---------|---------------|
-| `Open()` / `Connect()` | IFileStore er metadata, ikke en aktiv forbindelse |
-| `CreateTraversal()` | Traversal er et separat lag, ikke en del af store'en |
-| `GetRootDirectory()` | Store'en er ikke et directory, men en container |
-| `EnumerateChildren()` | Det er traversals opgave |
-| `Dispose()` | IFileStore ejer ingen resources — session ejes af `IOpenedSource` / `ISourceScope` |
-| Platform-specifikke members | Den underliggende type er en intern implementation detail |
+**`Id` er til intern matching** — ren og uden scheme-præfiks.
+**`RootPath` er til traversal** — fuld sti med scheme.
+
+### long frem for ulong?
+
+`TotalSize`/`AvailableFreeSpace` er `long`, ikke `ulong?`. Begrundelse:
+- `DriveInfo.TotalSize` og `MediaDriveInfo.TotalSize` er begge `long` — direkte assignment, intet cast
+- Nullable giver ikke mening: en drive der er klar har altid en størrelse
+- Fail-first: hvis data er utilgængeligt, kaster discovery-laget — wrapperen tier ikke stille
+
+### DriveName for MTP
+
+MTP `DriveName` bruger `MediaDriveInfo.Name.TrimStart('\\')` (fx `\Internal Storage` → `Internal Storage`). `Name` er altid sat af MTP-protokollen (`StorageID`), i modsætning til `VolumeLabel` som kan være tom på mange Android-enheder. `TrimStart('\\')` fjerner det leading separator som MTP tilføjer.
 
 ---
 
-## 4. Wrappers
+## 3. Implementations
 
-### 4.1 DriveInfoFileStore
-
-**Formål:** Tynd adapter over `System.IO.DriveInfo`.
+### 3.1 BackupFileSystemDriveInfo
 
 ```csharp
-internal sealed class DriveInfoFileStore : IFileStore
+internal sealed class BackupFileSystemDriveInfo : IBackupFileSystemDriveInfo
 {
     private readonly DriveInfo _drive;
 
-    public DriveInfoFileStore(DriveInfo drive)
+    public BackupFileSystemDriveInfo(DriveInfo drive)
     {
-        // Pre-computer alle snapshot-værdier i konstruktøren
-        Name = BuildName(drive);
-        DisplayName = BuildDisplayName(drive);
-        StorePathPrefix = BuildStorePathPrefix(drive);
-        Id = StorePathPrefix;
-        TotalSize = TryGetUInt64(() => (ulong)drive.TotalSize);
-        AvailableFreeSpace = TryGetUInt64(() => (ulong)drive.AvailableFreeSpace);
-    }
+        _drive = drive ?? throw new ArgumentNullException(nameof(drive));
+        if(!drive.IsReady)
+            throw new InvalidOperationException($"Drive '{drive.Name}' is not ready.");
 
-    internal DriveInfo DriveInfo => _drive; // Kun til internt brug i næste lag
+        DriveName = BuildDriveName(drive);
+        DisplayName = BuildDisplayName(drive);
+        RootPath = BuildRootPath(drive);
+        Id = DriveName;
+
+        VolumeLabel = drive.VolumeLabel;
+        DriveFormat = drive.DriveFormat;
+        DriveType = drive.DriveType;
+        TotalSize = drive.TotalSize;
+        AvailableFreeSpace = drive.AvailableFreeSpace;
+    }
 }
 ```
 
@@ -187,42 +125,40 @@ internal sealed class DriveInfoFileStore : IFileStore
 
 | Beslutning | Begrundelse |
 |-----------|-------------|
-| `Name` = `drive.Name` trimmed for separator | Kort, entydigt, matcher Explorer-visning |
-| `DisplayName` = `"{VolumeLabel} ({Name})"` | Mest informative for brugeren |
-| `StorePathPrefix` = `drive.RootDirectory.FullName` | Inkluderer trailing separator, kanonisk for .NET |
-| `TryGetUInt64` for størrelser | `DriveInfo` kaster exceptions på nogle drevtyper (cd-rom, netværk) |
-| `internal DriveInfo` property | Næste lag har brug for den underliggende type til traversal |
+| `IsReady` guard i konstruktør | Ægte fail-first — discovery skal ikke kunne oprette en wrapper for et ikke-klar drev |
+| `long` direkte fra `DriveInfo` | Ingen unødvendig casting eller try/catch — `TotalSize`/`AvailableFreeSpace` er værdityper |
+| `VolumeLabel`/`DriveFormat` som `string` (ikke `string?`) | `DriveInfo` returnerer aldrig null for disse |
+| `Id = DriveName` | For filesystem er drevenavnet unikt nok som identitet |
 
-### 4.2 MediaDeviceFileStore
-
-**Formål:** Tynd adapter over `MediaDevices.MediaDevice` + en konkret storage root.
-
-**Vigtig beslutning:** `MediaDeviceFileStore` repræsenterer **device + storage root** (fx "Pixel 7 / Internal Storage"), ikke hele device'et. Det giver den rigtige granularitet for `StorePathPrefix`.
+### 3.2 BackupMediaDriveInfo
 
 ```csharp
 [SupportedOSPlatform("windows7.0")]
-internal sealed class MediaDeviceFileStore : IFileStore
+internal sealed class BackupMediaDriveInfo : IBackupMediaDriveInfo
 {
     private readonly MediaDevice _device;
+    private readonly MediaDriveInfo _driveInfo;
 
-    public MediaDeviceFileStore(
-        MediaDevice device,
-        string storageName,           // "Internal Storage" eller "SD Card"
-        ulong? totalSize,             // Snapshot fra discovery
-        ulong? availableFreeSpace)    // Snapshot fra discovery
+    public BackupMediaDriveInfo(MediaDevice device, MediaDriveInfo driveInfo)
     {
-        // Pre-computer alle snapshot-værdier i konstruktøren
-        Name = device.FriendlyName;
-        DisplayName = BuildDisplayName(device.FriendlyName, storageName);
-        StorePathPrefix = BuildStorePathPrefix(device.FriendlyName, storageName);
-        Id = StorePathPrefix;
-        StorageName = storageName;
-        TotalSize = totalSize;
-        AvailableFreeSpace = availableFreeSpace;
-    }
+        _device = device ?? throw new ArgumentNullException(nameof(device));
+        _driveInfo = driveInfo ?? throw new ArgumentNullException(nameof(driveInfo));
 
-    internal MediaDevice Device => _device;      // Kun til internt brug i næste lag
-    internal string StorageName { get; }          // Kun til internt brug i næste lag
+        DeviceName = BuildDeviceName(device);
+        DriveName = BuildDriveName(driveInfo);
+        DisplayName = BuildDisplayName(DeviceName, DriveName);
+        RootPath = BuildRootPath(DeviceName, DriveName);
+        Id = BuildId(DeviceName, DriveName);
+        FriendlyName = device.FriendlyName;
+
+        DeviceId = device.DeviceId;
+        Description = device.Description;
+        Manufacturer = device.Manufacturer;
+        Model = device.Model;
+        SerialNumber = device.SerialNumber;
+        TotalSize = driveInfo.TotalSize;
+        AvailableFreeSpace = driveInfo.AvailableFreeSpace;
+    }
 }
 ```
 
@@ -230,51 +166,49 @@ internal sealed class MediaDeviceFileStore : IFileStore
 
 | Beslutning | Begrundelse |
 |-----------|-------------|
-| Storage metadata som argumenter, ikke live-opslag | Wrapperen er et passivt snapshot — discovery-laget henter metadata |
-| `MediaDevice` gemmes internt | Næste lag skal bruge den til at åbne session |
-| `StorageName` gemmes internt | Næste lag skal vide hvilket storage root der traverseres |
-| `TotalSize`/`AvailableFreeSpace` kan være `null` | Hvis metadata er upålideligt, er null bedre end opdigtede værdier |
-| `[SupportedOSPlatform("windows7.0")]` | MediaDevices library kræver Windows |
+| `(MediaDevice, MediaDriveInfo)` konstruktør | `MediaDriveInfo` bærer `TotalSize`, `AvailableFreeSpace`, `VolumeLabel`, `RootDirectory` — renere end 4 løse parametre |
+| `DriveName = Name.TrimStart('\\')` | `Name` er altid sat af MTP (`StorageID`), i modsætning til `VolumeLabel` som kan være tom |
+| `Id = "{FriendlyName}/{DriveName}"` | Unik identitet på tværs af devices — `DriveName` alene er ikke unik på tværs |
+| Ingen try/catch nogen steder | Fail-first — discovery styrer præ-kvalitet |
+| `MediaDevice` gemmes internt | Næste lag (traversal) skal bruge `Device` til at åbne session |
 
-### Hvorfor `MediaDeviceFileStore` ikke selv kalder `Connect()` / `GetDrives()`
+### Hvorfor `BackupMediaDriveInfo` ikke selv kalder `Connect()` / `GetDrives()`
 
 1. **Wrapperen er et passivt snapshot.** Den skal kunne oprettes uden at forbinde til device'et.
 2. **Discovery-laget har allerede forbindelsen.** Det er mere effektivt at hente metadata i én tur.
-3. **Separation of concerns.** Hvis metadata-hentning ændrer sig (fx fra `MediaDriveInfo` til `MediaStorageInfo`), skal kun discovery-laget opdateres.
+3. **Separation of concerns.** Hvis metadata-hentning ændrer sig, skal kun discovery-laget opdateres.
 
 ---
 
-## 5. Traversal-modellen: IFileStore + relativ sti
+## 4. Traversal-modellen: IBackupDriveInfo + relativ sti
 
-### Hvordan traversal starter fra en IFileStore
+### Hvordan traversal starter fra en IBackupDriveInfo
 
-Traversal starter **ikke** fra `IFileStore` alene. Den starter fra:
+Traversal starter **ikke** fra `IBackupDriveInfo` alene. Den starter fra:
 
 ```
-IFileStore + en relativ startsti
+IBackupDriveInfo + en relativ startsti
 ```
 
 Processen:
 
 1. **`BackupPlan.SourcePath`** indeholder den fulde sti, fx:
    - `C:\Users\Jesper\Pictures`
-   - `mtp://Pixel 7/Internal Storage/DCIM/Camera`
+   - `mtp://Apple iPad/Internal Storage/DCIM/Camera`
 
-2. **Match mod `IFileStore.StorePathPrefix`** for at finde hvilken store der matcher:
+2. **Match mod `IBackupDriveInfo.RootPath`** for at finde hvilken store der matcher:
    - `C:\` ← matcher `C:\Users\Jesper\Pictures`
-   - `mtp://Pixel 7/Internal Storage` ← matcher `mtp://Pixel 7/Internal Storage/DCIM/Camera`
+   - `mtp://Apple iPad/Internal Storage` ← matcher `mtp://Apple iPad/Internal Storage/DCIM/Camera`
 
 3. **Udled relativ sti** under store'en:
    - Filesystem: `Users\Jesper\Pictures`
    - MTP: `DCIM/Camera`
 
-4. **Traversal får:** `IFileStore` (til at åbne session) + relativ sti (hvor at starte)
+4. **Traversal får:** `IBackupDriveInfo` (til at åbne session) + relativ sti (hvor at starte)
 
-Denne model passer med at brugeren kan vælge et hvilket som helst subdirectory under store'en — ikke kun roden.
+### Hvorfor `RootPath` er vigtigere end en `Open()`-metode
 
-### Hvorfor `StorePathPrefix` er vigtigere end en `Open()`-metode
-
-`StorePathPrefix` er en **streng**, ikke en metode. Det betyder:
+`RootPath` er en **streng**, ikke en metode. Det betyder:
 - Den kan matches, sammenlignes, gemmes, logges
 - Den kræver ingen forbindelse eller resource
 - Den gør interfacet rent og testbart
@@ -282,67 +216,105 @@ Denne model passer med at brugeren kan vælge et hvilket som helst subdirectory 
 
 ---
 
-## 6. Discovery-modellen (fremtidig)
+## 5. Discovery-modellen (fremtidig)
 
-`IFileStore` oprettes af et discovery-lag. Dette lag:
+`IBackupDriveInfo` oprettes af et discovery-lag. Dette lag:
 
 1. Lister alle relevante kilder (drives + MTP-enheder)
-2. For hver kilde, afgør om den er "brugbar nok" til at blive en `IFileStore`
-3. Henter metadata (size, free space, navn)
-4. Opretter `DriveInfoFileStore` eller `MediaDeviceFileStore` med snapshot-data
+2. For hver kilde, filtrerer ikke-klar drev (fail-first i konstruktør)
+3. Opretter `BackupFileSystemDriveInfo` eller `BackupMediaDriveInfo`
 
-Discovery-laget er **ikke** en del af `IFileStore`-designet. Det vil senere blive til én eller flere services:
-- `IDriveDiscovery` — returnerer `IReadOnlyList<IFileStore>` for filesystem
-- `IMediaDeviceDiscovery` — returnerer `IReadOnlyList<IFileStore>` for MTP
-- Evt. en kombineret service
+Discovery-laget er **ikke** en del af `IBackupDriveInfo`-designet. Det vil senere blive til én eller flere services:
+- `IFileSystemSourceDiscovery` — returnerer `IReadOnlyList<IBackupDriveInfo>` for filesystem
+- `IMtpDeviceDiscovery` — returnerer `IReadOnlyList<IBackupDriveInfo>` for MTP
+- `ICombinedSourceDiscovery` — begge
 
-Men det er en separat beslutning. Først `IFileStore`.
+Men det er en separat beslutning. Først `IBackupDriveInfo`.
 
----
+### Åbne spørgsmål — discovery
 
-## 7. Hvorfor vi IKKE gør følgende
+Følgende spørgsmål er **ikke besluttet endnu** og afventer afklaring:
 
-### 7.1 IFileStore er ikke disposable
-
-`IFileStore` er et snapshot — den ejer ingen native resources, åbne forbindelser, eller locks. `DriveInfo` og `MediaDevice` referencer opbevares kun til internt brug i næste lag. Session-lifetime håndteres af `IOpenedSource` / `ISourceScope` (separat abstraktion, ikke besluttet endnu).
-
-### 7.2 IFileStore har ikke traversal-metoder
-
-Hvis `IFileStore` havde `CreateTraversal()`, ville den skulle kende til `IMtpGatekeeper`, session management, og traversal-konfiguration. Det er for meget ansvar. Traversal er et separat lag der forbruger `IFileStore`.
-
-### 7.3 IFileStore repræsenterer ikke ikke-brugbare enheder
-
-Discovery-laget filtrerer. Hvis et device har tom `FriendlyName`, eller en storage root ikke kan identificeres, bliver det bare ikke til en `IFileStore`. Wrapperen skal ikke "redde" dårlige data.
-
-### 7.4 Id er ikke et separat format
-
-`Id = StorePathPrefix` — ikke `mtp:{friendlyName}:{storageName}`. Undgår:
-- Escaping/parsing-problemer med `:`, `/`, og specialtegn
-- Duplikat semantik
-- To kilder til sandhed
+| # | Spørgsmål | Noter |
+|---|-----------|-------|
+| 1 | **Flere drives pr. device** — skal et device med både Internal Storage og SD Card give én eller to `IBackupDriveInfo`? | Hælder til én per `MediaDriveInfo` (to IBackupDriveInfo). |
+| 2 | **Discovery-flow** — connect → hent `MediaDriveInfo[]` → disconnect (mister `MediaDevice` reference), eller hold forbindelsen? | Hvis vi disconnecter, har vi ikke `MediaDevice` til senere session-opening. |
+| 3 | **MTP `RootPath` escaping** — skal `mtp://{FriendlyName}/{VolumeLabel}` escape specialtegn/mellemrum? | `FriendlyName` kan indeholde mellemrum. Raw strings eller normaliseret? |
 
 ---
 
-## 8. Designregler (gør det nemt at sige nej)
+## 6. Hvorfor vi IKKE gør følgende
+
+### 6.1 IBackupDriveInfo er ikke disposable
+
+`IBackupDriveInfo` er et snapshot — den ejer ingen native resources, åbne forbindelser, eller locks. `DriveInfo` og `MediaDevice` referencer opbevares kun til internt brug i næste lag. Session-lifetime håndteres af `IOpenedSource` / `ISourceScope` (separat abstraktion, ikke besluttet endnu).
+
+### 6.2 IBackupDriveInfo har ikke traversal-metoder
+
+Hvis `IBackupDriveInfo` havde `CreateTraversal()`, ville den skulle kende til `IMtpGatekeeper`, session management, og traversal-konfiguration. Det er for meget ansvar. Traversal er et separat lag der forbruger `IBackupDriveInfo`.
+
+### 6.3 IBackupDriveInfo repræsenterer ikke ikke-brugbare enheder
+
+Discovery-laget filtrerer. Hvis et device har tom `FriendlyName`, eller `VolumeLabel` mangler, kaster konstruktøren — og discovery vælger bare at springe den over. Wrapperen skal ikke "redde" dårlige data.
+
+### 6.4 ulong? blev forkastet
+
+Tidligere design (`IFileStore`) brugte `ulong?` for at signalere "ukendt størrelse". Erfaringen viste:
+- `DriveInfo.TotalSize` er aldrig null, og undtagelser skal propageres (fail-first)
+- `MediaDriveInfo.TotalSize` er aldrig null, og undtagelser skal propageres (fail-first)
+- `long` er den naturlige type for både `DriveInfo` og `MediaDriveInfo`
+- Nullable størrelser giver en falsk fornemmelse af "det er ok hvis vi ikke ved det" — det er det ikke
+
+---
+
+## 7. Designregler (gør det nemt at sige nej)
 
 | Regel | Begrundelse |
 |-------|-------------|
-| `IFileStore` må kun have property-medlemmer | Metoder tilføjer adfærd, hvilket gør interfacet tungere og sværere at implementere korrekt |
+| `IBackupDriveInfo` må kun have property-medlemmer | Metoder tilføjer adfærd, hvilket gør interfacet tungere og sværere at implementere korrekt |
 | Wrappers skal pre-compute i konstruktøren | Ingen live-opslag i getters. Gør objekterne stabile og forudsigelige |
-| `Id = StorePathPrefix` som default | Én kilde til sandhed. Kan skilles ad senere hvis nødvendigt |
-| `ulong?` for størrelser, aldrig 0 | 0 er en gyldig størrelse. Null betyder "ukendt" |
-| Try/catch om DriveInfo property-læsning | DriveInfo kaster IOException for CD-rom, netværksdrev, etc. |
-| MTP-størrelser ind fra discovery, ikke fra wrapper | Wrapperen laver ikke device-opslag |
-| Kun connected/brugbare stores bliver til IFileStore | Ingen "måske-brugbare" objekter |
+| `Id` ≠ `RootPath` | `Id` er til intern matching (rent, uden scheme); `RootPath` er til traversal (fuld sti) |
+| `long` for størrelser, aldrig `ulong?` | Source-typen returnerer altid `long`; null er en falsk "det ved vi ikke" |
+| Fail-first i konstruktør | `IsReady` guard for filesystem; `Name` krav for MTP — ingen silent skipping |
+| MTP `Name.TrimStart('\\')` som `DriveName` | `Name` er altid sat (`StorageID`), `VolumeLabel` kan være tom på Android |
+| Kun connected/brugbare stores bliver til IBackupDriveInfo | Ingen "måske-brugbare" objekter |
 | Intern `DriveInfo`/`MediaDevice`-reference er OK | Næste lag skal bruge den — men den er ikke en del af interfacet |
+
+---
+
+## 8. Arkitekturhistorik
+
+### IFileStore → IBackupDriveInfo
+
+Det tidligere design (`IFileStore`) havde:
+- `ulong?` for `TotalSize`/`AvailableFreeSpace`
+- `TryGetUInt64` try/catch wrapper
+- `Id = StorePathPrefix`
+- `FileSystemFileStore` / `MediaDeviceFileStore` navne
+- Ét enkelt interface uden arv
+- `string? VolumeLabel` / `string? DriveFormat`
+
+Efter review blev det erstattet med det nuværende `IBackupDriveInfo`-design. De væsentligste ændringer:
+
+| Før (IFileStore) | Efter (IBackupDriveInfo) | Begrundelse |
+|------------------|--------------------------|-------------|
+| `ulong?` | `long` | Værdityper, aldrig null — `ulong?` var over-engineering |
+| `TryGetUInt64` | Direkte assignment | Fail-first — undtagelser propagerer |
+| `Id = StorePathPrefix` | `Id` ≠ `RootPath` | Forskellige formål — `Id` til matching, `RootPath` til traversal |
+| Ét interface | Interface-hierarki (base + specialized) | Consumers kan vælge abstraktionsniveau |
+| `string? VolumeLabel` | `string VolumeLabel` | `DriveInfo.VolumeLabel` er aldrig null |
+| Ingen konstruktør-guard | `IsReady` guard + `Name` krav | Ægte fail-first |
+| `FileSystemFileStore` | `BackupFileSystemDriveInfo` | Navnet reflekterer formålet bedre |
 
 ---
 
 ## 9. Referencer
 
-- `BMTP3.Core4\Storage\IFileStore.cs` — interfacet
-- `BMTP3.Core4\Storage\DriveInfoFileStore.cs` — filesystem wrapper
-- `BMTP3.Core4\Storage\MediaDeviceFileStore.cs` — MTP wrapper
+- `BMTP3.Core4\Storage\IBackupDriveInfo.cs` — base interface ✅
+- `BMTP3.Core4\Storage\IBackupFileSystemDriveInfo.cs` — filesystem-specifikt interface ✅
+- `BMTP3.Core4\Storage\IBackupMediaDriveInfo.cs` — MTP-specifikt interface ✅
+- `BMTP3.Core4\Storage\BackupFileSystemDriveInfo.cs` — filesystem implementation ✅
+- `BMTP3.Core4\Storage\BackupMediaDriveInfo.cs` — MTP implementation ✅
 - `BMTP3.Core\BackupSource\` — tidligere forsøg på samme abstraktion (BackupJob, IBackupSource, SourceType)
 - `mangler.md` — overblik over hvad der mangler i Core4
 - `plan.md` — overordnet plan for Core4
@@ -352,3 +324,4 @@ Discovery-laget filtrerer. Hvis et device har tom `FriendlyName`, eller en stora
 - `BackupJob` + `DriveBackupJob` / `DeviceBackupJob` i Core — samme idé, men bundet til config og handler-arkitektur
 - `IBackupSource` (Core) — tomt interface, aldrig implementeret. Starten på samme tanke
 - `SourceType` (Core) — `enum { Device, Drive }`. Genbrugt som `BackupSourceType` i Core4
+- `IFileStore` (Core4, forkastet) — første forsøg på `ulong?` + `TryGetUInt64` + `Id = StorePathPrefix`. Erstattet af `IBackupDriveInfo` efter review.
