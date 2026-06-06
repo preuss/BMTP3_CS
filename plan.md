@@ -72,6 +72,7 @@
 - [ ] **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
 - [ ] **MTP Del 6:** DI registration + `MtpDeviceService`
 - [ ] **MTP Del 7:** Tests
+- [ ] **MTP Del 8:** `ISourceDiscovery` — liste MTP devices, filesystem drev, og kombineret view så brugeren kan vælge source. Services: `IMtpDeviceDiscovery` (MTP), `IFileSystemSourceDiscovery` (drives), `ICombinedSourceDiscovery` (begge).
 - [x] **MTP arkitektur:** `SourceTraversalItem.RelativePath` tilføjet — eksplicit relativ sti. `MediaDeviceTraversal` sætter den, `BackupScanner` bruger `sourceItem.RelativePath ?? Path.GetRelativePath(...)`
 
 ### Allersidst

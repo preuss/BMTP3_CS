@@ -64,6 +64,7 @@
 - **MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`
 - **MTP Del 6:** DI registration + `MtpDeviceService`
 - **MTP Del 7:** Tests
+- **MTP Del 8:** `ISourceDiscovery` — liste devices (MTP + filesystem + kombineret) til brugervalg. Sub-services: `IMtpDeviceDiscovery`, `IFileSystemSourceDiscovery`, `ICombinedSourceDiscovery`.
 
 ### Allersidst
 
