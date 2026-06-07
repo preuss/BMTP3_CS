@@ -1,7 +1,7 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 7 Jun 2026** — MTP Del 0-4 + `IBackupDriveInfo` done. MTP tests fjernet (krævede real device). xunit.v3 3.2.2. 249 tests.
-> Del 5 rullet tilbage — forkert factory-tilgang. Skal redesignes med `IOpenedSource`/`ISourceScope` abstraktion.
+> **Opdateret 7 Jun 2026** — Discovery services implemented (FileSystem, MediaDevice, Combined). 249 tests.
+> Næste: Source matching + SourceTraversalFactory opdatering (afhænger af Session/Traversal redesign).
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -55,12 +55,16 @@
 | **MTP test cleanup** | ✅ **DONE** | 16 tests fjernet der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. |
 | **NSubstitute 5.3.0** | ❌ **FJERNET** | Tilføjet men aldrig brugt. Alle 16 fjernede MTP tests er ren delegation — ikke værd at teste. NSubstitute krævede PackageSourceMapping-opdatering som ikke var nødvendig. |
 | **xunit.v3 3.2.2** | ✅ **DONE** | Opgraderet. `Microsoft.NET.Test.Sdk` 18.6.0, `coverlet.collector` 10.0.1. |
+| **Discovery: IFileSystemSourceDiscovery** | ✅ **DONE** | `FileSystemSourceDiscovery`: `DriveInfo.GetDrives()`, filter `IsReady`, return `BackupFileSystemDriveInfo[]`. |
+| **Discovery: IMediaDeviceSourceDiscovery** | ✅ **DONE** | `MediaDeviceSourceDiscovery`: connect → `GetDrives()` → disconnect, skip ghost devices (`COMException 0x802A0001`). `[SupportedOSPlatform("windows7.0")]`. |
+| **Discovery: ICombinedSourceDiscovery** | ✅ **DONE** | `CombinedSourceDiscovery`: merge filesystem + MTP. Null-safe for non-Windows. Factory-registreret i DI. |
+| **Discovery: DI registrering** | ✅ **DONE** | `ServiceCollectionExtensions`: `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery` (kun Win 7+), `ICombinedSourceDiscovery` (factory). 0 warnings CA1416. |
 
 ---
 
 ## Remaining Issues
 
-### Høj prioritet — MTP/MediaDevice support
+### Høj prioritet — Source matching + SourceTraversalFactory
 
 - ~~**MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`.~~ ✅ **DONE**
 - ~~**MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang).~~ ✅ **DONE**
@@ -69,9 +73,8 @@
 - ~~**MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal).~~ ✅ **DONE**
 - ~~**MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`~~ ❌ **ROLLED BACK** — forkert tilgang. Skal redesignes.
 - **MTP Del 5:** Redesign — `IOpenedSource`/`ISourceScope` abstraktion der ejer session lifetime. Traversal forbliver ikke-disposable.
-- **MTP Del 6:** DI registration + `MtpDeviceService`
-- **MTP Del 7:** Tests
-- **MTP Del 8:** `ISourceDiscovery` — liste MTP devices, filesystem drev, og kombineret view så brugeren kan vælge source. Services: `IMtpDeviceDiscovery` (MTP), `IFileSystemSourceDiscovery` (drives), `ICombinedSourceDiscovery` (begge).
+- **Source matching:** Match `BackupPlan.SourcePath` mod `IBackupDriveInfo.RootPath`, udled relativ sti. Filesystem: `"D:\pic\2024"` → find drev `D:\`. MTP: `"mtp://Apple iPad/Internal Storage/DCIM"` → parse device + drive, find `BackupMediaDriveInfo`. 
+- **SourceTraversalFactory opdatering:** Brug `BackupMediaDriveInfo` til at åbne session når MTP device er fundet. Afhænger af Session/Traversal redesign.
 
 ### Allersidst
 
@@ -212,7 +215,8 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **Scanner** | `ScannerGathererStub` — ikke implementeret; MTP traversal kaster `NotSupportedException` |
 | **Verify** | ⚠️ | Hash verification implementeret inline i `BackupEngine`. Ingen separat `IPostWriteVerification`. |
 | **Resilience** | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
-| **MTP** | `NotSupportedException` — ingen MTP device support |
+| **MTP Discovery** | ✅ **DONE** — `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery`, `ICombinedSourceDiscovery` implementeret. 0/1/2. |
+| **MTP Traversal** | ⚠️ | `SourceTraversalFactory` kaster `NotSupportedException`. Discovery er på plads, traversal kræver Session/Traversal redesign. |
 | **TOML config** | Ingen TOML-reader; kun programmatisk `BackupPlan` |
 | **INI/JSON sidecar** | ✅ **DONE** — Full Document/Section/Property model + Ini + Json writers |
 | **DryRun** | ✅ **DONE** — `BuildDryRunResult` helper, short-circuit |

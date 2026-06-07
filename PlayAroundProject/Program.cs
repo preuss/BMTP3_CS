@@ -64,6 +64,25 @@ internal class Program
 					Console.WriteLine($"MediaDriveInfo.TotalFreeSpace     : {mediaDriveInfo.TotalFreeSpace}");
 					Console.WriteLine($"MediaDriveInfo.TotalSize          : {mediaDriveInfo.TotalSize}");
 					Console.WriteLine($"MediaDriveInfo.VolumeLabel        : {mediaDriveInfo.VolumeLabel}");
+					Console.WriteLine("=========== RootDirectory ===========");
+					Console.WriteLine(mediaDriveInfo.RootDirectory);
+					MediaDirectoryInfo rootDirectory = mediaDriveInfo.RootDirectory!;
+					foreach (MediaFileInfo enumerateFile in rootDirectory.EnumerateFiles())
+					{
+						Console.WriteLine("File: " + enumerateFile.Name);
+					}
+					foreach(MediaDirectoryInfo enumerateDirectory in rootDirectory.EnumerateDirectories())
+					{
+						Console.WriteLine("Directory: " + enumerateDirectory.Name);
+						var di = enumerateDirectory.Name;
+						break;
+					}
+					foreach(MediaFileSystemInfo fileSystemInfo in rootDirectory.EnumerateFileSystemInfos())
+					{
+						Console.WriteLine("FileSystemInfo: " + fileSystemInfo.Name);
+						var fsi = fileSystemInfo.Name;
+						break;
+					}
 
 				}
 			}

@@ -8,8 +8,6 @@ internal sealed class BackupFileSystemDriveInfo : IBackupFileSystemDriveInfo
 
 	public BackupFileSystemDriveInfo(DriveInfo drive)
 	{
-		// TODO: Sort all in the same order as the properties are declared, for better readability.
-
 		_drive = drive ?? throw new ArgumentNullException(nameof(drive));
 
 		if(!drive.IsReady)
@@ -20,13 +18,11 @@ internal sealed class BackupFileSystemDriveInfo : IBackupFileSystemDriveInfo
 		DriveName = BuildDriveName(drive);
 		DisplayName = BuildDisplayName(drive);
 		RootPath = BuildRootPath(drive);
-
+		TotalSize = drive.TotalSize;
+		AvailableFreeSpace = drive.AvailableFreeSpace;
 		VolumeLabel = drive.VolumeLabel;
 		DriveFormat = drive.DriveFormat;
 		DriveType = drive.DriveType;
-
-		TotalSize = drive.TotalSize;
-		AvailableFreeSpace = drive.AvailableFreeSpace;
 	}
 
 	internal DriveInfo DriveInfo => _drive;

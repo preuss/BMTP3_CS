@@ -1,7 +1,7 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 7 Jun 2026** — MTP Del 0-4 + `IBackupDriveInfo` done. MTP tests fjernet (krævede real device). 249 tests.
-> Del 5 rullet tilbage — forkert factory-tilgang. Skal redesignes med `IOpenedSource`/`ISourceScope` abstraktion.
+> **Opdateret 7 Jun 2026** — Discovery services implemented (FileSystem, MediaDevice, Combined). 249 tests.
+> Næste: Source matching + SourceTraversalFactory opdatering.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -62,21 +62,29 @@
 - [x] — `IMtpDeviceSession` + `MtpDeviceSession` — connect/disconnect, `[SupportedOSPlatform("windows7.0")]`
 - [x] — **IFileStore redesign → `IBackupDriveInfo`** — `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `VolumeLabel`-baseret `DriveName`). Omdøbt: `FileSystemFileStore` → `BackupFileSystemDriveInfo`, `MediaDeviceFileStore` → `BackupMediaDriveInfo`.)
 - [x] — **MTP test cleanup** — Fjernet 16 tests der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. Opgraderet til xunit.v3 3.2.2.
+- [x] — **`IFileSystemSourceDiscovery`** — `FileSystemSourceDiscovery`: `DriveInfo.GetDrives()`, filter `IsReady`, return `BackupFileSystemDriveInfo[]`
+- [x] — **`IMediaDeviceSourceDiscovery`** — `MediaDeviceSourceDiscovery`: connect → `GetDrives()` → disconnect, skip ghost devices (`COMException 0x802A0001`)
+- [x] — **`ICombinedSourceDiscovery`** — `CombinedSourceDiscovery`: merge filesystem + MTP. Null-safe for non-Windows.
+- [x] — **DI registrering:** Discovery services registreret i `ServiceCollectionExtensions`. `MediaDeviceSourceDiscovery` kun på Windows 7+.
+- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
 
 ## Næste opgaver (prioriteret)
 
-### Høj prioritet — MTP/MediaDevice support
+### Høj prioritet — Source matching + SourceTraversalFactory
 
-- [x] **MTP Del 0:** `MtpUriParser` + `MtpUriParseResult`
-- [x] **MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper`
-- [x] **MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect)
-- [x] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming)
-- [x] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal)
-- [ ] **MTP Del 5:** Redesign — `IOpenedSource`/`ISourceScope` abstraktion der ejer session lifetime. Traversal forbliver ikke-disposable.
-- [ ] **MTP Del 6:** DI registration + `MtpDeviceService`
-- [ ] **MTP Del 7:** Tests
-- [ ] **MTP Del 8:** `ISourceDiscovery` — liste MTP devices, filesystem drev, og kombineret view så brugeren kan vælge source. Services: `IMtpDeviceDiscovery` (MTP), `IFileSystemSourceDiscovery` (drives), `ICombinedSourceDiscovery` (begge).
-- [x] **MTP arkitektur:** `SourceTraversalItem.RelativePath` tilføjet — eksplicit relativ sti. `MediaDeviceTraversal` sætter den, `BackupScanner` bruger `sourceItem.RelativePath ?? Path.GetRelativePath(...)`
+- [ ] **Source matching:** Match `BackupPlan.SourcePath` mod `IBackupDriveInfo.RootPath`, udled relativ sti. Filesystem: `"D:\pic\2024"` → find drev `D:\`. MTP: `"mtp://Apple iPad/Internal Storage/DCIM"` → parse device + drive, find `BackupMediaDriveInfo`. Afhænger af Session/Traversal redesign.
+- [ ] **SourceTraversalFactory opdatering:** Brug `BackupMediaDriveInfo` til at åbne session når MTP device er fundet. Afhænger af Session/Traversal redesign.
+- [ ] **Connection design:** Kun discovery-layer connect'er/disconnect'er til MTP-enheder. `BackupEngine` styrer lifetime. Traversal og gatekeeper rører **ikke** connect/disconnect.
+
+### Udsat — Session/Traversal integration
+
+- [x] **MTP Del 0:** `MtpUriParser` + `MtpUriParseResult` ✅
+- [x] **MTP Del 1:** `IMediaDeviceGatekeeper` + `MediaDeviceGatekeeper` ✅ (omdøbt)
+- [x] **MTP Del 2:** `IMediaDeviceSession` + `MediaDeviceSession` ✅ (omdøbt)
+- [x] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` ✅
+- [x] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` ✅
+- [ ] **Session/Traversal redesign** — hvordan `BackupEngine` åbner session, hvem ejer lifetime, hvordan traversal consumere items. **Udskudt til efter Discovery.**
+- [x] **MTP arkitektur:** `SourceTraversalItem.RelativePath` ✅
 
 ### Allersidst
 

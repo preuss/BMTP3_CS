@@ -10,28 +10,45 @@ internal sealed class BackupMediaDriveInfo : IBackupMediaDriveInfo
 	private readonly MediaDevice _device;
 	private readonly MediaDriveInfo _driveInfo;
 
+	private readonly string _id;
+	private readonly string _driveName;
+	private readonly string _displayName;
+	private readonly string _rootPath;
+	private readonly long _totalSize;
+	private readonly long _availableFreeSpace;
+
+	private readonly string _deviceId;
+	//private readonly string _deviceName;
+	private readonly string? _description;
+	private readonly string _friendlyName;
+	private readonly string? _manufacturer;
+	private readonly string? _model;
+	private readonly string? _serialNumber;
+
+
 	public BackupMediaDriveInfo(MediaDevice device, MediaDriveInfo driveInfo)
 	{
-		// TODO: Sort all in the same order as the properties are declared, for better readability.
-
 		_device = device ?? throw new ArgumentNullException(nameof(device));
 		_driveInfo = driveInfo ?? throw new ArgumentNullException(nameof(driveInfo));
 
-		DeviceName = BuildDeviceName(device);
-		DriveName = BuildDriveName(driveInfo);
-		DisplayName = BuildDisplayName(DeviceName, DriveName);
-		RootPath = BuildRootPath(DeviceName, DriveName);
+		string friendlyName = BuildDeviceName(device.FriendlyName);
+		string driveName = BuildDriveName(driveInfo.Name);
 
-		DeviceId = device.DeviceId;
-		Description = device.Description;
-		Manufacturer = device.Manufacturer;
-		Model = device.Model;
-		SerialNumber = device.SerialNumber;
+		_id = BuildId(friendlyName, driveName);
+		_driveName = driveName;
+		_displayName = BuildDisplayName(friendlyName, driveName);
+		_rootPath = BuildRootPath(friendlyName, driveName);
+		_totalSize = driveInfo.TotalSize;
+		_availableFreeSpace = driveInfo.AvailableFreeSpace;
 
-		TotalSize = driveInfo.TotalSize;
-		AvailableFreeSpace = driveInfo.AvailableFreeSpace;
-		Id = BuildId(DeviceName, DriveName);
-		FriendlyName = device.FriendlyName;
+		_deviceId = device.DeviceId;
+		//_deviceName = friendlyName;
+		_description = device.Description;
+		_friendlyName = friendlyName;
+		_manufacturer = device.Manufacturer;
+		_model = device.Model;
+		_serialNumber = device.SerialNumber;
+
 	}
 
 	internal MediaDevice Device => _device;
@@ -40,61 +57,65 @@ internal sealed class BackupMediaDriveInfo : IBackupMediaDriveInfo
 
 	#region IBackupDriveInfo_Specific
 
-	public string Id { get; }
+	public string Id => _id;
 
-	public string DriveName { get; }
+	public string DriveName => _driveName;
 
-	public string DisplayName { get; }
+	public string DisplayName => _displayName;
 
 	public BackupSourceType SourceType => BackupSourceType.MediaDevice;
 
-	public string RootPath { get; }
+	public string RootPath => _rootPath;
 
-	public long TotalSize { get; }
+	public long TotalSize => _totalSize;
 
-	public long AvailableFreeSpace { get; }
+	public long AvailableFreeSpace => _availableFreeSpace;
 
 	#endregion IBackupDriveInfo_Specific
 
 	#region IBackupMediaDriveInfo_Specific
 
-	public string DeviceId { get; }
+	public string DeviceId => _deviceId;
 
 	/// <summary>
 	/// Same as FriendlyName of MediaDevice, e.g. "My Phone"
 	/// </summary>
-	public string DeviceName { get; }
+	public string DeviceName => _friendlyName;
 
-	public string? Description { get; }
+	public string? Description => _description;
 
-	public string FriendlyName { get;}
+	public string FriendlyName => _friendlyName;
 
-	public string? Manufacturer { get; }
+	public string? Manufacturer => _manufacturer;
 
-	public string? Model { get; }
+	public string? Model => _model;
 
-	public string? SerialNumber { get; }
+	public string? SerialNumber => _serialNumber;
+
 
 	#endregion IBackupMediaDriveInfo_Specific
 
 	#region Static_Helpers
 
-	private static string BuildDeviceName(MediaDevice device)
+	private static string BuildDeviceName(string friendlyName)
 	{
-		if(string.IsNullOrWhiteSpace(device.FriendlyName))
+		if(string.IsNullOrWhiteSpace(friendlyName))
 		{
 			throw new InvalidOperationException("Media device FriendlyName is missing.");
 		}
 
-		return device.FriendlyName.Trim();
+		return friendlyName;
 	}
 
-	private static string BuildDriveName(MediaDriveInfo driveInfo)
+	private static string BuildDriveName(string driveName)
 	{
-		string name = driveInfo.Name.TrimStart('\\');
-		return string.IsNullOrWhiteSpace(name)
-			? throw new InvalidOperationException("Media drive Name is missing. Cannot create a stable MTP drive identity.")
-			: name;
+		string name = driveName.TrimStart('\\');
+		if(string.IsNullOrWhiteSpace(name))
+		{
+			throw new InvalidOperationException("Media drive Name is missing. Cannot create a stable MTP drive identity.");
+		}
+
+		return name;
 	}
 
 	private static string BuildDisplayName(string deviceName, string driveName)
@@ -106,6 +127,7 @@ internal sealed class BackupMediaDriveInfo : IBackupMediaDriveInfo
 	{
 		return $"mtp://{friendlyName}/{driveName}";
 	}
+
 	private static string BuildId(string friendlyName, string driveName)
 	{
 		return $"{friendlyName}/{driveName}";

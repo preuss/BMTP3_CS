@@ -1,5 +1,6 @@
 using BMTP3.Common.MessageFormatterParser;
 using BMTP3.Core4.Api;
+using BMTP3.Core4.DriveDiscovery;
 using BMTP3.Core4.Engine;
 using BMTP3.Core4.Engine.Compare;
 using BMTP3.Core4.Engine.Compare.Algorithms;
@@ -33,6 +34,26 @@ public static class ServiceCollectionExtensions
 		services.TryAddSingleton<IDownloadService, DownloadService>();
 		services.TryAddSingleton<IEarliestTimestampResolutionService, EarliestTimestampResolutionService>();
 		services.TryAddSingleton<ISidecarService, SidecarService>();
+
+		// Drive providers implementations
+		services.TryAddSingleton<FileSystemDriveProvider>();
+		if(OperatingSystem.IsWindowsVersionAtLeast(7))
+		{
+			services.TryAddSingleton<MediaDeviceDriveProvider>();
+		}
+
+		// Drive provider composite of all implementations
+		services.TryAddSingleton<IDriveProvider>(sp =>
+		{
+			List<IDriveProvider> providers = new();
+			providers.Add(sp.GetRequiredService<FileSystemDriveProvider>());
+			if(OperatingSystem.IsWindowsVersionAtLeast(7))
+				AddIfNotNull(providers, sp.GetService<MediaDeviceDriveProvider>());
+
+			return new DriveProvider(providers);
+		});
+
+
 
 		// Traversal & scanner
 		services.TryAddSingleton<ISourceTraversalFactory, SourceTraversalFactory>();
@@ -81,5 +102,10 @@ public static class ServiceCollectionExtensions
 		});
 
 		return services;
+	}
+
+	static void AddIfNotNull<T>(List<T> list, T? item) where T : class
+	{
+		if(item != null) list.Add(item);
 	}
 }
