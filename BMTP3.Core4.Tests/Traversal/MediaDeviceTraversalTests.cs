@@ -13,9 +13,11 @@ public class MediaDeviceTraversalTests
 		Assert.Throws<ArgumentNullException>(() => new MediaDeviceTraversal(null!, new FakeGatekeeper()));
 	}
 
-	private sealed class FakeGatekeeper : IMtpGatekeeper
+	private sealed class FakeGatekeeper : IMediaDeviceGatekeeper
 	{
 		public IDisposable Lease { get; set; } = new TrackingDisposable();
+
+		public void Dispose() { }
 
 		public Task<T> ExecuteAsync<T>(Func<CancellationToken, Task<T>> action, CancellationToken ct)
 			=> action(ct);

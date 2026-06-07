@@ -11,7 +11,7 @@ namespace BMTP3.Core4.Traversal;
 /// Traverses content on an MTP device.
 /// </summary>
 /// <remarks>
-/// This type does not own the lifetime of the underlying <see cref="MtpDeviceSession"/>.
+/// This type does not own the lifetime of the underlying <see cref="MediaDeviceSession"/>.
 /// Yielded <see cref="SourceTraversalItem"/> instances may contain <see cref="MediaDeviceContent"/>
 /// objects that continue to access the device after traversal has finished.
 /// The caller must therefore keep the session alive until all yielded content and streams
@@ -21,10 +21,10 @@ namespace BMTP3.Core4.Traversal;
 
 internal sealed class MediaDeviceTraversal : ISourceTraversal
 {
-	private readonly MtpDeviceSession _session;
-	private readonly IMtpGatekeeper _gatekeeper;
+	private readonly MediaDeviceSession _session;
+	private readonly IMediaDeviceGatekeeper _gatekeeper;
 
-	public MediaDeviceTraversal(MtpDeviceSession session, IMtpGatekeeper gatekeeper)
+	public MediaDeviceTraversal(MediaDeviceSession session, IMediaDeviceGatekeeper gatekeeper)
 	{
 		_session = session ?? throw new ArgumentNullException(nameof(session));
 		_gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));

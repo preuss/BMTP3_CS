@@ -2,12 +2,12 @@ using BMTP3.Core4.Traversal;
 
 namespace BMTP3.Core4.Tests.Traversal;
 
-public class MtpGatekeeperTests
+public class MediaDeviceGatekeeperTests
 {
 	[Fact]
 	public async Task ExecuteAsync_RunsAction()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		int result = await gatekeeper.ExecuteAsync(ct => Task.FromResult(42), CancellationToken.None);
 		Assert.Equal(42, result);
 	}
@@ -15,7 +15,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task ExecuteAsync_NonGeneric_RunsAction()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		bool ran = false;
 		await gatekeeper.ExecuteAsync(ct => { ran = true; return Task.CompletedTask; }, CancellationToken.None);
 		Assert.True(ran);
@@ -24,7 +24,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task ExecuteAsync_SerializesConcurrentCalls()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		int concurrent = 0;
 		int maxConcurrent = 0;
 
@@ -45,7 +45,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task ExecuteAsync_CancelledToken_Throws()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		using CancellationTokenSource cts = new();
 		cts.Cancel();
 
@@ -56,7 +56,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task AcquireAsync_ReturnsLease_ThatReleasesWhenDisposed()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		IDisposable lease = await gatekeeper.AcquireAsync(CancellationToken.None);
 		lease.Dispose();
 
@@ -66,7 +66,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task AcquireAsync_DoubleDispose_Safe()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		IDisposable lease = await gatekeeper.AcquireAsync(CancellationToken.None);
 		lease.Dispose();
 		lease.Dispose();
@@ -75,7 +75,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task AcquireAsync_HoldsLockUntilDisposed()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		IDisposable lease = await gatekeeper.AcquireAsync(CancellationToken.None);
 
 		Task tryExecute = gatekeeper.ExecuteAsync(ct => Task.CompletedTask, CancellationToken.None);
@@ -92,7 +92,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task ExecuteAsync_Exception_ReleasesLock()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
 			gatekeeper.ExecuteAsync<object>(ct => throw new InvalidOperationException("fail"), CancellationToken.None));
@@ -103,7 +103,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task AcquireAsync_CancelledToken_Throws()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		using CancellationTokenSource cts = new();
 		cts.Cancel();
 
@@ -114,7 +114,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task AcquireAsync_Timeout_ThrowsTimeoutException()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		IDisposable lease = await gatekeeper.AcquireAsync(CancellationToken.None);
 
 		await Assert.ThrowsAsync<TimeoutException>(() =>
@@ -126,7 +126,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task AcquireAsync_Timeout_CancelledExternally_ThrowsTaskCanceled()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		using CancellationTokenSource cts = new();
 		cts.Cancel();
 
@@ -137,7 +137,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task AcquireAsync_Timeout_CompletesWhenLockAvailable()
 	{
-		using MtpGatekeeper gatekeeper = new();
+		using MediaDeviceGatekeeper gatekeeper = new();
 		using IDisposable lease = await gatekeeper.AcquireAsync(TimeSpan.FromSeconds(5), CancellationToken.None);
 		Assert.NotNull(lease);
 	}
@@ -145,7 +145,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task ExecuteAsync_AfterDispose_Throws()
 	{
-		MtpGatekeeper gatekeeper = new();
+		MediaDeviceGatekeeper gatekeeper = new();
 		gatekeeper.Dispose();
 
 		await Assert.ThrowsAsync<ObjectDisposedException>(() =>
@@ -155,7 +155,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public async Task AcquireAsync_AfterDispose_Throws()
 	{
-		MtpGatekeeper gatekeeper = new();
+		MediaDeviceGatekeeper gatekeeper = new();
 		gatekeeper.Dispose();
 
 		await Assert.ThrowsAsync<ObjectDisposedException>(() =>
@@ -165,7 +165,7 @@ public class MtpGatekeeperTests
 	[Fact]
 	public void Dispose_Idempotent()
 	{
-		MtpGatekeeper gatekeeper = new();
+		MediaDeviceGatekeeper gatekeeper = new();
 		gatekeeper.Dispose();
 		gatekeeper.Dispose(); // should not throw
 	}

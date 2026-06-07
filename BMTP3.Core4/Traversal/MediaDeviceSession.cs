@@ -4,20 +4,20 @@ using System.Runtime.Versioning;
 namespace BMTP3.Core4.Traversal;
 
 [SupportedOSPlatform("windows7.0")]
-internal sealed class MtpDeviceSession : IMtpDeviceSession
+internal sealed class MediaDeviceSession : IMediaDeviceSession
 {
 	private readonly MediaDevice _device;
 	private int _disposed;
 
 	private readonly string _friendlyName;
 
-	private MtpDeviceSession(MediaDevice connectedDevice)
+	private MediaDeviceSession(MediaDevice connectedDevice)
 	{
 		_device = connectedDevice ?? throw new ArgumentNullException(nameof(connectedDevice));
 		_friendlyName = _device.FriendlyName;
 	}
 
-	internal static MtpDeviceSession Open(MediaDevice device)
+	internal static MediaDeviceSession Open(MediaDevice device)
 	{
 		ArgumentNullException.ThrowIfNull(device);
 
@@ -32,7 +32,7 @@ internal sealed class MtpDeviceSession : IMtpDeviceSession
 		device.ConnectAsReadonly();
 		try
 		{
-			return new MtpDeviceSession(device);
+			return new MediaDeviceSession(device);
 		} catch
 		{
 			device.Disconnect();

@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 7 Jun 2026** — MTP Del 0-4 + `IBackupDriveInfo` done. MTP tests fjernet (krævede real device). NSubstitute 5.3.0 + xunit.v3 3.2.2 tilføjet. 249 tests.
+> **Opdateret 7 Jun 2026** — MTP Del 0-4 + `IBackupDriveInfo` done. MTP tests fjernet (krævede real device). xunit.v3 3.2.2. 249 tests.
 > Del 5 rullet tilbage — forkert factory-tilgang. Skal redesignes med `IOpenedSource`/`ISourceScope` abstraktion.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
@@ -53,19 +53,12 @@
 | MTP Del 5 factory approach | ❌ **ROLLED BACK** | Forkert tilgang — traversalen skal ikke være disposable. Skal redesignes med `IOpenedSource`/`ISourceScope`. |
 | **IFileStore redesign → IBackupDriveInfo** | ✅ **DONE** | `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `Name.TrimStart('\\')` som `DriveName`). Omdøbt fra `FileSystemFileStore`/`MediaDeviceFileStore`. `Id ≠ RootPath`. |
 | **MTP test cleanup** | ✅ **DONE** | 16 tests fjernet der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. |
-| **NSubstitute 5.3.0** | ✅ **DONE** | Tilføjet til testprojekt. Installerbar når NuGet PackageSourceMapping opdateres med `<package pattern="NSubstitute" />`. |
+| **NSubstitute 5.3.0** | ❌ **FJERNET** | Tilføjet men aldrig brugt. Alle 16 fjernede MTP tests er ren delegation — ikke værd at teste. NSubstitute krævede PackageSourceMapping-opdatering som ikke var nødvendig. |
 | **xunit.v3 3.2.2** | ✅ **DONE** | Opgraderet. `Microsoft.NET.Test.Sdk` 18.6.0, `coverlet.collector` 10.0.1. |
 
 ---
 
 ## Remaining Issues
-
-### Høj prioritet — Refactor MTP kode for mockable tests
-
-- **Refactor `MediaDeviceTraversal`** — skift konstruktør fra `MtpDeviceSession` til `IMtpDeviceSession` (interfacet findes allerede).
-- **Refactor `MtpDeviceSession.Open()`** — indfør `IMediaDeviceHandle` wrapper omkring `MediaDevice` så `Open()` kan mockes.
-- **Refactor `MediaDeviceContent`** — indfør `IMediaFile` wrapper omkring `MediaFileInfo` så content kan mockes.
-- **Genopret 16 MTP tests** — omskriv med NSubstitute + wrapper interfaces.
 
 ### Høj prioritet — MTP/MediaDevice support
 
@@ -84,7 +77,7 @@
 
 - **Wire Core4 into Consoles** — Consoles bruger stadig Core2.
 - **Fjern validator-gates** — `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
-- **Opdater NuGet PackageSourceMapping** — tilføj `<package pattern="NSubstitute" />` til `%APPDATA%\NuGet\NuGet.Config` så NSubstitute kan installeres.
+
 
 ### Low / Deferred
 

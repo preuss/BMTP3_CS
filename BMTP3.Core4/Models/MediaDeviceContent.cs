@@ -8,9 +8,9 @@ namespace BMTP3.Core4.Models;
 internal sealed class MediaDeviceContent : IContent
 {
 	private readonly MediaFileInfo _mediaFileInfo;
-	private readonly IMtpGatekeeper _gatekeeper;
+	private readonly IMediaDeviceGatekeeper _gatekeeper;
 
-	public MediaDeviceContent(MediaFileInfo mediaFileInfo, IMtpGatekeeper gatekeeper)
+	public MediaDeviceContent(MediaFileInfo mediaFileInfo, IMediaDeviceGatekeeper gatekeeper)
 	{
 		_mediaFileInfo = mediaFileInfo ?? throw new ArgumentNullException(nameof(mediaFileInfo));
 		_gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));

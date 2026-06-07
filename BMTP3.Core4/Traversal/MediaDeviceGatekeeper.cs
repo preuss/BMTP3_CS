@@ -1,6 +1,6 @@
 namespace BMTP3.Core4.Traversal;
 
-public sealed class MtpGatekeeper : IMtpGatekeeper, IDisposable
+public sealed class MediaDeviceGatekeeper : IMediaDeviceGatekeeper
 {
 	private readonly SemaphoreSlim _semaphore = new(1, 1);
 	private int _disposed;

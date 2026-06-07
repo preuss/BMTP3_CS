@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 6 Jun 2026** — MTP Del 0-4 + `IBackupDriveInfo` done. MTP tests fjernet (krævede real device). NSubstitute tilføjet. 249 tests.
+> **Opdateret 7 Jun 2026** — MTP Del 0-4 + `IBackupDriveInfo` done. MTP tests fjernet (krævede real device). 249 tests.
 > Del 5 rullet tilbage — forkert factory-tilgang. Skal redesignes med `IOpenedSource`/`ISourceScope` abstraktion.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
@@ -61,16 +61,9 @@
 - [x] — `IMtpGatekeeper` + `MtpGatekeeper` — `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests.
 - [x] — `IMtpDeviceSession` + `MtpDeviceSession` — connect/disconnect, `[SupportedOSPlatform("windows7.0")]`
 - [x] — **IFileStore redesign → `IBackupDriveInfo`** — `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `VolumeLabel`-baseret `DriveName`). Omdøbt: `FileSystemFileStore` → `BackupFileSystemDriveInfo`, `MediaDeviceFileStore` → `BackupMediaDriveInfo`.)
-- [x] — **MTP test cleanup** — Fjernet 16 tests der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. Opgraderet til xunit.v3 3.2.2 + NSubstitute 5.3.0 tilføjet til testprojekt.
+- [x] — **MTP test cleanup** — Fjernet 16 tests der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. Opgraderet til xunit.v3 3.2.2.
 
 ## Næste opgaver (prioriteret)
-
-### Høj prioritet — Refactor MTP kode for mockable tests
-
-- [ ] **Refactor `MediaDeviceTraversal`** — skift konstruktør fra `MtpDeviceSession` til `IMtpDeviceSession` (interfacet findes allerede). Gør det muligt at mocke session i tests.
-- [ ] **Refactor `MtpDeviceSession.Open()`** — indfør `IMediaDeviceHandle` wrapper omkring `MediaDevice` så `Open()` kan mockes.
-- [ ] **Refactor `MediaDeviceContent`** — indfør `IMediaFile` wrapper omkring `MediaFileInfo` så content kan mockes.
-- [ ] **Genopret MTP tests** — omskriv de 16 fjernede tests med NSubstitute + wrapper interfaces.
 
 ### Høj prioritet — MTP/MediaDevice support
 

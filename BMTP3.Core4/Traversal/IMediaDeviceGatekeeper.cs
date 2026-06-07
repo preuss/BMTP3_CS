@@ -4,7 +4,7 @@ namespace BMTP3.Core4.Traversal;
 /// Serializes access to an MTP device to ensure single-threaded usage.
 /// MTP devices do not support concurrent commands.
 /// </summary>
-public interface IMtpGatekeeper
+public interface IMediaDeviceGatekeeper : IDisposable
 {
 	/// <summary>
 	/// Acquires exclusive access, executes <paramref name="action"/>,
