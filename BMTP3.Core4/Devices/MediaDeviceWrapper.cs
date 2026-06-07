@@ -8,6 +8,8 @@ namespace BMTP3.Core4.Devices;
 internal class MediaDeviceWrapper : IMediaDevice
 {
 	private readonly MediaDevice _device;
+
+	// Only Cached for not create multiple instances of MediaDeviceInfo for the same device.
 	private readonly IMediaDeviceInfo _mediaDeviceInfo;
 
 	public MediaDeviceWrapper(MediaDevice device, IMediaDeviceInfo mediaDeviceInfo)
@@ -31,6 +33,19 @@ internal class MediaDeviceWrapper : IMediaDevice
 	public string DeviceType => _device.DeviceType.ToString();
 	public byte[]? FunctionalUniqueId => _device.FunctionalUniqueId;
 	public byte[]? ModelUniqueId => _device.ModelUniqueId;
+
+	public IReadOnlyList<IMediaDrive> Drives
+	{
+		get
+		{
+			List<IMediaDrive> drives = new List<IMediaDrive>();
+			foreach(MediaDriveInfo mediaDriveInfo in _device.GetDrives())
+			{
+				drives.Add(new MediaDrive(mediaDriveInfo));
+			}
+			return drives;
+		}
+	}
 
 	public IMediaDevice Connect()
 	{

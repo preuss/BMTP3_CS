@@ -11,5 +11,7 @@ internal interface IMediaDevice : IMediaDeviceInfo, IDisposable
 	byte[]? FunctionalUniqueId { get; }
 	byte[]? ModelUniqueId { get; }
 
+	IReadOnlyList<IMediaDrive> Drives { get; }
+
 	IMediaDeviceInfo Disconnect();
 }
