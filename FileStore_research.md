@@ -325,3 +325,35 @@ Efter review blev det erstattet med det nuværende `IBackupDriveInfo`-design. De
 - `IBackupSource` (Core) — tomt interface, aldrig implementeret. Starten på samme tanke
 - `SourceType` (Core) — `enum { Device, Drive }`. Genbrugt som `BackupSourceType` i Core4
 - `IFileStore` (Core4, forkastet) — første forsøg på `ulong?` + `TryGetUInt64` + `Id = StorePathPrefix`. Erstattet af `IBackupDriveInfo` efter review.
+
+---
+
+## 10. Epilog — arkitekturændringer efter research dokumentet
+
+Dette dokument beskrev `IBackupDriveInfo` og den oprindelige plan for traversal. Siden da er følgende ændret:
+
+### 10.1 Traversal får ikke længere `IBackupDriveInfo`
+
+Planen i §4 lød: "Traversal får: IBackupDriveInfo + relativ sti". I stedet får traversal nu **`IConnectedSource`** (via `ISourceTraversalFactory.Create(IConnectedSource)`). `IBackupDriveInfo` bruges kun op til `SourceConnector.Connect()` — derefter er al information tilgængelig via `IConnectedSource` subtypes.
+
+### 10.2 `IOpenedSource`/`ISourceScope` blev ikke implementeret
+
+§6.1 nævnte `IOpenedSource`/`ISourceScope` som en fremtidig abstraktion. Den blev aldrig implementeret — i stedet:
+- `IConnectedSource : ISession` (hvor `ISession` kun har `Name`)
+- `SourceConnector.Connect()` returnerer `ConnectedFileSystemSource` eller `ConnectedMediaDriveSource`
+- `IConnectedMediaDriveSource` bærer både `IMediaDevice Device` + `IMediaDrive Drive`
+- `SourceTraversalFactory` pattern-matches på runtime-typen og injecter `IMediaDeviceGatekeeper`
+
+### 10.3 Discovery-spørgsmål besvaret
+
+| # | Spørgsmål | Svar |
+|---|-----------|------|
+| 1 | Flere drives pr. device — én eller to IBackupDriveInfo? | Én per `MediaDriveInfo` (to `IBackupDriveInfo`) |
+| 2 | Discovery-flow — disconnect eller hold forbindelse? | Discovery disconnecter. `SourceConnector` genfinder device via `DeviceId` i `MediaDeviceDriveProvider` |
+| 3 | MTP `RootPath` escaping? | Stadig åbent — ikke implementeret endnu |
+
+### 10.4 Relevant nu
+
+- `IBackupDriveInfo`-designet er stadig korrekt og uændret
+- `SourceConnector.cs` + `SourceTraversalFactory.cs` + `MediaDeviceTraversal.cs` er de centrale filer der implementerer forbindelsen mellem `IBackupDriveInfo` og traversal
+- `MediaDeviceDriveProvider` opretter `BackupMediaDriveInfo(device, drive)` — stadig relevant

@@ -1,7 +1,7 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 7 Jun 2026** — Discovery services implemented (FileSystem, MediaDevice, Combined). 249 tests.
-> Næste: Source matching + SourceTraversalFactory opdatering.
+> **Opdateret 8 Jun 2026** — Session/Connection redesign completed. 248 tests.
+> Næste: Integration test for full MTP pipeline.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -67,14 +67,22 @@
 - [x] — **`ICombinedSourceDiscovery`** — `CombinedSourceDiscovery`: merge filesystem + MTP. Null-safe for non-Windows.
 - [x] — **DI registrering:** Discovery services registreret i `ServiceCollectionExtensions`. `MediaDeviceSourceDiscovery` kun på Windows 7+.
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
+- [x] — **Session redesign:** `IMediaDeviceSession` → `ISession`, `IConnectedSource : ISession`. Slettet gamle session-filer.
+- [x] — **Factory rename:** `IConnectedSourceFactory` → `ISourceConnector`, `Create()` → `Connect()`. Slettet `ConnectedSourceFactoryCreateRequest.cs`, `FileSystemTraversalFactoryStub.cs`.
+- [x] — **Source type redesign:** `IConnectedMediaDeviceSource` → `IConnectedMediaDriveSource` (både `IMediaDevice Device` + `IMediaDrive Drive`).
+- [x] — **SourceConnector:** `FindMediaDeviceSource()` matcher `IMediaDrive` via `DriveName` fra `Device.Drives`.
+- [x] — **SourceTraversalFactory:** `Create(IConnectedSource)` — 1 param, pattern-matching på source types, injecter `IMediaDeviceGatekeeper`.
+- [x] — **MediaDeviceTraversal:** Bruger `IMediaDirectory`/`IMediaFile` — ingen NuGet typer i body.
+- [x] — **IMediaFile.OpenRead()** tilføjet, `MediaDeviceContent` opdateret til at bruge `IMediaFile`.
+- [x] — **BackupEngine.Create(connectedSource):** 1 arg (ingen `IBackupDriveInfo`).
+- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 248 passed.
 
 ## Næste opgaver (prioriteret)
 
-### Høj prioritet — Source matching + SourceTraversalFactory
+### Høj prioritet — Integration test + cleanup
 
-- [ ] **Source matching:** Match `BackupPlan.SourcePath` mod `IBackupDriveInfo.RootPath`, udled relativ sti. Filesystem: `"D:\pic\2024"` → find drev `D:\`. MTP: `"mtp://Apple iPad/Internal Storage/DCIM"` → parse device + drive, find `BackupMediaDriveInfo`. Afhænger af Session/Traversal redesign.
-- [ ] **SourceTraversalFactory opdatering:** Brug `BackupMediaDriveInfo` til at åbne session når MTP device er fundet. Afhænger af Session/Traversal redesign.
-- [ ] **Connection design:** Kun discovery-layer connect'er/disconnect'er til MTP-enheder. `BackupEngine` styrer lifetime. Traversal og gatekeeper rører **ikke** connect/disconnect.
+- [ ] — Integration test: Full MTP traversal pipeline (gatekeeper → connector → traversal → content)
+- [ ] — Cleanup: Overvej om `MtpUriParser` skal fjernes (kun refereret fra tests nu)
 
 ### Udsat — Session/Traversal integration
 
@@ -83,7 +91,7 @@
 - [x] **MTP Del 2:** `IMediaDeviceSession` + `MediaDeviceSession` ✅ (omdøbt)
 - [x] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` ✅
 - [x] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` ✅
-- [ ] **Session/Traversal redesign** — hvordan `BackupEngine` åbner session, hvem ejer lifetime, hvordan traversal consumere items. **Udskudt til efter Discovery.**
+- [x] **Session/Traversal redesign** — løst via `IConnectedSource : ISession` + `SourceConnector.Connect()` + pattern-matching i `SourceTraversalFactory`. `IConnectedMediaDriveSource` bærer både Device+Drive så traversal aldrig skal connecte/disconnecte.
 - [x] **MTP arkitektur:** `SourceTraversalItem.RelativePath` ✅
 
 ### Allersidst

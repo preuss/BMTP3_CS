@@ -1,7 +1,7 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 7 Jun 2026** — Discovery services implemented (FileSystem, MediaDevice, Combined). 249 tests.
-> Næste: Source matching + SourceTraversalFactory opdatering (afhænger af Session/Traversal redesign).
+> **Opdateret 8 Jun 2026** — Session/Connection redesign completed. `IConnectedSource : ISession`, `ISourceConnector`, `SourceTraversalFactory` pattern-matches. `MediaDeviceTraversal` NuGet-free. 248 tests.
+> Næste: Integration test for full MTP pipeline, cleanup unused `MtpUriParser`.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -59,22 +59,28 @@
 | **Discovery: IMediaDeviceSourceDiscovery** | ✅ **DONE** | `MediaDeviceSourceDiscovery`: connect → `GetDrives()` → disconnect, skip ghost devices (`COMException 0x802A0001`). `[SupportedOSPlatform("windows7.0")]`. |
 | **Discovery: ICombinedSourceDiscovery** | ✅ **DONE** | `CombinedSourceDiscovery`: merge filesystem + MTP. Null-safe for non-Windows. Factory-registreret i DI. |
 | **Discovery: DI registrering** | ✅ **DONE** | `ServiceCollectionExtensions`: `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery` (kun Win 7+), `ICombinedSourceDiscovery` (factory). 0 warnings CA1416. |
+| **IMediaDeviceSession → ISession** | ✅ **DONE** | `ISession` (simplificeret med `Name`). `IConnectedSource : ISession`. `MediaDeviceSession.cs`, `IMediaDeviceSession.cs`, `MediaDeviceSessionTests.cs` slettet. |
+| **IConnectedSourceFactory → ISourceConnector** | ✅ **DONE** | Omdøbt: `IConnectedSourceFactory` → `ISourceConnector`, `ConnectedSourceFactory` → `SourceConnector`, `Create()` → `Connect()`. `ConnectedSourceFactoryCreateRequest.cs`, `FileSystemTraversalFactoryStub.cs` slettet. |
+| **IConnectedMediaDeviceSource → IConnectedMediaDriveSource** | ✅ **DONE** | Ny: `IConnectedMediaDriveSource`/`ConnectedMediaDriveSource` med både `IMediaDevice Device` + `IMediaDrive Drive`. Gammel `IConnectedMediaDeviceSource`/`ConnectedMediaDeviceSource` slettet. |
+| **SourceConnector matcher IMediaDrive via DriveName** | ✅ **DONE** | `FindMediaDeviceSource()` finder `IMediaDrive` fra `Device.Drives` ved at matche `mediaDriveInfo.DriveName`. Returnerer `ConnectedMediaDriveSource(device, drive)`. |
+| **SourceTraversalFactory opdateret** | ✅ **DONE** | `Create(IConnectedSource)` — 1 param. `SourceTraversalFactory` injecter `IMediaDeviceGatekeeper`, pattern-matches på `IConnectedFileSystemSource`/`IConnectedMediaDriveSource`. |
+| **MediaDeviceTraversal — NuGet-free body** | ✅ **DONE** | Bruger `IMediaDirectory`/`IMediaFile` udelukkende — ingen `MediaDevices.dll` typer i body. Kører via `IConnectedMediaDriveSource.RootDirectory`. |
+| **IMediaFile.OpenRead() + MediaDeviceContent** | ✅ **DONE** | `IMediaFile.OpenRead()` tilføjet, `MediaFile` implementerer det. `MediaDeviceContent` bruger `IMediaFile` i stedet for `MediaFileInfo`. |
+| **BackupEngine.Create(connectedSource)** | ✅ **DONE** | `Create(connectedSource)` — 1 arg (ingen `IBackupDriveInfo`). Flow: list drives → match → connect → create traversal. |
+| **Build: 0 errors, 248 tests** | ✅ **DONE** | 0 errors, 0 warnings. 248 tests pass. |
 
 ---
 
 ## Remaining Issues
 
-### Høj prioritet — Source matching + SourceTraversalFactory
+### Næste — Integration test + cleanup
 
-- ~~**MTP Del 0:** `MtpUriParser` — parse `mtp://Device Name/Path/To/Folder`.~~ ✅ **DONE**
-- ~~**MTP Del 1:** `IMtpGatekeeper` + `MtpGatekeeper` (semaphore, single-threaded adgang).~~ ✅ **DONE**
-- ~~**MTP Del 2:** `IMtpDeviceSession` + `MtpDeviceSession` (connect/disconnect).~~ ✅ **DONE**
-- ~~**MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` (MTP streaming).~~ ✅ **DONE**
-- ~~**MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` (MTP traversal).~~ ✅ **DONE**
-- ~~**MTP Del 5:** `MediaDeviceTraversalFactory` + opdater `SourceTraversalFactory`~~ ❌ **ROLLED BACK** — forkert tilgang. Skal redesignes.
-- **MTP Del 5:** Redesign — `IOpenedSource`/`ISourceScope` abstraktion der ejer session lifetime. Traversal forbliver ikke-disposable.
-- **Source matching:** Match `BackupPlan.SourcePath` mod `IBackupDriveInfo.RootPath`, udled relativ sti. Filesystem: `"D:\pic\2024"` → find drev `D:\`. MTP: `"mtp://Apple iPad/Internal Storage/DCIM"` → parse device + drive, find `BackupMediaDriveInfo`. 
-- **SourceTraversalFactory opdatering:** Brug `BackupMediaDriveInfo` til at åbne session når MTP device er fundet. Afhænger af Session/Traversal redesign.
+- ~~**MTP Del 0-4:** Implementeret~~ ✅ **DONE**
+- ~~**MTP Del 5:** Redesign — `IOpenedSource`/`ISourceScope`~~ ✅ **DONE** (alternativ tilgang: `IConnectedSource` bærer Device+Drive, `SourceTraversalFactory` pattern-matches)
+- ~~**Source matching:** Match `BackupPlan.SourcePath` mod `IBackupDriveInfo.RootPath`~~ ✅ **DONE** — `SourceConnector.Connect()` håndterer matching internt
+- ~~**SourceTraversalFactory opdatering:** Brug `BackupMediaDriveInfo`~~ ✅ **DONE** — pattern-matching på `IConnectedSource` subtypes
+- **Integration test:** Full MTP traversal pipeline (gatekeeper → connector → traversal → content)
+- **Cleanup:** Overvej om `MtpUriParser` skal fjernes (kun refereret fra tests nu)
 
 ### Allersidst
 
@@ -212,11 +218,11 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 
 | Område | Hvad mangler |
 |---|---|
-| **Scanner** | `ScannerGathererStub` — ikke implementeret; MTP traversal kaster `NotSupportedException` |
+| **Scanner** | `ScannerGathererStub` — ikke implementeret |
 | **Verify** | ⚠️ | Hash verification implementeret inline i `BackupEngine`. Ingen separat `IPostWriteVerification`. |
 | **Resilience** | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
 | **MTP Discovery** | ✅ **DONE** — `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery`, `ICombinedSourceDiscovery` implementeret. 0/1/2. |
-| **MTP Traversal** | ⚠️ | `SourceTraversalFactory` kaster `NotSupportedException`. Discovery er på plads, traversal kræver Session/Traversal redesign. |
+| **MTP Traversal** | ✅ **DONE** — `MediaDeviceTraversal` via `IMediaDirectory`/`IMediaFile`. `SourceTraversalFactory` pattern-matches på `IConnectedMediaDriveSource`. |
 | **TOML config** | Ingen TOML-reader; kun programmatisk `BackupPlan` |
 | **INI/JSON sidecar** | ✅ **DONE** — Full Document/Section/Property model + Ini + Json writers |
 | **DryRun** | ✅ **DONE** — `BuildDryRunResult` helper, short-circuit |

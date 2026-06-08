@@ -25,15 +25,10 @@ internal sealed class SourceTraversalFactory : ISourceTraversalFactory
 	///     The connected source. Must implement <see cref="IConnectedFileSystemSource" />
 	///     or <see cref="IConnectedMediaDriveSource" />.
 	/// </param>
-	/// <param name="backupDriveInfo">Metadata for the underlying drive.</param>
 	/// <returns>
 	///     A <see cref="FileSystemTraversal" /> for file-system sources,
 	///     or a <see cref="MediaDeviceTraversal" /> for MTP devices.
 	/// </returns>
-	/// <exception cref="InvalidOperationException">
-	///     Thrown when <paramref name="backupDriveInfo" /> is not a <see cref="BackupMediaDriveInfo" />
-	///     for media device sources.
-	/// </exception>
 	/// <exception cref="ArgumentOutOfRangeException">
 	///     Thrown when <paramref name="connectedSource" /> is not a recognised type.
 	/// </exception>
