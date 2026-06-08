@@ -1,6 +1,9 @@
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Response;
+using Core4BackupProgress = BMTP3.Core4.Api.Models.BackupProgress;
+using Core4BackupResult = BMTP3.Core4.Api.Models.BackupResult;
+using Core4BackupResultState = BMTP3.Core4.Api.Models.Enums.BackupResultState;
 using Spectre.Console;
 
 namespace BMTP3.Consoles.Services;
@@ -53,6 +56,12 @@ public class ConsolesPrinter
 			$"{progress.Phase}: file={progress.CurrentFile} processed={progress.FilesProcessed}/{progress.FilesTotal} bytes={progress.BytesTransferred}");
 	}
 
+	public void PrintProgress(Core4BackupProgress progress)
+	{
+		_console.WriteLine(
+			$"{progress.CurrentPhase}: discovered={progress.FilesDiscovered} succeeded={progress.FilesSucceeded} failed={progress.FilesFailed}");
+	}
+
 	public void PrintResult(BackupJobResult result)
 	{
 		_console.MarkupLine($"[bold]Job '[green]{result.JobName}[/]' finished: {result.Status}[/]");
@@ -65,6 +74,26 @@ public class ConsolesPrinter
 			{
 				_console.MarkupLine($"  [yellow]- {e}[/]");
 			}
+		}
+	}
+
+	public void PrintResult(Core4BackupResult result)
+	{
+		string stateColor = result.State switch
+		{
+			Core4BackupResultState.Completed => "green",
+			Core4BackupResultState.Cancelled => "yellow",
+			Core4BackupResultState.Failed => "red",
+			_ => "white",
+		};
+		_console.MarkupLine($"[bold]Job '[green]{result.Name}[/]' finished: [{stateColor}]{result.State}[/]");
+		int succeeded = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Succeeded);
+		int failed = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Failed);
+		int skipped = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Skipped);
+		_console.WriteLine($"Total: {result.ItemResults.Count} Succeeded: {succeeded} Failed: {failed} Skipped: {skipped}");
+		if(result.FailureReason is not null)
+		{
+			_console.MarkupLine($"[yellow]Failure reason: {result.FailureReason}[/]");
 		}
 	}
 

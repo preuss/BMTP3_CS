@@ -147,9 +147,10 @@ public sealed class BackupEngine : IBackupEngine
 			//    - Fail if source is not accessible
 			// ------------------------------------------------------------
 			IReadOnlyList<IBackupDriveInfo> drives = _driveProvider.ListDrives();
-			IBackupDriveInfo matchedDrive = drives.FirstOrDefault(d =>
-				string.Equals(d.RootPath, plan.SourcePath, StringComparison.OrdinalIgnoreCase))
+			IBackupDriveInfo matchedDrive = MatchDrive(drives, plan.SourcePath)
 				?? throw new InvalidOperationException($"No drive found matching source path '{plan.SourcePath}'.");
+
+			string relativePath = GetRelativePath(matchedDrive.RootPath, plan.SourcePath);
 
 			using IConnectedSource connectedSource = _sourceConnector.Connect(matchedDrive);
 			ISourceTraversal traversal = _sourceTraversalFactory.Create(connectedSource);
@@ -165,6 +166,7 @@ public sealed class BackupEngine : IBackupEngine
 			BackupScanRequest scanRequest = new()
 			{
 				SourcePath = plan.SourcePath,
+				SubPath = relativePath,
 				Recursive = plan.Recursive,
 				IncludePatterns = plan.IncludePatterns,
 				ExcludePatterns = plan.ExcludePatterns,
@@ -714,5 +716,31 @@ public sealed class BackupEngine : IBackupEngine
 		}
 
 		return computedHashes.Values.FirstOrDefault();
+	}
+
+	private static IBackupDriveInfo? MatchDrive(IReadOnlyList<IBackupDriveInfo> drives, string sourcePath)
+	{
+		foreach (IBackupDriveInfo drive in drives)
+		{
+			if (string.Equals(drive.RootPath, sourcePath, StringComparison.OrdinalIgnoreCase))
+				return drive;
+
+			if (sourcePath.StartsWith(drive.RootPath, StringComparison.OrdinalIgnoreCase) &&
+				sourcePath.Length > drive.RootPath.Length &&
+				(sourcePath[drive.RootPath.Length] == '\\' || sourcePath[drive.RootPath.Length] == '/'))
+			{
+				return drive;
+			}
+		}
+
+		return null;
+	}
+
+	private static string GetRelativePath(string rootPath, string sourcePath)
+	{
+		if (string.Equals(rootPath, sourcePath, StringComparison.OrdinalIgnoreCase))
+			return string.Empty;
+
+		return sourcePath.Substring(rootPath.Length).TrimStart('\\', '/');
 	}
 }

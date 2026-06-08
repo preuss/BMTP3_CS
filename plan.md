@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 8 Jun 2026** — Session/Connection redesign completed. 248 tests.
+> **Opdateret 8 Jun 2026** — Core4 wired into Consoles (`backup4` command). Validator gates relaxed. 233 tests.
 > Næste: Integration test for full MTP pipeline.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
@@ -76,28 +76,22 @@
 - [x] — **IMediaFile.OpenRead()** tilføjet, `MediaDeviceContent` opdateret til at bruge `IMediaFile`.
 - [x] — **BackupEngine.Create(connectedSource):** 1 arg (ingen `IBackupDriveInfo`).
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 248 passed.
+- [x] — **Validator gates relaxed**: 16 af 20 `FeatureNotImplementedException` gates fjernet. Kun `EnableMetadata`, `BackupIndexType.Json` (Tier 3), `BackupIndexType.Database`, `MaxDegreeOfParallelism` (Tier 4) blokerer stadig.
+- [x] — **Core4 i Consoles:** `BackupConsoleCommand4.cs` + helpers, `ConsolesPrinter` opdateret med Core4 overloads, `ApplicationServiceSetup` registrerer `AddBMTP3Core4()`, `backup4` subcommand tilgængelig.
+- [x] — **MtpUriParser ryddet:** Production code slettet (kun brugt fra tests). Test-fil også slettet.
+- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 233 passed.
 
 ## Næste opgaver (prioriteret)
 
-### Høj prioritet — Integration test + cleanup
+### Høj prioritet — Integration test
 
 - [ ] — Integration test: Full MTP traversal pipeline (gatekeeper → connector → traversal → content)
-- [ ] — Cleanup: Overvej om `MtpUriParser` skal fjernes (kun refereret fra tests nu)
-
-### Udsat — Session/Traversal integration
-
-- [x] **MTP Del 0:** `MtpUriParser` + `MtpUriParseResult` ✅
-- [x] **MTP Del 1:** `IMediaDeviceGatekeeper` + `MediaDeviceGatekeeper` ✅ (omdøbt)
-- [x] **MTP Del 2:** `IMediaDeviceSession` + `MediaDeviceSession` ✅ (omdøbt)
-- [x] **MTP Del 3:** `MediaDeviceContent : IContent` + `GatekeptStream` ✅
-- [x] **MTP Del 4:** `MediaDeviceTraversal : ISourceTraversal` ✅
-- [x] **Session/Traversal redesign** — løst via `IConnectedSource : ISession` + `SourceConnector.Connect()` + pattern-matching i `SourceTraversalFactory`. `IConnectedMediaDriveSource` bærer både Device+Drive så traversal aldrig skal connecte/disconnecte.
-- [x] **MTP arkitektur:** `SourceTraversalItem.RelativePath` ✅
+- [ ] — Integration test: BackupEngine end-to-end (filesystem → download → hash → sidecar → verify)
 
 ### Allersidst
 
-- [ ] — Wire Core4 into Consoles (incl. SignalInterrupts cancel-wiring)
-- [ ] — **Fjern validator-gates**: `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
+- [ ] — Færdiggør Consoles Core4 integration: hash algorithm CLI options, metadata extraction flag
+- [ ] — Overvej at erstatte Core2 `backup` command med Core4 som default
 
 ## Ref
 

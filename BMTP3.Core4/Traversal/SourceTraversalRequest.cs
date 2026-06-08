@@ -9,6 +9,14 @@ internal sealed record SourceTraversalRequest
 	/// The root path within the source to start scanning from.
 	/// </summary>
 	public required string SourcePath { get; init; }
+
+	/// <summary>
+	/// Relative path within the drive (sub-path after stripping drive root).
+	/// Empty when SourcePath is the drive root. Used by MTP traversal to
+	/// navigate to a sub-directory within the device.
+	/// </summary>
+	public string SubPath { get; init; } = string.Empty;
+
 	/// <summary>
 	/// Whether to recurse into subdirectories.
 	/// </summary>

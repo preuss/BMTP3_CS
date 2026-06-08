@@ -37,6 +37,7 @@
   <ItemGroup>
     <ProjectReference Include="..\BMTP3.Core2\BMTP3.Core2.csproj" />
     <ProjectReference Include="..\BMTP3.Core3\BMTP3.Core3.csproj" />
+    <ProjectReference Include="..\BMTP3.Core4\BMTP3.Core4.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -11,6 +11,12 @@ internal sealed record BackupScanRequest
 	public required string SourcePath { get; init; }
 
 	/// <summary>
+	/// Relative path within the drive (sub-path after stripping drive root).
+	/// Empty when SourcePath is the drive root.
+	/// </summary>
+	public string SubPath { get; init; } = string.Empty;
+
+	/// <summary>
 	/// Whether to recurse into subdirectories.
 	/// </summary>
 	public bool Recursive { get; init; } = true;

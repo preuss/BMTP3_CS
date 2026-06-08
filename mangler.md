@@ -1,11 +1,9 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 8 Jun 2026** — Session/Connection redesign completed. `IConnectedSource : ISession`, `ISourceConnector`, `SourceTraversalFactory` pattern-matches. `MediaDeviceTraversal` NuGet-free. 248 tests.
-> Næste: Integration test for full MTP pipeline, cleanup unused `MtpUriParser`.
+> **Opdateret 8 Jun 2026** — Core4 wired into Consoles (`backup4` command). Validator gates relaxed. 233 tests.
+> Næste: Integration test for full MTP pipeline.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
-
-> ⚠️ **REGEL: Ingen validator-gates må fjernes før BackupEngine er erklæret færdig.** `BackupPlanValidator` kaster `FeatureNotImplementedException(N, ...)` for inaktive features — linje 99-103 (include/exclude patterns), 105-106 (custom output pattern), 111-112 (dry run), 114-118 (hash algorithm selection) m.fl. Disse gates blokerer testindtilingsforsøg på features der ikke er implementationse. De røres **sidst** — når engine-loopen er verificeret stabil.
 
 ---
 

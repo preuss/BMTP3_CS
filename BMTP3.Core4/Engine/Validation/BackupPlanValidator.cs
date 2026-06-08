@@ -70,62 +70,16 @@ internal static class BackupPlanValidator
 		if(plan.MaxDegreeOfParallelism.HasValue && plan.MaxDegreeOfParallelism.Value <= 0)
 			throw new BackupPlanArgumentException("MaxDegreeOfParallelism must be greater than zero.");
 
-		// --- Tier-gating (detect features from higher Tiers) ---
+		// --- Tier-gating (detect genuinely missing features) ---
 
-		if(plan.CollisionStrategy != CollisionStrategy.Error)
-			throw new FeatureNotImplementedException(2, $"Collision strategy: {plan.CollisionStrategy}");
-
-		if(plan.CollisionComparisonType == CollisionComparisonType.Hash)
-			throw new FeatureNotImplementedException(3, "Collision comparison: Hash");
-
-		if(plan.CollisionComparisonType == CollisionComparisonType.Binary)
-			throw new FeatureNotImplementedException(2, "Collision comparison: Binary");
-
-		if(plan.RenameStrategy != RenameStrategy.Increment)
-			throw new FeatureNotImplementedException(2, $"Rename strategy: {plan.RenameStrategy}");
-
-		if(plan.CustomOutputCollisionPattern is not null)
-			throw new FeatureNotImplementedException(2, "Custom collision pattern");
-
-		if(plan.SidecarFormat == SidecarFormat.None)
-			throw new FeatureNotImplementedException(2, "Sidecar format: None");
-
-		if(plan.SidecarFormat == SidecarFormat.Json)
-			throw new FeatureNotImplementedException(2, "Sidecar format: Json");
-
-		if(plan.SourceType == BackupSourceType.MediaDevice)
-			throw new FeatureNotImplementedException(2, "MediaDevice source");
-
-		if(plan.IncludePatterns is { Count: > 0 })
-			throw new FeatureNotImplementedException(2, "Include patterns");
-
-		if(plan.ExcludePatterns is { Count: > 0 })
-			throw new FeatureNotImplementedException(2, "Exclude patterns");
-
-		if(plan.OutputStructureStrategy == OutputStructureStrategy.CustomPathPattern)
-			throw new FeatureNotImplementedException(2, "Custom output path pattern");
+		// Tier 3 — Features that exist but are not yet production-tested
+		if(plan.EnableMetadata)
+			throw new FeatureNotImplementedException(3, "Metadata extraction");
 
 		if(plan.BackupIndexType == BackupIndexType.Json)
 			throw new FeatureNotImplementedException(3, "Backup index: Json");
 
-		if(plan.DryRun)
-			throw new FeatureNotImplementedException(3, "Dry run");
-
-		if(plan.ComparisonHashAlgorithmTypes is { Count: > 0 })
-			throw new FeatureNotImplementedException(3, "Hash type selection");
-
-		if(plan.VerificationHashAlgorithmTypes is { Count: > 0 })
-			throw new FeatureNotImplementedException(3, "Verification hash type selection");
-
-		if(plan.EnableMetadata)
-			throw new FeatureNotImplementedException(3, "Metadata extraction");
-
-		if(plan.PostWriteVerification != PostWriteVerificationType.None)
-			throw new FeatureNotImplementedException(3, "Post-transfer verification");
-
-		if(plan.VerificationHashAlgorithmTypes is { Count: > 0 })
-			throw new FeatureNotImplementedException(3, "Verification hash selection");
-
+		// Tier 4 — Features not implemented at all
 		if(plan.BackupIndexType == BackupIndexType.Database)
 			throw new FeatureNotImplementedException(4, "Backup index: Database");
 

@@ -64,6 +64,9 @@ public class ConsolesProgram
 		VerifyConsoleCommand verifyCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(verifyCommand);
 
+		BackupConsoleCommand4 backup4Command = new() { ServiceProvider = serviceProvider };
+		rootCommand.Subcommands.Add(backup4Command);
+
 		//ReplaceHelp(rootCommand);
 
 

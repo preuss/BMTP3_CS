@@ -2,6 +2,7 @@
 using BMTP3.Core2.BackupNew.DependencyInjection;
 using BMTP3.Core2.BackupNew.Engine.Orchestration;
 using BMTP3.Core2.BackupNew.Engine.Traversal;
+using BMTP3.Core4.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -27,6 +28,9 @@ public class ApplicationServiceSetup : IServiceSetup
 			// Consumers can still override this elsewhere.
 			s.AddSingleton<IBackupScanner, BackupScanner>();
 		});
+
+		// Register Core4 services (namespace BMTP3.Core4.Api.IBackupEngine — distinct from Core2)
+		services.AddBMTP3Core4();
 
 		// Enable single-threaded debug mode for the engine when running the console app.
 		// This uses the existing BackupEngineOptions.DebugSingleThreaded flag.

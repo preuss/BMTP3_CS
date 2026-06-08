@@ -44,11 +44,15 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		IMediaDirectory rootDirectory = _mediaDrive.RootDirectory
 			?? throw new InvalidOperationException("Drive root directory is not available.");
 
+		IMediaDirectory startDirectory = string.IsNullOrEmpty(request.SubPath)
+			? rootDirectory
+			: await NavigateToSubDirectory(rootDirectory, request.SubPath, cancellationToken).ConfigureAwait(false);
+
 		int dirCount = 0;
 		int fileCount = 0;
 
 		await foreach ((IMediaFile file, string fileName, string relativePath) in EnumerateRecursiveAsync(
-						  rootDirectory,
+						  startDirectory,
 						  relativePrefix: "",
 						  recursive: request.Recursive,
 						  onDirectoryEntered: () => dirCount++,
@@ -152,6 +156,39 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				yield return (file, fileName, rel);
 			}
 		}
+	}
+
+	private Task<IMediaDirectory> NavigateToSubDirectory(
+		IMediaDirectory root,
+		string subPath,
+		CancellationToken cancellationToken
+	)
+	{
+		string[] segments = subPath.Split('/', '\\');
+
+		return _gatekeeper.ExecuteAsync(_ =>
+		{
+			IMediaDirectory current = root;
+
+			foreach (string segment in segments)
+			{
+				if (string.IsNullOrWhiteSpace(segment))
+					continue;
+
+				IMediaDirectory? next = current.Directories
+					.FirstOrDefault(d => string.Equals(d.Name, segment, StringComparison.OrdinalIgnoreCase));
+
+				if (next == null)
+				{
+					throw new DirectoryNotFoundException(
+						$"Directory '{segment}' not found in '{current.Name}' while navigating to '{subPath}'.");
+				}
+
+				current = next;
+			}
+
+			return Task.FromResult(current);
+		}, cancellationToken);
 	}
 
 	private static DateTimeOffset? ToUtcOffsetOrNull(DateTime? value)

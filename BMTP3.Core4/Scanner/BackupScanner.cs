@@ -22,6 +22,7 @@ internal sealed class BackupScanner : IBackupScanner
 		SourceTraversalRequest traversalRequest = new()
 		{
 			SourcePath = request.SourcePath,
+			SubPath = request.SubPath,
 			Recursive = request.Recursive,
 			IncludePatterns = request.IncludePatterns,
 			ExcludePatterns = request.ExcludePatterns,
