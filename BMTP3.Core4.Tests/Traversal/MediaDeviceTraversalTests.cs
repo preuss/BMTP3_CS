@@ -8,7 +8,7 @@ namespace BMTP3.Core4.Tests.Traversal;
 public class MediaDeviceTraversalTests
 {
 	[Fact]
-	public void Constructor_NullSession_Throws()
+	public void Constructor_NullDevice_Throws()
 	{
 		Assert.Throws<ArgumentNullException>(() => new MediaDeviceTraversal(null!, new FakeGatekeeper()));
 	}

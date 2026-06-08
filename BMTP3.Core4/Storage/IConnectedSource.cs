@@ -1,5 +1,7 @@
-﻿namespace BMTP3.Core4.Storage;
-internal interface IConnectedSource : IDisposable
+﻿using BMTP3.Core4.Traversal;
+
+namespace BMTP3.Core4.Storage;
+
+internal interface IConnectedSource : ISession
 {
-	IBackupDriveInfo DriveInfo { get; }
 }

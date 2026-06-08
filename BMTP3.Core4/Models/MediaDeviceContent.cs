@@ -1,5 +1,5 @@
+using BMTP3.Core4.Devices;
 using BMTP3.Core4.Traversal;
-using MediaDevices;
 using System.Runtime.Versioning;
 
 namespace BMTP3.Core4.Models;
@@ -7,16 +7,16 @@ namespace BMTP3.Core4.Models;
 [SupportedOSPlatform("windows7.0")]
 internal sealed class MediaDeviceContent : IContent
 {
-	private readonly MediaFileInfo _mediaFileInfo;
+	private readonly IMediaFile _mediaFile;
 	private readonly IMediaDeviceGatekeeper _gatekeeper;
 
-	public MediaDeviceContent(MediaFileInfo mediaFileInfo, IMediaDeviceGatekeeper gatekeeper)
+	public MediaDeviceContent(IMediaFile mediaFile, IMediaDeviceGatekeeper gatekeeper)
 	{
-		_mediaFileInfo = mediaFileInfo ?? throw new ArgumentNullException(nameof(mediaFileInfo));
+		_mediaFile = mediaFile ?? throw new ArgumentNullException(nameof(mediaFile));
 		_gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
 	}
 
-	public ulong Length => _mediaFileInfo.Length;
+	public ulong Length => _mediaFile.Length;
 
 	public Stream OpenRead()
 	{
@@ -34,7 +34,7 @@ internal sealed class MediaDeviceContent : IContent
 	{
 		try
 		{
-			Stream rawStream = _mediaFileInfo.OpenRead();
+			Stream rawStream = _mediaFile.OpenRead();
 			return new GatekeptStream(rawStream, lease);
 		} catch
 		{

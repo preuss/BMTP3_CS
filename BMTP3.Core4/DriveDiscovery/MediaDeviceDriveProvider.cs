@@ -14,14 +14,21 @@ internal sealed class MediaDeviceDriveProvider : IDriveProvider
 	{
 		List<IBackupDriveInfo> result = new();
 
-		foreach(MediaDevice device in MediaDevice.GetDevices())
+		foreach (MediaDevice device in MediaDevice.GetDevices())
 		{
-			if(!TryConnect(device)) continue;
+			if (!TryConnect(device))
+			{
+				continue;
+			}
+
 			try
 			{
-				foreach(MediaDriveInfo drive in device.GetDrives()) 
+				foreach (MediaDriveInfo drive in device.GetDrives())
+				{
 					result.Add(new BackupMediaDriveInfo(device, drive));
-			} finally
+				}
+			}
+			finally
 			{
 				device.Disconnect();
 			}
@@ -36,7 +43,8 @@ internal sealed class MediaDeviceDriveProvider : IDriveProvider
 		{
 			device.ConnectAsReadonly();
 			return true;
-		} catch(COMException ex) when(ex.HResult == HResultErrorDeviceNotConnected)
+		}
+		catch (COMException ex) when (ex.HResult == HResultErrorDeviceNotConnected)
 		{
 			return false;
 		}

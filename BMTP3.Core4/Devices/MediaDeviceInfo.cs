@@ -1,8 +1,7 @@
-﻿using BMTP3.Core4.Devices;
-using MediaDevices;
+﻿using MediaDevices;
 using System.Runtime.Versioning;
 
-namespace BMTP3.Core4.MediaDevices;
+namespace BMTP3.Core4.Devices;
 
 [SupportedOSPlatform("windows7.0")]
 internal sealed class MediaDeviceInfo : IMediaDeviceInfo
@@ -38,8 +37,31 @@ internal sealed class MediaDeviceInfo : IMediaDeviceInfo
 			.GetDevices()
 			.First(d => d.DeviceId == _deviceId);
 
-		device.ConnectAsReadonly();
+		// Enforce exclusive ownership of the MediaDevice connection for the lifetime of this session.
+		// Even if MediaDevice permits repeated Connect calls, this abstraction treats an already
+		// connected device as invalid input to avoid ambiguous ownership and session misuse.
+		if (device.IsConnected)
+		{
+			throw new MediaDeviceException("Device is already connected.");
+		}
+
+		try
+		{
+			device.ConnectAsReadonly();
+		}
+		catch (Exception ex)
+		{
+			throw new MediaDeviceException($"Failed to connect to media device '{_deviceId}'.", ex);
+		}
 
 		return new MediaDeviceWrapper(device, this);
+	}
+
+	public static IReadOnlyList<IMediaDeviceInfo> GetDevices()
+	{
+		return MediaDevice
+			.GetDevices()
+			.Select(device => (IMediaDeviceInfo)new MediaDeviceInfo(device))
+			.ToArray();
 	}
 }

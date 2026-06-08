@@ -1,6 +1,4 @@
-﻿using MediaDevices;
-
-namespace BMTP3.Core4.Devices;
+﻿namespace BMTP3.Core4.Devices;
 internal interface IMediaDrive
 {
 	long AvailableFreeSpace { get; }

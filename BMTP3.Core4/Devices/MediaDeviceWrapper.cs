@@ -1,5 +1,4 @@
-﻿using BMTP3.Core4.MediaDevices;
-using MediaDevices;
+﻿using MediaDevices;
 using System.Runtime.Versioning;
 
 namespace BMTP3.Core4.Devices;
@@ -12,7 +11,7 @@ internal class MediaDeviceWrapper : IMediaDevice
 	// Only Cached for not create multiple instances of MediaDeviceInfo for the same device.
 	private readonly IMediaDeviceInfo _mediaDeviceInfo;
 
-	public MediaDeviceWrapper(MediaDevice device, IMediaDeviceInfo mediaDeviceInfo)
+	internal MediaDeviceWrapper(MediaDevice device, IMediaDeviceInfo mediaDeviceInfo)
 	{
 		_device = device;
 		_mediaDeviceInfo = mediaDeviceInfo;
@@ -39,7 +38,7 @@ internal class MediaDeviceWrapper : IMediaDevice
 		get
 		{
 			List<IMediaDrive> drives = new List<IMediaDrive>();
-			foreach(MediaDriveInfo mediaDriveInfo in _device.GetDrives())
+			foreach (MediaDriveInfo mediaDriveInfo in _device.GetDrives())
 			{
 				drives.Add(new MediaDrive(mediaDriveInfo));
 			}
@@ -49,8 +48,20 @@ internal class MediaDeviceWrapper : IMediaDevice
 
 	public IMediaDevice Connect()
 	{
-		if(!_device.IsConnected)
+		/*
+		 // TODO: I do not know, if this should be able to connect or not.
+		if (!_device.IsConnected)
 			_device.ConnectAsReadonly();
+		*/
+
+		// Enforce exclusive ownership of the MediaDevice connection for the lifetime of this session.
+		// Even if MediaDevice permits repeated Connect calls, this abstraction treats an already
+		// diconnected device as invalid input to avoid ambiguous ownership and session misuse.
+		if (!_device.IsConnected)
+		{
+			throw new MediaDeviceException("Device is not connected, and should never be able to connect a closed Wrapper.");
+		}
+
 
 		return this;
 	}

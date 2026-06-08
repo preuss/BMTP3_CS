@@ -1,7 +1,4 @@
-﻿using BMTP3.Core4.Devices;
-using BMTP3.Core4.Traversal;
-
-namespace BMTP3.Core4.MediaDevices;
+﻿namespace BMTP3.Core4.Devices;
 internal interface IMediaDeviceInfo
 {
 	/// <summary>

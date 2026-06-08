@@ -22,4 +22,6 @@ internal sealed class MediaFile : IMediaFile
 	public string Id => _file.Id;
 	public string PersistentUniqueId => _file.PersistentUniqueId;
 	public ulong Length => _file.Length;
+
+	public Stream OpenRead() => _file.OpenRead();
 }

@@ -1,32 +1,35 @@
+using BMTP3.Core4.Devices;
 using BMTP3.Core4.Models;
+using BMTP3.Core4.Storage;
 using BMTP3.Core4.Utilities;
-using MediaDevices;
 using System.Runtime.CompilerServices;
 using System.Runtime.Versioning;
 
 namespace BMTP3.Core4.Traversal;
 
-
 /// <summary>
 /// Traverses content on an MTP device.
 /// </summary>
 /// <remarks>
-/// This type does not own the lifetime of the underlying <see cref="MediaDeviceSession"/>.
+/// This type does not own the lifetime of the underlying <see cref="IMediaDevice"/>.
 /// Yielded <see cref="SourceTraversalItem"/> instances may contain <see cref="MediaDeviceContent"/>
 /// objects that continue to access the device after traversal has finished.
-/// The caller must therefore keep the session alive until all yielded content and streams
+/// The caller must therefore keep the device alive until all yielded content and streams
 /// have been fully consumed.
 /// </remarks>
 [SupportedOSPlatform("windows7.0")]
 
 internal sealed class MediaDeviceTraversal : ISourceTraversal
 {
-	private readonly MediaDeviceSession _session;
+	private readonly IMediaDevice _mediaDevice;
+	private readonly IMediaDrive _mediaDrive;
 	private readonly IMediaDeviceGatekeeper _gatekeeper;
 
-	public MediaDeviceTraversal(MediaDeviceSession session, IMediaDeviceGatekeeper gatekeeper)
+	public MediaDeviceTraversal(IConnectedMediaDriveSource mediaDriveSource, IMediaDeviceGatekeeper gatekeeper)
 	{
-		_session = session ?? throw new ArgumentNullException(nameof(session));
+		ArgumentNullException.ThrowIfNull(mediaDriveSource);
+		_mediaDevice = mediaDriveSource.Device ?? throw new ArgumentNullException(nameof(mediaDriveSource.Device));
+		_mediaDrive = mediaDriveSource.Drive ?? throw new ArgumentNullException(nameof(mediaDriveSource.Drive));
 		_gatekeeper = gatekeeper ?? throw new ArgumentNullException(nameof(gatekeeper));
 	}
 
@@ -38,11 +41,14 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 	{
 		ArgumentNullException.ThrowIfNull(request);
 
+		IMediaDirectory rootDirectory = _mediaDrive.RootDirectory
+			?? throw new InvalidOperationException("Drive root directory is not available.");
+
 		int dirCount = 0;
 		int fileCount = 0;
 
-		await foreach((MediaFileInfo file, string fileName, string relativePath) in EnumerateRecursiveAsync(
-						  request.SourcePath,
+		await foreach ((IMediaFile file, string fileName, string relativePath) in EnumerateRecursiveAsync(
+						  rootDirectory,
 						  relativePrefix: "",
 						  recursive: request.Recursive,
 						  onDirectoryEntered: () => dirCount++,
@@ -58,7 +64,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				FilesDiscovered = fileCount,
 			});
 
-			if(!GlobMatcher.IsIncluded(relativePath, request.IncludePatterns, request.ExcludePatterns))
+			if (!GlobMatcher.IsIncluded(relativePath, request.IncludePatterns, request.ExcludePatterns))
 				continue;
 
 			SourceTraversalItem item = await _gatekeeper.ExecuteAsync(_ =>
@@ -77,7 +83,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 					DateCreated = created,
 					DateModified = modified,
 					DateAuthored = authored,
-					DateAccessed = null // MediaDevices does not expose last accessed time.
+					DateAccessed = null,
 				};
 
 				return Task.FromResult(result);
@@ -87,33 +93,30 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		}
 	}
 
-	private async IAsyncEnumerable<(MediaFileInfo File, string FileName, string RelativePath)> EnumerateRecursiveAsync(
-		string devicePath,
+	private async IAsyncEnumerable<(IMediaFile File, string FileName, string RelativePath)> EnumerateRecursiveAsync(
+		IMediaDirectory directory,
 		string relativePrefix,
 		bool recursive,
 		Action onDirectoryEntered,
 		[EnumeratorCancellation] CancellationToken cancellationToken
 	)
 	{
-		(List<(MediaFileInfo File, string Name)> files, List<(string FullName, string Name)> dirs) = await _gatekeeper.ExecuteAsync(_ =>
+		(List<(IMediaFile File, string Name)> files, List<(IMediaDirectory Dir, string Name)> dirs) = await _gatekeeper.ExecuteAsync(_ =>
 		{
-			MediaDirectoryInfo dir = _session.Device.GetDirectoryInfo(devicePath);
-
-			List<(MediaFileInfo File, string Name)> files = dir
-				.EnumerateFiles()
-				.Select(file => (file, file.Name))
+			List<(IMediaFile File, string Name)> files = directory.Files
+				.Select(f => (f, f.Name))
 				.ToList();
 
-			List<(string FullName, string Name)> dirs = recursive
-				? dir.EnumerateDirectories()
-					.Select(subDir => (subDir.FullName, subDir.Name))
+			List<(IMediaDirectory Dir, string Name)> dirs = recursive
+				? directory.Directories
+					.Select(d => (d, d.Name))
 					.ToList()
-				: new List<(string FullName, string Name)>();
+				: new();
 
 			return Task.FromResult((files, dirs));
 		}, cancellationToken).ConfigureAwait(false);
 
-		foreach((MediaFileInfo file, string fileName) in files)
+		foreach ((IMediaFile file, string fileName) in files)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
@@ -124,10 +127,10 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 			yield return (file, fileName, rel);
 		}
 
-		if(!recursive)
+		if (!recursive)
 			yield break;
 
-		foreach((string subDirFullName, string subDirName) in dirs)
+		foreach ((IMediaDirectory subDir, string subDirName) in dirs)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
@@ -137,12 +140,13 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				? subDirName
 				: $"{relativePrefix}\\{subDirName}";
 
-			await foreach((MediaFileInfo file, string fileName, string rel) in EnumerateRecursiveAsync(
-				subDirFullName,
-				subPrefix,
-				recursive,
-				onDirectoryEntered,
-				cancellationToken).ConfigureAwait(false)
+			await foreach ((IMediaFile file, string fileName, string rel) in EnumerateRecursiveAsync(
+					subDir,
+					subPrefix,
+					recursive,
+					onDirectoryEntered,
+					cancellationToken
+				).ConfigureAwait(false)
 			)
 			{
 				yield return (file, fileName, rel);
@@ -152,8 +156,8 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 
 	private static DateTimeOffset? ToUtcOffsetOrNull(DateTime? value)
 	{
-		return value is DateTime dt
-			? new DateTimeOffset(dt.ToUniversalTime(), TimeSpan.Zero)
+		return value != null
+			? new DateTimeOffset(value.Value.ToUniversalTime(), TimeSpan.Zero)
 			: null;
 	}
 }

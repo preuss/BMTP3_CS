@@ -3,4 +3,5 @@
 internal interface IMediaFile : IMediaItem
 {
 	ulong Length { get; }
+	Stream OpenRead();
 }

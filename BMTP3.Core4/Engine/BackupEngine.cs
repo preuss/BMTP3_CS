@@ -1,6 +1,7 @@
 ﻿using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.DriveDiscovery;
 using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
@@ -15,6 +16,7 @@ using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
 using BMTP3.Core4.SignalInterrupts;
 using BMTP3.Core4.State;
+using BMTP3.Core4.Storage;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.Logging;
 
@@ -30,6 +32,8 @@ public sealed class BackupEngine : IBackupEngine
 {
 	private readonly IBackupScanner _scanner;
 	private readonly ISourceTraversalFactory _sourceTraversalFactory;
+	private readonly IDriveProvider _driveProvider;
+	private readonly ISourceConnector _sourceConnector;
 	private readonly IDownloadService _downloadService;
 	private readonly IHashService _hashService;
 	private readonly IEarliestTimestampResolutionService _earliestTimestampService;
@@ -43,6 +47,8 @@ public sealed class BackupEngine : IBackupEngine
 	internal BackupEngine(
 		IBackupScanner scanner,
 		ISourceTraversalFactory sourceTraversalFactory,
+		IDriveProvider driveProvider,
+		ISourceConnector sourceConnector,
 		IDownloadService downloadService,
 		IHashService hashService,
 		IEarliestTimestampResolutionService earliestTimestampService,
@@ -55,6 +61,8 @@ public sealed class BackupEngine : IBackupEngine
 	{
 		_scanner = scanner;
 		_sourceTraversalFactory = sourceTraversalFactory;
+		_driveProvider = driveProvider;
+		_sourceConnector = sourceConnector;
 		_downloadService = downloadService;
 		_hashService = hashService;
 		_earliestTimestampService = earliestTimestampService;
@@ -131,17 +139,20 @@ public sealed class BackupEngine : IBackupEngine
 			await _diskSpaceValidator.EnsureMinimumFreeSpaceAsync(plan.Destination, cancellationToken);
 
 			// ------------------------------------------------------------
-			// 4. Open source traversal (filesystem or media device)
-			//    - Establish access to source via ISourceTraversal
+			// 4. Discover source drive and establish connection
+			//    - List all available drives from all providers
+			//    - Match the drive matching plan.SourcePath
+			//    - Connect to the source via ISourceConnector
+			//    - Create ISourceTraversal from the connected source
 			//    - Fail if source is not accessible
 			// ------------------------------------------------------------
-			SourceTraversalFactoryCreateRequest sourceTraversalFactoryCreateRequest = new()
-			{
-				SourceType = plan.SourceType,
-				SourcePath = plan.SourcePath,
-			};
+			IReadOnlyList<IBackupDriveInfo> drives = _driveProvider.ListDrives();
+			IBackupDriveInfo matchedDrive = drives.FirstOrDefault(d =>
+				string.Equals(d.RootPath, plan.SourcePath, StringComparison.OrdinalIgnoreCase))
+				?? throw new InvalidOperationException($"No drive found matching source path '{plan.SourcePath}'.");
 
-			ISourceTraversal traversal = _sourceTraversalFactory.Create(sourceTraversalFactoryCreateRequest);
+			using IConnectedSource connectedSource = _sourceConnector.Connect(matchedDrive);
+			ISourceTraversal traversal = _sourceTraversalFactory.Create(connectedSource);
 
 			// ------------------------------------------------------------
 			// 5. Scan source

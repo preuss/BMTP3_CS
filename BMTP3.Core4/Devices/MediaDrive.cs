@@ -45,7 +45,7 @@ internal class MediaDrive : IMediaDrive
 	{
 		get
 		{
-			if(_rootDirectoryInitialized) return _rootDirectory;
+			if (_rootDirectoryInitialized) return _rootDirectory;
 
 			_rootDirectory = _driveInfo.RootDirectory != null
 				? new MediaDirectory(_driveInfo.RootDirectory)

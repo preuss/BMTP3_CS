@@ -1,6 +1,4 @@
-﻿using BMTP3.Core4.MediaDevices;
-
-namespace BMTP3.Core4.Devices;
+﻿namespace BMTP3.Core4.Devices;
 internal interface IMediaDevice : IMediaDeviceInfo, IDisposable
 {
 	string FirmwareVersion { get; }

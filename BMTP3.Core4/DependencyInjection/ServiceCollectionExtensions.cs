@@ -12,6 +12,7 @@ using BMTP3.Core4.Engine.Strategies;
 using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Scanner;
+using BMTP3.Core4.Storage;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -55,7 +56,22 @@ public static class ServiceCollectionExtensions
 
 
 
-		// Traversal & scanner
+		// Source connector
+		if(OperatingSystem.IsWindowsVersionAtLeast(7))
+		{
+			services.TryAddSingleton<ISourceConnector, SourceConnector>();
+		} else
+		{
+			services.TryAddSingleton<ISourceConnector>(_ =>
+				throw new PlatformNotSupportedException("MTP device support requires Windows 7 or later."));
+		}
+
+		// Gatekeeper & traversal
+		if(OperatingSystem.IsWindowsVersionAtLeast(7))
+		{
+			services.TryAddSingleton<IMediaDeviceGatekeeper, MediaDeviceGatekeeper>();
+		}
+
 		services.TryAddSingleton<ISourceTraversalFactory, SourceTraversalFactory>();
 		services.TryAddSingleton<IBackupScanner, BackupScanner>();
 
@@ -80,6 +96,8 @@ public static class ServiceCollectionExtensions
 		{
 			IBackupScanner scanner = sp.GetRequiredService<IBackupScanner>();
 			ISourceTraversalFactory sourceTraversalFactory = sp.GetRequiredService<ISourceTraversalFactory>();
+			IDriveProvider driveProvider = sp.GetRequiredService<IDriveProvider>();
+			ISourceConnector sourceConnector = sp.GetRequiredService<ISourceConnector>();
 			IDownloadService downloadService = sp.GetRequiredService<IDownloadService>();
 			IHashService hashService = sp.GetRequiredService<IHashService>();
 			IEarliestTimestampResolutionService earliestTimestampService = sp.GetRequiredService<IEarliestTimestampResolutionService>();
@@ -91,6 +109,8 @@ public static class ServiceCollectionExtensions
 			return new BackupEngine(
 				scanner,
 				sourceTraversalFactory,
+				driveProvider,
+				sourceConnector,
 				downloadService,
 				hashService,
 				earliestTimestampService,
