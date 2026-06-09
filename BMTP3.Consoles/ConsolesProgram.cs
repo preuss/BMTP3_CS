@@ -102,12 +102,14 @@ public class ConsolesProgram
 
 	private static void TestMultipleCommands(string[] args)
 	{
+		/*
 		args = ["cmd1", "--device", "DeviceA"];
 		args = ["cmd2", "--device", "DeviceB"];
 		args = ["cmd3", "--device", "DeviceC"];
 		args = ["cmd2", "-d", "TestDevice"];
 		args = ["--help"];
 		args = ["cmd1", "--help"];
+		*/
 
 		// Opret root command
 		RootCommand rootCommand = new("Test CLI");
