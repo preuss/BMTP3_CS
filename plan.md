@@ -76,7 +76,7 @@
 - [x] — **IMediaFile.OpenRead()** tilføjet, `MediaDeviceContent` opdateret til at bruge `IMediaFile`.
 - [x] — **BackupEngine.Create(connectedSource):** 1 arg (ingen `IBackupDriveInfo`).
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 248 passed.
-- [x] — **Validator gates relaxed**: 16 af 20 `FeatureNotImplementedException` gates fjernet. Resterer: `EnableMetadata` (T3), `BackupIndexType.Json` (T3), `BackupIndexType.Database` (T4), `MaxDegreeOfParallelism` (T4).
+- [x] — **Validator gates relaxed**: 16 af 20 `FeatureNotImplementedException` gates fjernet. Resterer: `EnableMetadata` (T3), `BackupIndexType.Json` (T3), `StopOnError=false` (T3), `BackupIndexType.Database` (T4), `MaxDegreeOfParallelism` (T4).
 - [x] — **Core4 i Consoles:** `BackupConsoleCommand4.cs` + helpers, `ConsolesPrinter` opdateret med Core4 overloads, `ApplicationServiceSetup` registrerer `AddBMTP3Core4()`, `backup4` subcommand tilgængelig.
 - [x] — **Drive matching fix:** `BackupEngine.MatchDrive()` bruger `StartsWith` i stedet for `Equals`. Relative sub-path extracted til `SourceTraversalRequest.SubPath`.
 - [x] — **MediaDeviceTraversal sub-path:** `NavigateToSubDirectory()` navigerer gennem `IMediaDirectory.Directories` baseret på `SubPath`.
@@ -126,6 +126,7 @@
 
 ### Senere
 
+- [ ] — **`StopOnError=false`**: continue-on-error (Tier 3 gate). Per-item try-catch og Failed status findes, men `throw` på linje 485 forhindrer continuation.
 - [ ] — **`BackupIndexType.Database`**: SQLite catalog (feature guard allerede på plads, linje 83-84)
 - [ ] — **`EnableMetadata`**: metadata extraction (Tier 3)
 - [ ] — **`MaxDegreeOfParallelism`**: parallel execution (Tier 4)

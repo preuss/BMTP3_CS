@@ -79,6 +79,9 @@ internal static class BackupPlanValidator
 		if(plan.BackupIndexType == BackupIndexType.Json)
 			throw new FeatureNotImplementedException(3, "Backup index: Json");
 
+		if(!plan.StopOnError)
+			throw new FeatureNotImplementedException(3, "Continue on error (StopOnError = false)");
+
 		// Tier 4 — Features not implemented at all
 		if(plan.BackupIndexType == BackupIndexType.Database)
 			throw new FeatureNotImplementedException(4, "Backup index: Database");

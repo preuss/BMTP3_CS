@@ -121,9 +121,10 @@
 
 | # | Task | Feature gate |
 |---|------|-------------|
-| 1 | **`BackupIndexType.Database`** — SQLite catalog | Linje 83-84 (Tier 4) |
-| 2 | **`EnableMetadata`** — metadata extraction | Linje 76-77 (Tier 3) |
-| 3 | **`MaxDegreeOfParallelism`** — parallel execution | Linje 86-87 (Tier 4) |
+| 1 | **`StopOnError=false`** — continue-on-error (per-item catch + Failed status findes, men `throw` på linje 485 forhindrer det) | Linje 81 (Tier 3) |
+| 2 | **`BackupIndexType.Database`** — SQLite catalog | Linje 84-85 (Tier 4) |
+| 3 | **`EnableMetadata`** — metadata extraction | Linje 77-78 (Tier 3) |
+| 4 | **`MaxDegreeOfParallelism`** — parallel execution | Linje 88-89 (Tier 4) |
 | 4 | Hash algorithm CLI options | Expose comparison/verification hash valg |
 | 5 | Config file support | `--config` TOML/JSON loading for Core4 |
 | 6 | Erstat Core2 `backup` med Core4 som default | Når Core4 er feature-complete |
@@ -265,6 +266,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **BackupIndexType.Database** | ❌ | SQLite catalog. Feature gate (Tier 4). |
 | **EnableMetadata** | ❌ | Metadata extraction. Feature gate (Tier 3). |
 | **MaxDegreeOfParallelism** | ❌ | Parallel execution. Feature gate (Tier 4). |
+| **StopOnError=false** | ❌ | Continue-on-error. Feature gate (Tier 3). Engine re-thrower altid (linje 485). |
 | **Resilience** | ❌ | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
 | **MTP Discovery** | ✅ **DONE** | `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery`, `ICombinedSourceDiscovery` implementeret. |
 | **MTP Traversal** | ✅ **DONE** | `MediaDeviceTraversal` via `IMediaDirectory`/`IMediaFile`. `SourceTraversalFactory` pattern-matches på `IConnectedMediaDriveSource`. |
