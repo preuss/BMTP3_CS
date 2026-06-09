@@ -30,7 +30,7 @@ public class ConsolesPrinter
 		foreach(BaseOptionsModel optionsModel in optionsModels)
 		{
 			string header = $"{optionsModel.GetType().Name}:";
-			_console.MarkupLine($"[bold]{header}[/]");
+			_console.MarkupLine($"[bold]{header.EscapeMarkup()}[/]");
 			_console.WriteLine(new string('=', header.Length));
 			foreach(string line in optionsModel.GetOptionPropertyValues())
 			{
@@ -64,7 +64,7 @@ public class ConsolesPrinter
 
 	public void PrintResult(BackupJobResult result)
 	{
-		_console.MarkupLine($"[bold]Job '[green]{result.JobName}[/]' finished: {result.Status}[/]");
+		_console.MarkupLine($"[bold]Job[/] '[green]{result.JobName.EscapeMarkup()}[/]' finished: {result.Status}");
 		_console.WriteLine(
 			$"Scanned: {result.TotalFilesScanned} Copied: {result.FilesCopied} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.TotalBytesCopied}");
 		if(result.GlobalErrors?.Count > 0)
@@ -72,7 +72,7 @@ public class ConsolesPrinter
 			_console.MarkupLine("[yellow]Global errors:[/]");
 			foreach(string e in result.GlobalErrors)
 			{
-				_console.MarkupLine($"  [yellow]- {e}[/]");
+				_console.MarkupLine($"  [yellow]- {e.EscapeMarkup()}[/]");
 			}
 		}
 	}
@@ -86,19 +86,19 @@ public class ConsolesPrinter
 			Core4BackupResultState.Failed => "red",
 			_ => "white",
 		};
-		_console.MarkupLine($"[bold]Job '[green]{result.Name}[/]' finished: [{stateColor}]{result.State}[/]");
+		_console.MarkupLine($"[bold]Job[/] '[green]{result.Name.EscapeMarkup()}[/]' finished: [{stateColor}]{result.State}[/]");
 		int succeeded = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Succeeded);
 		int failed = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Failed);
 		int skipped = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Skipped);
 		_console.WriteLine($"Total: {result.ItemResults.Count} Succeeded: {succeeded} Failed: {failed} Skipped: {skipped}");
 		if(result.FailureReason is not null)
 		{
-			_console.MarkupLine($"[yellow]Failure reason: {result.FailureReason}[/]");
+			_console.MarkupLine($"[yellow]Failure reason: {result.FailureReason.ToString().EscapeMarkup()}[/]");
 		}
 	}
 
 	public void PrintError(string message)
 	{
-		_console.MarkupLine($"[red]Error: {message}[/]");
+		_console.MarkupLine($"[red]Error: {message.EscapeMarkup()}[/]");
 	}
 }

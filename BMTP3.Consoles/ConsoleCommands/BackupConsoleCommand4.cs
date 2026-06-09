@@ -51,11 +51,8 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(BackupOptions, parseResult);
 
-		consolePrinter?.PrintStatus(
-			$"Starting Core4 backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' Destination='{plan.Destination}'");
-		logger.LogInformation(
-			"Starting Core4 backup: Name='{Name}' SourceType={SourceType} SourcePath='{SourcePath}' Destination='{Destination}'",
-			plan.Name, plan.SourceType, plan.SourcePath, plan.Destination);
+		consolePrinter?.PrintStatus($"Starting Core4 backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' Destination='{plan.Destination}'");
+		logger.LogInformation("Starting Core4 backup: Name='{Name}' SourceType={SourceType} SourcePath='{SourcePath}' Destination='{Destination}'", plan.Name, plan.SourceType, plan.SourcePath, plan.Destination);
 
 		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
 		if (engine == null)
@@ -67,9 +64,8 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		Progress<BackupProgress> progress = new(p =>
 		{
 			consolePrinter?.PrintProgress(p);
-			logger.LogInformation(
-				"{Phase}: discovered={Discovered} succeeded={Succeeded} failed={Failed}",
-				p.CurrentPhase, p.FilesDiscovered, p.FilesSucceeded, p.FilesFailed);
+			//DEBUG: silent logger — re-enable when debugging progress spam
+			//logger.LogInformation("{Phase}: discovered={Discovered} succeeded={Succeeded} failed={Failed}", p.CurrentPhase, p.FilesDiscovered, p.FilesSucceeded, p.FilesFailed);
 		});
 
 		CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
