@@ -11,6 +11,10 @@
     "Version": {
       "commandName": "Project",
       "commandLineArgs": "--version"
+    },
+    "Backup_Source_Temp": {
+      "commandName": "Project",
+      "commandLineArgs": "backup4 -s \"C:\\temp\\source\" -o \"C:\\temp\\target\""
     }
   }
 }

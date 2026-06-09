@@ -142,6 +142,7 @@ internal static class BackupConsoleCommand4Helpers
 			PostWriteVerification = postWriteVerification,
 			EnableTimestampCorrection = true,
 			DryRun = dryRun,
+			StopOnError = true,
 			ResumeBehavior = BMTP3.Core4.Api.Models.Enums.SessionResumeStrategy.Continue,
 		};
 	}
