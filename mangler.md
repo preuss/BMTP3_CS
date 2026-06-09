@@ -154,8 +154,8 @@
 | 2 | **`BackupIndexType.Database`** — SQLite catalog | Linje 84-85 (Tier 4) |
 | 3 | **`EnableMetadata`** — metadata extraction | Linje 77-78 (Tier 3) |
 | 4 | **`MaxDegreeOfParallelism`** — parallel execution | Linje 88-89 (Tier 4) |
-| 4 | Hash algorithm CLI options | Expose comparison/verification hash valg |
-| 5 | Erstat Core2 `backup` med Core4 som default | Når Core4 er feature-complete | Når Core4 er feature-complete |
+| 5 | Hash algorithm CLI options | Expose comparison/verification hash valg |
+| 6 | Erstat Core2 `backup` med Core4 som default | Når Core4 er feature-complete |
 
 
 ### Low / Deferred
@@ -295,14 +295,18 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **EnableMetadata** | ❌ | Metadata extraction. Feature gate (Tier 3). |
 | **MaxDegreeOfParallelism** | ❌ | Parallel execution. Feature gate (Tier 4). |
 | **StopOnError=false** | ❌ | Continue-on-error. Feature gate (Tier 3). Engine re-thrower altid (linje 485). |
+| **TOML config** | ❌ | Ingen TOML-reader; kun programmatisk `BackupPlan` |
 | **Resilience** | ❌ | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
+| **Console UI progress** | ❌ | Ingen ProgressBar/Spinner (Core havde 20+ UI-filer) |
+| **ISidecarService public** | ⚠️ | `internal` i Core4, var `public` i Core3 |
 | **MTP Discovery** | ✅ **DONE** | `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery`, `ICombinedSourceDiscovery` implementeret. |
 | **MTP Traversal** | ✅ **DONE** | `MediaDeviceTraversal` via `IMediaDirectory`/`IMediaFile`. `SourceTraversalFactory` pattern-matches på `IConnectedMediaDriveSource`. |
 | **Consoles CLI cleanup** | ⚠️ | Ubrugte options valideres, MTP path format, Core2 options config |
-| **TOML config** | ❌ | Ingen TOML-reader; kun programmatisk `BackupPlan` |
 | **INI/JSON sidecar** | ✅ **DONE** | Full Document/Section/Property model + Ini + Json writers |
 | **DryRun** | ✅ **DONE** | `BuildDryRunResult` helper, short-circuit |
 | **Parallel runner** | ⚠️ | `BackupRunner` beholdt. `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
 | **Include/Exclude patterns** | ✅ **DONE** | `GlobMatcher.IsIncluded` i `FileSystemTraversal`. |
 | **Dedup/FileCategory** | ❌ | Ingen dedup på tværs af sessioner |
-| **State machines** | ❌ | Core4 har ikke eksplicit state machine (inline status) |
+| **State machines** | ➡️ | Bevidst arkitekturvalg — inline status i record i stedet for state machine |
+| **Pipeline stages** | ➡️ | Bevidst arkitekturvalg — strategi-baseret loop i stedet for step-klasser |
+| **Handler hierarchy** | ➡️ | Bevidst arkitekturvalg — samlet i `BackupEngine` |

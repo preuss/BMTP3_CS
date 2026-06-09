@@ -86,6 +86,8 @@
 
 ## Næste opgaver (prioriteret)
 
+> 📂 Hver opgave har en detaljeret task-fil i `tasks/` mappen med alt nødvendigt info.
+
 ### ✅ Komplet gap-analyse (Core, Core2, Core3 → Core4)
 
 - [x] — **Gennemgang: Find alle manglende dele** — Krydsrefereret alle features fra Core, Core2 og Core3 mod Core4.
@@ -93,12 +95,11 @@
 
 ### Høj prioritet — BackupIndexType.Json implementering
 
-- [ ] — **`IBackupIndexWriter`** interface: metode `WriteAsync(Stream, IReadOnlyList<BackupItem>, BackupPlan, BackupResult, CancellationToken)`
-- [ ] — **`JsonBackupIndexWriter`**: skriver `backup_catalog.json` med alle filer, hashes, metadata, timestamps
-- [ ] — **Wire i `BackupEngine`**: efter processing loop, før result returneres
-- [ ] — **DI registration**: `AddScoped<IBackupIndexWriter, JsonBackupIndexWriter>()`
-- [ ] — **Fjern Tier 3 gate** for `BackupIndexType.Json` i `BackupPlanValidator` (linje 79-80)
-- [ ] — **Spec**: definér JSON schema for katalog-filen (felter, struktur, eksempel)
+- [ ] — **Task 01** → `tasks/01-BackupIndexType.Json.md`
+  - `IBackupIndexWriter` interface + `JsonBackupIndexWriter` + `BackupIndexCatalog` model
+  - Wire i `BackupEngine` efter processing loop
+  - DI registration + fjern T3 gate
+  - JSON schema: `{destination}\.bmtp3\{sessionId}.catalog.json` med hashes + timestamps
 
 ### Høj prioritet — Public DriveCatalog API
 
@@ -106,52 +107,53 @@
 
 ### Høj prioritet — Consoles CLI cleanup (før release)
 
-- [ ] — **`Delay` / `VerificationRetryCount` / `VerificationRetryDelayMs` / `VerificationTimeoutMs` / `VerificationDeleteOnFailure`**: 
-  Disse options valideres i `BackupConsoleCommand4.ValidateBackupOptions` men findes ikke i Core4's `BackupPlan`. 
-  To valg: (a) tilføj properties til Core4 `BackupPlan` + implementer i engine, (b) fjern validering og ignorer options med warning.
-- [ ] — **MTP sourcePath format**: `--source-device` sætter bart device navn (f.eks. "Apple iPhone"), men Core4 forventer `mtp://Apple iPhone/Internal Storage/DCIM`. 
-  Løsning: konstruer `mtp://{deviceName}/{subPath}` URI i `BuildPlan` når `sourceType == MediaDevice`.
-- [ ] — **`--backup-index` default**: behold `Json` (når implementeret), men sørg for at CLI ikke sender Json før writer er klar
-- [ ] — **Fjern Core2 `BackupEngineOptions` config**: `ApplicationServiceSetup` linje 37 sætter Core2 options der ingen effekt har på Core4
-- [ ] — **SignalInterrupt cancel-wiring**: brug `SignalInterrupt.On(Interrupt).Bind(cts).Create()` i stedet for `Console.CancelKeyPress`
-- [ ] — **ConsolesPrinter progress**: vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` fra Core4's `BackupProgress`
-- [ ] — **No tests for backup4**: tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping
+- [ ] — **Task 02** → `tasks/02-Consoles-CLI-Cleanup.md`
+  1. Delay/VerificationRetryTimeout — fjern validering eller tilføj til BackupPlan
+  2. MTP sourcePath format — konstruer `mtp://{device}/{subPath}` URI
+  3. `--backup-index` default guard — først Json når Task 01 er done
+  4. Fjern Core2 `BackupEngineOptions` config
+  5. SignalInterrupt cancel-wiring — brug Core4's SignalInterrupt
+  6. ConsolesPrinter progress — vis BytesProcessed, FilesSkipped
+  7. Tests for backup4 BuildPlan enum-mapping
 
 ### Høj prioritet — TOML config reader
 
-- [ ] — **`--config` fil support**: Implementer TOML-reader (genbrug Core3's `ConfigModel`/`BackupSettingsReader` mønster)
-- [ ] — **Map TOML til `BackupPlan`**: oversæt settings-felter til Core4's `BackupPlan` properties
-- [ ] — **CLI integration**: `--config` option i `list-sources` og `backup4` commands
-- [ ] — **Overvej**: TOML → `BackupPlan` mapping i stedet for at genoprette Core's handler-hierarki
+- [ ] — **Task 03** → `tasks/03-TOML-Config-Reader.md`
+  - Genbrug Core3's ConfigModel/BackupSettingsReader
+  - CLI `--config` option + merge med CLI args
 
 ### Høj prioritet — Retry / Resilience (især MTP)
 
-- [ ] — **Retry strategy**: exponential backoff for transient I/O failures (download, hash, move, sidecar write)
-- [ ] — **MTP resilience**: gatekeeper timeout + retry ved COMException/disconnect mid-session
-- [ ] — **Overvej**: genbrug Core2's Polly `BackupResiliencePipeline` eller implementer lightweight retry
+- [ ] — **Task 04** → `tasks/04-Retry-Resilience.md`
+  - Exponential backoff helper
+  - MTP resilience (COMException, disconnect)
+  - Lightweight retry uden Polly dependency
 
 ### Medium prioritet — Console UI progress
 
-- [ ] — **ProgressBar / Spinner**: implementer visuel progress i Consoles under backup (Core havde 20+ UI-filer)
-- [ ] — **`BackupProgress` integration**: vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` live
+- [ ] — **Task 06** → `tasks/06-Console-UI-Progress.md`
+  - ProgressBar + Spinner i Consoles
+  - `BackupProgress` integration
 
 ### Medium prioritet — Public API overvejelser
 
-- [ ] — **`ISidecarService` public?**: var public i Core3, er `internal` i Core4. Overvej om eksterne forbrugere har brug for sidecar generation.
+- [ ] — **Task 07** → `tasks/07-ISidecarService-Public.md`
+  - Beslut: skal `ISidecarService` være public som i Core3?
 
 ### Høj prioritet — Integration test
 
-- [ ] — Integration test: Full MTP traversal pipeline (gatekeeper → connector → traversal → content)
-- [ ] — Integration test: BackupEngine end-to-end (filesystem → download → hash → sidecar → verify)
+- [ ] — **Task 05** → `tasks/05-Integration-Tests.md`
+  - MTP traversal pipeline test
+  - BackupEngine end-to-end test
 
 ### Senere
 
-- [ ] — **`StopOnError=false`**: continue-on-error (Tier 3 gate). Per-item try-catch og Failed status findes, men `throw` på linje 485 forhindrer continuation.
-- [ ] — **`BackupIndexType.Database`**: SQLite catalog (feature guard allerede på plads, linje 83-84)
-- [ ] — **`EnableMetadata`**: metadata extraction (Tier 3)
-- [ ] — **`MaxDegreeOfParallelism`**: parallel execution (Tier 4)
-- [ ] — **Hash algorithm CLI options**: expose comparison/verification hash valg
-- [ ] — **Overvej**: Erstat Core2 `backup` med Core4 som default
+- [ ] — **Task 08** → `tasks/08-13-Later-Tasks.md` — `StopOnError=false` (T3)
+- [ ] — **Task 09** → `tasks/08-13-Later-Tasks.md` — `BackupIndexType.Database` (T4)
+- [ ] — **Task 10** → `tasks/08-13-Later-Tasks.md` — `EnableMetadata` (T3)
+- [ ] — **Task 11** → `tasks/08-13-Later-Tasks.md` — `MaxDegreeOfParallelism` (T4)
+- [ ] — **Task 12** → `tasks/08-13-Later-Tasks.md` — Hash algorithm CLI options
+- [ ] — **Task 13** → `tasks/08-13-Later-Tasks.md` — Erstat Core2 backup med Core4 som default
 
 ### Arkitekturforskelle (ikke 1:1 — bevidste valg)
 
