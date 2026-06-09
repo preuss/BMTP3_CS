@@ -1,7 +1,7 @@
 # BMTP3.Core4 — Plan
 
 > **Opdateret 9 Jun 2026** — Gap-analyse gennemført (Core, Core2, Core3 → Core4). Nye huller identificeret: TOML config, retry/resilience, Console UI progress, ISidecarService public.
-> Næste: Implementer BackupIndexType.Json, TOML config reader, Consoles CLI cleanup, Integration tests.
+> Næste: Consoles CLI cleanup (Task 02). BackupIndexType.Json (Task 01) nedprioriteret til lavest.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -93,15 +93,7 @@
 - [x] — **Gennemgang: Find alle manglende dele** — Krydsrefereret alle features fra Core, Core2 og Core3 mod Core4.
   Resultat: Feature audit indarbejdet i `mangler.md` (§ Feature Audit, linje 176-280). Nye huller føjet nedenfor.
 
-### Høj prioritet — BackupIndexType.Json implementering
-
-- [ ] — **Task 01** → `tasks/01-BackupIndexType.Json.md`
-  - `IBackupIndexWriter` interface + `JsonBackupIndexWriter` + `BackupIndexCatalog` model
-  - Wire i `BackupEngine` efter processing loop
-  - DI registration + fjern T3 gate
-  - JSON schema: `{destination}\.bmtp3\{sessionId}.catalog.json` med hashes + timestamps
-
-### Høj prioritet — Public DriveCatalog API
+### ✅ Public DriveCatalog API
 
 - [x] — **DriveCatalog API**: `IDriveCatalogService` (Api/), `DriveCatalogEntry` (Api/Models/), `DriveCatalogService` (DriveDiscovery/), DI registration — **implementeret**
 
@@ -154,6 +146,14 @@
 - [ ] — **Task 11** → `tasks/08-13-Later-Tasks.md` — `MaxDegreeOfParallelism` (T4)
 - [ ] — **Task 12** → `tasks/08-13-Later-Tasks.md` — Hash algorithm CLI options
 - [ ] — **Task 13** → `tasks/08-13-Later-Tasks.md` — Erstat Core2 backup med Core4 som default
+
+### Lavest prioritet — BackupIndexType.Json catalog
+
+- [ ] — **Task 01** → `tasks/01-BackupIndexType.Json.md`
+  - `IBackupIndexWriter` interface + `JsonBackupIndexWriter` + `BackupIndexCatalog` model
+  - Wire i `BackupEngine` efter processing loop
+  - DI registration + fjern T3 gate
+  - JSON schema: `{destination}\.bmtp3\{sessionId}.catalog.json` med hashes + timestamps
 
 ### Arkitekturforskelle (ikke 1:1 — bevidste valg)
 
