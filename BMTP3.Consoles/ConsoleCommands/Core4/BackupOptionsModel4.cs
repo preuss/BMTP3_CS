@@ -159,6 +159,15 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	// --------------------------------------------------
 	// EXECUTION
 	// --------------------------------------------------
+	public static Option<int> DelayOption { get; } = new("--delay", "-w", "--wait")
+	{
+		Description = "Delay in milliseconds between each file. Use to slow down the backup for visual progress. -1 disables, 0 is fastest, >0 is N ms.",
+		DefaultValueFactory = _ => 0,
+		Arity = ArgumentArity.ZeroOrOne
+	};
+
+	public int Delay { get; set; } = 0;
+
 	public static Option<bool> SimulateOption { get; } = new("--dry-run", "-n", "--simulate")
 	{
 		Description = "Simulates the backup without performing any write operations."

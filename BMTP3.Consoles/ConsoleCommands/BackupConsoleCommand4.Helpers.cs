@@ -103,6 +103,8 @@ internal static class BackupConsoleCommand4Helpers
 		if (WasSupplied(parseResult, BackupOptionsModel4.PostWriteVerificationOption))
 			postWriteVerification = MapPostWriteVerification(backupOptions.PostWriteVerification);
 
+		int delay = backupOptions.Delay;
+
 		// Normalize filesystem source path
 		if (sourceType == Core4BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(sourcePath))
 		{
@@ -143,6 +145,7 @@ internal static class BackupConsoleCommand4Helpers
 			EnableTimestampCorrection = true,
 			DryRun = dryRun,
 			StopOnError = true,
+			Delay = delay,
 			ResumeBehavior = BMTP3.Core4.Api.Models.Enums.SessionResumeStrategy.Continue,
 		};
 	}

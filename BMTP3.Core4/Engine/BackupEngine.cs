@@ -114,6 +114,8 @@ public sealed class BackupEngine : IBackupEngine
 			cancellationTokenSource.Cancel();
 		}).Create();
 
+		BackupDelay delay = new(plan.Delay, cancellationToken);
+
 		IBackupRecordRepository repository = new BackupMemoryRecordRepository();
 
 		BackupSessionKey sessionKey = BackupSessionKeyFactory.Create(plan);
@@ -281,6 +283,8 @@ public sealed class BackupEngine : IBackupEngine
 							cancellationToken
 						);
 
+						await delay.WaitAsync();
+
 						// Capture original source dates before timestamp correction overwrites them.
 						record.Metadata.AuthoredDateTime = record.Item.DateAuthored;
 						record.Metadata.CreatedDateTime = record.Item.DateCreated;
@@ -337,6 +341,8 @@ public sealed class BackupEngine : IBackupEngine
 							computeHashProgress,
 							cancellationToken
 						);
+
+						await delay.WaitAsync();
 
 						// ------------------------------------------------------------
 						// Commit: resolve path → move file → write sidecar
@@ -492,6 +498,8 @@ public sealed class BackupEngine : IBackupEngine
 						ActiveFiles = Array.Empty<BackupProgressItem>(),
 					};
 					progress?.Report(_currentProgress);
+
+					await delay.WaitAsync();
 				}
 			}
 			finally

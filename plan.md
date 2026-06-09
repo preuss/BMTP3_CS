@@ -82,6 +82,7 @@
 - [x] — **Devices wrapper-lag:** `IMediaDeviceInfo`/`MediaDeviceInfo`, `IMediaDevice`/`MediaDeviceWrapper`, `IMediaDrive`/`MediaDrive`, `IMediaDirectory`/`MediaDirectory`, `IMediaFile`/`MediaFile`, `IMediaItem`, `MediaFileAttribute` — 12 files, komplet abstraktion over MediaDevices.dll
 - [x] — **MTP pipeline NuGet-free:** `MediaDeviceTraversal` bruger `IMediaDirectory`/`IMediaFile`, `MediaDeviceContent` bruger `IMediaFile`
 - [x] — **ConnectedSource redesign:** `ISession`/`IConnectedSource`/`ISourceConnector`/`IConnectedMediaDriveSource`. `MediaDeviceSession`, `IMediaDeviceSession` slettet
+- [x] — **Delay feature:** `BackupPlan.Delay` (int), `Helpers/BackupDelay.cs` struct, validering i `BackupPlanValidator`, implementeret i `BackupEngine` loop, `--delay` CLI option + `BuildPlan` mapping
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
 
 ## Næste opgaver (prioriteret)
@@ -98,11 +99,11 @@
 | 4 | Progress skal fungere for Core2, Core3 og Core4 engines | ❌ |
 | 5 | Beslut: copy custom columns/spinners fra Core eller brug kun built-in Spectre | ❌ |
 
-### 2. Consoles CLI cleanup
+### 2. Consoles CLI cleanup + BackupPlan Delay
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | Delay/VerificationRetryTimeout — fjern validering eller tilføj til BackupPlan | ❌ |
+| 1 | **Tilføj `Delay` til `BackupPlan`** — `int` property: `< 0` = disabled, `0` = 0ms, `> 0` = N ms. Validér i `BackupPlanValidator`. `BackupDelay` struct i `Helpers/`. Implementér i `BackupEngine` processing loop (efter hvert item). `--delay` CLI option. | ✅ |
 | 2 | MTP sourcePath format — konstruer `mtp://{device}/{subPath}` URI | ❌ |
 | 3 | `--backup-index` default guard | ❌ |
 | 4 | Fjern Core2 `BackupEngineOptions` config | ❌ |

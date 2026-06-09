@@ -70,6 +70,9 @@ internal static class BackupPlanValidator
 		if(plan.MaxDegreeOfParallelism.HasValue && plan.MaxDegreeOfParallelism.Value <= 0)
 			throw new BackupPlanArgumentException("MaxDegreeOfParallelism must be greater than zero.");
 
+		// Delay is always valid (-1 = disabled, 0 = 0ms, >0 = N ms).
+		// No validation needed — any int is acceptable.
+
 		// --- Tier-gating (detect genuinely missing features) ---
 
 		// Tier 3 — Features that exist but are not yet production-tested

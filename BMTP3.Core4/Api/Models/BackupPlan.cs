@@ -176,6 +176,18 @@ public sealed record BackupPlan
 	public bool StopOnError { get; init; }
 
 	/// <summary>
+	/// Artificial delay in milliseconds between each processed item.
+	/// Used to slow down the backup flow so progress updates are visible.
+	///
+	/// <list type="bullet">
+	///   <item><c>-1</c> — delay disabled (no waiting at all).</item>
+	///   <item><c>0</c> — delay active but 0 ms (fastest possible).</item>
+	///   <item><c>&gt; 0</c> — wait N ms after each item.</item>
+	/// </list>
+	/// </summary>
+	public int Delay { get; init; } = 0;
+
+	/// <summary>
 	/// Defines how to handle inconsistencies when resuming from a previous session.
 	/// </summary>
 	public SessionResumeStrategy ResumeBehavior { get; init; } = SessionResumeStrategy.Continue;

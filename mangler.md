@@ -120,13 +120,14 @@
 
 | # | Issue | Detail |
 |---|-------|--------|
-| 1 | **Delay/VerificationRetry/Timeout** — guarded men ikke implementeret | `Delay`, `VerificationRetryCount`, `VerificationRetryDelayMs`, `VerificationTimeoutMs`, `VerificationDeleteOnFailure` valideres i `BackupConsoleCommand4.ValidateBackupOptions` men findes ikke i Core4's `BackupPlan`. Skal enten (a) tilføjes til BackupPlan + implementeres i engine, eller (b) validering fjernes + options ignoreres med warning. |
-| 2 | **MTP source path format** | `--source-device` sætter bart device navn, men Core4 forventer `mtp://Device/Path`. Løsning: konstruer `mtp://{deviceName}/{subPath}` URI i `BuildPlan`. |
-| 3 | **`--backup-index` default** | `Json` er korrekt (skal implementeres), men CLI må ikke sende Json før writer er klar |
-| 4 | **Core2 options i ApplicationServiceSetup** | `services.Configure<BackupEngineOptions>(...)` konfigurerer Core2, ikke Core4 |
-| 5 | **SignalInterrupt cancel-wiring** | `BackupConsoleCommand4` bruger `Console.CancelKeyPress` i stedet for Core4's `SignalInterrupt.On(Interrupt).Bind(cts).Create()` |
-| 6 | **ConsolesPrinter progress** | Flyttet til Task 09 (Spectre Console). Skal bruge `AnsiConsole.Progress()` widget |
-| 7 | **No tests for backup4** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
+| 1 | **Tilføj `Delay` til `BackupPlan`** | ✅ **DONE** | `BackupPlan.Delay` (int), `BackupDelay` struct i `Helpers/`, validering i `BackupPlanValidator`, implementeret i `BackupEngine` loop, `--delay` CLI option i `BackupOptionsModel4`. 249 tests, 0 errors. |
+| 2 | **Delay/VerificationRetry/Timeout** — guarded men ikke implementeret | `Delay`, `VerificationRetryCount`, `VerificationRetryDelayMs`, `VerificationTimeoutMs`, `VerificationDeleteOnFailure` valideres i `BackupConsoleCommand4.ValidateBackupOptions` men findes ikke i Core4's `BackupPlan`. Skal enten (a) tilføjes til BackupPlan + implementeres i engine, eller (b) validering fjernes + options ignoreres med warning. |
+| 3 | **MTP source path format** | `--source-device` sætter bart device navn, men Core4 forventer `mtp://Device/Path`. Løsning: konstruer `mtp://{deviceName}/{subPath}` URI i `BuildPlan`. |
+| 4 | **`--backup-index` default** | `Json` er korrekt (skal implementeres), men CLI må ikke sende Json før writer er klar |
+| 5 | **Core2 options i ApplicationServiceSetup** | `services.Configure<BackupEngineOptions>(...)` konfigurerer Core2, ikke Core4 |
+| 6 | **SignalInterrupt cancel-wiring** | `BackupConsoleCommand4` bruger `Console.CancelKeyPress` i stedet for Core4's `SignalInterrupt.On(Interrupt).Bind(cts).Create()` |
+| 7 | **ConsolesPrinter progress** | Flyttet til Task 09 (Spectre Console). Skal bruge `AnsiConsole.Progress()` widget |
+| 8 | **No tests for backup4** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
 
 
 ### Høj prioritet — TOML config reader
