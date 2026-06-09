@@ -47,6 +47,9 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 		int typeWidth = 14;
 		int sizeWidth = 12;
 		int freeWidth = 12;
+		int rootWidth = Math.Max(drives.Max(d => d.RootPath?.Length ?? 0), 10) + 2;
+
+		int totalWidth = nameWidth + typeWidth + sizeWidth + freeWidth + rootWidth;
 
 		Console.Out.WriteLine("Available backup sources:");
 		Console.Out.WriteLine(
@@ -55,11 +58,11 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 			"Type".PadRight(typeWidth),
 			"Total Size".PadLeft(sizeWidth),
 			"Free Space".PadLeft(freeWidth),
-			"Root Path"
+			"Root Path".PadRight(rootWidth)
 		);
 		Console.Out.WriteLine(
 			"  {0}",
-			new string('-', nameWidth + typeWidth + sizeWidth + freeWidth + 30)
+			new string('-', totalWidth)
 		);
 
 		foreach (BMTP3.Core4.Api.Models.DriveCatalogEntry drive in drives)
@@ -70,7 +73,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 				drive.SourceType.ToString().PadRight(typeWidth),
 				FormatSize(drive.TotalSize).PadLeft(sizeWidth),
 				FormatSize(drive.AvailableFreeSpace).PadLeft(freeWidth),
-				drive.RootPath
+				drive.RootPath.PadRight(rootWidth)
 			);
 		}
 

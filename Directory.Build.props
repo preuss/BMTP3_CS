@@ -1,9 +1,9 @@
 ﻿<Project>
 	<PropertyGroup>
 		<Major>0</Major>
-		<Minor>3</Minor>
-		<Patch>6</Patch>
-		<BuildNumber>1262</BuildNumber>
+		<Minor>4</Minor>
+		<Patch>0</Patch>
+		<BuildNumber>0</BuildNumber>
 		<ReleaseChannel>beta</ReleaseChannel>
 		<ReleaseChannelNumber>0</ReleaseChannelNumber>
 	<!--
