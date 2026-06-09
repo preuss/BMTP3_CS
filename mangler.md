@@ -1,7 +1,7 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 9 Jun 2026** — Drive matching fixed, SubPath navigation added, MtpUriParser restored. 248 tests.
-> Næste: BackupIndexType.Json implementering, Consoles CLI cleanup, Integration tests.
+> **Opdateret 9 Jun 2026** — Gap-analyse gennemført (Core, Core2, Core3 → Core4). Nye huller: TOML config, retry/resilience, Console UI progress, ISidecarService public.
+> Næste: BackupIndexType.Json implementering, TOML config reader, Consoles CLI cleanup, Integration tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -75,9 +75,9 @@
 
 ## Remaining Issues
 
-### Øverst — Komplet gap-analyse
+### ✅ Komplet gap-analyse (Core, Core2, Core3 → Core4)
 
-- [ ] **Gennemgang: Find alle manglende dele** — Krydsreferer **Core**, Core2 **og** Core3 features mod Core4. Tjek plan.md, mangler.md, Backup_Pipeline_Comparison_003.md. Målet er en komplet backlog.
+- [x] **Gennemgang: Find alle manglende dele** — Krydsrefereret alle features. Resultat: Feature audit nedenfor (§ Feature Audit) + nye huller tilføjet i dette dokument.
 
 ### Høj prioritet — BackupIndexType.Json
 
@@ -110,6 +110,35 @@
 | 7 | **No tests for backup4** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
 
 
+### Høj prioritet — TOML config reader
+
+| # | Task | Detail |
+|---|------|--------|
+| 1 | `--config` fil support | Implementer TOML-reader (genbrug Core3's `ConfigModel`/`BackupSettingsReader` mønster) |
+| 2 | Map TOML til `BackupPlan` | Oversæt settings-felter til Core4's `BackupPlan` properties |
+| 3 | CLI integration | `--config` option i `list-sources` og `backup4` commands |
+
+### Høj prioritet — Retry / Resilience (især MTP)
+
+| # | Task | Detail |
+|---|------|--------|
+| 1 | Retry strategy | Exponential backoff for transient I/O failures (download, hash, move, sidecar write) |
+| 2 | MTP resilience | Gatekeeper timeout + retry ved COMException/disconnect mid-session |
+| 3 | Overvej | Genbrug Core2's Polly `BackupResiliencePipeline` eller implementer lightweight retry |
+
+### Medium prioritet — Console UI progress
+
+| # | Task |
+|---|------|
+| 1 | ProgressBar / Spinner — implementer visuel progress i Consoles under backup |
+| 2 | `BackupProgress` integration — vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` live |
+
+### Medium prioritet — Public API overvejelser
+
+| # | Task |
+|---|------|
+| 1 | `ISidecarService` public? — var public i Core3, er `internal` i Core4. Overvej om eksterne forbrugere har brug for sidecar generation. |
+
 ### Høj prioritet — Integration test
 
 | # | Task |
@@ -126,8 +155,7 @@
 | 3 | **`EnableMetadata`** — metadata extraction | Linje 77-78 (Tier 3) |
 | 4 | **`MaxDegreeOfParallelism`** — parallel execution | Linje 88-89 (Tier 4) |
 | 4 | Hash algorithm CLI options | Expose comparison/verification hash valg |
-| 5 | Config file support | `--config` TOML/JSON loading for Core4 |
-| 6 | Erstat Core2 `backup` med Core4 som default | Når Core4 er feature-complete |
+| 5 | Erstat Core2 `backup` med Core4 som default | Når Core4 er feature-complete | Når Core4 er feature-complete |
 
 
 ### Low / Deferred

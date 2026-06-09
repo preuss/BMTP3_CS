@@ -1,7 +1,7 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 9 Jun 2026** — Core4 wired into Consoles (`backup4`). Drive matching fixed (Equals→StartsWith). SubPath navigation added to MediaDeviceTraversal. 248 tests.
-> Næste: Implementer BackupIndexType.Json, Consoles CLI cleanup, Integration tests.
+> **Opdateret 9 Jun 2026** — Gap-analyse gennemført (Core, Core2, Core3 → Core4). Nye huller identificeret: TOML config, retry/resilience, Console UI progress, ISidecarService public.
+> Næste: Implementer BackupIndexType.Json, TOML config reader, Consoles CLI cleanup, Integration tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -86,12 +86,10 @@
 
 ## Næste opgaver (prioriteret)
 
-### Øverst — Komplet gap-analyse
+### ✅ Komplet gap-analyse (Core, Core2, Core3 → Core4)
 
-- [ ] — **Gennemgang: Find alle manglende dele for at gøre Core4+Consoles produktionsklar**
-  Krydsreferer alle features fra **Core**, Core2 **og** Core3 mod Core4. Tjek plan.md, mangler.md, Backup_Pipeline_Comparison_003.md. 
-  Identify missing: services, interfaces, DI registrations, CLI options, test coverage, edge cases.
-  Målet er en komplet backlog så intet bliver opdaget sent.
+- [x] — **Gennemgang: Find alle manglende dele** — Krydsrefereret alle features fra Core, Core2 og Core3 mod Core4.
+  Resultat: Feature audit indarbejdet i `mangler.md` (§ Feature Audit, linje 176-280). Nye huller føjet nedenfor.
 
 ### Høj prioritet — BackupIndexType.Json implementering
 
@@ -119,6 +117,28 @@
 - [ ] — **ConsolesPrinter progress**: vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` fra Core4's `BackupProgress`
 - [ ] — **No tests for backup4**: tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping
 
+### Høj prioritet — TOML config reader
+
+- [ ] — **`--config` fil support**: Implementer TOML-reader (genbrug Core3's `ConfigModel`/`BackupSettingsReader` mønster)
+- [ ] — **Map TOML til `BackupPlan`**: oversæt settings-felter til Core4's `BackupPlan` properties
+- [ ] — **CLI integration**: `--config` option i `list-sources` og `backup4` commands
+- [ ] — **Overvej**: TOML → `BackupPlan` mapping i stedet for at genoprette Core's handler-hierarki
+
+### Høj prioritet — Retry / Resilience (især MTP)
+
+- [ ] — **Retry strategy**: exponential backoff for transient I/O failures (download, hash, move, sidecar write)
+- [ ] — **MTP resilience**: gatekeeper timeout + retry ved COMException/disconnect mid-session
+- [ ] — **Overvej**: genbrug Core2's Polly `BackupResiliencePipeline` eller implementer lightweight retry
+
+### Medium prioritet — Console UI progress
+
+- [ ] — **ProgressBar / Spinner**: implementer visuel progress i Consoles under backup (Core havde 20+ UI-filer)
+- [ ] — **`BackupProgress` integration**: vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` live
+
+### Medium prioritet — Public API overvejelser
+
+- [ ] — **`ISidecarService` public?**: var public i Core3, er `internal` i Core4. Overvej om eksterne forbrugere har brug for sidecar generation.
+
 ### Høj prioritet — Integration test
 
 - [ ] — Integration test: Full MTP traversal pipeline (gatekeeper → connector → traversal → content)
@@ -131,8 +151,16 @@
 - [ ] — **`EnableMetadata`**: metadata extraction (Tier 3)
 - [ ] — **`MaxDegreeOfParallelism`**: parallel execution (Tier 4)
 - [ ] — **Hash algorithm CLI options**: expose comparison/verification hash valg
-- [ ] — **Config file support**: `--config` TOML/JSON loading for Core4
 - [ ] — **Overvej**: Erstat Core2 `backup` med Core4 som default
+
+### Arkitekturforskelle (ikke 1:1 — bevidste valg)
+
+| Core / Core2 feature | Core4 status | Begrundelse |
+|---|---|---|
+| Handler-hierarki (IBackupHandler, IDriveHandler) | ➡️ Samlet i BackupEngine | Enklere arkitektur; engine dispatcher selv |
+| Pipeline stages (8 step-klasser med kanaler) | ➡️ Strategi-baseret loop | Mindre kompleksitet, færre allocations |
+| State machines (JobStateMachine, ItemStateMachine) | ➡️ Inline status i record | State machines overkill for sekventielt flow |
+| ScannerGatherer / IFileScanner / IMediaFileScanner | ⚠️ Core4 har FileSystemTraversal | Dækker filesystem; MTP traversal via MediaDeviceTraversal |
 
 ## Ref
 
