@@ -23,15 +23,6 @@ internal sealed class DriveCatalogService : IDriveCatalogService
 		{
 			IBackupDriveInfo drive = drives[i];
 
-			string? friendlyName = null;
-			string? model = null;
-
-			if (drive is IBackupMediaDriveInfo mediaDrive)
-			{
-				friendlyName = mediaDrive.FriendlyName;
-				model = mediaDrive.Model;
-			}
-
 			result[i] = new DriveCatalogEntry
 			{
 				Id = drive.Id,
@@ -40,8 +31,6 @@ internal sealed class DriveCatalogService : IDriveCatalogService
 				SourceType = drive.SourceType,
 				TotalSize = drive.TotalSize,
 				AvailableFreeSpace = drive.AvailableFreeSpace,
-				DeviceFriendlyName = friendlyName,
-				DeviceModel = model,
 			};
 		}
 

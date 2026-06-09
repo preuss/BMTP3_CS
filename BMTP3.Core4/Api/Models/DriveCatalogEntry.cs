@@ -15,8 +15,4 @@ public sealed record DriveCatalogEntry
 	public long TotalSize { get; init; }
 
 	public long AvailableFreeSpace { get; init; }
-
-	public string? DeviceFriendlyName { get; init; }
-
-	public string? DeviceModel { get; init; }
 }
