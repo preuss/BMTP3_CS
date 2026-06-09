@@ -1,7 +1,7 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 9 Jun 2026** — Spectre Console deep-dive + Core reusable assets analysis. Critical: ConsolesServiceSetup NOT wired. 6 custom ProgressColumn + 2 custom Spinner fundet i Core. Task 09 opdateret.
-> Næste: Fix ConsolesServiceSetup wiring, Spectre progress redesign (Task 09), Consoles CLI cleanup (Task 02).
+> **Opdateret 9 Jun 2026** — Devices wrapper-lag komplet (12 files). Hele MTP-pipeline (SourceConnector → ConnectedMediaDriveSource → MediaDeviceTraversal → MediaDeviceContent) bruger nu udelukkende wrapper-interfaces. Kun 2 discovery-filer mangler.
+> **#1 prioritet:** Spectre Console — Fix ConsolesServiceSetup wiring, progress redesign (Task 09), CLI cleanup (Task 02).
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -46,17 +46,14 @@
 | MTP arkitektur: `SourceTraversalItem.RelativePath` + `FileName` | ✅ **DONE** | Begge `required`. `BackupScanner` mapper properties — ingen `Path.*` kald. |
 | `BackupItem.Id` fiks | ✅ **DONE** | `Id = sourceItem.Id` i stedet for `relativePath` (unik på tværs af source roots). |
 | MTP Del 0: `MtpUriParser` | ✅ **DONE** | `MtpUriParser` + `MtpUriParseResult`. Parse `mtp://Device/Path`. 15 tests. |
-| MTP Del 1: `IMtpGatekeeper` + `MtpGatekeeper` | ✅ **DONE** | `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)` med `TimeoutException`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests. |
-| MTP Del 2: `IMtpDeviceSession` + `MtpDeviceSession` | ✅ **DONE** | Connect/disconnect, `[SupportedOSPlatform("windows7.0")]`. |
-| MTP Del 5 factory approach | ❌ **ROLLED BACK** | Forkert tilgang — traversalen skal ikke være disposable. Skal redesignes med `IOpenedSource`/`ISourceScope`. |
-| **IFileStore redesign → IBackupDriveInfo** | ✅ **DONE** | `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `Name.TrimStart('\\')` som `DriveName`). Omdøbt fra `FileSystemFileStore`/`MediaDeviceFileStore`. `Id ≠ RootPath`. |
+| MTP Del 1: `IMtpGatekeeper` → `IMediaDeviceGatekeeper` | ✅ **DONE** | Omdøbt til `IMediaDeviceGatekeeper`. `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)` med `TimeoutException`, `ThrowIfDisposed`, `Interlocked` dispose. 15 tests. |
+| MTP Del 2: Session redesign (erstattede `MtpDeviceSession`) | ✅ **DONE** | `IMtpDeviceSession`/`MtpDeviceSession` slettet. Erstattet af `ISession`/`IConnectedSource`/`IConnectedMediaDriveSource`. Connect/disconnect håndteres af `SourceConnector` + `BackupEngine`. |
+| MTP Del 5: factory approach (erstattet af SourceConnector) | ✅ **DONE** | `ISourceConnector.Connect()` + `ISourceTraversalFactory.Create()` — traversal er ikke disposable, session ejes af engine. "Rolled back"-notatet er forældet. |
+| **BackupMediaDriveInfo** | ✅ **DONE** | `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `Name.TrimStart('\\')` som `DriveName`). Omdøbt fra `FileSystemFileStore`/`MediaDeviceFileStore`. `Id ≠ RootPath`. |
 | **MTP test cleanup** | ✅ **DONE** | 16 tests fjernet der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. |
-| **NSubstitute 5.3.0** | ❌ **FJERNET** | Tilføjet men aldrig brugt. Alle 16 fjernede MTP tests er ren delegation — ikke værd at teste. NSubstitute krævede PackageSourceMapping-opdatering som ikke var nødvendig. |
+| **NSubstitute 5.3.0** | ✅ **GENINDSAT** | Kortvarigt fjernet, men genindsat. Bruges til mock af wrapper-interfaces (IMediaDeviceInfo, IMediaDrive, IMediaFile, etc.) — 5.3.0 i test .csproj. |
 | **xunit.v3 3.2.2** | ✅ **DONE** | Opgraderet. `Microsoft.NET.Test.Sdk` 18.6.0, `coverlet.collector` 10.0.1. |
-| **Discovery: IFileSystemSourceDiscovery** | ✅ **DONE** | `FileSystemSourceDiscovery`: `DriveInfo.GetDrives()`, filter `IsReady`, return `BackupFileSystemDriveInfo[]`. |
-| **Discovery: IMediaDeviceSourceDiscovery** | ✅ **DONE** | `MediaDeviceSourceDiscovery`: connect → `GetDrives()` → disconnect, skip ghost devices (`COMException 0x802A0001`). `[SupportedOSPlatform("windows7.0")]`. |
-| **Discovery: ICombinedSourceDiscovery** | ✅ **DONE** | `CombinedSourceDiscovery`: merge filesystem + MTP. Null-safe for non-Windows. Factory-registreret i DI. |
-| **Discovery: DI registrering** | ✅ **DONE** | `ServiceCollectionExtensions`: `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery` (kun Win 7+), `ICombinedSourceDiscovery` (factory). 0 warnings CA1416. |
+| **Discovery: IDriveProvider architecture** | ✅ **DONE** | `IDriveProvider` + `FileSystemDriveProvider` + `MediaDeviceDriveProvider` + `DriveProvider` (composite). Erstattede `IFileSystemSourceDiscovery`/`IMediaDeviceSourceDiscovery`/`ICombinedSourceDiscovery`. Filtrerer `IsReady`, skip ghost devices (`COMException 0x802A0001`). `[SupportedOSPlatform("windows7.0")]` for MTP. |
 | **IMediaDeviceSession → ISession** | ✅ **DONE** | `ISession` (simplificeret med `Name`). `IConnectedSource : ISession`. `MediaDeviceSession.cs`, `IMediaDeviceSession.cs`, `MediaDeviceSessionTests.cs` slettet. |
 | **IConnectedSourceFactory → ISourceConnector** | ✅ **DONE** | Omdøbt: `IConnectedSourceFactory` → `ISourceConnector`, `ConnectedSourceFactory` → `SourceConnector`, `Create()` → `Connect()`. `ConnectedSourceFactoryCreateRequest.cs`, `FileSystemTraversalFactoryStub.cs` slettet. |
 | **IConnectedMediaDeviceSource → IConnectedMediaDriveSource** | ✅ **DONE** | Ny: `IConnectedMediaDriveSource`/`ConnectedMediaDriveSource` med både `IMediaDevice Device` + `IMediaDrive Drive`. Gammel `IConnectedMediaDeviceSource`/`ConnectedMediaDeviceSource` slettet. |
@@ -65,7 +62,7 @@
 | **MediaDeviceTraversal — NuGet-free body** | ✅ **DONE** | Bruger `IMediaDirectory`/`IMediaFile` udelukkende — ingen `MediaDevices.dll` typer i body. Kører via `IConnectedMediaDriveSource.RootDirectory`. |
 | **IMediaFile.OpenRead() + MediaDeviceContent** | ✅ **DONE** | `IMediaFile.OpenRead()` tilføjet, `MediaFile` implementerer det. `MediaDeviceContent` bruger `IMediaFile` i stedet for `MediaFileInfo`. |
 | **BackupEngine.Create(connectedSource)** | ✅ **DONE** | `Create(connectedSource)` — 1 arg (ingen `IBackupDriveInfo`). Flow: list drives → match → connect → create traversal. |
-| **Build: 0 errors, 248 tests** | ✅ **DONE** | 0 errors, 0 warnings. 248 tests pass. |
+| **Build: 0 errors, 249 tests** | ✅ **DONE** | 0 errors, 0 warnings. 249 tests pass. |
 | **Drive matching fix (Equals→StartsWith)** | ✅ **DONE** | `BackupEngine.MatchDrive()` bruger `StartsWith` + separator-check. `GetRelativePath()` udregner sub-path. |
 | **MediaDeviceTraversal sub-path navigation** | ✅ **DONE** | `NavigateToSubDirectory()` via `IMediaDirectory.Directories` baseret på `SubPath`. |
 | **MtpUriParser genindsat** | ✅ **DONE** | Restored — parser krævet af produktion (drive matching + traversal navigation). |
@@ -78,10 +75,24 @@
 | **list-sources layout fikset** | ✅ **DONE** | Id column, split tables, column order/gaps |
 | **Backup4 end-to-end test** | ✅ **DONE** | 7 files discovered, 7 copied, 0 errors |
 | **Spectre Console deep-dive** | ✅ **DONE** | Complete map of all Spectre usage (10 locations). task-fil: 09-SpectreConsole.md |
+| **Devices wrapper-lag (12 files)** | ✅ **DONE** | `IMediaDeviceInfo`/`MediaDeviceInfo`, `IMediaDevice`/`MediaDeviceWrapper`, `IMediaDrive`/`MediaDrive`, `IMediaDirectory`/`MediaDirectory`, `IMediaFile`/`MediaFile`, `IMediaItem`, `MediaFileAttribute` — komplet abstraktion over MediaDevices.dll |
+| **SourceConnector bruger wrappers** | ✅ **DONE** | Connecter via `MediaDeviceInfo.GetDevices()` → `IMediaDeviceInfo.Connect()` → `IMediaDevice.Drives` → `ConnectedMediaDriveSource(IMediaDevice, IMediaDrive)` |
+| **ConnectedMediaDriveSource bruger wrappers** | ✅ **DONE** | `ConnectedMediaDriveSource(IMediaDevice, IMediaDrive)` i stedet for concrete `MediaDevice`/`MediaDriveInfo` |
+| **MediaDeviceTraversal bruger wrappers** | ✅ **DONE** | `IMediaDevice`, `IMediaDrive`, `IMediaDirectory.Directories`/`Files` — ingen `MediaDevices.dll` typer i body |
+| **MediaDeviceContent bruger IMediaFile** | ✅ **DONE** | `IMediaFile.OpenRead()` i stedet for concrete `MediaFileInfo` |
 
 ---
 
 ## Remaining Issues
+
+### ✅ Devices wrapper-integration i discovery (småopgave — sidste 2 filer)
+
+**Status:** Pipeline (SourceConnector → ConnectedMediaDriveSource → MediaDeviceTraversal → MediaDeviceContent) er fuldt integreret. Kun discovery-laget mangler:
+
+| # | File | Nuværende | Skal ændres til |
+|---|------|-----------|-----------------|
+| 1 | `DriveDiscovery/MediaDeviceDriveProvider.cs` | `MediaDevice.GetDevices()` + `MediaDriveInfo` + `BackupMediaDriveInfo(device, drive)` | Brug `MediaDeviceInfo.GetDevices()` + `IMediaDrive` + `BackupMediaDriveInfo(IMediaDeviceInfo, IMediaDrive)` |
+| 2 | `Storage/BackupMediaDriveInfo.cs` | `(MediaDevice, MediaDriveInfo)` | `(IMediaDeviceInfo, IMediaDrive)` |
 
 ### ✅ Komplet gap-analyse (Core, Core2, Core3 → Core4)
 
@@ -103,7 +114,7 @@
 
 ### Høj prioritet — Public DriveCatalog API
 
-**Implementeret.** `IDriveCatalogService` + `DriveCatalogEntry` + `DriveCatalogService` + DI registration. 0 errors, 248 tests.
+**Implementeret.** `IDriveCatalogService` + `DriveCatalogEntry` + `DriveCatalogService` + DI registration. 0 errors, 249 tests.
 
 ### Høj prioritet — Consoles CLI cleanup (før release)
 
@@ -226,7 +237,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | # | Feature | Status | Noter |
 |---|---|---|---|
 | 1 | `IBackupHandler` / handler-hierarki (Device, Drive, MediaDevice, Print, Verify) | ➡️ | Core4 har samlet `BackupEngine` i stedet for per-source handlers |
-| 2 | `IBackupScanner` / `ScannerGatherer` | ⚠️ | Core4 har `IBackupScanner` men `ScannerGathererStub` — scanner-logik mangler |
+| 2 | `IBackupScanner` / `ScannerGatherer` | ✅ | Core4 har `IBackupScanner` / `BackupScanner` — real implementation (ingen stub). `ScannerGathererStub` slettet. |
 | 3 | `IFileComparer` + 8 chunked compare algoritmer + `Md5Comparer` | ✅ | Core4 har `IFileCompareService` + `BinaryFileComparerSelector` + 5 algoritmer |
 | 4 | `ISideCarDocumentBuilder` / `ISideCarMetaDataBuilder` | ➡️ | Core4 har `ISidecarService` / `SidecarService` — Document/Section/Property model |
 | 5 | `BackupTimeStamp` / `BackupTimeStampForDevice` / `BackupTimeStampForDrive` | ➡️ | Core4 har `IEarliestTimestampResolutionService` — langt mere avanceret |
@@ -236,7 +247,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | 9 | `IEventLogger` | ➡️ | Core4 bruger `ILogger<T>` fra MS.Extensions |
 | 10 | `IGetLatestItem` / `IGetLatestItemFromIndex` | ➡️ | Core4 har `ISessionStateService` / `IBackupRecordRepository` |
 | 11 | `BackupMaster` / `BackupHelper` / `ConfigurationHandler` | ❌ | Orchestrator/helper — nogle dele mangler i Core4 |
-| 12 | `MediaDeviceServiceProd` / `IMediaDeviceService` | ❌ | MTP kaster `NotSupportedException` i Core4 |
+| 12 | `MediaDeviceServiceProd` / `IMediaDeviceService` | ➡️ | Core4 har `IMediaDeviceGatekeeper` + `MediaDeviceTraversal` i stedet. MTP understøttet. |
 | 13 | `NExifTool` / `MetadataExtractorFileInfo` / `AbstractMetadataFileInfo` | ➡️ | Core4 bruger MetadataExtractor i stedet for ExifTool |
 | 14 | `VerifyBackupHandler` | ⚠️ | Core4 har inline hash verification i `BackupEngine` (`plan.PostWriteVerification == Hash`). Ingen separat handler/interface. |
 | 15 | `BackupRecordDataStore` / `BackupRecordDataStorePathResolver` | ✅ | Core4 har `BackupJsonSummaryStore` / `SessionStateService` |
@@ -268,7 +279,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | 16 | `IBackupItem` / `BackupItem` / `BackupMetadata` | ➡️ | Core4 har `BackupItem` / `ItemMetadata` — lignende men forskellige |
 | 17 | `IContent` / `FileContent` / `MediaFileContent` / `GatekeptStream` / `IMoveableContent` | ✅ | Core4 har samme mønster: `IContent` / `FileContent` / `IMoveableContent` / `MoveableFileContent` |
 | 18 | `IFileScanner` / `IMediaFileScanner` / `DirectoryScanner` / `MediaFileScanner` | ⚠️ | Core4 har `FileSystemTraversal` — scanner-logik mangler for MTP/media |
-| 19 | `MTPGatekeeperService` / `MTPMtpDeviceSession` / `MTPMtpDeviceSessionFactory` / `MtpDeviceUtils` | ❌ | Core4: MTP kaster `NotSupportedException` |
+| 19 | `MTPGatekeeperService` / `MTPMtpDeviceSession` / `MTPMtpDeviceSessionFactory` / `MtpDeviceUtils` | ➡️ | Core4 har `IMediaDeviceGatekeeper`/`MediaDeviceGatekeeper` + `ISourceConnector`/`SourceConnector`. MTP pipeline fuldt implementeret. |
 | 20 | `PathNormalizer` / `GlobMatcher` | ⚠️ | Core4 har `NormalizeRelativeDirectory`/`NormalizeCustomRelativePath` + `GlobMatcher` |
 | 21 | `exifreader` (15 parsers, 11 readers, 14 candidates, tag definitions, formatter) | ✅ | Core4 har timestamp subsystem i `Engine/TimeStamp/` — samme kodebase flyttet |
 | 22 | `IBackupItemRepository` / `BackupItemRepository` / `IFileAttributeRepository` / `ITimestampRepository` | ❌ | Core4 har `IBackupRecordRepository` / `SessionStateService` — anderledes scope |
@@ -289,7 +300,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | 1 | `IBackupEngine` / `BackupEngineSequential` | ✅ | Core4 har `IBackupEngine` / `BackupEngine` — mere avanceret |
 | 2 | `IBackupProgress` / `BackupProgress` | ✅ | Core4 har `BackupProgress` / `BackupProgressItem` |
 | 3 | `BackupPhase` (6 faser: Scan→Transfer→Metadata→Hash→Timestamp→Sidecar) | ✅ | Core4 har samme flow men ikke som enum |
-| 4 | `IBackupScanner` / `FileSystemScanner` | ⚠️ | Core4 har scanner men `ScannerGathererStub` |
+| 4 | `IBackupScanner` / `FileSystemScanner` | ✅ | Core4 har `IBackupScanner` / `BackupScanner` — real implementation. `ScannerGathererStub` slettet. |
 | 5 | `IFileTransfer` / `SimpleFileTransfer` (buffered copy + collision) | ➡️ | Core4 har `IDownloadService` + `IMoveableContent.MoveTo()` |
 | 6 | `IHashGenerator` / `IItemHasher` / `StreamHashGenerator` + `Blake3Digest` | ✅ | Core4 har samme mønster i `Engine/Hashing/` |
 | 7 | `IMetadataReader` / `FileMetadataReader` (basic FileInfo metadata) | ➡️ | Core4 har `EarliestTimestampResolutionService` — langt mere |
@@ -303,7 +314,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 
 | Område | Status | Hvad mangler |
 |---|---|---|
-| **Scanner** | ❌ | `ScannerGathererStub` — ikke implementeret |
+| **Scanner** | ✅ | `BackupScanner` implementeret. `ScannerGathererStub` slettet. Scanner-gap er lukket. |
 | **Verify** | ⚠️ | Hash verification implementeret inline i `BackupEngine`. Ingen separat `IPostWriteVerification`. |
 | **BackupIndexType.Json** | ❌ | `IBackupIndexWriter` + `JsonBackupIndexWriter` mangler. Feature gate (Tier 3). |
 | **BackupIndexType.Database** | ❌ | SQLite catalog. Feature gate (Tier 4). |
@@ -317,8 +328,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **SpectreAnsiConsoleLogger markup safety** | ❌ | `MarkupLineInterpolated` parser markup — crash på `[`/`]` i log messages |
 | **Custom ProgressColumns/Spinners** | ❌ | 6 custom columns + 2 custom spinners i Core. Beslut: port eller skip? |
 | **ISidecarService public** | ⚠️ | `internal` i Core4, var `public` i Core3 |
-| **MTP Discovery** | ✅ **DONE** | `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery`, `ICombinedSourceDiscovery` implementeret. |
-| **MTP Traversal** | ✅ **DONE** | `MediaDeviceTraversal` via `IMediaDirectory`/`IMediaFile`. `SourceTraversalFactory` pattern-matches på `IConnectedMediaDriveSource`. |
+| **MTP Discovery + Traversal** | ✅ **DONE** | Hele pipeline: `SourceConnector` (via `IMediaDeviceInfo`/`IMediaDrive`), `ConnectedMediaDriveSource` (`IMediaDevice`+`IMediaDrive`), `MediaDeviceTraversal` (`IMediaDirectory`/`IMediaFile`), `MediaDeviceContent` (`IMediaFile`). Kun `MediaDeviceDriveProvider` + `BackupMediaDriveInfo` mangler wrapper-opdatering. |
 | **Consoles CLI cleanup** | ⚠️ | Ubrugte options valideres, MTP path format, Core2 options config |
 | **INI/JSON sidecar** | ✅ **DONE** | Full Document/Section/Property model + Ini + Json writers |
 | **DryRun** | ✅ **DONE** | `BuildDryRunResult` helper, short-circuit |

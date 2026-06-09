@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 9 Jun 2026** — Spectre Console deep-dive + Core reusable assets analysis. Findings: ConsolesServiceSetup NOT wired (critical blocker), 6 custom ProgressColumn classes, 2 custom Spinners. Task 09 updated with full catalog. Næste: Fix ConsolesServiceSetup wiring, then progress redesign.
+> **Opdateret 9 Jun 2026** — Devices wrapper-lag komplet (12 files). MTP pipeline NuGet-free. Spectre Console #1 prioritet. Næste: Fix ConsolesServiceSetup, progress redesign, integrér sidste 2 wrapper-holdere.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -58,114 +58,93 @@
 - [x] — `BackupScanner` renset: ingen `Path.*` kald, `Id = sourceItem.Id` i stedet for `relativePath`
 - [x] — `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests.
 - [x] — `IMtpGatekeeper` + `MtpGatekeeper` — `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests.
-- [x] — `IMtpDeviceSession` + `MtpDeviceSession` — connect/disconnect, `[SupportedOSPlatform("windows7.0")]`
-- [x] — **IFileStore redesign → `IBackupDriveInfo`** — `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `VolumeLabel`-baseret `DriveName`). Omdøbt: `FileSystemFileStore` → `BackupFileSystemDriveInfo`, `MediaDeviceFileStore` → `BackupMediaDriveInfo`.)
+- [x] — `IMediaDeviceSession` erstattet af `ISession`/`IConnectedSource`/`IConnectedMediaDriveSource`. `MediaDeviceSession`/`IMediaDeviceSession` slettet.
+- [x] — **IFileStore redesign → `IBackupDriveInfo`** — `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `Name.TrimStart('\\')` som `DriveName`). Omdøbt: `FileSystemFileStore` → `BackupFileSystemDriveInfo`, `MediaDeviceFileStore` → `BackupMediaDriveInfo`.)
 - [x] — **MTP test cleanup** — Fjernet 16 tests der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. Opgraderet til xunit.v3 3.2.2.
-- [x] — **`IFileSystemSourceDiscovery`** — `FileSystemSourceDiscovery`: `DriveInfo.GetDrives()`, filter `IsReady`, return `BackupFileSystemDriveInfo[]`
-- [x] — **`IMediaDeviceSourceDiscovery`** — `MediaDeviceSourceDiscovery`: connect → `GetDrives()` → disconnect, skip ghost devices (`COMException 0x802A0001`)
-- [x] — **`ICombinedSourceDiscovery`** — `CombinedSourceDiscovery`: merge filesystem + MTP. Null-safe for non-Windows.
-- [x] — **DI registrering:** Discovery services registreret i `ServiceCollectionExtensions`. `MediaDeviceSourceDiscovery` kun på Windows 7+.
+- [x] — **`IDriveProvider` architecture**: `IDriveProvider` + `FileSystemDriveProvider` + `MediaDeviceDriveProvider` + `DriveProvider` (composite). Erstattede `IFileSystemSourceDiscovery`/`IMediaDeviceSourceDiscovery`/`ICombinedSourceDiscovery`.
+- [x] — **DI registrering:** `FileSystemDriveProvider`, `MediaDeviceDriveProvider` (kun Win 7+), `DriveProvider` (composite) registreret i `ServiceCollectionExtensions`.
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
 - [x] — **Session redesign:** `IMediaDeviceSession` → `ISession`, `IConnectedSource : ISession`. Slettet gamle session-filer.
 - [x] — **Factory rename:** `IConnectedSourceFactory` → `ISourceConnector`, `Create()` → `Connect()`. Slettet `ConnectedSourceFactoryCreateRequest.cs`, `FileSystemTraversalFactoryStub.cs`.
 - [x] — **Source type redesign:** `IConnectedMediaDeviceSource` → `IConnectedMediaDriveSource` (både `IMediaDevice Device` + `IMediaDrive Drive`).
-- [x] — **SourceConnector:** `FindMediaDeviceSource()` matcher `IMediaDrive` via `DriveName` fra `Device.Drives`.
+- [x] — **SourceConnector:** Bruger `IMediaDeviceInfo.GetDevices()` → `IMediaDeviceInfo.Connect()` → `IMediaDevice.Drives` → `ConnectedMediaDriveSource(IMediaDevice, IMediaDrive)`.
 - [x] — **SourceTraversalFactory:** `Create(IConnectedSource)` — 1 param, pattern-matching på source types, injecter `IMediaDeviceGatekeeper`.
 - [x] — **MediaDeviceTraversal:** Bruger `IMediaDirectory`/`IMediaFile` — ingen NuGet typer i body.
 - [x] — **IMediaFile.OpenRead()** tilføjet, `MediaDeviceContent` opdateret til at bruge `IMediaFile`.
 - [x] — **BackupEngine.Create(connectedSource):** 1 arg (ingen `IBackupDriveInfo`).
-- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 248 passed.
-- [x] — **Validator gates relaxed**: 16 af 20 `FeatureNotImplementedException` gates fjernet. Resterer: `EnableMetadata` (T3), `BackupIndexType.Json` (T3), `StopOnError=false` (T3), `BackupIndexType.Database` (T4), `MaxDegreeOfParallelism` (T4).
+- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
+- [x] — **Validator gates relaxed**: 15 af 20 `FeatureNotImplementedException` gates fjernet. Resterer (5): `EnableMetadata` (T3), `BackupIndexType.Json` (T3), `StopOnError=false` (T3), `BackupIndexType.Database` (T4), `MaxDegreeOfParallelism` (T4).
 - [x] — **Core4 i Consoles:** `BackupConsoleCommand4.cs` + helpers, `ConsolesPrinter` opdateret med Core4 overloads, `ApplicationServiceSetup` registrerer `AddBMTP3Core4()`, `backup4` subcommand tilgængelig.
 - [x] — **Drive matching fix:** `BackupEngine.MatchDrive()` bruger `StartsWith` i stedet for `Equals`. Relative sub-path extracted til `SourceTraversalRequest.SubPath`.
 - [x] — **MediaDeviceTraversal sub-path:** `NavigateToSubDirectory()` navigerer gennem `IMediaDirectory.Directories` baseret på `SubPath`.
 - [x] — **MtpUriParser genindsat:** Restored + tests. Parser krævet af produktion.
 - [x] — **DriveCatalog API**: `IDriveCatalogService` + `DriveCatalogEntry` + `DriveCatalogService` + DI registration
-- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 248 passed.
+- [x] — **Devices wrapper-lag:** `IMediaDeviceInfo`/`MediaDeviceInfo`, `IMediaDevice`/`MediaDeviceWrapper`, `IMediaDrive`/`MediaDrive`, `IMediaDirectory`/`MediaDirectory`, `IMediaFile`/`MediaFile`, `IMediaItem`, `MediaFileAttribute` — 12 files, komplet abstraktion over MediaDevices.dll
+- [x] — **MTP pipeline NuGet-free:** `MediaDeviceTraversal` bruger `IMediaDirectory`/`IMediaFile`, `MediaDeviceContent` bruger `IMediaFile`
+- [x] — **ConnectedSource redesign:** `ISession`/`IConnectedSource`/`ISourceConnector`/`IConnectedMediaDriveSource`. `MediaDeviceSession`, `IMediaDeviceSession` slettet
+- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
 
 ## Næste opgaver (prioriteret)
 
-> 📂 Hver opgave har en detaljeret task-fil i `tasks/` mappen med alt nødvendigt info.
+### 1. 🥇 Spectre Console progress redesign (højeste prioritet)
 
-- [x] — **StopOnError bypass:** `BuildPlan()` sætter `StopOnError = true` så Tier 3 gate ikke slår til
-- [x] — **MatchDrive fixed:** separator check accepterer `C:\` (root paths ending with `\`). `Guard.RequireNonNull(drive)` + `sourcePath.Replace("/", "\\")` tilføjet
-- [x] — **ConsolesPrinter markup crash fixed:** alle interpolerede values `.EscapeMarkup()`. `[bold]` scope fikset — kun `Job` bold, ikke hele linjen
-- [x] — **Progress logger silenced:** `logger.LogInformation` i progress handler kommenteret ud
-- [x] — **Directory.Build.props restored** from git (accidental truncation)
-- [x] — **list-sources layout fikset:** `Id` column added som første kolonne. Output splittet i separate tables for FileSystem (`Id/Name` header) vs MediaDevice (`Id` + `Name`). Column order: Id/Name, Type, Root Path, Total Size, Free Space. Gaps mellem columns.
-- [x] — **Backup4 end-to-end test:** 7 files discovered, 7 copied, 0 errors (second run: 7 skipped, 0 failures). Ingen console crash.
-- [x] — **Spectre Console deep-dive:** complete map of all Spectre usage across Core + Consoles (10 locations). Findings in tasks/09-SpectreConsole.md.
+> Se `tasks/09-SpectreConsole.md` for fuld arkitekturdesign + reusable assets catalog.
 
-### ✅ Komplet gap-analyse (Core, Core2, Core3 → Core4)
+| # | Task | Status |
+|---|------|--------|
+| 1 | **⚠️ FØRST: Wire `ConsolesServiceSetup` i `ApplicationStartup.cs`** — ellers er progress no-ops | ❌ |
+| 2 | Erstat `WriteLine` flood i `ConsolesPrinter.PrintProgress` med `AnsiConsole.Progress()` widget | ❌ |
+| 3 | Fix `SpectreAnsiConsoleLogger` unsafe `MarkupLineInterpolated` | ❌ |
+| 4 | Progress skal fungere for Core2, Core3 og Core4 engines | ❌ |
+| 5 | Beslut: copy custom columns/spinners fra Core eller brug kun built-in Spectre | ❌ |
 
-- [x] — **Gennemgang: Find alle manglende dele** — Krydsrefereret alle features fra Core, Core2 og Core3 mod Core4.
-  Resultat: Feature audit indarbejdet i `mangler.md` (§ Feature Audit, linje 176-280). Nye huller føjet nedenfor.
+### 2. Consoles CLI cleanup
 
-### ✅ Public DriveCatalog API
+| # | Task | Status |
+|---|------|--------|
+| 1 | Delay/VerificationRetryTimeout — fjern validering eller tilføj til BackupPlan | ❌ |
+| 2 | MTP sourcePath format — konstruer `mtp://{device}/{subPath}` URI | ❌ |
+| 3 | `--backup-index` default guard | ❌ |
+| 4 | Fjern Core2 `BackupEngineOptions` config | ❌ |
+| 5 | SignalInterrupt cancel-wiring — brug Core4's SignalInterrupt | ❌ |
+| 6 | Tests for backup4 BuildPlan enum-mapping | ❌ |
 
-- [x] — **DriveCatalog API**: `IDriveCatalogService` (Api/), `DriveCatalogEntry` (Api/Models/), `DriveCatalogService` (DriveDiscovery/), DI registration — **implementeret**
+### 3. Integrér sidste wrapper-holdere (småopgave)
 
-### Høj prioritet — Consoles CLI cleanup (før release)
+| # | File | Nuværende | Skal ændres til |
+|---|------|-----------|-----------------|
+| 1 | `MediaDeviceDriveProvider` | `MediaDevice` / `MediaDriveInfo` | `MediaDeviceInfo` / `MediaDrive` |
+| 2 | `BackupMediaDriveInfo` | `(MediaDevice, MediaDriveInfo)` | `(IMediaDeviceInfo, IMediaDrive)` |
 
-- [ ] — **Task 02** → `tasks/02-Consoles-CLI-Cleanup.md`
-  1. Delay/VerificationRetryTimeout — fjern validering eller tilføj til BackupPlan
-  2. MTP sourcePath format — konstruer `mtp://{device}/{subPath}` URI
-  3. `--backup-index` default guard — først Json når Task 01 er done
-  4. Fjern Core2 `BackupEngineOptions` config
-  5. SignalInterrupt cancel-wiring — brug Core4's SignalInterrupt
-   6. ~~ConsolesPrinter progress~~ — flyttet til Task 09 (Spectre Console)
-  7. Tests for backup4 BuildPlan enum-mapping
+### 4. TOML config reader
 
-### Høj prioritet — TOML config reader
+- Genbrug Core3's ConfigModel/BackupSettingsReader
+- CLI `--config` option + merge med CLI args
 
-- [ ] — **Task 03** → `tasks/03-TOML-Config-Reader.md`
-  - Genbrug Core3's ConfigModel/BackupSettingsReader
-  - CLI `--config` option + merge med CLI args
+### 5. Retry / Resilience (især MTP)
 
-### Høj prioritet — Retry / Resilience (især MTP)
+- Exponential backoff helper
+- MTP resilience (COMException, disconnect)
+- Lightweight retry uden Polly dependency
 
-- [ ] — **Task 04** → `tasks/04-Retry-Resilience.md`
-  - Exponential backoff helper
-  - MTP resilience (COMException, disconnect)
-  - Lightweight retry uden Polly dependency
+### 6. Integration test
 
-### Høj prioritet — Spectre Console progress redesign
+- MTP traversal pipeline test (mock via NSubstitute)
+- BackupEngine end-to-end test
 
-- [ ] — **Task 09** → `tasks/09-SpectreConsole.md`
-  - **⚠️ FØRST:** Wire `ConsolesServiceSetup` i `ApplicationStartup.cs` — ellers er progress no-ops
-  - Erstat `WriteLine` flood i `ConsolesPrinter.PrintProgress` med `AnsiConsole.Progress()` widget
-  - Fix `SpectreAnsiConsoleLogger` unsafe `MarkupLineInterpolated`
-  - Progress skal fungere for Core2, Core3 og Core4 engines
-  - Beslut: copy custom columns/spinners fra Core eller brug kun built-in Spectre
-  - Se task-fil for arkitekturdesign, 3 options + reusable assets catalog
+### 7. BackupIndexType.Json catalog
 
-### Medium prioritet — Public API overvejelser
+- `IBackupIndexWriter` + `JsonBackupIndexWriter` + wire i engine
 
-- [ ] — **Task 07** → `tasks/07-ISidecarService-Public.md`
-  - Beslut: skal `ISidecarService` være public som i Core3?
+### 8. Public API overvejelser
 
-### Høj prioritet — Integration test
+- `ISidecarService` public?
 
-- [ ] — **Task 05** → `tasks/05-Integration-Tests.md`
-  - MTP traversal pipeline test
-  - BackupEngine end-to-end test
+### 9. Senere (feature gates + default)
 
-### Senere
-
-- [ ] — **Task 08** → `tasks/08-13-Later-Tasks.md` — `StopOnError=false` (T3)
-- [ ] — **Task 10** → `tasks/08-13-Later-Tasks.md` — `BackupIndexType.Database` (T4)
-- [ ] — **Task 11** → `tasks/08-13-Later-Tasks.md` — `EnableMetadata` (T3)
-- [ ] — **Task 12** → `tasks/08-13-Later-Tasks.md` — `MaxDegreeOfParallelism` (T4)
-- [ ] — **Task 13** → `tasks/08-13-Later-Tasks.md` — Hash algorithm CLI options
-- [ ] — **Task 14** → `tasks/08-13-Later-Tasks.md` — Erstat Core2 backup med Core4 som default
-
-### Lavest prioritet — BackupIndexType.Json catalog
-
-- [ ] — **Task 01** → `tasks/01-BackupIndexType.Json.md`
-  - `IBackupIndexWriter` interface + `JsonBackupIndexWriter` + `BackupIndexCatalog` model
-  - Wire i `BackupEngine` efter processing loop
-  - DI registration + fjern T3 gate
-  - JSON schema: `{destination}\.bmtp3\{sessionId}.catalog.json` med hashes + timestamps
+- `StopOnError=false` (T3), `BackupIndexType.Database` (T4), `EnableMetadata` (T3), `MaxDegreeOfParallelism` (T4)
+- Hash algorithm CLI options
+- Erstat Core2 `backup` med Core4 som default
 
 ### Arkitekturforskelle (ikke 1:1 — bevidste valg)
 
@@ -174,7 +153,7 @@
 | Handler-hierarki (IBackupHandler, IDriveHandler) | ➡️ Samlet i BackupEngine | Enklere arkitektur; engine dispatcher selv |
 | Pipeline stages (8 step-klasser med kanaler) | ➡️ Strategi-baseret loop | Mindre kompleksitet, færre allocations |
 | State machines (JobStateMachine, ItemStateMachine) | ➡️ Inline status i record | State machines overkill for sekventielt flow |
-| ScannerGatherer / IFileScanner / IMediaFileScanner | ⚠️ Core4 har FileSystemTraversal | Dækker filesystem; MTP traversal via MediaDeviceTraversal |
+| ScannerGatherer / IFileScanner / IMediaFileScanner | ✅ Filesystem + MTP traversal | Begge dækket (`FileSystemTraversal` + `MediaDeviceTraversal`) |
 
 ## Ref
 
