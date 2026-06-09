@@ -1,4 +1,3 @@
-using System.CommandLine;
 using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
@@ -7,6 +6,7 @@ using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Api.Response;
 using BMTP3.Core2.BackupNew.Domain.Job;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -61,8 +61,8 @@ public class BackupTestConsoleCommand : BaseConsoleCommand
 			SourcePath = BackupOptions.SourceDirectory ?? ".",
 			SourceId = BackupOptions.SourceDevice ?? string.Empty,
 			OutputPath = BackupOptions.OutputDirectory?.FullName ??
-			             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
-				             "BMTP3_Backups"),
+						 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile),
+							 "BMTP3_Backups"),
 			Recursive = BackupOptions.Recursive
 		};
 

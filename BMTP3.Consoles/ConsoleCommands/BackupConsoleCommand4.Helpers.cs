@@ -1,21 +1,21 @@
-using System.CommandLine;
-using System.CommandLine.Parsing;
+using BMTP3.Consoles.ConsoleCommands.Core4;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
-using Core4BackupSourceType = BMTP3.Core4.Api.Models.Enums.BackupSourceType;
-using Core4CollisionStrategy = BMTP3.Core4.Api.Models.Enums.CollisionStrategy;
-using Core4CollisionComparisonType = BMTP3.Core4.Api.Models.Enums.CollisionComparisonType;
-using Core4RenameStrategy = BMTP3.Core4.Api.Models.Enums.RenameStrategy;
-using Core4SidecarFormat = BMTP3.Core4.Api.Models.Enums.SidecarFormat;
+using System.CommandLine;
 using Core4BackupIndexType = BMTP3.Core4.Api.Models.Enums.BackupIndexType;
+using Core4BackupSourceType = BMTP3.Core4.Api.Models.Enums.BackupSourceType;
+using Core4CollisionComparisonType = BMTP3.Core4.Api.Models.Enums.CollisionComparisonType;
+using Core4CollisionStrategy = BMTP3.Core4.Api.Models.Enums.CollisionStrategy;
+using Core4HashAlgorithmType = BMTP3.Core4.Api.Models.Enums.HashAlgorithmType;
 using Core4OutputStructureStrategy = BMTP3.Core4.Api.Models.Enums.OutputStructureStrategy;
 using Core4PostWriteVerificationType = BMTP3.Core4.Api.Models.Enums.PostWriteVerificationType;
-using Core4HashAlgorithmType = BMTP3.Core4.Api.Models.Enums.HashAlgorithmType;
+using Core4RenameStrategy = BMTP3.Core4.Api.Models.Enums.RenameStrategy;
+using Core4SidecarFormat = BMTP3.Core4.Api.Models.Enums.SidecarFormat;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
 internal static class BackupConsoleCommand4Helpers
 {
-	public static BMTP3.Core4.Api.Models.BackupPlan BuildPlan(BackupOptionsModel backupOptions, ParseResult parseResult)
+	public static BMTP3.Core4.Api.Models.BackupPlan BuildPlan(BackupOptionsModel4 backupOptions, ParseResult parseResult)
 	{
 		ArgumentNullException.ThrowIfNull(backupOptions);
 		ArgumentNullException.ThrowIfNull(parseResult);
@@ -46,77 +46,77 @@ internal static class BackupConsoleCommand4Helpers
 		List<Core4HashAlgorithmType> comparisonHashAlgorithms = new() { Core4HashAlgorithmType.SHA2_256 };
 		List<Core4HashAlgorithmType> verificationHashAlgorithms = new() { Core4HashAlgorithmType.SHA2_256 };
 
-		if(WasSupplied(parseResult, BackupOptionsModel.NameOption) && !string.IsNullOrWhiteSpace(backupOptions.Name))
+		if (WasSupplied(parseResult, BackupOptionsModel4.NameOption) && !string.IsNullOrWhiteSpace(backupOptions.Name))
 			name = backupOptions.Name;
 
-		if(WasSupplied(parseResult, BackupOptionsModel.SourceDeviceOption) && !string.IsNullOrWhiteSpace(backupOptions.SourceDevice))
+		if (WasSupplied(parseResult, BackupOptionsModel4.SourceDeviceOption) && !string.IsNullOrWhiteSpace(backupOptions.SourceDevice))
 		{
 			sourceType = Core4BackupSourceType.MediaDevice;
 			sourcePath = backupOptions.SourceDevice;
 		}
 
-		if(WasSupplied(parseResult, BackupOptionsModel.SourceDirectoryOption) && !string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
+		if (WasSupplied(parseResult, BackupOptionsModel4.SourceDirectoryOption) && !string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
 		{
 			sourceType = Core4BackupSourceType.FileSystem;
 			sourcePath = backupOptions.SourceDirectory;
 		}
 
-		if(WasSupplied(parseResult, BackupOptionsModel.OutputDirectoryOption) && backupOptions.OutputDirectory != null)
+		if (WasSupplied(parseResult, BackupOptionsModel4.OutputDirectoryOption) && backupOptions.OutputDirectory != null)
 			destination = backupOptions.OutputDirectory.FullName;
 
-		if(WasSupplied(parseResult, BackupOptionsModel.RecursiveOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.RecursiveOption))
 			recursive = backupOptions.Recursive;
 
-		if(WasSupplied(parseResult, BackupOptionsModel.SimulateOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.SimulateOption))
 			dryRun = backupOptions.Simulate;
 
-		if(WasSupplied(parseResult, BackupOptionsModel.IncludePatternsOption) && backupOptions.IncludePatterns?.Count > 0)
+		if (WasSupplied(parseResult, BackupOptionsModel4.IncludePatternsOption) && backupOptions.IncludePatterns?.Count > 0)
 			includePatterns = backupOptions.IncludePatterns;
 
-		if(WasSupplied(parseResult, BackupOptionsModel.ExcludePatternsOption) && backupOptions.ExcludePatterns?.Count > 0)
+		if (WasSupplied(parseResult, BackupOptionsModel4.ExcludePatternsOption) && backupOptions.ExcludePatterns?.Count > 0)
 			excludePatterns = backupOptions.ExcludePatterns;
 
-		if(WasSupplied(parseResult, BackupOptionsModel.OutputStrategyOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.OutputStrategyOption))
 			outputStrategy = MapOutputStrategy(backupOptions.OutputStrategy);
 
-		if(WasSupplied(parseResult, BackupOptionsModel.CustomOutputFilePathOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.CustomOutputFilePathOption))
 			customOutputPattern = backupOptions.CustomOutputFilePath;
 
-		if(WasSupplied(parseResult, BackupOptionsModel.CollisionResolutionTypeOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.CollisionResolutionTypeOption))
 			collisionStrategy = MapCollisionStrategy(backupOptions.CollisionResolutionType);
 
-		if(WasSupplied(parseResult, BackupOptionsModel.CollisionComparisonOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.CollisionComparisonOption))
 			collisionComparison = MapCollisionComparison(backupOptions.CollisionComparison);
 
-		if(WasSupplied(parseResult, BackupOptionsModel.RenameStrategyOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.RenameStrategyOption))
 			renameStrategy = MapRenameStrategy(backupOptions.RenameStrategy);
 
-		if(WasSupplied(parseResult, BackupOptionsModel.CustomCollisionOutputFilePathOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.CustomCollisionOutputFilePathOption))
 			customCollisionPattern = backupOptions.CustomCollisionOutputFilePath;
 
-		if(WasSupplied(parseResult, BackupOptionsModel.SidecarFormatOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.SidecarFormatOption))
 			sidecarFormat = MapSidecarFormat(backupOptions.SidecarFormat);
 
-		if(WasSupplied(parseResult, BackupOptionsModel.BackupIndexTypeOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.BackupIndexTypeOption))
 			backupIndex = MapBackupIndexType(backupOptions.BackupIndexType);
 
-		if(WasSupplied(parseResult, BackupOptionsModel.PostWriteVerificationOption))
+		if (WasSupplied(parseResult, BackupOptionsModel4.PostWriteVerificationOption))
 			postWriteVerification = MapPostWriteVerification(backupOptions.PostWriteVerification);
 
 		// Normalize filesystem source path
-		if(sourceType == Core4BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(sourcePath))
+		if (sourceType == Core4BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(sourcePath))
 		{
 			sourcePath = Path.GetFullPath(sourcePath);
 		}
 
 		// Default name from source or destination
-		if(string.IsNullOrWhiteSpace(name) || name == "backup")
+		if (string.IsNullOrWhiteSpace(name) || name == "backup")
 		{
-			if(!string.IsNullOrWhiteSpace(backupOptions.Name))
+			if (!string.IsNullOrWhiteSpace(backupOptions.Name))
 				name = backupOptions.Name;
-			else if(!string.IsNullOrWhiteSpace(sourcePath))
+			else if (!string.IsNullOrWhiteSpace(sourcePath))
 				name = Path.GetFileName(sourcePath.TrimEnd('/', '\\'));
-			else if(!string.IsNullOrWhiteSpace(destination))
+			else if (!string.IsNullOrWhiteSpace(destination))
 				name = Path.GetFileName(destination.TrimEnd('/', '\\'));
 		}
 

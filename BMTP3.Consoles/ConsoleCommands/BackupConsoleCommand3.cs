@@ -1,9 +1,9 @@
-﻿using System.CommandLine;
-using BMTP3.Consoles.Services;
+﻿using BMTP3.Consoles.Services;
+using BMTP3.Core3;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using BMTP3.Core3;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 

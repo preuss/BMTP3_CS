@@ -1,10 +1,10 @@
-﻿using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using System.CommandLine;
 using System.CommandLine.Parsing;
+using BMTP3.Core2.BackupNew.Api.Request.Enums;
 
-namespace BMTP3.Consoles.ConsoleCommands;
+namespace BMTP3.Consoles.ConsoleCommands.Core4;
 
-public class BackupOptionsModel : BaseOptionsModel
+public class BackupOptionsModel4 : BaseOptionsModel
 {
 	// --------------------------------------------------
 	// BASIC
@@ -151,10 +151,10 @@ public class BackupOptionsModel : BaseOptionsModel
 	{
 		Description = "Type of centralized backup index: None, Json, or Database.",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => BackupIndexType.Json
+		DefaultValueFactory = argumentResult => BackupIndexType.None
 	};
 
-	public BackupIndexType BackupIndexType { get; set; } = BackupIndexType.Json;
+	public BackupIndexType BackupIndexType { get; set; } = BackupIndexType.None;
 
 	// --------------------------------------------------
 	// EXECUTION
@@ -165,14 +165,6 @@ public class BackupOptionsModel : BaseOptionsModel
 	};
 
 	public bool Simulate { get; set; }
-
-	public static Option<int> DelayOption { get; } = new("--delay", "-w", "--wait")
-	{
-		Description = "Delay between file operations, in milliseconds (useful for throttling or testing).",
-		DefaultValueFactory = parseResult => 42
-	};
-
-	public int Delay { get; set; } = 42;
 
 	// --------------------------------------------------
 	// VERIFICATION
@@ -186,37 +178,6 @@ public class BackupOptionsModel : BaseOptionsModel
 	};
 
 	public PostWriteVerificationType PostWriteVerification { get; set; } = PostWriteVerificationType.Hash;
-
-	public static Option<int> VerificationRetryCountOption { get; } = new("--verify-retry-count")
-	{
-		Description = "Number of verification retry attempts before giving up.",
-		DefaultValueFactory = parseResult => 1
-	};
-
-	public int VerificationRetryCount { get; set; } = 1;
-
-	public static Option<int> VerificationRetryDelayMsOption { get; } = new("--verify-retry-delay")
-	{
-		Description = "Delay in milliseconds between verification retry attempts.",
-		DefaultValueFactory = parseResult => 250
-	};
-
-	public int VerificationRetryDelayMs { get; set; } = 250;
-
-	public static Option<bool> VerificationDeleteOnFailureOption { get; } = new("--verify-delete-on-failure")
-	{
-		Description = "Delete destination file if verification ultimately fails."
-	};
-
-	public bool VerificationDeleteOnFailure { get; set; }
-
-	public static Option<int> VerificationTimeoutMsOption { get; } = new("--verify-timeout")
-	{
-		Description = "Timeout in milliseconds for per-operation verification. 0 = no timeout.",
-		DefaultValueFactory = parseResult => 0
-	};
-
-	public int VerificationTimeoutMs { get; set; } = 0;
 
 	protected override void DoAddValidators()
 	{

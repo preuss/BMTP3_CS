@@ -61,7 +61,7 @@ public sealed class CustomHelpAction : SynchronousCommandLineAction
 		}
 
 		string name = option.HelpName
-		              ?? option.Name.TrimStart('-', '/');
+					  ?? option.Name.TrimStart('-', '/');
 
 		bool isOptional = option.Arity.MinimumNumberOfValues == 0 && option.Arity.MaximumNumberOfValues >= 1;
 

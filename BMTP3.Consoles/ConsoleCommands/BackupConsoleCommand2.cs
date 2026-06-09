@@ -1,4 +1,4 @@
-using System.CommandLine;
+using BMTP3.Consoles.Configs;
 using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
@@ -9,7 +9,7 @@ using BMTP3.Core2.BackupNew.Domain.Job;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using BMTP3.Consoles.Configs;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -66,7 +66,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		plan.Name, plan.SourceType, plan.SourcePath, plan.OutputPath);
 
 		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
-		if(engine == null)
+		if (engine == null)
 		{
 			logger.LogError("Backup engine not configured in DI.");
 			return 1;
@@ -99,29 +99,32 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 			"Scanned: {Scanned} Copied: {Copied} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}",
 			result.TotalFilesScanned, result.FilesCopied, result.FilesFailed, result.FilesSkipped,
 			result.TotalBytesCopied);
-			if(result.GlobalErrors?.Count > 0)
+			if (result.GlobalErrors?.Count > 0)
 			{
 				logger.LogWarning("Global errors:");
-				foreach(string e in result.GlobalErrors)
+				foreach (string e in result.GlobalErrors)
 				{
 					logger.LogWarning(e);
 				}
 			}
 
 			return result.Status == JobState.Completed ? 0 : 1;
-		} catch(OperationCanceledException)
+		}
+		catch (OperationCanceledException)
 		{
 			consolePrinter?.PrintStatus("Backup cancelled.");
 			logger.LogInformation("Backup cancelled.");
 			return 2;
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
 			// Friendly message for the user about failure
 			consolePrinter?.PrintError($"Unhandled error running backup: {ex.Message}");
 			// Log full exception to aid diagnostics in automated tests / CI
 			logger.LogError(ex, "Unhandled error running backup");
 			return 1;
-		} finally
+		}
+		finally
 		{
 			Console.CancelKeyPress -= cancelHandler!;
 			//linkedCts.Dispose();
@@ -147,17 +150,20 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 												 ?? ServiceProvider.GetService<ILoggerFactory>()
 												 ?.CreateLogger<BackupConsoleCommand2>();
 
-		if(plan == null)
+		if (plan == null)
 		{
 			throw new ArgumentNullException(nameof(plan));
 		}
 
 		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
-		if(engine == null)
+		if (engine == null)
 		{
 			BackupJobResult fail = new()
 			{
-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
+				JobName = plan.Name,
+				StartTime = DateTime.UtcNow,
+				EndTime = DateTime.UtcNow,
+				Status = JobState.Failed
 			};
 			fail.GlobalErrors.Add("Backup engine not configured in DI.");
 			logger?.LogError("Backup engine not configured in DI.");
@@ -170,21 +176,32 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 			await engine.RunAsync(plan, progress ?? new Progress<IBackupProgress>(p => { }), ct);
 			return result ?? new BackupJobResult
 			{
-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
+				JobName = plan.Name,
+				StartTime = DateTime.UtcNow,
+				EndTime = DateTime.UtcNow,
+				Status = JobState.Failed
 			};
-		} catch(OperationCanceledException)
+		}
+		catch (OperationCanceledException)
 		{
 			logger?.LogInformation("Backup cancelled (TryRunAsync)");
 			return new BackupJobResult
 			{
-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Cancelled
+				JobName = plan.Name,
+				StartTime = DateTime.UtcNow,
+				EndTime = DateTime.UtcNow,
+				Status = JobState.Cancelled
 			};
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
 			logger?.LogError(ex, "Unhandled exception during TryRunAsync");
 			BackupJobResult r = new()
 			{
-				JobName = plan.Name, StartTime = DateTime.UtcNow, EndTime = DateTime.UtcNow, Status = JobState.Failed
+				JobName = plan.Name,
+				StartTime = DateTime.UtcNow,
+				EndTime = DateTime.UtcNow,
+				Status = JobState.Failed
 			};
 			r.GlobalErrors.Add(ex.Message);
 			r.GlobalErrors.Add(ex.ToString());
@@ -207,14 +224,14 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	/// </summary>
 	private void ValidateBackupOptions(BackupOptionsModel backupOptions)
 	{
-		if(backupOptions.OutputStrategy == OutputStructureStrategy.CustomPathPattern
+		if (backupOptions.OutputStrategy == OutputStructureStrategy.CustomPathPattern
 			&& string.IsNullOrWhiteSpace(backupOptions.CustomOutputFilePath)
 		   )
 		{
 			throw new ArgumentException("--path-pattern is required when --output-structure is CustomPathPattern.");
 		}
 
-		if(backupOptions.RenameStrategy == RenameStrategy.CustomCollisionPathPattern
+		if (backupOptions.RenameStrategy == RenameStrategy.CustomCollisionPathPattern
 			&& string.IsNullOrWhiteSpace(backupOptions.CustomCollisionOutputFilePath)
 		   )
 		{
@@ -223,34 +240,34 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		}
 
 		// Validate numeric and timing parameters first so tests can assert those specific messages
-		if(backupOptions.Delay < 0)
+		if (backupOptions.Delay < 0)
 		{
 			throw new ArgumentException("--delay must be >= 0.");
 		}
 
-		if(backupOptions.VerificationRetryCount < 1)
+		if (backupOptions.VerificationRetryCount < 1)
 		{
 			throw new ArgumentException("--verify-retry-count must be >= 1.");
 		}
 
-		if(backupOptions.VerificationRetryDelayMs < 0)
+		if (backupOptions.VerificationRetryDelayMs < 0)
 		{
 			throw new ArgumentException("--verify-retry-delay must be >= 0.");
 		}
 
-		if(backupOptions.VerificationTimeoutMs < 0)
+		if (backupOptions.VerificationTimeoutMs < 0)
 		{
 			throw new ArgumentException("--verify-timeout must be >= 0.");
 		}
 
 		// Then validate presence of required paths when not using a config file
-		if((backupOptions.Config == null || !backupOptions.Config.Exists)
+		if ((backupOptions.Config == null || !backupOptions.Config.Exists)
 			&& backupOptions.OutputDirectory == null)
 		{
 			throw new ArgumentException("--output is required when not using a config file.");
 		}
 
-		if((backupOptions.Config == null || !backupOptions.Config.Exists)
+		if ((backupOptions.Config == null || !backupOptions.Config.Exists)
 			&& string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
 		{
 			throw new ArgumentException("--source-directory is required when not using a config file.");
@@ -264,27 +281,28 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	private BackupPlan EngineArgumentBuilder(BackupOptionsModel backupOptions)
 	{
 		BackupPlan plan;
-		if(backupOptions.Config != null && backupOptions.Config.Exists)
+		if (backupOptions.Config != null && backupOptions.Config.Exists)
 		{
 			plan = BackupPlanLoader.Load(backupOptions.Config);
-		} else
+		}
+		else
 		{
 			plan = new BackupPlan();
 		}
 
 		// Overlay CLI-provided values (note: currently we treat any non-null string or provided DirectoryInfo/FileInfo as an override)
-		if(!string.IsNullOrWhiteSpace(backupOptions.Name)) plan.Name = backupOptions.Name;
-		if(!string.IsNullOrWhiteSpace(backupOptions.SourceDevice))
+		if (!string.IsNullOrWhiteSpace(backupOptions.Name)) plan.Name = backupOptions.Name;
+		if (!string.IsNullOrWhiteSpace(backupOptions.SourceDevice))
 		{
 			plan.SourceType = SourceType.MediaDevice;
 			plan.SourceId = backupOptions.SourceDevice;
 		}
-		if(!string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
+		if (!string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
 		{
 			plan.SourceType = SourceType.FileSystem;
 			plan.SourcePath = backupOptions.SourceDirectory;
 		}
-		if(backupOptions.OutputDirectory != null) plan.OutputPath = backupOptions.OutputDirectory.FullName;
+		if (backupOptions.OutputDirectory != null) plan.OutputPath = backupOptions.OutputDirectory.FullName;
 		plan.Recursive = backupOptions.Recursive;
 		plan.DryRun = backupOptions.Simulate;
 		plan.IncludePatterns = backupOptions.IncludePatterns;
@@ -305,37 +323,43 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		plan.VerificationTimeoutMs = backupOptions.VerificationTimeoutMs;
 
 		// Ensure name fallback is explicit and easy to reason about
-		if(string.IsNullOrWhiteSpace(plan.Name))
+		if (string.IsNullOrWhiteSpace(plan.Name))
 		{
-			if(!string.IsNullOrWhiteSpace(backupOptions.Name))
+			if (!string.IsNullOrWhiteSpace(backupOptions.Name))
 			{
 				plan.Name = backupOptions.Name;
-			} else if(backupOptions.Config != null)
+			}
+			else if (backupOptions.Config != null)
 			{
 				plan.Name = Path.GetFileNameWithoutExtension(backupOptions.Config.Name);
-			} else if(!string.IsNullOrWhiteSpace(backupOptions.SourceDevice))
+			}
+			else if (!string.IsNullOrWhiteSpace(backupOptions.SourceDevice))
 			{
 				plan.Name = backupOptions.SourceDevice;
-			} else if(backupOptions.OutputDirectory != null)
+			}
+			else if (backupOptions.OutputDirectory != null)
 			{
 				plan.Name = backupOptions.OutputDirectory.Name;
-			} else
+			}
+			else
 			{
 				plan.Name = "backup";
 			}
 		}
 
-		if(plan.SourceType == SourceType.FileSystem)
+		if (plan.SourceType == SourceType.FileSystem)
 		{
-			if(!string.IsNullOrWhiteSpace(plan.SourcePath))
+			if (!string.IsNullOrWhiteSpace(plan.SourcePath))
 			{
 				plan.SourcePath = Path.GetFullPath(plan.SourcePath);
 				plan.SourceId = Path.GetPathRoot(plan.SourcePath) ?? string.Empty;
-			} else
+			}
+			else
 			{
 				plan.SourceId = Path.GetPathRoot(Path.GetFullPath(".")) ?? string.Empty;
 			}
-		} else if(plan.SourceType == SourceType.MediaDevice)
+		}
+		else if (plan.SourceType == SourceType.MediaDevice)
 		{
 			plan.SourceId ??= backupOptions.SourceDevice ?? string.Empty;
 		}

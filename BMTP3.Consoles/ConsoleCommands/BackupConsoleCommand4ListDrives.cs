@@ -1,9 +1,8 @@
-using System.CommandLine;
-using BMTP3.Consoles.Services;
 using BMTP3.Core4.Api;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -14,8 +13,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 		"List available backup sources (drives and MTP devices)",
 		new GlobalOptionsModel()
 	)
-	{
-	}
+	{ }
 
 	public IServiceProvider? ServiceProvider { get; init; }
 
@@ -37,7 +35,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 			return 1;
 		}
 
-		IReadOnlyList<Core4.Api.Models.DriveCatalogEntry> drives = catalogService.ListDrives();
+		IReadOnlyList<BMTP3.Core4.Api.Models.DriveCatalogEntry> drives = catalogService.ListDrives();
 
 		if (drives.Count == 0)
 		{
@@ -64,7 +62,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 			new string('-', nameWidth + typeWidth + sizeWidth + freeWidth + 30)
 		);
 
-		foreach (Core4.Api.Models.DriveCatalogEntry drive in drives)
+		foreach (BMTP3.Core4.Api.Models.DriveCatalogEntry drive in drives)
 		{
 			Console.Out.WriteLine(
 				"  {0}{1}{2}{3}{4}",

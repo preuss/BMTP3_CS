@@ -1,10 +1,11 @@
-using System.CommandLine;
+using BMTP3.Consoles.ConsoleCommands.Core4;
 using BMTP3.Consoles.Services;
 using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -14,16 +15,15 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		"backup4",
 		"Perform backup using Core4 engine",
 		new GlobalOptionsModel(),
-		new BackupOptionsModel()
+		new BackupOptionsModel4()
 	)
-	{
-	}
+	{ }
 
 	private BackupConsoleCommand4(
 		string name,
 		string description,
 		GlobalOptionsModel globalOptionsModel,
-		BackupOptionsModel backupOptionsModel
+		BackupOptionsModel4 backupOptionsModel
 	) : base(name, description, globalOptionsModel, backupOptionsModel)
 	{
 		GlobalOptions = globalOptionsModel;
@@ -31,7 +31,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 	}
 
 	private GlobalOptionsModel GlobalOptions { get; }
-	private BackupOptionsModel BackupOptions { get; }
+	private BackupOptionsModel4 BackupOptions { get; }
 	public IServiceProvider? ServiceProvider { get; init; }
 
 	protected override async Task<int> DoExecuteAsync(
@@ -58,7 +58,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 			plan.Name, plan.SourceType, plan.SourcePath, plan.Destination);
 
 		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
-		if(engine == null)
+		if (engine == null)
 		{
 			logger.LogError("Core4 backup engine not configured in DI.");
 			return 1;
@@ -90,26 +90,29 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 			logger.LogInformation(
 				"Items: {Total} Succeeded: {Succeeded} Failed: {Failed}",
 				result.ItemResults.Count,
-				result.ItemResults.Count(r => r.State == Core4.Api.Models.Enums.BackupResultItemState.Succeeded),
-				result.ItemResults.Count(r => r.State == Core4.Api.Models.Enums.BackupResultItemState.Failed));
+				result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Succeeded),
+				result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Failed));
 
-			if(result.FailureReason is not null)
+			if (result.FailureReason is not null)
 			{
 				logger.LogWarning("Failure reason: {Reason}", result.FailureReason);
 			}
 
-			return result.State == Core4.Api.Models.Enums.BackupResultState.Completed ? 0 : 1;
-		} catch(OperationCanceledException)
+			return result.State == BMTP3.Core4.Api.Models.Enums.BackupResultState.Completed ? 0 : 1;
+		}
+		catch (OperationCanceledException)
 		{
 			consolePrinter?.PrintStatus("Core4 backup cancelled.");
 			logger.LogInformation("Core4 backup cancelled.");
 			return 2;
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
 			consolePrinter?.PrintError($"Unhandled error in Core4 backup: {ex.Message}");
 			logger.LogError(ex, "Unhandled error in Core4 backup");
 			return 1;
-		} finally
+		}
+		finally
 		{
 			Console.CancelKeyPress -= cancelHandler!;
 		}
@@ -120,39 +123,27 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		return DoExecuteAsync(parseResult, cancellationToken);
 	}
 
-	private void ValidateBackupOptions(BackupOptionsModel backupOptions)
+	private void ValidateBackupOptions(BackupOptionsModel4 backupOptions)
 	{
-		if(backupOptions.OutputStrategy == BMTP3.Core2.BackupNew.Api.Request.Enums.OutputStructureStrategy.CustomPathPattern
+		if (backupOptions.OutputStrategy == BMTP3.Core2.BackupNew.Api.Request.Enums.OutputStructureStrategy.CustomPathPattern
 			&& string.IsNullOrWhiteSpace(backupOptions.CustomOutputFilePath))
 		{
 			throw new ArgumentException("--path-pattern is required when --output-structure is CustomPathPattern.");
 		}
 
-		if(backupOptions.RenameStrategy == BMTP3.Core2.BackupNew.Api.Request.Enums.RenameStrategy.CustomCollisionPathPattern
+		if (backupOptions.RenameStrategy == BMTP3.Core2.BackupNew.Api.Request.Enums.RenameStrategy.CustomCollisionPathPattern
 			&& string.IsNullOrWhiteSpace(backupOptions.CustomCollisionOutputFilePath))
 		{
 			throw new ArgumentException("--collision-pattern is required when --rename-strategy is CustomCollisionPathPattern.");
 		}
 
-		if(backupOptions.Delay < 0)
-			throw new ArgumentException("--delay must be >= 0.");
-
-		if(backupOptions.VerificationRetryCount < 1)
-			throw new ArgumentException("--verify-retry-count must be >= 1.");
-
-		if(backupOptions.VerificationRetryDelayMs < 0)
-			throw new ArgumentException("--verify-retry-delay must be >= 0.");
-
-		if(backupOptions.VerificationTimeoutMs < 0)
-			throw new ArgumentException("--verify-timeout must be >= 0.");
-
-		if((backupOptions.Config == null || !backupOptions.Config.Exists)
+		if ((backupOptions.Config == null || !backupOptions.Config.Exists)
 			&& backupOptions.OutputDirectory == null)
 		{
 			throw new ArgumentException("--output is required when not using a config file.");
 		}
 
-		if((backupOptions.Config == null || !backupOptions.Config.Exists)
+		if ((backupOptions.Config == null || !backupOptions.Config.Exists)
 			&& string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
 		{
 			throw new ArgumentException("--source-directory is required when not using a config file.");

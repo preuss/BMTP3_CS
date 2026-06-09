@@ -1,10 +1,10 @@
-﻿using System.CommandLine;
-using BMTP3.Consoles.Services;
+﻿using BMTP3.Consoles.Services;
 using BMTP3.Core2.BackupNew.Api;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using Microsoft.Extensions.DependencyInjection;
+using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -51,7 +51,7 @@ public class BackupConsoleCommand : BaseConsoleCommand
 	)
 	{
 		ConsolesPrinter consolePrinter = ServiceProvider.GetService<ConsolesPrinter>() ??
-		                                 throw new InvalidOperationException("ConsolePrinter service not found.");
+										 throw new InvalidOperationException("ConsolePrinter service not found.");
 		consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		int verbosity = GlobalOptions.Verbose;

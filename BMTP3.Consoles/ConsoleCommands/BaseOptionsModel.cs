@@ -72,7 +72,7 @@ public abstract class BaseOptionsModel
 				)
 			);
 			throw new InvalidOperationException("Duplicate option names or aliases detected:" + Environment.NewLine +
-			                                    msg);
+												msg);
 		}
 	}
 
