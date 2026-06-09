@@ -1,7 +1,7 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 9 Jun 2026** — Gap-analyse gennemført (Core, Core2, Core3 → Core4). Nye huller: TOML config, retry/resilience, Console UI progress, ISidecarService public.
-> Næste: BackupIndexType.Json implementering, TOML config reader, Consoles CLI cleanup, Integration tests.
+> **Opdateret 9 Jun 2026** — Spectre Console deep-dive + Core reusable assets analysis. Critical: ConsolesServiceSetup NOT wired. 6 custom ProgressColumn + 2 custom Spinner fundet i Core. Task 09 opdateret.
+> Næste: Fix ConsolesServiceSetup wiring, Spectre progress redesign (Task 09), Consoles CLI cleanup (Task 02).
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -70,6 +70,14 @@
 | **MediaDeviceTraversal sub-path navigation** | ✅ **DONE** | `NavigateToSubDirectory()` via `IMediaDirectory.Directories` baseret på `SubPath`. |
 | **MtpUriParser genindsat** | ✅ **DONE** | Restored — parser krævet af produktion (drive matching + traversal navigation). |
 | **BackupScanRequest/SourceTraversalRequest.SubPath** | ✅ **DONE** | `SubPath` property tilføjet. `BackupScanner` mapper den videre. |
+| **StopOnError bypass** | ✅ **DONE** | `BuildPlan()` sætter `StopOnError = true` så Tier 3 gate ikke slår til |
+| **MatchDrive separator fix** | ✅ **DONE** | Accepterer `C:\` (root paths ending with `\`). `Guard.RequireNonNull(drive)` + `sourcePath.Replace("/", "\\")` |
+| **ConsolesPrinter markup crash** | ✅ **DONE** | Alle interpolerede values `.EscapeMarkup()`. `[bold]` scope fikset |
+| **Progress logger silenced** | ✅ **DONE** | `logger.LogInformation` i progress handler kommenteret ud |
+| **Directory.Build.props restored** | ✅ **DONE** | Genoprettet fra git efter accidental truncation |
+| **list-sources layout fikset** | ✅ **DONE** | Id column, split tables, column order/gaps |
+| **Backup4 end-to-end test** | ✅ **DONE** | 7 files discovered, 7 copied, 0 errors |
+| **Spectre Console deep-dive** | ✅ **DONE** | Complete map of all Spectre usage (10 locations). task-fil: 09-SpectreConsole.md |
 
 ---
 
@@ -106,7 +114,7 @@
 | 3 | **`--backup-index` default** | `Json` er korrekt (skal implementeres), men CLI må ikke sende Json før writer er klar |
 | 4 | **Core2 options i ApplicationServiceSetup** | `services.Configure<BackupEngineOptions>(...)` konfigurerer Core2, ikke Core4 |
 | 5 | **SignalInterrupt cancel-wiring** | `BackupConsoleCommand4` bruger `Console.CancelKeyPress` i stedet for Core4's `SignalInterrupt.On(Interrupt).Bind(cts).Create()` |
-| 6 | **ConsolesPrinter progress** | Vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` fra Core4's `BackupProgress` |
+| 6 | **ConsolesPrinter progress** | Flyttet til Task 09 (Spectre Console). Skal bruge `AnsiConsole.Progress()` widget |
 | 7 | **No tests for backup4** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
 
 
@@ -126,12 +134,19 @@
 | 2 | MTP resilience | Gatekeeper timeout + retry ved COMException/disconnect mid-session |
 | 3 | Overvej | Genbrug Core2's Polly `BackupResiliencePipeline` eller implementer lightweight retry |
 
-### Medium prioritet — Console UI progress
+### Høj prioritet — Spectre Console progress redesign
 
-| # | Task |
-|---|------|
-| 1 | ProgressBar / Spinner — implementer visuel progress i Consoles under backup |
-| 2 | `BackupProgress` integration — vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` live |
+> Se `tasks/09-SpectreConsole.md` for fuld arkitekturdesign + reusable assets catalog.
+
+| # | Issue | Detail |
+|---|-------|--------|
+| 1 | **ConsolesPrinter.PrintProgress** — alle 3 overloads bruger `WriteLine` | Flooder terminalen; skal bruge `AnsiConsole.Progress()` widget |
+| 2 | **SpectreAnsiConsoleLogger** — unsafe `MarkupLineInterpolated` | Hvis log message indeholder `[`/`]` → crash. Skal escape markup |
+| 3 | **ProgramSpectreExample** — bruger `Clear`+`Table` ikke `Progress` | Eksemplet er misvisende; bør opdateres til `Progress()` pattern |
+| 4 | **Progress skal virke for 3 engines** | Core2 (channel IAsyncEnumerable), Core3 (callback), Core4 (IProgress<T>) — forskellige data sources, samme widget |
+| 5 | **Version mismatch** | Consoles 0.55.2 vs Core 0.54.0 — acceptable, men konsolider hvis muligt |
+| 6 | **⚠️ CRITICAL: ConsolesServiceSetup NOT wired in production** | `ApplicationStartup.cs` kalder kun `LoggingServiceSetup` + `ApplicationServiceSetup`. `ConsolesPrinter` er aldrig registreret → `GetService<ConsolesPrinter>()` returnerer `null` → alt progress output er no-ops. **FIX:** Add `new ConsolesServiceSetup()` til `ApplicationStartup.cs`. |
+| 7 | **Custom columns/spinners fra Core** — arkitektur-beslutning | Core har 6 custom `ProgressColumn` + 2 custom `Spinner` klasser. Beslut: Copy til Consoles? Move til shared? Skip? Se task-fil § Core Reusable Assets. |
 
 ### Medium prioritet — Public API overvejelser
 
@@ -297,7 +312,10 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **StopOnError=false** | ❌ | Continue-on-error. Feature gate (Tier 3). Engine re-thrower altid (linje 485). |
 | **TOML config** | ❌ | Ingen TOML-reader; kun programmatisk `BackupPlan` |
 | **Resilience** | ❌ | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
-| **Console UI progress** | ❌ | Ingen ProgressBar/Spinner (Core havde 20+ UI-filer) |
+| **Console UI progress** | ⚠️ | Spectre deep-dive done (Task 09). `ConsolesPrinter` bruger stadig `WriteLine` — skal refactores til `AnsiConsole.Progress()` |
+| **ConsolesServiceSetup NOT wired** | ❌ | `ApplicationStartup.cs` mangler `ConsolesServiceSetup` → `ConsolesPrinter` er null → alt progress er no-ops. **Blokerer Task 09.** |
+| **SpectreAnsiConsoleLogger markup safety** | ❌ | `MarkupLineInterpolated` parser markup — crash på `[`/`]` i log messages |
+| **Custom ProgressColumns/Spinners** | ❌ | 6 custom columns + 2 custom spinners i Core. Beslut: port eller skip? |
 | **ISidecarService public** | ⚠️ | `internal` i Core4, var `public` i Core3 |
 | **MTP Discovery** | ✅ **DONE** | `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery`, `ICombinedSourceDiscovery` implementeret. |
 | **MTP Traversal** | ✅ **DONE** | `MediaDeviceTraversal` via `IMediaDirectory`/`IMediaFile`. `SourceTraversalFactory` pattern-matches på `IConnectedMediaDriveSource`. |

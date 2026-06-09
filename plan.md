@@ -1,7 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 9 Jun 2026** — Gap-analyse gennemført (Core, Core2, Core3 → Core4). Nye huller identificeret: TOML config, retry/resilience, Console UI progress, ISidecarService public.
-> Næste: Consoles CLI cleanup (Task 02). BackupIndexType.Json (Task 01) nedprioriteret til lavest.
+> **Opdateret 9 Jun 2026** — Spectre Console deep-dive + Core reusable assets analysis. Findings: ConsolesServiceSetup NOT wired (critical blocker), 6 custom ProgressColumn classes, 2 custom Spinners. Task 09 updated with full catalog. Næste: Fix ConsolesServiceSetup wiring, then progress redesign.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -88,6 +87,15 @@
 
 > 📂 Hver opgave har en detaljeret task-fil i `tasks/` mappen med alt nødvendigt info.
 
+- [x] — **StopOnError bypass:** `BuildPlan()` sætter `StopOnError = true` så Tier 3 gate ikke slår til
+- [x] — **MatchDrive fixed:** separator check accepterer `C:\` (root paths ending with `\`). `Guard.RequireNonNull(drive)` + `sourcePath.Replace("/", "\\")` tilføjet
+- [x] — **ConsolesPrinter markup crash fixed:** alle interpolerede values `.EscapeMarkup()`. `[bold]` scope fikset — kun `Job` bold, ikke hele linjen
+- [x] — **Progress logger silenced:** `logger.LogInformation` i progress handler kommenteret ud
+- [x] — **Directory.Build.props restored** from git (accidental truncation)
+- [x] — **list-sources layout fikset:** `Id` column added som første kolonne. Output splittet i separate tables for FileSystem (`Id/Name` header) vs MediaDevice (`Id` + `Name`). Column order: Id/Name, Type, Root Path, Total Size, Free Space. Gaps mellem columns.
+- [x] — **Backup4 end-to-end test:** 7 files discovered, 7 copied, 0 errors (second run: 7 skipped, 0 failures). Ingen console crash.
+- [x] — **Spectre Console deep-dive:** complete map of all Spectre usage across Core + Consoles (10 locations). Findings in tasks/09-SpectreConsole.md.
+
 ### ✅ Komplet gap-analyse (Core, Core2, Core3 → Core4)
 
 - [x] — **Gennemgang: Find alle manglende dele** — Krydsrefereret alle features fra Core, Core2 og Core3 mod Core4.
@@ -105,7 +113,7 @@
   3. `--backup-index` default guard — først Json når Task 01 er done
   4. Fjern Core2 `BackupEngineOptions` config
   5. SignalInterrupt cancel-wiring — brug Core4's SignalInterrupt
-  6. ConsolesPrinter progress — vis BytesProcessed, FilesSkipped
+   6. ~~ConsolesPrinter progress~~ — flyttet til Task 09 (Spectre Console)
   7. Tests for backup4 BuildPlan enum-mapping
 
 ### Høj prioritet — TOML config reader
@@ -121,11 +129,15 @@
   - MTP resilience (COMException, disconnect)
   - Lightweight retry uden Polly dependency
 
-### Medium prioritet — Console UI progress
+### Høj prioritet — Spectre Console progress redesign
 
-- [ ] — **Task 06** → `tasks/06-Console-UI-Progress.md`
-  - ProgressBar + Spinner i Consoles
-  - `BackupProgress` integration
+- [ ] — **Task 09** → `tasks/09-SpectreConsole.md`
+  - **⚠️ FØRST:** Wire `ConsolesServiceSetup` i `ApplicationStartup.cs` — ellers er progress no-ops
+  - Erstat `WriteLine` flood i `ConsolesPrinter.PrintProgress` med `AnsiConsole.Progress()` widget
+  - Fix `SpectreAnsiConsoleLogger` unsafe `MarkupLineInterpolated`
+  - Progress skal fungere for Core2, Core3 og Core4 engines
+  - Beslut: copy custom columns/spinners fra Core eller brug kun built-in Spectre
+  - Se task-fil for arkitekturdesign, 3 options + reusable assets catalog
 
 ### Medium prioritet — Public API overvejelser
 
@@ -141,11 +153,11 @@
 ### Senere
 
 - [ ] — **Task 08** → `tasks/08-13-Later-Tasks.md` — `StopOnError=false` (T3)
-- [ ] — **Task 09** → `tasks/08-13-Later-Tasks.md` — `BackupIndexType.Database` (T4)
-- [ ] — **Task 10** → `tasks/08-13-Later-Tasks.md` — `EnableMetadata` (T3)
-- [ ] — **Task 11** → `tasks/08-13-Later-Tasks.md` — `MaxDegreeOfParallelism` (T4)
-- [ ] — **Task 12** → `tasks/08-13-Later-Tasks.md` — Hash algorithm CLI options
-- [ ] — **Task 13** → `tasks/08-13-Later-Tasks.md` — Erstat Core2 backup med Core4 som default
+- [ ] — **Task 10** → `tasks/08-13-Later-Tasks.md` — `BackupIndexType.Database` (T4)
+- [ ] — **Task 11** → `tasks/08-13-Later-Tasks.md` — `EnableMetadata` (T3)
+- [ ] — **Task 12** → `tasks/08-13-Later-Tasks.md` — `MaxDegreeOfParallelism` (T4)
+- [ ] — **Task 13** → `tasks/08-13-Later-Tasks.md` — Hash algorithm CLI options
+- [ ] — **Task 14** → `tasks/08-13-Later-Tasks.md` — Erstat Core2 backup med Core4 som default
 
 ### Lavest prioritet — BackupIndexType.Json catalog
 
