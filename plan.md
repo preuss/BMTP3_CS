@@ -1,7 +1,7 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 8 Jun 2026** — Core4 wired into Consoles (`backup4` command). Validator gates relaxed. 233 tests.
-> Næste: Integration test for full MTP pipeline.
+> **Opdateret 9 Jun 2026** — Core4 wired into Consoles (`backup4`). Drive matching fixed (Equals→StartsWith). SubPath navigation added to MediaDeviceTraversal. 248 tests.
+> Næste: Implementer BackupIndexType.Json, Consoles CLI cleanup, Integration tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -76,22 +76,62 @@
 - [x] — **IMediaFile.OpenRead()** tilføjet, `MediaDeviceContent` opdateret til at bruge `IMediaFile`.
 - [x] — **BackupEngine.Create(connectedSource):** 1 arg (ingen `IBackupDriveInfo`).
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 248 passed.
-- [x] — **Validator gates relaxed**: 16 af 20 `FeatureNotImplementedException` gates fjernet. Kun `EnableMetadata`, `BackupIndexType.Json` (Tier 3), `BackupIndexType.Database`, `MaxDegreeOfParallelism` (Tier 4) blokerer stadig.
+- [x] — **Validator gates relaxed**: 16 af 20 `FeatureNotImplementedException` gates fjernet. Resterer: `EnableMetadata` (T3), `BackupIndexType.Json` (T3), `BackupIndexType.Database` (T4), `MaxDegreeOfParallelism` (T4).
 - [x] — **Core4 i Consoles:** `BackupConsoleCommand4.cs` + helpers, `ConsolesPrinter` opdateret med Core4 overloads, `ApplicationServiceSetup` registrerer `AddBMTP3Core4()`, `backup4` subcommand tilgængelig.
-- [x] — **MtpUriParser ryddet:** Production code slettet (kun brugt fra tests). Test-fil også slettet.
-- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 233 passed.
+- [x] — **Drive matching fix:** `BackupEngine.MatchDrive()` bruger `StartsWith` i stedet for `Equals`. Relative sub-path extracted til `SourceTraversalRequest.SubPath`.
+- [x] — **MediaDeviceTraversal sub-path:** `NavigateToSubDirectory()` navigerer gennem `IMediaDirectory.Directories` baseret på `SubPath`.
+- [x] — **MtpUriParser genindsat:** Restored + tests. Parser krævet af produktion.
+- [x] — **DriveCatalog API**: `IDriveCatalogService` + `DriveCatalogEntry` + `DriveCatalogService` + DI registration
+- [x] — **Build:** 0 errors, 0 warnings. **Tests:** 248 passed.
 
 ## Næste opgaver (prioriteret)
+
+### Øverst — Komplet gap-analyse
+
+- [ ] — **Gennemgang: Find alle manglende dele for at gøre Core4+Consoles produktionsklar**
+  Krydsreferer alle features fra **Core**, Core2 **og** Core3 mod Core4. Tjek plan.md, mangler.md, Backup_Pipeline_Comparison_003.md. 
+  Identify missing: services, interfaces, DI registrations, CLI options, test coverage, edge cases.
+  Målet er en komplet backlog så intet bliver opdaget sent.
+
+### Høj prioritet — BackupIndexType.Json implementering
+
+- [ ] — **`IBackupIndexWriter`** interface: metode `WriteAsync(Stream, IReadOnlyList<BackupItem>, BackupPlan, BackupResult, CancellationToken)`
+- [ ] — **`JsonBackupIndexWriter`**: skriver `backup_catalog.json` med alle filer, hashes, metadata, timestamps
+- [ ] — **Wire i `BackupEngine`**: efter processing loop, før result returneres
+- [ ] — **DI registration**: `AddScoped<IBackupIndexWriter, JsonBackupIndexWriter>()`
+- [ ] — **Fjern Tier 3 gate** for `BackupIndexType.Json` i `BackupPlanValidator` (linje 79-80)
+- [ ] — **Spec**: definér JSON schema for katalog-filen (felter, struktur, eksempel)
+
+### Høj prioritet — Public DriveCatalog API
+
+- [x] — **DriveCatalog API**: `IDriveCatalogService` (Api/), `DriveCatalogEntry` (Api/Models/), `DriveCatalogService` (DriveDiscovery/), DI registration — **implementeret**
+
+### Høj prioritet — Consoles CLI cleanup (før release)
+
+- [ ] — **`Delay` / `VerificationRetryCount` / `VerificationRetryDelayMs` / `VerificationTimeoutMs` / `VerificationDeleteOnFailure`**: 
+  Disse options valideres i `BackupConsoleCommand4.ValidateBackupOptions` men findes ikke i Core4's `BackupPlan`. 
+  To valg: (a) tilføj properties til Core4 `BackupPlan` + implementer i engine, (b) fjern validering og ignorer options med warning.
+- [ ] — **MTP sourcePath format**: `--source-device` sætter bart device navn (f.eks. "Apple iPhone"), men Core4 forventer `mtp://Apple iPhone/Internal Storage/DCIM`. 
+  Løsning: konstruer `mtp://{deviceName}/{subPath}` URI i `BuildPlan` når `sourceType == MediaDevice`.
+- [ ] — **`--backup-index` default**: behold `Json` (når implementeret), men sørg for at CLI ikke sender Json før writer er klar
+- [ ] — **Fjern Core2 `BackupEngineOptions` config**: `ApplicationServiceSetup` linje 37 sætter Core2 options der ingen effekt har på Core4
+- [ ] — **SignalInterrupt cancel-wiring**: brug `SignalInterrupt.On(Interrupt).Bind(cts).Create()` i stedet for `Console.CancelKeyPress`
+- [ ] — **ConsolesPrinter progress**: vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` fra Core4's `BackupProgress`
+- [ ] — **No tests for backup4**: tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping
 
 ### Høj prioritet — Integration test
 
 - [ ] — Integration test: Full MTP traversal pipeline (gatekeeper → connector → traversal → content)
 - [ ] — Integration test: BackupEngine end-to-end (filesystem → download → hash → sidecar → verify)
 
-### Allersidst
+### Senere
 
-- [ ] — Færdiggør Consoles Core4 integration: hash algorithm CLI options, metadata extraction flag
-- [ ] — Overvej at erstatte Core2 `backup` command med Core4 som default
+- [ ] — **`BackupIndexType.Database`**: SQLite catalog (feature guard allerede på plads, linje 83-84)
+- [ ] — **`EnableMetadata`**: metadata extraction (Tier 3)
+- [ ] — **`MaxDegreeOfParallelism`**: parallel execution (Tier 4)
+- [ ] — **Hash algorithm CLI options**: expose comparison/verification hash valg
+- [ ] — **Config file support**: `--config` TOML/JSON loading for Core4
+- [ ] — **Overvej**: Erstat Core2 `backup` med Core4 som default
 
 ## Ref
 

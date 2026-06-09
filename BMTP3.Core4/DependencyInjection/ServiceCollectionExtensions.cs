@@ -91,6 +91,9 @@ public static class ServiceCollectionExtensions
 		services.TryAddSingleton<BinaryFileComparerSelector>();
 		services.TryAddSingleton<IFileCompareService, FileCompareService>();
 
+		// Drive catalog (public API for listing available sources)
+		services.TryAddSingleton<IDriveCatalogService, DriveCatalogService>();
+
 		// Engine
 		services.TryAddSingleton<IBackupEngine>(sp =>
 		{

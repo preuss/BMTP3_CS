@@ -1,7 +1,7 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 8 Jun 2026** — Core4 wired into Consoles (`backup4` command). Validator gates relaxed. 233 tests.
-> Næste: Integration test for full MTP pipeline.
+> **Opdateret 9 Jun 2026** — Drive matching fixed, SubPath navigation added, MtpUriParser restored. 248 tests.
+> Næste: BackupIndexType.Json implementering, Consoles CLI cleanup, Integration tests.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 
@@ -66,24 +66,67 @@
 | **IMediaFile.OpenRead() + MediaDeviceContent** | ✅ **DONE** | `IMediaFile.OpenRead()` tilføjet, `MediaFile` implementerer det. `MediaDeviceContent` bruger `IMediaFile` i stedet for `MediaFileInfo`. |
 | **BackupEngine.Create(connectedSource)** | ✅ **DONE** | `Create(connectedSource)` — 1 arg (ingen `IBackupDriveInfo`). Flow: list drives → match → connect → create traversal. |
 | **Build: 0 errors, 248 tests** | ✅ **DONE** | 0 errors, 0 warnings. 248 tests pass. |
+| **Drive matching fix (Equals→StartsWith)** | ✅ **DONE** | `BackupEngine.MatchDrive()` bruger `StartsWith` + separator-check. `GetRelativePath()` udregner sub-path. |
+| **MediaDeviceTraversal sub-path navigation** | ✅ **DONE** | `NavigateToSubDirectory()` via `IMediaDirectory.Directories` baseret på `SubPath`. |
+| **MtpUriParser genindsat** | ✅ **DONE** | Restored — parser krævet af produktion (drive matching + traversal navigation). |
+| **BackupScanRequest/SourceTraversalRequest.SubPath** | ✅ **DONE** | `SubPath` property tilføjet. `BackupScanner` mapper den videre. |
 
 ---
 
 ## Remaining Issues
 
-### Næste — Integration test + cleanup
+### Øverst — Komplet gap-analyse
 
-- ~~**MTP Del 0-4:** Implementeret~~ ✅ **DONE**
-- ~~**MTP Del 5:** Redesign — `IOpenedSource`/`ISourceScope`~~ ✅ **DONE** (alternativ tilgang: `IConnectedSource` bærer Device+Drive, `SourceTraversalFactory` pattern-matches)
-- ~~**Source matching:** Match `BackupPlan.SourcePath` mod `IBackupDriveInfo.RootPath`~~ ✅ **DONE** — `SourceConnector.Connect()` håndterer matching internt
-- ~~**SourceTraversalFactory opdatering:** Brug `BackupMediaDriveInfo`~~ ✅ **DONE** — pattern-matching på `IConnectedSource` subtypes
-- **Integration test:** Full MTP traversal pipeline (gatekeeper → connector → traversal → content)
-- **Cleanup:** Overvej om `MtpUriParser` skal fjernes (kun refereret fra tests nu)
+- [ ] **Gennemgang: Find alle manglende dele** — Krydsreferer **Core**, Core2 **og** Core3 features mod Core4. Tjek plan.md, mangler.md, Backup_Pipeline_Comparison_003.md. Målet er en komplet backlog.
 
-### Allersidst
+### Høj prioritet — BackupIndexType.Json
 
-- **Wire Core4 into Consoles** — Consoles bruger stadig Core2.
-- **Fjern validator-gates** — `BackupPlanValidator` blokerer `PostWriteVerification`, `ComparisonHashAlgorithmTypes` m.fl. selvom engine understøtter dem.
+**Spec:** En central JSON-katalog-fil (e.g. `backup_catalog.json`) med alle filer, hashes, metadata, timestamps.
+**Feature gate:** Linje 79-80 i `BackupPlanValidator` — `FeatureNotImplementedException(3, "Backup index: Json")`.
+
+| # | Task | Detail |
+|---|------|--------|
+| 1 | `IBackupIndexWriter` interface | `WriteAsync(Stream, IReadOnlyList<BackupItem>, BackupPlan, BackupResult, CancellationToken)` |
+| 2 | `JsonBackupIndexWriter` | Skriver `backup_catalog.json` |
+| 3 | Wire i `BackupEngine` | Efter processing loop, før result returneres |
+| 4 | DI registration | `AddScoped<IBackupIndexWriter, JsonBackupIndexWriter>()` |
+| 5 | Fjern Tier 3 gate | Fjern `if(plan.BackupIndexType == BackupIndexType.Json)` i `BackupPlanValidator` |
+| 6 | JSON schema | Definer felter, struktur, eksempel |
+
+### Høj prioritet — Public DriveCatalog API
+
+**Implementeret.** `IDriveCatalogService` + `DriveCatalogEntry` + `DriveCatalogService` + DI registration. 0 errors, 248 tests.
+
+### Høj prioritet — Consoles CLI cleanup (før release)
+
+| # | Issue | Detail |
+|---|-------|--------|
+| 1 | **Delay/VerificationRetry/Timeout** — guarded men ikke implementeret | `Delay`, `VerificationRetryCount`, `VerificationRetryDelayMs`, `VerificationTimeoutMs`, `VerificationDeleteOnFailure` valideres i `BackupConsoleCommand4.ValidateBackupOptions` men findes ikke i Core4's `BackupPlan`. Skal enten (a) tilføjes til BackupPlan + implementeres i engine, eller (b) validering fjernes + options ignoreres med warning. |
+| 2 | **MTP source path format** | `--source-device` sætter bart device navn, men Core4 forventer `mtp://Device/Path`. Løsning: konstruer `mtp://{deviceName}/{subPath}` URI i `BuildPlan`. |
+| 3 | **`--backup-index` default** | `Json` er korrekt (skal implementeres), men CLI må ikke sende Json før writer er klar |
+| 4 | **Core2 options i ApplicationServiceSetup** | `services.Configure<BackupEngineOptions>(...)` konfigurerer Core2, ikke Core4 |
+| 5 | **SignalInterrupt cancel-wiring** | `BackupConsoleCommand4` bruger `Console.CancelKeyPress` i stedet for Core4's `SignalInterrupt.On(Interrupt).Bind(cts).Create()` |
+| 6 | **ConsolesPrinter progress** | Vis `BytesProcessed`, `TotalFilesSelected`, `FilesSkipped` fra Core4's `BackupProgress` |
+| 7 | **No tests for backup4** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
+
+
+### Høj prioritet — Integration test
+
+| # | Task |
+|---|------|
+| 1 | Full MTP traversal pipeline (gatekeeper → connector → traversal → content) |
+| 2 | BackupEngine end-to-end (filesystem → download → hash → sidecar → verify) |
+
+### Senere
+
+| # | Task | Feature gate |
+|---|------|-------------|
+| 1 | **`BackupIndexType.Database`** — SQLite catalog | Linje 83-84 (Tier 4) |
+| 2 | **`EnableMetadata`** — metadata extraction | Linje 76-77 (Tier 3) |
+| 3 | **`MaxDegreeOfParallelism`** — parallel execution | Linje 86-87 (Tier 4) |
+| 4 | Hash algorithm CLI options | Expose comparison/verification hash valg |
+| 5 | Config file support | `--config` TOML/JSON loading for Core4 |
+| 6 | Erstat Core2 `backup` med Core4 som default | Når Core4 er feature-complete |
 
 
 ### Low / Deferred
@@ -214,17 +257,22 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 
 ### Sammenfatning — væsentlige huller i Core4
 
-| Område | Hvad mangler |
-|---|---|
-| **Scanner** | `ScannerGathererStub` — ikke implementeret |
+| Område | Status | Hvad mangler |
+|---|---|---|
+| **Scanner** | ❌ | `ScannerGathererStub` — ikke implementeret |
 | **Verify** | ⚠️ | Hash verification implementeret inline i `BackupEngine`. Ingen separat `IPostWriteVerification`. |
-| **Resilience** | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
-| **MTP Discovery** | ✅ **DONE** — `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery`, `ICombinedSourceDiscovery` implementeret. 0/1/2. |
-| **MTP Traversal** | ✅ **DONE** — `MediaDeviceTraversal` via `IMediaDirectory`/`IMediaFile`. `SourceTraversalFactory` pattern-matches på `IConnectedMediaDriveSource`. |
-| **TOML config** | Ingen TOML-reader; kun programmatisk `BackupPlan` |
-| **INI/JSON sidecar** | ✅ **DONE** — Full Document/Section/Property model + Ini + Json writers |
-| **DryRun** | ✅ **DONE** — `BuildDryRunResult` helper, short-circuit |
-| **Parallel runner** | `BackupRunner` beholdt. `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
-| **Include/Exclude patterns** | `GlobMatcher.IsIncluded` i `FileSystemTraversal`. Gates ikke fjernet (regel). |
-| **Dedup/FileCategory** | Ingen dedup på tværs af sessioner |
-| **State machines** | Core4 har ikke eksplicit state machine (inline status) |
+| **BackupIndexType.Json** | ❌ | `IBackupIndexWriter` + `JsonBackupIndexWriter` mangler. Feature gate (Tier 3). |
+| **BackupIndexType.Database** | ❌ | SQLite catalog. Feature gate (Tier 4). |
+| **EnableMetadata** | ❌ | Metadata extraction. Feature gate (Tier 3). |
+| **MaxDegreeOfParallelism** | ❌ | Parallel execution. Feature gate (Tier 4). |
+| **Resilience** | ❌ | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
+| **MTP Discovery** | ✅ **DONE** | `IFileSystemSourceDiscovery`, `IMediaDeviceSourceDiscovery`, `ICombinedSourceDiscovery` implementeret. |
+| **MTP Traversal** | ✅ **DONE** | `MediaDeviceTraversal` via `IMediaDirectory`/`IMediaFile`. `SourceTraversalFactory` pattern-matches på `IConnectedMediaDriveSource`. |
+| **Consoles CLI cleanup** | ⚠️ | Ubrugte options valideres, MTP path format, Core2 options config |
+| **TOML config** | ❌ | Ingen TOML-reader; kun programmatisk `BackupPlan` |
+| **INI/JSON sidecar** | ✅ **DONE** | Full Document/Section/Property model + Ini + Json writers |
+| **DryRun** | ✅ **DONE** | `BuildDryRunResult` helper, short-circuit |
+| **Parallel runner** | ⚠️ | `BackupRunner` beholdt. `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
+| **Include/Exclude patterns** | ✅ **DONE** | `GlobMatcher.IsIncluded` i `FileSystemTraversal`. |
+| **Dedup/FileCategory** | ❌ | Ingen dedup på tværs af sessioner |
+| **State machines** | ❌ | Core4 har ikke eksplicit state machine (inline status) |
