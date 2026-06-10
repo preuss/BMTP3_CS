@@ -69,7 +69,7 @@ public class BackupProgressDisplay
 					}
 				});
 
-				while(!engineTask.IsCompleted || fileTasks.Count > 0)
+				while(!engineTask.IsCompleted)
 				{
 					ProgressReport? reportToProcess = null;
 
@@ -88,18 +88,12 @@ public class BackupProgressDisplay
 						UpdateFileTasks(ctx, fileTasks, reportToProcess);
 					}
 
-					if(engineTask.IsCompleted)
-					{
-						MarkRemainingCompletedTasksAsInactive(fileTasks);
-					}
-
 					RemoveExpiredInactiveTasks(ctx, fileTasks);
 
 					await Task.Delay(100);
 				}
 
 				await engineTask;
-
 				overallTask.Value = overallTask.MaxValue;
 			});
 	}
