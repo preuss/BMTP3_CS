@@ -36,7 +36,7 @@ public class BackupProgressDisplay
 			.Columns(new ProgressColumn[]
 			{
 				new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence7)),
-				new TaskDescriptionColumn(),
+				new CounterColumn(),
 				new ProgressBarColumn() { Width = 10 },
 				new PercentageColumn(),
 				new RemainingTimeColumn(),
@@ -97,11 +97,6 @@ public class BackupProgressDisplay
 				overallTask.Value = overallTask.MaxValue;
 			});
 	}
-	private static string Truncate(string value, int maxLength = 40)
-	{
-		return value.Length > maxLength ? value[..(maxLength - 1)] + "…" : value;
-	}
-
 	private static void MarkRemainingCompletedTasksAsInactive(Dictionary<string, FileTaskState> fileTasks)
 	{
 		DateTime now = DateTime.UtcNow;
@@ -142,7 +137,7 @@ public class BackupProgressDisplay
 		{
 			if(!fileTasks.TryGetValue(report.ActiveFileName, out FileTaskState? activeState))
 			{
-				ProgressTask task = ctx.AddTask(Truncate(report.ActiveFileName));
+				ProgressTask task = ctx.AddTask(report.ActiveFileName ?? "");
 				activeState = new FileTaskState(task);
 				fileTasks.Add(report.ActiveFileName, activeState);
 			}
@@ -150,7 +145,7 @@ public class BackupProgressDisplay
 			activeState.SeenInCurrentUpdate = true;
 			activeState.BecameInactiveAt = null;
 
-			activeState.Task.Description = Truncate(report.ActiveFileName);
+			activeState.Task.Description = report.ActiveFileName ?? "";
 			activeState.Task.MaxValue = Math.Max(1, report.ActiveFileBytesTotal);
 			activeState.Task.Value = Math.Min(report.ActiveFileBytesRead, activeState.Task.MaxValue);
 		}
