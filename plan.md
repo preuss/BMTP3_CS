@@ -1,8 +1,10 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 9 Jun 2026** — Devices wrapper-lag komplet (12 files). MTP pipeline NuGet-free. Spectre Console #1 prioritet. Næste: Fix ConsolesServiceSetup, progress redesign, integrér sidste 2 wrapper-holdere.
+> **Opdateret 10 Jun 2026** — Devices wrapper-lag komplet (12 files). MTP pipeline NuGet-free. Spectre Console #1 prioritet. Næste: Fix ConsolesServiceSetup, progress redesign, integrér sidste 2 wrapper-holdere.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
+> 
+> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Aldrig modificer `BMTP3.Core`, `BMTP3.Core2` eller `BMTP3.Core3`. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres.
 
 ## Færdige opgaver
 

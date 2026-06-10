@@ -1,9 +1,11 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 9 Jun 2026** — Devices wrapper-lag komplet (12 files). Hele MTP-pipeline (SourceConnector → ConnectedMediaDriveSource → MediaDeviceTraversal → MediaDeviceContent) bruger nu udelukkende wrapper-interfaces. Kun 2 discovery-filer mangler.
+> **Opdateret 10 Jun 2026** — Devices wrapper-lag komplet (12 files). Hele MTP-pipeline (SourceConnector → ConnectedMediaDriveSource → MediaDeviceTraversal → MediaDeviceContent) bruger nu udelukkende wrapper-interfaces. Kun 2 discovery-filer mangler.
 > **#1 prioritet:** Spectre Console — Fix ConsolesServiceSetup wiring, progress redesign (Task 09), CLI cleanup (Task 02).
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
+> 
+> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Aldrig modificer `BMTP3.Core`, `BMTP3.Core2` eller `BMTP3.Core3`. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres.
 
 ---
 

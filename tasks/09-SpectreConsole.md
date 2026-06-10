@@ -1,7 +1,7 @@
 # Task: Spectre.Console proper usage — progress, logging, output
 
 > Architecture & design investigation. Replace manual `WriteLine`/`\r` progress with Spectre's built-in `Progress` widget.
-> Updated 9 Jun 2026: Added Core reusable assets catalog, ConsolesServiceSetup critical blocker, custom column/spinner references.
+> Updated 10 Jun 2026: NO CORE/CORE2/CORE3 CHANGES constraint added; porting decision → Option C (built-in columns only); Finding 2 updated; Acceptance Criteria fixed.
 > See also: `06-Console-UI-Progress.md` (superseded by this document).
 
 ---
@@ -12,7 +12,9 @@ Make all console output in `BMTP3.Consoles` use Spectre.Console correctly:
 - `AnsiConsole.Progress()` for progress during backup (not `WriteLine` or `\r`)
 - `IAnsiConsole` injection everywhere (already done)
 - No `Console.WriteLine`, `Console.Write`, or manual cursor manipulation
-- Progress must work with both Core2, Core3, and Core4 engines
+- Only Consoles files may be modified. Core/Core2/Core3 are reference-only.
+
+> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Only Consoles files may be modified. Core/Core2/Core3 are reference-only.
 
 ---
 
@@ -193,9 +195,9 @@ This creates a testable no-ANSI console writing to a `StringWriter` — essentia
 All three overloads emit one line per progress report. For a backup with many files, this produces hundreds of lines.
 **Fix:** Use `AnsiConsole.Progress()` with `ProgressTask` instead.
 
-### Finding 2: Core's `BackupHandler` shows the correct pattern
+### Finding 2: `AnsiConsole.Progress()` fluent API is the canonical pattern
 
-The `AnsiConsole.Progress()` fluent API with `SpinnerColumn`, `ProgressBarColumn`, `PercentageColumn`, `RemainingTimeColumn`, `ValueOfMaxColumn` is the canonical Spectre way.
+Spectre.Console's `Progress()` fluent API with `SpinnerColumn`, `ProgressBarColumn`, `PercentageColumn`, `RemainingTimeColumn` is the canonical way. Core's `BackupHandler` is reference-only — no changes allowed.
 
 ### Finding 3: Progress must work across 3 engine types
 
@@ -453,11 +455,7 @@ These are Spectre-related files in `BMTP3.Core` that can be ported/copied to Con
 
 ### Porting strategy for columns & spinners
 
-**Option A (Recommended):** Copy `ValueOfMaxColumn`, `ElapsedTimeAdvancedColumn`, and `SequenceSpinner` into `BMTP3.Consoles/Progress/Columns/` and `BMTP3.Consoles/Progress/Spinners/`. These are small (20-40 lines each), have no dependencies on Core internals, and provide genuinely useful display widgets.
-
-**Option B:** Move to `BMTP3.Common` as shared types. More refactoring effort, only worth it if other projects also need them.
-
-**Option C:** Skip — use only built-in Spectre columns (`SpinnerColumn`, `TaskDescriptionColumn`, `ProgressBarColumn`, `PercentageColumn`, `RemainingTimeColumn`). Simpler, less code, but missing `ValueOfMaxColumn` display.
+**Decision:** Option C — use only built-in Spectre columns (`SpinnerColumn`, `TaskDescriptionColumn`, `ProgressBarColumn`, `PercentageColumn`, `RemainingTimeColumn`). Core/Core2/Core3 are reference-only — custom columns/spinners will not be ported.
 
 ---
 
@@ -467,6 +465,6 @@ These are Spectre-related files in `BMTP3.Core` that can be ported/copied to Con
 2. `backup4` shows a proper progress bar (with spinner, description, percentage, remaining time) during file processing
 3. No `WriteLine` flood — progress updates render in-place
 4. No console crash from unescaped markup characters
-5. All three engine types (Core2, Core3, Core4) show proper progress
+5. Core4 shows proper progress via `BackupProgressDisplay`
 6. Backward compatible — existing functionality unchanged
 7. `SpectreAnsiConsoleLogger` no longer crashes on `[` or `]` in log messages
