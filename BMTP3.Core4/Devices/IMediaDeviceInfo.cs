@@ -7,8 +7,8 @@ internal interface IMediaDeviceInfo
 	/// </summary>
 	string DeviceId { get; }
 	string FriendlyName { get; }
-	string? Description { get; }
-	string? Manufacturer { get; }
+	string Description { get; }
+	string Manufacturer { get; }
 
 	IMediaDevice Connect();
 }

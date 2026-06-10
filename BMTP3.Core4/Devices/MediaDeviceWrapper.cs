@@ -18,17 +18,13 @@ internal class MediaDeviceWrapper : IMediaDevice
 	}
 
 	public string DeviceId => _mediaDeviceInfo.DeviceId;
-	public string? Description => _mediaDeviceInfo.Description;
+	public string Description => _mediaDeviceInfo.Description;
 	public string FriendlyName => _device.FriendlyName;
-	public string? Manufacturer => _mediaDeviceInfo.Manufacturer;
-
-
-
-
+	public string Manufacturer => _mediaDeviceInfo.Manufacturer;
 	public string FirmwareVersion => _device.FirmwareVersion;
-	public string? Protocol => _device.Protocol;
-	public string? Model => _device.Model;
-	public string? SerialNumber => _device.SerialNumber;
+	public string Protocol => _device.Protocol ?? string.Empty;
+	public string Model => _device.Model ?? string.Empty;
+	public string SerialNumber => _device.SerialNumber ?? string.Empty;
 	public string DeviceType => _device.DeviceType.ToString();
 	public byte[]? FunctionalUniqueId => _device.FunctionalUniqueId;
 	public byte[]? ModelUniqueId => _device.ModelUniqueId;
@@ -38,7 +34,7 @@ internal class MediaDeviceWrapper : IMediaDevice
 		get
 		{
 			List<IMediaDrive> drives = new List<IMediaDrive>();
-			foreach (MediaDriveInfo mediaDriveInfo in _device.GetDrives())
+			foreach(MediaDriveInfo mediaDriveInfo in _device.GetDrives())
 			{
 				drives.Add(new MediaDrive(mediaDriveInfo));
 			}
@@ -57,9 +53,9 @@ internal class MediaDeviceWrapper : IMediaDevice
 		// Enforce exclusive ownership of the MediaDevice connection for the lifetime of this session.
 		// Even if MediaDevice permits repeated Connect calls, this abstraction treats an already
 		// diconnected device as invalid input to avoid ambiguous ownership and session misuse.
-		if (!_device.IsConnected)
+		if(!_device.IsConnected)
 		{
-			throw new MediaDeviceException("Device is not connected, and should never be able to connect a closed Wrapper.");
+			throw new MediaDeviceException("Device is not connected, and should never be able to connect a closed MediaDeviceWrapper. Please use a MediaDeviceInfo to open a connection.");
 		}
 
 

@@ -1,4 +1,5 @@
 ﻿using MediaDevices;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 
 namespace BMTP3.Core4.Devices;
@@ -6,6 +7,8 @@ namespace BMTP3.Core4.Devices;
 [SupportedOSPlatform("windows7.0")]
 internal sealed class MediaDeviceInfo : IMediaDeviceInfo
 {
+	private const int HResultErrorDeviceNotConnected = unchecked((int)0x802A0001);
+
 	// Only a value normally not used in reading.
 	private readonly bool _isCaseSensitive;
 
@@ -40,7 +43,7 @@ internal sealed class MediaDeviceInfo : IMediaDeviceInfo
 		// Enforce exclusive ownership of the MediaDevice connection for the lifetime of this session.
 		// Even if MediaDevice permits repeated Connect calls, this abstraction treats an already
 		// connected device as invalid input to avoid ambiguous ownership and session misuse.
-		if (device.IsConnected)
+		if(device.IsConnected)
 		{
 			throw new MediaDeviceException("Device is already connected.");
 		}
@@ -48,8 +51,10 @@ internal sealed class MediaDeviceInfo : IMediaDeviceInfo
 		try
 		{
 			device.ConnectAsReadonly();
-		}
-		catch (Exception ex)
+		} catch(COMException ex) when(ex.HResult == HResultErrorDeviceNotConnected)
+		{
+			throw new MediaDeviceException($"Device '{_deviceId}' is not connected. Internal COM error.", ex);
+		} catch(Exception ex)
 		{
 			throw new MediaDeviceException($"Failed to connect to media device '{_deviceId}'.", ex);
 		}
