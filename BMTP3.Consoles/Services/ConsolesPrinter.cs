@@ -1,10 +1,10 @@
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Core2.BackupNew.Api.Progress;
 using BMTP3.Core2.BackupNew.Api.Response;
+using Spectre.Console;
 using Core4BackupProgress = BMTP3.Core4.Api.Models.BackupProgress;
 using Core4BackupResult = BMTP3.Core4.Api.Models.BackupResult;
 using Core4BackupResultState = BMTP3.Core4.Api.Models.Enums.BackupResultState;
-using Spectre.Console;
 
 namespace BMTP3.Consoles.Services;
 
@@ -44,7 +44,7 @@ public class ConsolesPrinter
 		_console.WriteLine(message);
 	}
 
-	public void PrintProgress(IBackupProgress progress)
+	public void PrintProgress(BMTP3.Core2.BackupNew.Api.Progress.IBackupProgress progress)
 	{
 		_console.WriteLine(
 			$"{progress.Phase}: discovered={progress.FilesDiscovered} succeeded={progress.FilesSucceeded} failed={progress.FilesFailed}");
