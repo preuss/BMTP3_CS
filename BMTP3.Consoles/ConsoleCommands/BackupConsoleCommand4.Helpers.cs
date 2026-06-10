@@ -1,6 +1,7 @@
 using BMTP3.Consoles.ConsoleCommands.Core4;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using System.CommandLine;
+using System.CommandLine.Parsing;
 using Core4BackupIndexType = BMTP3.Core4.Api.Models.Enums.BackupIndexType;
 using Core4BackupSourceType = BMTP3.Core4.Api.Models.Enums.BackupSourceType;
 using Core4CollisionComparisonType = BMTP3.Core4.Api.Models.Enums.CollisionComparisonType;
@@ -22,7 +23,7 @@ internal static class BackupConsoleCommand4Helpers
 
 		static bool WasSupplied<T>(ParseResult pr, Option<T> option)
 		{
-			var res = pr.GetResult(option);
+			OptionResult? res = pr.GetResult(option);
 			return res != null && !res.Implicit;
 		}
 

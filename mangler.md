@@ -1,13 +1,13 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 11 Jun 2026** — CLI simplificeret: `--source-device` & `--source-directory` → `--source-path`. CLI er kun prefix-detect.
+> **Opdateret 11 Jun 2026** — Spectre Console progress redesign ✅. Custom columns/spinners kopieret til Consoles. Core/Core2/Core3 officielt archived/readonly.
 > **#1 prioritet:** Spectre Console — Fix ConsolesServiceSetup wiring, progress redesign (Task 09), CLI cleanup (Task 02).
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 > 
-> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Aldrig modificer `BMTP3.Core`, `BMTP3.Core2` eller `BMTP3.Core3`. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres. Samme regel gælder for Consoles commands der tilhører Core/Core2/Core3: `BackupConsoleCommand.cs`, `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs` — de opdateres ikke.
+> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** `BMTP3.Core`, `BMTP3.Core2`, `BMTP3.Core3` og deres Consoles commands (`BackupConsoleCommand.cs`, `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs`) er **archived/readonly** — de ændres aldrig. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres.
 > 
 > ⚠️ **PATH NAMING STANDARD:** Se `plan.md` § Path Naming Standard. Forbudte navne: `path`, `sourcePath`, `targetPath`, `relativePath`, `folderPath`, `targetRelativePath`, `FilePath`, `DirectoryPath` (uden Relative/Absolute prefix).
 
@@ -150,20 +150,20 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 | 2 | MTP resilience | Gatekeeper timeout + retry ved COMException/disconnect mid-session |
 | 3 | Overvej | Genbrug Core2's Polly `BackupResiliencePipeline` eller implementer lightweight retry |
 
-### Høj prioritet — Spectre Console progress redesign
+### ✅ Spectre Console progress redesign — DONE
 
 > Se `tasks/09-SpectreConsole.md` for fuld arkitekturdesign + reusable assets catalog.
 
-| # | Issue | Detail |
+| # | Issue | Status |
 |---|-------|--------|
-| 1 | **ConsolesPrinter.PrintProgress** — alle 3 overloads bruger `WriteLine` | Flooder terminalen; skal bruge `AnsiConsole.Progress()` widget |
-| 2 | **SpectreAnsiConsoleLogger** — unsafe `MarkupLineInterpolated` | Hvis log message indeholder `[`/`]` → crash. Skal escape markup |
-| 7 | **PreserveHierarchy default** | ✅ | Enum-ordning (PreserveHierarchy=0). Eksplicit default i `BackupPlan.cs`. |
-| 3 | **ProgramSpectreExample** — bruger `Clear`+`Table` ikke `Progress` | Eksemplet er misvisende; bør opdateres til `Progress()` pattern |
-| 4 | **Progress skal virke for 3 engines** | Core2 (channel IAsyncEnumerable), Core3 (callback), Core4 (IProgress<T>) — forskellige data sources, samme widget |
-| 5 | **Version mismatch** | Consoles 0.55.2 vs Core 0.54.0 — acceptable, men konsolider hvis muligt |
-| 6 | **⚠️ CRITICAL: ConsolesServiceSetup NOT wired in production** | `ApplicationStartup.cs` kalder kun `LoggingServiceSetup` + `ApplicationServiceSetup`. `ConsolesPrinter` er aldrig registreret → `GetService<ConsolesPrinter>()` returnerer `null` → alt progress output er no-ops. **FIX:** Add `new ConsolesServiceSetup()` til `ApplicationStartup.cs`. |
-| 7 | **Custom columns/spinners fra Core** — arkitektur-beslutning | Core har 6 custom `ProgressColumn` + 2 custom `Spinner` klasser. Beslut: Copy til Consoles? Move til shared? Skip? Se task-fil § Core Reusable Assets. |
+| 1 | `ConsolesPrinter.PrintProgress` — Core2/Core3 overloads med `WriteLine` | 🔒 Wontfix — Core2/Core3 er archived/readonly |
+| 2 | `SpectreAnsiConsoleLogger` — unsafe `MarkupLineInterpolated` | ✅ EscapeMarkup() fixed |
+| 3 | `ProgramSpectreExample` — Core2 eksempel | 🔒 Wontfix — archived |
+| 4 | Progress for 3 engines | 🔒 Wontfix — Core2/Core3 er archived/readonly. Kun Core4 understøttes |
+| 5 | Version mismatch (0.55.2 vs 0.54.0) | ✅ Acceptable |
+| 6 | `ConsolesServiceSetup` NOT wired | ✅ Wired i `ApplicationStartup.cs` |
+| 7 | `PreserveHierarchy` default | ✅ |
+| 8 | Custom columns/spinners fra Core | ✅ `ValueOfMaxColumn`, `ElapsedTimeAdvancedColumn`, `SequenceSpinner` kopieret til `Consoles/Progress/Columns/` + `Spinners/` og wired i `BackupProgressDisplay` |
 
 ### Medium prioritet — Public API overvejelser
 

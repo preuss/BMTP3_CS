@@ -1,12 +1,12 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 11 Jun 2026** — CLI simplificeret: `--source-device` fjernet, `--source-directory` → `--source-path`. CLI er kun prefix-detect, al MTP parsing i engine.
+> **Opdateret 11 Jun 2026** — Spectre Console progress redesign ✅. Custom columns/spinners kopieret til Consoles. Core/Core2/Core3 officielt archived/readonly.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 > 
-> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Aldrig modificer `BMTP3.Core`, `BMTP3.Core2` eller `BMTP3.Core3`. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres. Samme regel gælder for Consoles commands der tilhører Core/Core2/Core3: `BackupConsoleCommand.cs`, `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs` — de opdateres ikke.
+> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** `BMTP3.Core`, `BMTP3.Core2`, `BMTP3.Core3` og deres Consoles commands (`BackupConsoleCommand.cs`, `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs`) er **archived/readonly** — de ændres aldrig. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres.
 > 
 > ⚠️ **PATH NAMING STANDARD:** Se `## Path Naming Standard` nedenfor.
 
@@ -158,33 +158,22 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **Delay feature:** `BackupPlan.Delay` (int), `Helpers/BackupDelay.cs` struct, validering i `BackupPlanValidator`, implementeret i `BackupEngine` loop, `--delay` CLI option + `BuildPlan` mapping
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
 - [x] — **PreserveHierarchy default:** Enum-ordning (PreserveHierarchy=0). Eksplicit default i `BackupPlan.OutputStructureStrategy`.
+- [x] — **Custom columns/spinners til Consoles:** `ValueOfMaxColumn`, `ElapsedTimeAdvancedColumn`, `SequenceSpinner` kopieret fra Core, wired i `BackupProgressDisplay`.
 
 ## Næste opgaver (prioriteret)
 
-### 1. 🥇 Spectre Console progress redesign (højeste prioritet)
-
-> Se `tasks/09-SpectreConsole.md` for fuld arkitekturdesign + reusable assets catalog.
-
-| # | Task | Status |
-|---|------|--------|
-| 1 | **⚠️ FØRST: Wire `ConsolesServiceSetup` i `ApplicationStartup.cs`** — ellers er progress no-ops | ❌ |
-| 2 | Erstat `WriteLine` flood i `ConsolesPrinter.PrintProgress` med `AnsiConsole.Progress()` widget | ❌ |
-| 3 | Fix `SpectreAnsiConsoleLogger` unsafe `MarkupLineInterpolated` | ❌ |
-| 4 | Progress skal fungere for Core2, Core3 og Core4 engines | ❌ |
-| 5 | Beslut: copy custom columns/spinners fra Core eller brug kun built-in Spectre | ❌ |
-
-### 2. Consoles CLI cleanup + BackupPlan Delay
+### 1. 🥇 Consoles CLI cleanup + BackupPlan Delay
 
 | # | Task | Status |
 |---|------|--------|
 | 1 | **Tilføj `Delay` til `BackupPlan`** — `int` property: `< 0` = disabled, `0` = 0ms, `> 0` = N ms. Validér i `BackupPlanValidator`. `BackupDelay` struct i `Helpers/`. Implementér i `BackupEngine` processing loop (efter hvert item). `--delay` CLI option. | ✅ |
-| 2 | MTP sourcePath format — konstruer `mtp://{device}/{subPath}` URI | ❌ |
+| 2 | MTP sourcePath format — `--source-path` CLI, prefix-detect i BuildPlan | ✅ |
 | 3 | `--backup-index` default guard | ❌ |
 | 4 | Fjern Core2 `BackupEngineOptions` config | ❌ |
 | 5 | SignalInterrupt cancel-wiring — brug Core4's SignalInterrupt | ❌ |
 | 6 | Tests for backup4 BuildPlan enum-mapping | ❌ |
 
-### 3. Integrér sidste wrapper-holdere (småopgave)
+### 2. Integrér sidste wrapper-holdere (småopgave)
 
 | # | File | Nuværende | Skal ændres til |
 |---|------|-----------|-----------------|

@@ -4,7 +4,7 @@ public static class Strings
 {
 	public static string? ToNullIfNullOrWhiteSpace(this string? str)
 	{
-		if (string.IsNullOrWhiteSpace(str))
+		if(string.IsNullOrWhiteSpace(str))
 		{
 			return null;
 		}

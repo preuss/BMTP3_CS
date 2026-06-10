@@ -1,0 +1,12 @@
+﻿using Spectre.Console;
+using Spectre.Console.Rendering;
+
+namespace BMTP3.Consoles.IO.Consoles.ProgressStatus;
+
+public class ValueOfMaxColumn : ProgressColumn
+{
+	public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
+	{
+		return new Markup($"[blue]{task.Value}/{task.MaxValue}[/]");
+	}
+}

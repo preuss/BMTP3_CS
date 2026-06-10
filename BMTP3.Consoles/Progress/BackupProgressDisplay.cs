@@ -1,4 +1,7 @@
-﻿using Spectre.Console;
+﻿using BMTP3.Consoles.IO.Consoles.Progress.Columns;
+using BMTP3.Consoles.IO.Consoles.ProgressStatus;
+using BMTP3.Consoles.IO.Consoles.Spinner;
+using Spectre.Console;
 
 namespace BMTP3.Consoles.Progress;
 
@@ -32,58 +35,60 @@ public class BackupProgressDisplay
 			.HideCompleted(false)
 			.Columns(new ProgressColumn[]
 			{
-				new SpinnerColumn(),
+				new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence7)),
 				new TaskDescriptionColumn(),
 				new ProgressBarColumn() { Width = 10 },
 				new PercentageColumn(),
 				new RemainingTimeColumn(),
+				new ValueOfMaxColumn(),
+				new ElapsedTimeAdvancedColumn(),
 			})
 			.StartAsync(async ctx =>
 			{
-				var overallTask = ctx.AddTask($"[green]{jobName.EscapeMarkup()}[/]");
+				ProgressTask overallTask = ctx.AddTask($"[green]{jobName.EscapeMarkup()}[/]");
 
-				var fileTasks = new Dictionary<string, FileTaskState>();
-				var gate = new object();
+				Dictionary<string, FileTaskState> fileTasks = new();
+				object gate = new();
 
 				ProgressReport? latestReport = null;
 				int latestReportVersion = 0;
 				int processedReportVersion = 0;
 
-				var engineTask = engineRunAsync(report =>
+				Task engineTask = engineRunAsync(report =>
 				{
-					lock (gate)
+					lock(gate)
 					{
 						latestReport = report;
 						latestReportVersion++;
 					}
 
-					if (_debug)
+					if(_debug)
 					{
 						Console.WriteLine(
 							$"DEBUG: {report.ActiveFileName} {report.ActiveFileBytesRead}/{report.ActiveFileBytesTotal} Files={report.FilesCompleted}/{report.FilesTotal}");
 					}
 				});
 
-				while (!engineTask.IsCompleted || fileTasks.Count > 0)
+				while(!engineTask.IsCompleted || fileTasks.Count > 0)
 				{
 					ProgressReport? reportToProcess = null;
 
-					lock (gate)
+					lock(gate)
 					{
-						if (latestReportVersion != processedReportVersion)
+						if(latestReportVersion != processedReportVersion)
 						{
 							reportToProcess = latestReport;
 							processedReportVersion = latestReportVersion;
 						}
 					}
 
-					if (reportToProcess != null)
+					if(reportToProcess != null)
 					{
 						UpdateOverall(overallTask, reportToProcess);
 						UpdateFileTasks(ctx, fileTasks, reportToProcess);
 					}
 
-					if (engineTask.IsCompleted)
+					if(engineTask.IsCompleted)
 					{
 						MarkRemainingCompletedTasksAsInactive(fileTasks);
 					}
@@ -105,13 +110,12 @@ public class BackupProgressDisplay
 
 	private static void MarkRemainingCompletedTasksAsInactive(Dictionary<string, FileTaskState> fileTasks)
 	{
-		var now = DateTime.UtcNow;
+		DateTime now = DateTime.UtcNow;
 
-		foreach (var state in fileTasks.Values)
+		foreach(FileTaskState state in fileTasks.Values)
 		{
-			var isComplete = state.Task.Value >= state.Task.MaxValue;
-
-			if (isComplete && state.BecameInactiveAt == null)
+			bool isComplete = state.Task.Value >= state.Task.MaxValue;
+			if(isComplete && state.BecameInactiveAt == null)
 			{
 				state.BecameInactiveAt = now;
 			}
@@ -129,21 +133,22 @@ public class BackupProgressDisplay
 	private static void UpdateFileTasks(
 		ProgressContext ctx,
 		Dictionary<string, FileTaskState> fileTasks,
-		ProgressReport report)
+		ProgressReport report
+	)
 	{
-		var now = DateTime.UtcNow;
+		DateTime now = DateTime.UtcNow;
 
-		foreach (var state in fileTasks.Values)
+		foreach(FileTaskState state in fileTasks.Values)
 		{
 			state.SeenInCurrentUpdate = false;
 		}
 
-		if (!string.IsNullOrWhiteSpace(report.ActiveFileName) &&
+		if(!string.IsNullOrWhiteSpace(report.ActiveFileName) &&
 			report.ActiveFileBytesTotal > 0)
 		{
-			if (!fileTasks.TryGetValue(report.ActiveFileName, out var activeState))
+			if(!fileTasks.TryGetValue(report.ActiveFileName, out FileTaskState? activeState))
 			{
-				var task = ctx.AddTask(Truncate(report.ActiveFileName));
+				ProgressTask task = ctx.AddTask(Truncate(report.ActiveFileName));
 				activeState = new FileTaskState(task);
 				fileTasks.Add(report.ActiveFileName, activeState);
 			}
@@ -156,34 +161,32 @@ public class BackupProgressDisplay
 			activeState.Task.Value = Math.Min(report.ActiveFileBytesRead, activeState.Task.MaxValue);
 		}
 
-		foreach (var state in fileTasks.Values)
+		foreach(FileTaskState state in fileTasks.Values)
 		{
-			if (state.SeenInCurrentUpdate)
+			if(state.SeenInCurrentUpdate)
 				continue;
 
-			var isComplete = state.Task.Value >= state.Task.MaxValue;
+			bool isComplete = state.Task.Value >= state.Task.MaxValue;
 
-			if (isComplete && state.BecameInactiveAt == null)
+			if(isComplete && state.BecameInactiveAt == null)
 			{
 				state.BecameInactiveAt = now;
 			}
 		}
 	}
 
-	private static void RemoveExpiredInactiveTasks(
-		ProgressContext ctx,
-		Dictionary<string, FileTaskState> fileTasks)
+	private static void RemoveExpiredInactiveTasks(ProgressContext ctx, Dictionary<string, FileTaskState> fileTasks)
 	{
-		var now = DateTime.UtcNow;
+		DateTime now = DateTime.UtcNow;
 
-		var expiredKeys = fileTasks
+		List<string> expiredKeys = fileTasks
 			.Where(kvp =>
 				kvp.Value.BecameInactiveAt is not null &&
 				(now - kvp.Value.BecameInactiveAt.Value).TotalSeconds >= 5)
 			.Select(kvp => kvp.Key)
 			.ToList();
 
-		foreach (var key in expiredKeys)
+		foreach(string key in expiredKeys)
 		{
 			ctx.RemoveTask(fileTasks[key].Task);
 			fileTasks.Remove(key);
