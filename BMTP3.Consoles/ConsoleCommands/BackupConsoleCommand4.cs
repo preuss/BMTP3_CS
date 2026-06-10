@@ -155,9 +155,9 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		}
 
 		if ((backupOptions.Config == null || !backupOptions.Config.Exists)
-			&& string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
+			&& string.IsNullOrWhiteSpace(backupOptions.SourcePath))
 		{
-			throw new ArgumentException("--source-directory is required when not using a config file.");
+			throw new ArgumentException("--source-path is required when not using a config file.");
 		}
 	}
 }

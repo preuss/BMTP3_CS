@@ -13,30 +13,21 @@ public static class MtpUriParser
 			throw new ArgumentException($"URI must start with '{Scheme}'. Got: '{uri}'", nameof(uri));
 		}
 
-		// Remove scheme
 		string remainder = uri.Substring(Scheme.Length);
 
-		int slashIndex = remainder.IndexOf('/');
+		int firstSlash = remainder.IndexOf('/');
 
 		string deviceName;
-		string devicePath;
+		string afterDevice;
 
-		if(slashIndex == -1)
+		if(firstSlash == -1)
 		{
-			// No slash, so the entire remainder is the device name
 			deviceName = remainder;
-			devicePath = string.Empty;
+			afterDevice = string.Empty;
 		} else
 		{
-			// Split clearly and explicitly
-			deviceName = remainder.Substring(0, slashIndex);
-			devicePath = remainder.Substring(slashIndex + 1);
-
-			// Trim trailing slash if necessary
-			if(devicePath.Length > 0 && devicePath.EndsWith("/"))
-			{
-				devicePath = devicePath.TrimEnd('/');
-			}
+			deviceName = remainder.Substring(0, firstSlash);
+			afterDevice = remainder.Substring(firstSlash + 1);
 		}
 
 		if(string.IsNullOrWhiteSpace(deviceName))
@@ -44,6 +35,31 @@ public static class MtpUriParser
 			throw new ArgumentException($"Device name is empty in URI: '{uri}'", nameof(uri));
 		}
 
-		return new MtpUriParseResult(deviceName, devicePath);
+		int secondSlash = afterDevice.IndexOf('/');
+		string driveName;
+		string directoryPath;
+
+		if(string.IsNullOrEmpty(afterDevice))
+		{
+			driveName = string.Empty;
+			directoryPath = string.Empty;
+		}
+		else if(secondSlash == -1)
+		{
+			driveName = afterDevice;
+			directoryPath = string.Empty;
+		}
+		else
+		{
+			driveName = afterDevice.Substring(0, secondSlash);
+			directoryPath = afterDevice.Substring(secondSlash + 1);
+
+			if(directoryPath.Length > 0 && directoryPath.EndsWith("/"))
+			{
+				directoryPath = directoryPath.TrimEnd('/');
+			}
+		}
+
+		return new MtpUriParseResult(deviceName, driveName, directoryPath);
 	}
 }

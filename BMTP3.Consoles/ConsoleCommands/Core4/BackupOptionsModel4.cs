@@ -26,20 +26,13 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public string? Name { get; set; }
 
-	public static Option<string> SourceDeviceOption { get; } = new("--source-device", "-d")
-	{
-		Description = "Name of the source device to backup from (e.g. 'Apple iPhone')."
-	};
-
-	public string? SourceDevice { get; set; }
-
-	public static Option<string> SourceDirectoryOption { get; } = new("--source-directory", "-s")
+	public static Option<string> SourcePathOption { get; } = new("--source-path", "-s")
 	{
 		Description =
-			"Source folder on the device (e.g., 'Internal Storage/DCIM/100APPLE' or 'C:\\Users\\Bob\\Pictures')."
+			"Absolute source path. For MTP, format: mtp://{DeviceName}/{DriveName}/{DirectoryPath} (e.g., 'mtp://Apple iPad/Internal Storage/DCIM/100APPLE'). For filesystem, use a local path (e.g., 'C:\\Users\\Bob\\Pictures')."
 	};
 
-	public string? SourceDirectory { get; set; }
+	public string? SourcePath { get; set; }
 
 	public static Option<DirectoryInfo> OutputDirectoryOption { get; } = new("--output", "-o")
 	{

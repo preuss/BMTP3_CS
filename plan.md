@@ -1,6 +1,8 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 10 Jun 2026** — Path Naming Standard tilføjet. PreserveHierarchy default. MTP pipeline NuGet-free. Spectre Console #1 prioritet.
+> **Opdateret 11 Jun 2026** — CLI simplificeret: `--source-device` fjernet, `--source-directory` → `--source-path`. CLI er kun prefix-detect, al MTP parsing i engine.
+> 
+> ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 > 
@@ -15,18 +17,40 @@
 [Context][Relative|Absolute][File|Directory]Path
 ```
 
-### Eksempler
+### `source`-prefix regel
+
+`source` bruges **kun** når noget er i en source-kontekst (`BackupPlan`, `BackupScanner`, traversal).
+Discovery-laget (`IBackupDriveInfo`) ved ikke hvad en "source" er — det kender kun drives og devices. Derfor:
+
+| Lag | Eksempel | Forklaring |
+|-----|----------|------------|
+| **Discovery** | `RootPath`, `DeviceName`, `DriveName` | Ingen `source`-prefix — pre-source |
+| **Source** | `SourcePath`, `sourceDirectoryPath` | Først når brugeren vælger det som source |
+
+### Eksempler — Filesystem
 
 | Navn | Indhold | Betydning |
 |------|---------|-----------|
 | `relativeFilePath` | `"2026\jan\picture.jpg"` | Relativ sti inkl. filnavn |
 | `relativeDirectoryPath` | `"2026\jan"` | Relativ sti, kun mappe |
-| `sourceRelativeFilePath` | `"2026\jan\picture.jpg"` | Samme, med source-kontekst |
-| `sourceRelativeDirectoryPath` | `"2026\jan"` | Samme, med source-kontekst |
 | `sourceRootDirectoryPath` | `@"C:\temp\source"` | Absolut rodmappe for source |
 | `backupRootDirectoryPath` | `@"C:\temp\target"` | Absolut rodmappe for backup |
 | `sourceAbsoluteFilePath` | `@"C:\temp\source\2026\jan\picture.jpg"` | Fuld absolut sti til fil |
 | `sourceAbsoluteDirectoryPath` | `@"C:\temp\source\2026\jan"` | Fuld absolut sti til mappe |
+| `sourceRelativeFilePath` | `"2026\jan\picture.jpg"` | Relativ sti med source-kontekst |
+| `sourceRelativeDirectoryPath` | `"2026\jan"` | Relativ mappe med source-kontekst |
+
+### Eksempler — MTP
+
+| Navn | Indhold | Betydning |
+|------|---------|-----------|
+| `rootPath` (discovery) | `"mtp://Apple iPad/Internal Storage"` | Device + drive, pre-source |
+| `deviceName` | `"Apple iPad"` | Device FriendlyName |
+| `driveName` | `"Internal Storage"` | Storage navn |
+| `sourcePath` (plan) | `"mtp://Apple iPad/Internal Storage/DCIM/Camera"` | Fuld source sti inkl. directoryPath |
+| `directoryPath` | `"DCIM/Camera"` | Path-element i URI efter `{deviceName}/{driveName}/` |
+| `sourceRelativeFilePath` | `"2024/jan/picture.jpg"` | Relativ til sourcePath |
+| `sourceRelativeDirectoryPath` | `"2024/jan"` | Relativ mappe til sourceRootPath |
 
 ### Regler
 

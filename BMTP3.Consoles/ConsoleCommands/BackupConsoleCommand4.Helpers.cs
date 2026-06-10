@@ -49,16 +49,19 @@ internal static class BackupConsoleCommand4Helpers
 		if (WasSupplied(parseResult, BackupOptionsModel4.NameOption) && !string.IsNullOrWhiteSpace(backupOptions.Name))
 			name = backupOptions.Name;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.SourceDeviceOption) && !string.IsNullOrWhiteSpace(backupOptions.SourceDevice))
+		if (WasSupplied(parseResult, BackupOptionsModel4.SourcePathOption) && !string.IsNullOrWhiteSpace(backupOptions.SourcePath))
 		{
-			sourceType = Core4BackupSourceType.MediaDevice;
-			sourcePath = backupOptions.SourceDevice;
-		}
+			sourcePath = backupOptions.SourcePath;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.SourceDirectoryOption) && !string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
-		{
-			sourceType = Core4BackupSourceType.FileSystem;
-			sourcePath = backupOptions.SourceDirectory;
+			if (sourcePath.StartsWith("mtp://", StringComparison.Ordinal))
+			{
+				sourceType = Core4BackupSourceType.MediaDevice;
+			}
+			else
+			{
+				sourceType = Core4BackupSourceType.FileSystem;
+				sourcePath = Path.GetFullPath(sourcePath);
+			}
 		}
 
 		if (WasSupplied(parseResult, BackupOptionsModel4.OutputDirectoryOption) && backupOptions.OutputDirectory != null)

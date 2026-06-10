@@ -740,14 +740,17 @@ public sealed class BackupEngine : IBackupEngine
 		foreach (IBackupDriveInfo drive in drives)
 		{
 			Guard.RequireNonNull(drive);
-			sourcePath = sourcePath.Replace("/", "\\");
 
-			if (string.Equals(drive.RootPath, sourcePath, StringComparison.OrdinalIgnoreCase))
+			string normalizedPath = sourcePath.StartsWith("mtp://", StringComparison.Ordinal)
+				? sourcePath
+				: sourcePath.Replace("/", "\\");
+
+			if (string.Equals(drive.RootPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
 				return drive;
 
-			if (sourcePath.StartsWith(drive.RootPath, StringComparison.OrdinalIgnoreCase) &&
+			if (normalizedPath.StartsWith(drive.RootPath, StringComparison.OrdinalIgnoreCase) &&
 				(drive.RootPath.EndsWith('\\') || drive.RootPath.EndsWith('/') ||
-				 sourcePath[drive.RootPath.Length] == '\\' || sourcePath[drive.RootPath.Length] == '/'))
+				 normalizedPath[drive.RootPath.Length] == '\\' || normalizedPath[drive.RootPath.Length] == '/'))
 			{
 				return drive;
 			}

@@ -1,7 +1,9 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 10 Jun 2026** — Path Naming Standard added (plan.md). PreserveHierarchy default. MTP pipeline NuGet-free.
+> **Opdateret 11 Jun 2026** — CLI simplificeret: `--source-device` & `--source-directory` → `--source-path`. CLI er kun prefix-detect.
 > **#1 prioritet:** Spectre Console — Fix ConsolesServiceSetup wiring, progress redesign (Task 09), CLI cleanup (Task 02).
+> 
+> ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 > 

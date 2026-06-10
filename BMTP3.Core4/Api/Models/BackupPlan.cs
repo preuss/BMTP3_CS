@@ -31,14 +31,13 @@ public sealed record BackupPlan
 	/// <summary>
 	/// The source path to back up.
 	/// 
-	/// Supports multiple source types:
-	/// 
 	/// <para><b>File system:</b> Absolute local or UNC path.</para>
 	/// <para>Examples:</para>
 	/// <para><c>C:\Users\John\Pictures</c></para>
 	/// <para><c>\\NAS\Share\Backup</c></para>
 	/// 
 	/// <para><b>Media device (MTP/PTP):</b> URI formatted as:</para>
+	/// <para><c>mtp://{DeviceName}/{DriveName}/{DirectoryPath}</c></para>
 	/// <para><c>mtp://[Device Friendly Name]/[Storage or Root]/[Path]</c></para>
 	/// 
 	/// <para>The device name must match the name shown in Windows (e.g. "Apple iPad", "Canon Camera").</para>
