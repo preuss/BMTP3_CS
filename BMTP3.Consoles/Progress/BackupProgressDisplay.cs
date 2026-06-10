@@ -98,6 +98,11 @@ public class BackupProgressDisplay
 				overallTask.Value = overallTask.MaxValue;
 			});
 	}
+	private static string Truncate(string value, int maxLength = 40)
+	{
+		return value.Length > maxLength ? value[..(maxLength - 1)] + "…" : value;
+	}
+
 	private static void MarkRemainingCompletedTasksAsInactive(Dictionary<string, FileTaskState> fileTasks)
 	{
 		var now = DateTime.UtcNow;
@@ -138,7 +143,7 @@ public class BackupProgressDisplay
 		{
 			if (!fileTasks.TryGetValue(report.ActiveFileName, out var activeState))
 			{
-				var task = ctx.AddTask(report.ActiveFileName);
+				var task = ctx.AddTask(Truncate(report.ActiveFileName));
 				activeState = new FileTaskState(task);
 				fileTasks.Add(report.ActiveFileName, activeState);
 			}
@@ -146,7 +151,7 @@ public class BackupProgressDisplay
 			activeState.SeenInCurrentUpdate = true;
 			activeState.BecameInactiveAt = null;
 
-			activeState.Task.Description = report.ActiveFileName;
+			activeState.Task.Description = Truncate(report.ActiveFileName);
 			activeState.Task.MaxValue = Math.Max(1, report.ActiveFileBytesTotal);
 			activeState.Task.Value = Math.Min(report.ActiveFileBytesRead, activeState.Task.MaxValue);
 		}
