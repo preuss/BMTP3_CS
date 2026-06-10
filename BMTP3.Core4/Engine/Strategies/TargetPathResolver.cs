@@ -18,23 +18,23 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 	{
 		return request.OutputStructureStrategy switch
 		{
-			OutputStructureStrategy.PreserveHierarchy => ResolvePreserveHierarchy(request.DestinationRoot, request.RelativePath, request.FileName),
+			OutputStructureStrategy.PreserveHierarchy => ResolvePreserveHierarchy(request.DestinationRoot, request.RelativeDirectoryPath, request.FileName),
 			OutputStructureStrategy.Flat => ResolveFlat(request.DestinationRoot, request.FileName),
 			OutputStructureStrategy.CustomPathPattern => ResolveCustomPathPattern(request),
 			_ => throw new ArgumentOutOfRangeException(nameof(request.OutputStructureStrategy), request.OutputStructureStrategy, "Unknown output structure strategy."),
 		};
 	}
 
-	private static string ResolvePreserveHierarchy(string destinationRoot, string? relativePath, string fileName)
+	private static string ResolvePreserveHierarchy(string destinationRoot, string? relativeDirectoryPath, string fileName)
 	{
-		string normalizedRelativePath = NormalizeRelativeDirectory(relativePath);
+		string normalizedRelativeDirectoryPath = NormalizeRelativeDirectoryPath(relativeDirectoryPath);
 
-		if(normalizedRelativePath.Length == 0)
+		if(normalizedRelativeDirectoryPath.Length == 0)
 		{
 			return Path.Combine(destinationRoot, fileName);
 		}
 
-		return Path.Combine(destinationRoot, normalizedRelativePath, fileName);
+		return Path.Combine(destinationRoot, normalizedRelativeDirectoryPath, fileName);
 	}
 
 	private static string ResolveFlat(string destinationRoot, string fileName)
@@ -51,7 +51,7 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 
 		FileFormatValuesRequest valuesRequest = new(
 			FileName: request.FileName,
-			RelativePath: request.RelativePath,
+			RelativeFilePath: request.RelativeDirectoryPath,
 			CreateFileDate: request.CreateFileDate,
 			ItemId: request.ItemId,
 			StrongHash: request.StrongHash,
@@ -68,14 +68,14 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 		return Path.Combine(request.DestinationRoot, relativePath);
 	}
 
-	private static string NormalizeRelativeDirectory(string? relativePath)
+	private static string NormalizeRelativeDirectoryPath(string? relativeDirectoryPath)
 	{
-		if(string.IsNullOrWhiteSpace(relativePath))
+		if(string.IsNullOrWhiteSpace(relativeDirectoryPath))
 		{
 			return string.Empty;
 		}
 
-		return relativePath
+		return relativeDirectoryPath
 			.Trim()
 			.Trim('/', '\\');
 	}

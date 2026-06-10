@@ -133,7 +133,7 @@ internal sealed class SessionStateService : ISessionStateService
 		{
 			Id = record.Item.Id,
 			SourcePath = record.Item.SourcePath,
-			RelativePath = record.Item.RelativePath,
+			RelativeFilePath = record.Item.RelativeFilePath,
 			FileName = record.Item.FileName,
 			Length = length,
 			LastModified = record.Item.DateModified,

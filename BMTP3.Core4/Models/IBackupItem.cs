@@ -25,7 +25,7 @@ internal interface IBackupItem
 	/// <summary>
 	/// The path of the item relative to the configured backup source.
 	/// </summary>
-	string RelativePath { get; }
+	string RelativeFilePath { get; }
 
 	/// <summary>
 	/// The name of the file or directory represented by this backup item.

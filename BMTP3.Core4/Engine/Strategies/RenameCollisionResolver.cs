@@ -133,7 +133,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 
 		FileFormatValuesRequest valuesRequest = new(
 			FileName: request.FileName,
-			RelativePath: request.RelativePath,
+			RelativeFilePath: request.RelativeFilePath,
 			CreateFileDate: request.CreateFileDate,
 			ItemId: request.ItemId,
 			StrongHash: request.StrongHash,
@@ -245,7 +245,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 
 			Dictionary<HashType, string> candidateHashes = await _hashService.ComputeHashesAsync(
 				candidateContent,
-				request.RelativePath,
+				request.RelativeFilePath,
 				hashTypes,
 				progress: null, // TODO: In the future think about progress reporting for collision resolver
 				cancellationToken: ct

@@ -43,7 +43,7 @@ internal sealed class BackupScanner : IBackupScanner
 			{
 				Id = sourceItem.Id,
 				SourcePath = sourceItem.SourcePath,
-				RelativePath = sourceItem.RelativePath,
+				RelativeFilePath = sourceItem.RelativeFilePath,
 				FileName = sourceItem.FileName,
 				DateCreated = sourceItem.DateCreated,
 				DateModified = sourceItem.DateModified,

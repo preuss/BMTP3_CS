@@ -4,7 +4,7 @@ namespace BMTP3.Core4.Engine.Strategies;
 
 internal sealed record TargetPathResolveRequest(
 	string DestinationRoot,
-	string RelativePath,
+	string RelativeDirectoryPath,
 	string FileName,
 	DateTimeOffset CreateFileDate,
 	string? StrongHash,

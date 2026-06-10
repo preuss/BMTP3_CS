@@ -73,7 +73,7 @@ public class HashServiceTests
 			localService.ComputeHashesAsync(failingContent, "failing.txt",
 				new[] { HashAlgorithmType.SHA2_256 }, null, default));
 
-		Assert.Equal("failing.txt", ex.ItemRelativePath);
+		Assert.Equal("failing.txt", ex.ItemRelativeFilePath);
 	}
 
 	private sealed class FailingContent : IContent

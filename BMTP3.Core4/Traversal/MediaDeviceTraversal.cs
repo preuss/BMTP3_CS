@@ -51,7 +51,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		int dirCount = 0;
 		int fileCount = 0;
 
-		await foreach ((IMediaFile file, string fileName, string relativePath) in EnumerateRecursiveAsync(
+		await foreach ((IMediaFile file, string fileName, string relativeFilePath) in EnumerateRecursiveAsync(
 						  startDirectory,
 						  relativePrefix: "",
 						  recursive: request.Recursive,
@@ -68,7 +68,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				FilesDiscovered = fileCount,
 			});
 
-			if (!GlobMatcher.IsIncluded(relativePath, request.IncludePatterns, request.ExcludePatterns))
+			if (!GlobMatcher.IsIncluded(relativeFilePath, request.IncludePatterns, request.ExcludePatterns))
 				continue;
 
 			SourceTraversalItem item = await _gatekeeper.ExecuteAsync(_ =>
@@ -81,7 +81,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				{
 					Id = file.FullName,
 					SourcePath = file.FullName,
-					RelativePath = relativePath,
+					RelativeFilePath = relativeFilePath,
 					FileName = fileName,
 					Content = new MediaDeviceContent(file, _gatekeeper),
 					DateCreated = created,
@@ -97,7 +97,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		}
 	}
 
-	private async IAsyncEnumerable<(IMediaFile File, string FileName, string RelativePath)> EnumerateRecursiveAsync(
+	private async IAsyncEnumerable<(IMediaFile File, string FileName, string RelativeFilePath)> EnumerateRecursiveAsync(
 		IMediaDirectory directory,
 		string relativePrefix,
 		bool recursive,

@@ -82,7 +82,7 @@ public sealed record BackupPlan
 	/// <summary>
 	/// Determines how the output directory structure is created.
 	/// </summary>
-	public OutputStructureStrategy OutputStructureStrategy { get; init; }
+	public OutputStructureStrategy OutputStructureStrategy { get; init; } = OutputStructureStrategy.PreserveHierarchy;
 
 	/// <summary>
 	/// Custom template pattern for the output path.

@@ -153,7 +153,7 @@ public sealed class BackupEngine : IBackupEngine
 			IBackupDriveInfo matchedDrive = MatchDrive(drives, plan.SourcePath)
 				?? throw new InvalidOperationException($"No drive found matching source path '{plan.SourcePath}'.");
 
-			string relativePath = GetRelativePath(matchedDrive.RootPath, plan.SourcePath);
+			string relativeDirectoryPath = GetRelativeDirectoryPath(matchedDrive.RootPath, plan.SourcePath);
 
 			using IConnectedSource connectedSource = _sourceConnector.Connect(matchedDrive);
 			ISourceTraversal traversal = _sourceTraversalFactory.Create(connectedSource);
@@ -169,7 +169,7 @@ public sealed class BackupEngine : IBackupEngine
 			BackupScanRequest scanRequest = new()
 			{
 				SourcePath = plan.SourcePath,
-				SubPath = relativePath,
+				SubPath = relativeDirectoryPath,
 				Recursive = plan.Recursive,
 				IncludePatterns = plan.IncludePatterns,
 				ExcludePatterns = plan.ExcludePatterns,
@@ -252,13 +252,13 @@ public sealed class BackupEngine : IBackupEngine
 						// Create temp file path for this item.
 						FileInfo tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
-						// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-						if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+						// Stupid Visual Studio thinks that record.Item.RelativeFilePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
+						if (record.Item.RelativeFilePath == null) throw new InvalidOperationException("RelativeFilePath cannot be null for post-write verification.");
 
 						// Download content to temp file with progress reporting.
 						BackupProgressItem currentProgressItem = new()
 						{
-							RelativePath = record.Item.RelativePath,
+							RelativeFilePath = record.Item.RelativeFilePath,
 							Length = (long)record.Item.Content.Length,
 							Phase = BackupProgressItemPhase.Transferring,
 						};
@@ -334,12 +334,12 @@ public sealed class BackupEngine : IBackupEngine
 							.Distinct()
 							.ToList();
 
-						// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-						if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+						// Stupid Visual Studio thinks that record.Item.RelativeFilePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
+						if (record.Item.RelativeFilePath == null) throw new InvalidOperationException("RelativeFilePath cannot be null for post-write verification.");
 
 						record.Metadata.ComputedHashes = await _hashService.ComputeHashesAsync(
 							record.Item.Content,
-							record.Item.RelativePath,
+							record.Item.RelativeFilePath,
 							allAlgorithms,
 							computeHashProgress,
 							cancellationToken
@@ -351,9 +351,10 @@ public sealed class BackupEngine : IBackupEngine
 						// Commit: resolve path → move file → write sidecar
 						// ------------------------------------------------------------
 						string? strongHash = GetStrongestHash(record.Metadata.ComputedHashes);
+						string relativeDir = Path.GetDirectoryName(record.Item.RelativeFilePath) ?? string.Empty;
 						TargetPathResolveRequest targetPathResolveRequest = new(
 							DestinationRoot: plan.Destination,
-							RelativePath: record.Item.RelativePath,
+							RelativeDirectoryPath: relativeDir,
 							FileName: record.Item.FileName,
 							CreateFileDate: createFileDate,
 							StrongHash: strongHash,
@@ -373,7 +374,7 @@ public sealed class BackupEngine : IBackupEngine
 								SourcePath = tempFile.FullName,
 								IntendedTargetPath = intendedPath,
 
-								RelativePath = record.Item.RelativePath,
+								RelativeFilePath = record.Item.RelativeFilePath,
 								CreateFileDate = createFileDate,
 								ItemId = record.Item.Id,
 
@@ -446,9 +447,9 @@ public sealed class BackupEngine : IBackupEngine
 								LastWriteDateTime = record.Metadata.ModifiedDateTime,
 								LastAccessDateTime = record.Metadata.AccessedDateTime,
 								BackupStartDateTime = backupStartTime,
-								SourceRelativePath = record.Item.RelativePath,
-								SanitizedSourceRelativePath = record.Item.RelativePath?.Replace(':', '_'),
-								TargetRelativePath = Path.GetRelativePath(plan.Destination, targetPath),
+								SourceRelativeFilePath = record.Item.RelativeFilePath,
+								SanitizedSourceRelativeFilePath = record.Item.RelativeFilePath?.Replace(':', '_'),
+								TargetRelativeFilePath = Path.GetRelativePath(plan.Destination, targetPath),
 								Hashes = record.Metadata.ComputedHashes,
 							};
 
@@ -457,8 +458,8 @@ public sealed class BackupEngine : IBackupEngine
 
 						if (plan.PostWriteVerification == PostWriteVerificationType.Hash)
 						{
-							// Stupid Visual Studio thinks that record.Item.RelativePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
-							if (record.Item.RelativePath == null) throw new InvalidOperationException("RelativePath cannot be null for post-write verification.");
+							// Stupid Visual Studio thinks that record.Item.RelativeFilePath can be null even though it is guaranteed to be non-null by the BackupScanner which creates the BackupRecord instances. So we have to add this redundant null check to satisfy the compiler.
+							if (record.Item.RelativeFilePath == null) throw new InvalidOperationException("RelativeFilePath cannot be null for post-write verification.");
 
 							if (plan.VerificationHashAlgorithmTypes == null || plan.VerificationHashAlgorithmTypes.Count == 0)
 							{
@@ -467,7 +468,7 @@ public sealed class BackupEngine : IBackupEngine
 
 							Dictionary<HashType, string> verifyHashes = await _hashService.ComputeHashesAsync(
 								record.Item.Content,
-								record.Item.RelativePath,
+								record.Item.RelativeFilePath,
 								plan.VerificationHashAlgorithmTypes,
 								null,
 								cancellationToken
@@ -755,7 +756,7 @@ public sealed class BackupEngine : IBackupEngine
 		return null;
 	}
 
-	private static string GetRelativePath(string rootPath, string sourcePath)
+	private static string GetRelativeDirectoryPath(string rootPath, string sourcePath)
 	{
 		if (string.Equals(rootPath, sourcePath, StringComparison.OrdinalIgnoreCase))
 			return string.Empty;

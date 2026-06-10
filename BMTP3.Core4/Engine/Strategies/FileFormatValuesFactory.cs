@@ -9,7 +9,7 @@ internal sealed class FileFormatValuesFactory : IFileFormatValuesFactory
 		string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(request.FileName);
 		string fileNameWithExtension = request.FileName;
 		string extension = Path.GetExtension(fileNameWithExtension).TrimStart('.');
-		string relativePath = (request.RelativePath ?? string.Empty)
+		string relativeFilePath = (request.RelativeFilePath ?? string.Empty)
 			.Trim('/', '\\')
 			.Replace('\\', '/');
 
@@ -79,9 +79,9 @@ internal sealed class FileFormatValuesFactory : IFileFormatValuesFactory
 			["extension"] = extension, // Alias for ext
 
 			// --- Path ---
-			["relativePath"] = relativePath,
-			["sourceRelativePath"] = relativePath, // Alias for relativePath
-			["sourceStructure"] = relativePath, // Alias for relativePath
+			["relativePath"] = relativeFilePath,
+			["sourceRelativePath"] = relativeFilePath, // Alias for relativePath
+			["sourceStructure"] = relativeFilePath, // Alias for relativePath
 
 			// --- Metadata ---
 			["deviceName"] = NotYetImplemented("deviceName"),

@@ -96,9 +96,9 @@ public class SidecarServiceTests
 			LastWriteDateTime = new DateTimeOffset(2026, 6, 1, 14, 32, 0, TimeSpan.Zero),
 			LastAccessDateTime = new DateTimeOffset(2026, 6, 1, 14, 32, 0, TimeSpan.Zero),
 			BackupStartDateTime = new DateTimeOffset(2026, 6, 3, 10, 0, 0, TimeSpan.Zero),
-			SourceRelativePath = @"Phone\DCIM\vacation.mp4",
-			SanitizedSourceRelativePath = @"Phone\DCIM\vacation.mp4",
-			TargetRelativePath = @"2026\06\vacation.mp4",
+			SourceRelativeFilePath = @"Phone\DCIM\vacation.mp4",
+			SanitizedSourceRelativeFilePath = @"Phone\DCIM\vacation.mp4",
+			TargetRelativeFilePath = @"2026\06\vacation.mp4",
 			Hashes = new Dictionary<HashType, string>
 			{
 				[HashType.SHA3_512_FIPS202] = "fips202hash",
@@ -131,8 +131,8 @@ public class SidecarServiceTests
 		SourceType = "Drive",
 		SourceFileName = "photo.jpg",
 		BackupStartDateTime = new DateTimeOffset(2026, 6, 3, 12, 0, 0, TimeSpan.Zero),
-		SourceRelativePath = @"photos\photo.jpg",
-		TargetRelativePath = @"photos\photo.jpg",
+		SourceRelativeFilePath = @"photos\photo.jpg",
+		TargetRelativeFilePath = @"photos\photo.jpg",
 		Hashes = new Dictionary<HashType, string>
 		{
 			[HashType.SHA2_256] = "abc123",

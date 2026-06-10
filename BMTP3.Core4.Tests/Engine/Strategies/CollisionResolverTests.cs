@@ -10,7 +10,7 @@ public class CollisionResolverTests
 	{
 		SourcePath = @"C:\source\file.txt",
 		IntendedTargetPath = @"C:\dest\file.txt",
-		RelativePath = "file.txt",
+		RelativeFilePath = "file.txt",
 		CreateFileDate = DateTimeOffset.UtcNow,
 		ItemId = "item-1",
 		Strategy = CollisionStrategy.Overwrite,

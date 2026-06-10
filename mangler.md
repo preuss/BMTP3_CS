@@ -1,13 +1,13 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 10 Jun 2026** — Devices wrapper-lag komplet (12 files). Hele MTP-pipeline (SourceConnector → ConnectedMediaDriveSource → MediaDeviceTraversal → MediaDeviceContent) bruger nu udelukkende wrapper-interfaces. Kun 2 discovery-filer mangler.
+> **Opdateret 10 Jun 2026** — Path Naming Standard added (plan.md). PreserveHierarchy default. MTP pipeline NuGet-free.
 > **#1 prioritet:** Spectre Console — Fix ConsolesServiceSetup wiring, progress redesign (Task 09), CLI cleanup (Task 02).
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 > 
 > ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Aldrig modificer `BMTP3.Core`, `BMTP3.Core2` eller `BMTP3.Core3`. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres. Samme regel gælder for Consoles commands der tilhører Core/Core2/Core3: `BackupConsoleCommand.cs`, `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs` — de opdateres ikke.
-
----
+> 
+> ⚠️ **PATH NAMING STANDARD:** Se `plan.md` § Path Naming Standard. Forbudte navne: `path`, `sourcePath`, `targetPath`, `relativePath`, `folderPath`, `targetRelativePath`, `FilePath`, `DirectoryPath` (uden Relative/Absolute prefix).
 
 ## Resolved since last update
 
@@ -156,6 +156,7 @@
 |---|-------|--------|
 | 1 | **ConsolesPrinter.PrintProgress** — alle 3 overloads bruger `WriteLine` | Flooder terminalen; skal bruge `AnsiConsole.Progress()` widget |
 | 2 | **SpectreAnsiConsoleLogger** — unsafe `MarkupLineInterpolated` | Hvis log message indeholder `[`/`]` → crash. Skal escape markup |
+| 7 | **PreserveHierarchy default** | ✅ | Enum-ordning (PreserveHierarchy=0). Eksplicit default i `BackupPlan.cs`. |
 | 3 | **ProgramSpectreExample** — bruger `Clear`+`Table` ikke `Progress` | Eksemplet er misvisende; bør opdateres til `Progress()` pattern |
 | 4 | **Progress skal virke for 3 engines** | Core2 (channel IAsyncEnumerable), Core3 (callback), Core4 (IProgress<T>) — forskellige data sources, samme widget |
 | 5 | **Version mismatch** | Consoles 0.55.2 vs Core 0.54.0 — acceptable, men konsolider hvis muligt |

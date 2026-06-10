@@ -34,15 +34,15 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 			DateTimeOffset? modified = SafeGetDate(file, f => f.LastWriteTimeUtc);
 			DateTimeOffset? accessed = SafeGetDate(file, f => f.LastAccessTimeUtc);
 
-			string relativePath = Path.GetRelativePath(rootDir.FullName, file.FullName);
-			if(!GlobMatcher.IsIncluded(relativePath, request.IncludePatterns, request.ExcludePatterns))
+			string relativeFilePath = Path.GetRelativePath(rootDir.FullName, file.FullName);
+			if(!GlobMatcher.IsIncluded(relativeFilePath, request.IncludePatterns, request.ExcludePatterns))
 				continue;
 
 			yield return new SourceTraversalItem
 			{
 				Id = file.FullName,
 				SourcePath = file.FullName,
-				RelativePath = relativePath,
+				RelativeFilePath = relativeFilePath,
 				FileName = file.Name,
 				Content = new Models.FileContent(file),
 				DateCreated = created,

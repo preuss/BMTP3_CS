@@ -87,7 +87,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 						p.FilesSucceeded + p.FilesSkipped + p.FilesFailed,
 						p.TotalFilesSelected,
 						p.CurrentPhase.ToString(),
-						active is not null ? Path.GetFileName(active.RelativePath) : null,
+						active is not null ? Path.GetFileName(active.RelativeFilePath) : null,
 						active?.BytesProcessed ?? 0,
 						active?.Length ?? 0
 					));

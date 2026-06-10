@@ -48,7 +48,7 @@ internal sealed class BackupItem : IBackupItem
 	/// <c>2026\IMG_001.jpg</c>.
 	/// </para>
 	/// </summary>
-	public required string RelativePath { get; init; } = string.Empty;
+	public required string RelativeFilePath { get; init; } = string.Empty;
 
 	/// <summary>
 	/// The file name of the source item, including extension.

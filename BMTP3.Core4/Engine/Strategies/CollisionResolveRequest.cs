@@ -8,7 +8,7 @@ internal sealed record CollisionResolveRequest
 	public required string SourcePath { get; init; }
 	public required string IntendedTargetPath { get; init; }
 
-	public required string RelativePath { get; init; }
+	public required string RelativeFilePath { get; init; }
 	public required DateTimeOffset CreateFileDate { get; init; }
 	public required string ItemId { get; init; }
 

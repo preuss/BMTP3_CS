@@ -11,7 +11,7 @@ public sealed record BackupProgressItem
 	/// <summary>
 	/// The source-relative path of the file.
 	/// </summary>
-	public string RelativePath { get; init; } = string.Empty;
+	public string RelativeFilePath { get; init; } = string.Empty;
 
 	/// <summary>
 	/// The size of the file in bytes, if known.

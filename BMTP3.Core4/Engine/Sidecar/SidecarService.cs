@@ -106,10 +106,10 @@ internal sealed class SidecarService : ISidecarService
 		// [Path]
 		// ------------------------------------------------------------
 		doc.WithSection("Path", weight: 40,
-			comment: "Path describes relative paths, always including the file name. SourceRelativePath is the original source-relative path. SanitizedSourceRelativePath is the Windows-compatible version of the source path. TargetRelativePath is the actual relative path in the destination used by this backup.")
-			.WithProperty("SourceRelativePath", request.SourceRelativePath)
-			.WithProperty("SanitizedSourceRelativePath", request.SanitizedSourceRelativePath)
-			.WithProperty("TargetRelativePath", request.TargetRelativePath);
+			comment: "Path describes relative paths, always including the file name. SourceRelativeFilePath is the original source-relative path. SanitizedSourceRelativeFilePath is the Windows-compatible version of the source path. TargetRelativeFilePath is the actual relative path in the destination used by this backup.")
+			.WithProperty("SourceRelativeFilePath", request.SourceRelativeFilePath)
+			.WithProperty("SanitizedSourceRelativeFilePath", request.SanitizedSourceRelativeFilePath)
+			.WithProperty("TargetRelativeFilePath", request.TargetRelativeFilePath);
 
 		// ------------------------------------------------------------
 		// [Hashes] — always all keys, even when empty

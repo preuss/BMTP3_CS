@@ -28,7 +28,7 @@ internal sealed class CollisionResolver : ICollisionResolver
 		return new RenameCollisionRequest(
 			SourcePath: request.SourcePath,
 			IntendedTargetPath: request.IntendedTargetPath,
-			RelativePath: request.RelativePath,
+			RelativeFilePath: request.RelativeFilePath,
 			FileName: Path.GetFileName(request.IntendedTargetPath),
 			CreateFileDate: request.CreateFileDate,
 			StrongHash: request.StrongHash,

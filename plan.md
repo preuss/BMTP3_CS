@@ -1,10 +1,57 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 10 Jun 2026** — Devices wrapper-lag komplet (12 files). MTP pipeline NuGet-free. Spectre Console #1 prioritet. Næste: Fix ConsolesServiceSetup, progress redesign, integrér sidste 2 wrapper-holdere.
+> **Opdateret 10 Jun 2026** — Path Naming Standard tilføjet. PreserveHierarchy default. MTP pipeline NuGet-free. Spectre Console #1 prioritet.
 > 
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 > 
 > ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Aldrig modificer `BMTP3.Core`, `BMTP3.Core2` eller `BMTP3.Core3`. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres. Samme regel gælder for Consoles commands der tilhører Core/Core2/Core3: `BackupConsoleCommand.cs`, `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs` — de opdateres ikke.
+> 
+> ⚠️ **PATH NAMING STANDARD:** Se `## Path Naming Standard` nedenfor.
+
+## Path Naming Standard
+
+### Format
+```
+[Context][Relative|Absolute][File|Directory]Path
+```
+
+### Eksempler
+
+| Navn | Indhold | Betydning |
+|------|---------|-----------|
+| `relativeFilePath` | `"2026\jan\picture.jpg"` | Relativ sti inkl. filnavn |
+| `relativeDirectoryPath` | `"2026\jan"` | Relativ sti, kun mappe |
+| `sourceRelativeFilePath` | `"2026\jan\picture.jpg"` | Samme, med source-kontekst |
+| `sourceRelativeDirectoryPath` | `"2026\jan"` | Samme, med source-kontekst |
+| `sourceRootDirectoryPath` | `@"C:\temp\source"` | Absolut rodmappe for source |
+| `backupRootDirectoryPath` | `@"C:\temp\target"` | Absolut rodmappe for backup |
+| `sourceAbsoluteFilePath` | `@"C:\temp\source\2026\jan\picture.jpg"` | Fuld absolut sti til fil |
+| `sourceAbsoluteDirectoryPath` | `@"C:\temp\source\2026\jan"` | Fuld absolut sti til mappe |
+
+### Regler
+
+1. **Suffix `Path` er altid påkrævet** — `RelativeFilePath` ✓, `RelativeFile` ✗
+2. **`File` = inkl. filnavn** — `"2026\jan\picture.jpg"`
+3. **`Directory` = kun mappe-sti** — `"2026\jan"`
+4. **Context prefix ved tvivl** — `sourceRelativeFilePath`, `targetRelativeDirectoryPath`
+5. **Undgå `Path` alene** — sig altid `File` eller `Directory` + `Path`
+6. **Local variables følger samme mønster** — `string relativeFilePath`, `string sourceRootDirectoryPath`
+7. **Metoder der returnerer path følger samme mønster** — `GetRelativeDirectoryPath()`, `NormalizeRelativeDirectoryPath()`
+8. **Template tokens (custom patterns) bruger camelCase** — `{sourceRelativeFilePath}`, `{relativeDirectoryPath}`
+9. **Sidecar property names følger pascalCase** — `SourceRelativeFilePath`, `TargetRelativeFilePath`
+
+### Forbudte navne i projektet
+
+Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
+
+- `path` (alene uden kontekst)
+- `sourcePath`
+- `targetPath`
+- `relativePath`
+- `folderPath`
+- `targetRelativePath`
+- `FilePath` (uden `Relative`/`Absolute` prefix)
+- `DirectoryPath` (uden `Relative`/`Absolute` prefix)
 
 ## Færdige opgaver
 
@@ -86,6 +133,7 @@
 - [x] — **ConnectedSource redesign:** `ISession`/`IConnectedSource`/`ISourceConnector`/`IConnectedMediaDriveSource`. `MediaDeviceSession`, `IMediaDeviceSession` slettet
 - [x] — **Delay feature:** `BackupPlan.Delay` (int), `Helpers/BackupDelay.cs` struct, validering i `BackupPlanValidator`, implementeret i `BackupEngine` loop, `--delay` CLI option + `BuildPlan` mapping
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
+- [x] — **PreserveHierarchy default:** Enum-ordning (PreserveHierarchy=0). Eksplicit default i `BackupPlan.OutputStructureStrategy`.
 
 ## Næste opgaver (prioriteret)
 

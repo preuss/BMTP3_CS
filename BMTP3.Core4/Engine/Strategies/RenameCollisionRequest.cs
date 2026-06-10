@@ -6,7 +6,7 @@ namespace BMTP3.Core4.Engine.Strategies;
 internal sealed record RenameCollisionRequest(
 	string SourcePath,
 	string IntendedTargetPath,
-	string RelativePath,
+	string RelativeFilePath,
 	string FileName,
 	DateTimeOffset CreateFileDate,
 	string? StrongHash,

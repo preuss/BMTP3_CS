@@ -16,7 +16,7 @@ internal sealed class HashService : IHashService
 
 	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(
 		IContent content,
-		string relativePath,
+		string relativeFilePath,
 		IReadOnlyCollection<HashAlgorithmType> algorithms,
 		IProgress<ulong>? progress,
 		CancellationToken cancellationToken
@@ -32,7 +32,7 @@ internal sealed class HashService : IHashService
 			throw;
 		} catch(Exception ex)
 		{
-			throw new BackupHashException("Hashing failed for backup item.", relativePath, ex);
+			throw new BackupHashException("Hashing failed for backup item.", relativeFilePath, ex);
 		}
 	}
 

@@ -24,9 +24,9 @@ internal record SidecarRequest
 	public required DateTimeOffset BackupStartDateTime { get; init; }
 
 	// ---------- Path ----------
-	public required string SourceRelativePath { get; init; }
-	public string? SanitizedSourceRelativePath { get; init; }
-	public required string TargetRelativePath { get; init; }
+	public required string SourceRelativeFilePath { get; init; }
+	public string? SanitizedSourceRelativeFilePath { get; init; }
+	public required string TargetRelativeFilePath { get; init; }
 
 	// ---------- Hashes ----------
 	public IReadOnlyDictionary<HashType, string>? Hashes { get; init; }

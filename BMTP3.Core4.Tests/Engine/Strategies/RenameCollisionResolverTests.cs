@@ -15,7 +15,7 @@ public class RenameCollisionResolverTests
 	private static readonly RenameCollisionRequest BaseRequest = new(
 		SourcePath: NonExistentFile,
 		IntendedTargetPath: NonExistentFile,
-		RelativePath: "file.txt",
+		RelativeFilePath: "file.txt",
 		FileName: "file.txt",
 		CreateFileDate: new DateTimeOffset(2026, 6, 1, 14, 30, 22, TimeSpan.Zero),
 		StrongHash: "abcdef123456",
@@ -129,7 +129,7 @@ public class RenameCollisionResolverTests
 			SourcePath = intendedPath,
 			IntendedTargetPath = intendedPath,
 			FileName = "photo.jpg",
-			RelativePath = "photo.jpg",
+			RelativeFilePath = "photo.jpg",
 			RenameStrategy = RenameStrategy.Custom,
 			CustomRenamePattern = "{fileName}_{count}",
 		};

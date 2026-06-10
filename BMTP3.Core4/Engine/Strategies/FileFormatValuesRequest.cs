@@ -8,7 +8,7 @@ namespace BMTP3.Core4.Engine.Strategies;
 
 internal sealed record FileFormatValuesRequest(
 	string FileName,
-	string RelativePath,
+	string RelativeFilePath,
 	DateTimeOffset CreateFileDate,
 	string ItemId,
 	string? StrongHash,

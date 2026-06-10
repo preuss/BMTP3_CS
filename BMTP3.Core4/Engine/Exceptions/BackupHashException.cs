@@ -10,7 +10,7 @@ public sealed class BackupHashException : Exception
 	/// <summary>
 	/// Optional relative path of the item being hashed when the error occurred.
 	/// </summary>
-	public string? ItemRelativePath { get; }
+	public string? ItemRelativeFilePath { get; }
 
 	public BackupHashException(string message)
 		: base(message)
@@ -22,9 +22,9 @@ public sealed class BackupHashException : Exception
 	{
 	}
 
-	public BackupHashException(string message, string itemRelativePath, Exception innerException)
+	public BackupHashException(string message, string itemRelativeFilePath, Exception innerException)
 		: base(message, innerException)
 	{
-		ItemRelativePath = itemRelativePath;
+		ItemRelativeFilePath = itemRelativeFilePath;
 	}
 }
