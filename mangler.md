@@ -100,10 +100,10 @@
 
 - [x] **Gennemgang: Find alle manglende dele** — Krydsrefereret alle features. Resultat: Feature audit nedenfor (§ Feature Audit) + nye huller tilføjet i dette dokument.
 
-### Høj prioritet — BackupIndexType.Json
+### Deferred — BackupIndexType.Json (laveste prioritet)
 
-**Spec:** En central JSON-katalog-fil (e.g. `backup_catalog.json`) med alle filer, hashes, metadata, timestamps.
-**Feature gate:** Linje 79-80 i `BackupPlanValidator` — `FeatureNotImplementedException(3, "Backup index: Json")`.
+Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
+**Validator-gate beholdes** indtil vi beslutter at implementere eller fjerne helt.
 
 | # | Task | Detail |
 |---|------|--------|
@@ -111,7 +111,7 @@
 | 2 | `JsonBackupIndexWriter` | Skriver `backup_catalog.json` |
 | 3 | Wire i `BackupEngine` | Efter processing loop, før result returneres |
 | 4 | DI registration | `AddScoped<IBackupIndexWriter, JsonBackupIndexWriter>()` |
-| 5 | Fjern Tier 3 gate | Fjern `if(plan.BackupIndexType == BackupIndexType.Json)` i `BackupPlanValidator` |
+| 5 | ~~Fjern Tier 3 gate~~ | **Beholdes.** `if(plan.BackupIndexType == BackupIndexType.Json)` i `BackupPlanValidator` |
 | 6 | JSON schema | Definer felter, struktur, eksempel |
 
 ### Høj prioritet — Public DriveCatalog API
