@@ -38,21 +38,21 @@ internal class SpectreAnsiConsoleLogger : ILogger
 
 		switch (logLevel)
 		{
-			case LogLevel.Critical:
-				_console.MarkupLineInterpolated($"[bold red]{text}[/] ");
-				break;
-			case LogLevel.Error:
-				_console.MarkupLineInterpolated($"[red]{text}[/] ");
-				break;
-			case LogLevel.Warning:
-				_console.MarkupLineInterpolated($"[yellow]{text}[/] ");
-				break;
-			case LogLevel.Information:
-				_console.MarkupLineInterpolated($"{text} ");
-				break;
-			case LogLevel.Debug:
-				_console.MarkupLineInterpolated($"[blue]{text}[/] ");
-				break;
+		case LogLevel.Critical:
+			_console.MarkupLine($"[bold red]{text.EscapeMarkup()}[/] ");
+			break;
+		case LogLevel.Error:
+			_console.MarkupLine($"[red]{text.EscapeMarkup()}[/] ");
+			break;
+		case LogLevel.Warning:
+			_console.MarkupLine($"[yellow]{text.EscapeMarkup()}[/] ");
+			break;
+		case LogLevel.Information:
+			_console.MarkupLine($"{text.EscapeMarkup()} ");
+			break;
+		case LogLevel.Debug:
+			_console.MarkupLine($"[blue]{text.EscapeMarkup()}[/] ");
+			break;
 			case LogLevel.Trace:
 			default:
 				_console.WriteLine(text);

@@ -1,10 +1,12 @@
 using BMTP3.Consoles.ConsoleCommands.Core4;
+using BMTP3.Consoles.Progress;
 using BMTP3.Consoles.Services;
 using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Spectre.Console;
 using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
@@ -61,12 +63,9 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 			return 1;
 		}
 
-		Progress<BackupProgress> progress = new(p =>
-		{
-			consolePrinter?.PrintProgress(p);
-			//DEBUG: silent logger — re-enable when debugging progress spam
-			//logger.LogInformation("{Phase}: discovered={Discovered} succeeded={Succeeded} failed={Failed}", p.CurrentPhase, p.FilesDiscovered, p.FilesSucceeded, p.FilesFailed);
-		});
+		BackupProgressDisplay display = new BackupProgressDisplay(AnsiConsole.Console);
+
+		BackupResult? result = null;
 
 		CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 		ConsoleCancelEventHandler? cancelHandler = (s, e) =>
@@ -79,7 +78,23 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 		try
 		{
-			BackupResult result = await engine.RunAsync(plan, progress, linkedCts.Token);
+			await display.RunAsync(plan.Name, async report =>
+			{
+				Progress<BackupProgress> progress = new(p =>
+				{
+					BackupProgressItem? active = p.ActiveFiles.Count > 0 ? p.ActiveFiles[0] : null;
+					report(new ProgressReport(
+						p.FilesSucceeded + p.FilesSkipped + p.FilesFailed,
+						p.TotalFilesSelected,
+						p.CurrentPhase.ToString(),
+						active is not null ? Path.GetFileName(active.RelativePath) : null,
+						active?.BytesProcessed ?? 0,
+						active?.Length ?? 0
+					));
+				});
+
+				result = await engine.RunAsync(plan, progress, linkedCts.Token);
+			});
 
 			consolePrinter?.PrintResult(result);
 			logger.LogInformation("Job '{JobName}' finished: {State}", result.Name, result.State);

@@ -31,7 +31,8 @@ public class ApplicationStartup
 		List<IServiceSetup> serviceSetupList =
 		[
 			new LoggingServiceSetup(),
-			new ApplicationServiceSetup()
+			new ApplicationServiceSetup(),
+			new ConsolesServiceSetup()
 		];
 		foreach (IServiceSetup serviceSetup in serviceSetupList)
 		{

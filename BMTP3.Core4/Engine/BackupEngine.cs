@@ -242,6 +242,9 @@ public sealed class BackupEngine : IBackupEngine
 			{
 				TempDirectoryHelper.PrepareTempDirectory(sessionTempDir);
 
+				_currentProgress = _currentProgress with { CurrentPhase = BackupProgressPhase.Transferring };
+				progress?.Report(_currentProgress);
+
 				foreach (BackupRecord record in pendingRecords)
 				{
 					try
@@ -395,6 +398,12 @@ public sealed class BackupEngine : IBackupEngine
 							{
 								case CollisionResolutionAction.Skip:
 									record.Status = BackupItemStatus.Skipped;
+									_currentProgress = _currentProgress with
+									{
+										FilesSkipped = _currentProgress.FilesSkipped + 1,
+									};
+									progress?.Report(_currentProgress);
+									await delay.WaitAsync();
 									continue;
 
 								case CollisionResolutionAction.Move:
@@ -492,12 +501,6 @@ public sealed class BackupEngine : IBackupEngine
 						_logger.LogError(ex, "Item failed: {Path}", record.Item.SourcePath);
 						throw;
 					}
-
-					_currentProgress = _currentProgress with
-					{
-						ActiveFiles = Array.Empty<BackupProgressItem>(),
-					};
-					progress?.Report(_currentProgress);
 
 					await delay.WaitAsync();
 				}
