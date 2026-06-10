@@ -13,8 +13,9 @@ Make all console output in `BMTP3.Consoles` use Spectre.Console correctly:
 - `IAnsiConsole` injection everywhere (already done)
 - No `Console.WriteLine`, `Console.Write`, or manual cursor manipulation
 - Only Consoles files may be modified. Core/Core2/Core3 are reference-only.
+- Same for Core/Core2/Core3 console commands: `BackupConsoleCommand.cs`, `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs` — not updated.
 
-> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Only Consoles files may be modified. Core/Core2/Core3 are reference-only.
+> ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** Only Consoles files may be modified. Core/Core2/Core3 are reference-only. This includes their console commands: `BackupConsoleCommand.cs` (Core2), `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs`.
 
 ---
 
