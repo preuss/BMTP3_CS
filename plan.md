@@ -247,7 +247,7 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 | K-V10 | `HashService` + `RenameCollisionResolver` | `ToHashType` switch kopieret 1:1 (DRY) |
 | K-V12 | `Engine/BackupEngine.cs:138` | `new BackupJsonSummaryStore` + `new SessionStateService` direkte i engine (SOLID-D) |
 | K-V18 | `RenameCollisionResolver.cs:278` | `catch { return false }` i hash/size compare — silent swallow (Fail-Fast) |
-| K-V26 | `Engine/Index/JsonBackupIndexWriter.cs:81` | `SessionId = plan.Name` — forkert felt, data bug (Fail-Fast) |
+| K-V26 | `Engine/Index/JsonBackupIndexWriter.cs:81` | `SessionId = plan.Name` — forkert felt, data bug ~~(Fail-Fast)~~ ✅ **FIXED** |
 
 ## Ref
 

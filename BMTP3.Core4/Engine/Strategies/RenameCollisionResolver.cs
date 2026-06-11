@@ -275,13 +275,19 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 			}
 
 			return true;
-		} catch
+		}
+		catch (OperationCanceledException)
 		{
-			return false;
+			throw;
+		}
+		catch (Exception ex)
+		{
+			throw new InvalidOperationException(
+				$"Failed to hash-compare file '{request.RelativeFilePath}' with candidate '{candidatePath}'.", ex);
 		}
 	}
 
-	private static Task<bool> SizeAndModifiedTimeCompareAsync(string sourcePath, string candidatePath)
+	private static async Task<bool> SizeAndModifiedTimeCompareAsync(string sourcePath, string candidatePath)
 	{
 		try
 		{
@@ -289,19 +295,24 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 			FileInfo candidateFile = new(candidatePath);
 
 			if (!sourceFile.Exists || !candidateFile.Exists)
-				return Task.FromResult(false);
+				return false;
 
 			if (sourceFile.Length != candidateFile.Length)
-				return Task.FromResult(false);
+				return false;
 
 			if (sourceFile.LastWriteTimeUtc != candidateFile.LastWriteTimeUtc)
-				return Task.FromResult(false);
+				return false;
 
-			return Task.FromResult(true);
+			return true;
 		}
-		catch
+		catch (OperationCanceledException)
 		{
-			return Task.FromResult(false);
+			throw;
+		}
+		catch (Exception ex)
+		{
+			throw new InvalidOperationException(
+				$"Failed to compare files by size/modified time: '{sourcePath}' vs '{candidatePath}'.", ex);
 		}
 	}
 

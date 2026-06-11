@@ -184,10 +184,10 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	{
 		Description = "Post-write verification method: None, or Hash.",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = argumentResult => PostWriteVerificationType.Hash
+		DefaultValueFactory = argumentResult => PostWriteVerificationType.None
 	};
 
-	public PostWriteVerificationType PostWriteVerification { get; set; } = PostWriteVerificationType.Hash;
+	public PostWriteVerificationType PostWriteVerification { get; set; } = PostWriteVerificationType.None;
 
 	protected override void DoAddValidators()
 	{

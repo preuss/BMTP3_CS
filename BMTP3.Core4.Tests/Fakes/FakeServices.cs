@@ -1,4 +1,3 @@
-using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.DriveDiscovery;
 using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
@@ -141,7 +140,8 @@ internal sealed class FakeBackupIndexWriter : IBackupIndexWriter
 		IReadOnlyList<BackupRecord> records,
 		Api.Models.BackupPlan plan,
 		Api.Models.BackupResult result,
-		CancellationToken cancellationToken)
+		CancellationToken cancellationToken
+	)
 	{
 		WriteCount++;
 		return Task.CompletedTask;
