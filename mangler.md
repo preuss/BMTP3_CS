@@ -257,7 +257,7 @@ Status: ✅ = Implementeret, ❌ = Mangler, ⚠️ = Delvist/anderledes, ➡️ 
 | 13 | `NExifTool` / `MetadataExtractorFileInfo` / `AbstractMetadataFileInfo` | ➡️ | Core4 bruger MetadataExtractor i stedet for ExifTool |
 | 14 | `VerifyBackupHandler` | ⚠️ | Core4 har inline hash verification i `BackupEngine` (`plan.PostWriteVerification == Hash`). Ingen separat handler/interface. |
 | 15 | `BackupRecordDataStore` / `BackupRecordDataStorePathResolver` | ✅ | Core4 har `BackupJsonSummaryStore` / `SessionStateService` |
-| 16 | TOML config (`BackupSettingsImpl`, `BackupSettingsReader`, `ConfigModel`) | ❌ | Core4 bruger programmatisk `BackupPlan` — ingen TOML-reader |
+| 16 | TOML config (`BackupSettingsImpl`, `BackupSettingsReader`, `ConfigModel`) | ✅ | Core4 har `BackupPlan4Config.cs` + `BackupPlan4Loader.cs` (TOML via Tomlyn + PascalToKebab, JSON/JSON5 via JsonSerializer) |
 | 17 | `IMasterTypeRegistrar` / `ServiceLocator` (custom DI) | ➡️ | Core4 bruger MS.DependencyInjection |
 | 18 | Crypto helpers (8 x SharpHash + BouncyCastle) | ✅ | Core4 har samme i `Hashing/Crypto/` |
 | 19 | `RenameStrategyDefault` / `RenameStrategyWithTimestamp` / `RenameStrategyNumbering` | ✅ | Core4 har `RenameCollisionResolver` med 4 strategier + Custom |
@@ -327,7 +327,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **EnableMetadata** | ❌ | Metadata extraction. Feature gate (Tier 3). |
 | **MaxDegreeOfParallelism** | ❌ | Parallel execution. Feature gate (Tier 4). |
 | **StopOnError=false** | ❌ | Continue-on-error. Feature gate (Tier 3). Engine re-thrower altid (linje 485). |
-| **TOML config** | ❌ | Ingen TOML-reader; kun programmatisk `BackupPlan` |
+| **TOML config** | ✅ | `BackupPlan4Config.cs` + `BackupPlan4Loader.cs` (TOML, JSON, JSON5) |
 | **Resilience** | ❌ | Ingen retry/circuit-breaker (Core2 har Polly pipeline) |
 | **Console UI progress** | ⚠️ | Spectre deep-dive done (Task 09). `ConsolesPrinter` bruger stadig `WriteLine` — skal refactores til `AnsiConsole.Progress()` |
 | **ConsolesServiceSetup NOT wired** | ❌ | `ApplicationStartup.cs` mangler `ConsolesServiceSetup` → `ConsolesPrinter` er null → alt progress er no-ops. **Blokerer Task 09.** |

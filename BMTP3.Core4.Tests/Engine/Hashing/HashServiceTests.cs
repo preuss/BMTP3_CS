@@ -2,6 +2,7 @@ using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Exceptions;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Hashing;
+using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Tests.Fakes;
 
@@ -17,7 +18,7 @@ public class HashServiceTests
 		var content = new FakeContent("hello world");
 
 		Dictionary<HashType, string> result = await Service.ComputeHashesAsync(
-			content, "test.txt", new[] { HashAlgorithmType.SHA2_256 }, null, default);
+			content, "test.txt", new[] { HashAlgorithmType.SHA2_256 }, null, null, default);
 
 		Assert.Single(result);
 		Assert.True(result.ContainsKey(HashType.SHA2_256));
@@ -32,7 +33,7 @@ public class HashServiceTests
 		Dictionary<HashType, string> result = await Service.ComputeHashesAsync(
 			content, "test.txt",
 			new[] { HashAlgorithmType.SHA2_256, HashAlgorithmType.MD5_128, HashAlgorithmType.BLAKE3_256 },
-			null, default);
+			null, null, default);
 
 		Assert.Equal(3, result.Count);
 		Assert.True(result.ContainsKey(HashType.SHA2_256));
@@ -46,7 +47,7 @@ public class HashServiceTests
 		var content = new FakeContent("anything");
 
 		Dictionary<HashType, string> result = await Service.ComputeHashesAsync(
-			content, "test.txt", Array.Empty<HashAlgorithmType>(), null, default);
+			content, "test.txt", Array.Empty<HashAlgorithmType>(), null, null, default);
 
 		Assert.Empty(result);
 	}
@@ -60,7 +61,7 @@ public class HashServiceTests
 
 		await Assert.ThrowsAsync<OperationCanceledException>(() =>
 			Service.ComputeHashesAsync(content, "test.txt",
-				new[] { HashAlgorithmType.SHA2_256 }, null, cts.Token));
+				new[] { HashAlgorithmType.SHA2_256 }, null, null, cts.Token));
 	}
 
 	[Fact]
@@ -71,7 +72,7 @@ public class HashServiceTests
 
 		BackupHashException ex = await Assert.ThrowsAsync<BackupHashException>(() =>
 			localService.ComputeHashesAsync(failingContent, "failing.txt",
-				new[] { HashAlgorithmType.SHA2_256 }, null, default));
+				new[] { HashAlgorithmType.SHA2_256 }, null, null, default));
 
 		Assert.Equal("failing.txt", ex.ItemRelativeFilePath);
 	}

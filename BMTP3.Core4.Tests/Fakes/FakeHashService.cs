@@ -1,6 +1,7 @@
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Hashing;
+using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 using System.Security.Cryptography;
 using System.Text;
@@ -14,6 +15,7 @@ internal sealed class FakeHashService : IHashService
 		string relativePath,
 		IReadOnlyCollection<HashAlgorithmType> algorithms,
 		IProgress<ulong>? progress,
+		IThrottler throttler,
 		CancellationToken ct)
 	{
 		Dictionary<HashType, string> results = new();

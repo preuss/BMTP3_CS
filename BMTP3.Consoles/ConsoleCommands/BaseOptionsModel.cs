@@ -152,7 +152,7 @@ public abstract class BaseOptionsModel
 	/// <param name="parseResult">The parsed command line result.</param>
 	protected virtual void DoPopulate(ParseResult parseResult)
 	{
-		Dictionary<Option, Action<ParseResult>> optionBinders = GetOrCreateOptionBinders();
+		Dictionary<Option, Action<ParseResult>> optionBinders = DoDefineOptions();
 		foreach (Action<ParseResult> binder in optionBinders.Values)
 		{
 			binder(parseResult);

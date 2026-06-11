@@ -23,12 +23,6 @@ internal static class BackupConsoleCommand4Helpers
 		ArgumentNullException.ThrowIfNull(backupOptions);
 		ArgumentNullException.ThrowIfNull(parseResult);
 
-		static bool WasSupplied<T>(ParseResult pr, Option<T> option)
-		{
-			OptionResult? res = pr.GetResult(option);
-			return res != null && !res.Implicit;
-		}
-
 		string name = "backup";
 		string sourcePath = string.Empty;
 		string destination = string.Empty;
@@ -147,10 +141,10 @@ internal static class BackupConsoleCommand4Helpers
 			}
 		}
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.NameOption) && !string.IsNullOrWhiteSpace(backupOptions.Name))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.NameOption) && !string.IsNullOrWhiteSpace(backupOptions.Name))
 			name = backupOptions.Name;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.SourcePathOption) && !string.IsNullOrWhiteSpace(backupOptions.SourcePath))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SourcePathOption) && !string.IsNullOrWhiteSpace(backupOptions.SourcePath))
 		{
 			sourcePath = backupOptions.SourcePath;
 
@@ -165,46 +159,46 @@ internal static class BackupConsoleCommand4Helpers
 			}
 		}
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.OutputDirectoryOption) && backupOptions.OutputDirectory != null)
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.OutputDirectoryOption) && backupOptions.OutputDirectory != null)
 			destination = backupOptions.OutputDirectory.FullName;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.RecursiveOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.RecursiveOption))
 			recursive = backupOptions.Recursive;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.SimulateOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SimulateOption))
 			dryRun = backupOptions.Simulate;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.IncludePatternsOption) && backupOptions.IncludePatterns?.Count > 0)
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.IncludePatternsOption) && backupOptions.IncludePatterns?.Count > 0)
 			includePatterns = backupOptions.IncludePatterns;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.ExcludePatternsOption) && backupOptions.ExcludePatterns?.Count > 0)
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.ExcludePatternsOption) && backupOptions.ExcludePatterns?.Count > 0)
 			excludePatterns = backupOptions.ExcludePatterns;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.OutputStrategyOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.OutputStrategyOption))
 			outputStrategy = MapOutputStrategy(backupOptions.OutputStrategy);
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.CustomOutputFilePathOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.CustomOutputFilePathOption))
 			customOutputPattern = backupOptions.CustomOutputFilePath;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.CollisionResolutionTypeOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.CollisionResolutionTypeOption))
 			collisionStrategy = MapCollisionStrategy(backupOptions.CollisionResolutionType);
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.CollisionComparisonOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.CollisionComparisonOption))
 			collisionComparison = MapCollisionComparison(backupOptions.CollisionComparison);
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.RenameStrategyOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.RenameStrategyOption))
 			renameStrategy = MapRenameStrategy(backupOptions.RenameStrategy);
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.CustomCollisionOutputFilePathOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.CustomCollisionOutputFilePathOption))
 			customCollisionPattern = backupOptions.CustomCollisionOutputFilePath;
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.SidecarFormatOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SidecarFormatOption))
 			sidecarFormat = MapSidecarFormat(backupOptions.SidecarFormat);
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.BackupIndexTypeOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.BackupIndexTypeOption))
 			backupIndex = MapBackupIndexType(backupOptions.BackupIndexType);
 
-		if (WasSupplied(parseResult, BackupOptionsModel4.PostWriteVerificationOption))
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.PostWriteVerificationOption))
 			postWriteVerification = MapPostWriteVerification(backupOptions.PostWriteVerification);
 
 		// Normalize filesystem source path
