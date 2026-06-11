@@ -343,6 +343,7 @@ public sealed class BackupEngine : IBackupEngine
 							record.Item.RelativeFilePath,
 							allAlgorithms,
 							computeHashProgress,
+							throttler,
 							cancellationToken
 						);
 
@@ -394,7 +395,7 @@ public sealed class BackupEngine : IBackupEngine
 								ComparisonHashAlgorithmTypes = plan.ComparisonHashAlgorithmTypes ?? Array.Empty<HashAlgorithmType>(),
 							};
 
-							collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, cancellationToken);
+							collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, throttler, cancellationToken);
 
 							switch (collisionResult.Action)
 							{
@@ -472,6 +473,7 @@ public sealed class BackupEngine : IBackupEngine
 								record.Item.RelativeFilePath,
 								plan.VerificationHashAlgorithmTypes,
 								null,
+								throttler,
 								cancellationToken
 							);
 

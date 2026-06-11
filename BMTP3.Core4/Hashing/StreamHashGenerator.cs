@@ -1,4 +1,5 @@
 using BMTP3.Core4.Hashing.Crypto;
+using BMTP3.Core4.Infrastructure.Throttling;
 using Microsoft.Extensions.Logging;
 using System.Security.Cryptography;
 
@@ -32,7 +33,9 @@ public class StreamHashGenerator : IHashGenerator
 		Stream stream,
 		IEnumerable<HashType> hashTypes,
 		IProgress<ulong>? progress,
-		CancellationToken ct)
+		IThrottler throttler,
+		CancellationToken ct
+	)
 	{
 		ArgumentNullException.ThrowIfNull(stream);
 		// Respect cancellation as early as possible
@@ -40,7 +43,7 @@ public class StreamHashGenerator : IHashGenerator
 
 		List<HashType> requested = hashTypes?.Distinct().ToList() ?? new List<HashType>();
 
-		if(requested.Count == 0)
+		if (requested.Count == 0)
 		{
 			return new Dictionary<HashType, string>();
 		}
@@ -50,7 +53,7 @@ public class StreamHashGenerator : IHashGenerator
 		try
 		{
 			// Initialize Algorithms
-			foreach(HashType type in requested)
+			foreach (HashType type in requested)
 			{
 				algorithms[type] = CreateAlgorithm(type);
 			}
@@ -60,18 +63,19 @@ public class StreamHashGenerator : IHashGenerator
 			int bytesRead;
 			ulong totalBytesRead = 0;
 
-			while((bytesRead = await stream.ReadAsync(buffer.AsMemory(), ct).ConfigureAwait(false)) > 0)
+			while ((bytesRead = await stream.ReadAsync(buffer.AsMemory(), ct).ConfigureAwait(false)) > 0)
 			{
 				totalBytesRead += (ulong)bytesRead;
 
 				// Feed data to all hashers
-				foreach(HashAlgorithm algo in algorithms.Values)
+				foreach (HashAlgorithm algo in algorithms.Values)
 				{
 					algo.TransformBlock(buffer, 0, bytesRead, buffer, 0);
 				}
 
 				// Update progress after each read
 				progress?.Report(totalBytesRead);
+				await throttler.WaitAsync();
 			}
 
 			// Finalize & Convert to Hex
@@ -80,21 +84,22 @@ public class StreamHashGenerator : IHashGenerator
 
 			Dictionary<HashType, string> results = new(algorithms.Count);
 
-			foreach(KeyValuePair<HashType, HashAlgorithm> kvp in algorithms)
+			foreach (KeyValuePair<HashType, HashAlgorithm> kvp in algorithms)
 			{
 				kvp.Value.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
 				byte[]? hashBytes = kvp.Value.Hash;
-				if(hashBytes != null)
+				if (hashBytes != null)
 				{
 					results[kvp.Key] = Convert.ToHexString(hashBytes).ToLowerInvariant();
 				}
 			}
 
 			return results;
-		} finally
+		}
+		finally
 		{
-			foreach(HashAlgorithm algo in algorithms.Values)
+			foreach (HashAlgorithm algo in algorithms.Values)
 			{
 				algo.Dispose();
 			}

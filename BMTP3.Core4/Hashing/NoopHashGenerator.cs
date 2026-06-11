@@ -1,15 +1,20 @@
+using BMTP3.Core4.Infrastructure.Throttling;
+
 namespace BMTP3.Core4.Hashing;
 
 // Minimal hash generator that returns an empty result set (placeholder).
 public class NoopHashGenerator : IHashGenerator
 {
-	public Task<Dictionary<HashType, string>> ComputeHashesAsync(
+	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(
 		Stream dataStream,
 		IEnumerable<HashType> hashTypes,
 		IProgress<ulong>? progress,
+		IThrottler throttler,
 		CancellationToken cancellationToken
 	)
+
 	{
-		return Task.FromResult(new Dictionary<HashType, string>());
+		await throttler.WaitAsync();
+		return new Dictionary<HashType, string>();
 	}
 }

@@ -1,5 +1,6 @@
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Hashing;
+using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Hashing;
@@ -19,6 +20,7 @@ internal interface IHashService
 	/// <param name="relativeFilePath">Relative file path of the item, used for error reporting.</param>
 	/// <param name="algorithms">The set of algorithms to compute. If empty, no hashes are computed.</param>
 	/// <param name="progress">Optional progress callback that reports bytes processed.</param>
+	/// <param name="throttler">Throttler to control the rate of hash computation.</param>
 	/// <param name="cancellationToken">Cancellation token.</param>
 	/// <returns>A dictionary mapping each requested algorithm to its hex digest string.</returns>
 	Task<Dictionary<HashType, string>> ComputeHashesAsync(
@@ -26,6 +28,7 @@ internal interface IHashService
 		string relativeFilePath,
 		IReadOnlyCollection<HashAlgorithmType> algorithms,
 		IProgress<ulong>? progress,
+		IThrottler throttler,
 		CancellationToken cancellationToken
 	);
 }

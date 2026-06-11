@@ -1,3 +1,4 @@
+using BMTP3.Core4.Infrastructure.Throttling;
 
 namespace BMTP3.Core4.Hashing;
 
@@ -10,6 +11,7 @@ public interface IHashGenerator
 		Stream stream,
 		IEnumerable<HashType> hashTypes,
 		IProgress<ulong>? progress,
+		IThrottler throttler,
 		CancellationToken cancellationToken
 	);
 }

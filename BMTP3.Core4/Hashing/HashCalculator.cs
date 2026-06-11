@@ -32,12 +32,12 @@ public class HashCalculator
 		CancellationToken cancellationToken = default
 	)
 	{
-		if(string.IsNullOrWhiteSpace(filePath))
+		if (string.IsNullOrWhiteSpace(filePath))
 		{
 			throw new ArgumentException("filePath cannot be null or empty.", nameof(filePath));
 		}
 
-		if(hashTypes == null || hashTypes.Count == 0)
+		if (hashTypes == null || hashTypes.Count == 0)
 		{
 			throw new ArgumentException("hashTypes cannot be null or empty.", nameof(hashTypes));
 		}
@@ -46,7 +46,7 @@ public class HashCalculator
 		//if(!File.Exists(filePath)) {
 		//	throw new FileNotFoundException("File does not exist.", filePath);
 		//}
-		if(bufferSize <= 0)
+		if (bufferSize <= 0)
 		{
 			throw new ArgumentOutOfRangeException(nameof(bufferSize), "Buffer size must be greater than zero.");
 		}
@@ -54,7 +54,7 @@ public class HashCalculator
 		long fileLength = new FileInfo(filePath).Length;
 		//Console.WriteLine($"BufferSize input {bufferSize / 1024} * 1024 = {bufferSize}");
 		// Allow caller override (only adapt when they passed the default 8 KB)
-		if(bufferSize == 8 * 1024)
+		if (bufferSize == 8 * 1024)
 		{
 			bufferSize = fileLength switch
 			{
@@ -83,9 +83,9 @@ public class HashCalculator
 		try
 		{
 			// Initialize hash algorithms
-			foreach(HashType hashType in requestedHashTypes)
+			foreach (HashType hashType in requestedHashTypes)
 			{
-				switch(hashType)
+				switch (hashType)
 				{
 					case HashType.SHA3_512_FIPS202:
 						//hashAlgorithms[hashType] = SHA3.Net.Sha3.Sha3512();
@@ -129,7 +129,7 @@ public class HashCalculator
 			{
 				// SequentialScan hint, improves performance with big sequential reads.
 				//using(FileStream stream = File.OpenRead(filePath)) {
-				using(FileStream stream = new(
+				using (FileStream stream = new(
 						   filePath,
 						   FileMode.Open,
 						   FileAccess.Read,
@@ -140,63 +140,66 @@ public class HashCalculator
 				{
 					byte[] buffer = new byte[bufferSize];
 					int bytesRead;
-					while((bytesRead = stream.Read(buffer, 0, buffer.Length)) != 0)
+					while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) != 0)
 					{
 						cancellationToken.ThrowIfCancellationRequested();
-						foreach(HashAlgorithm hashAlgorithm in hashAlgorithms.Values)
+						foreach (HashAlgorithm hashAlgorithm in hashAlgorithms.Values)
 						{
 							hashAlgorithm.TransformBlock(buffer, 0, bytesRead, buffer, 0);
 						}
 
-						if(useBlake3)
+						if (useBlake3)
 						{
 							blake3Hasher?.Update(buffer.AsSpan(0, bytesRead));
 						}
 					}
 				}
-			} catch(FileNotFoundException ex)
+			}
+			catch (FileNotFoundException ex)
 			{
 				throw new FileNotFoundException("File does not exist.", filePath, ex);
-			} catch(IOException ex)
+			}
+			catch (IOException ex)
 			{
 				throw new IOException($"Error accessing file: {filePath}", ex);
 			}
 
 			// Finalize standard hash algorithms
-			foreach(HashAlgorithm hashAlgorithm in hashAlgorithms.Values)
+			foreach (HashAlgorithm hashAlgorithm in hashAlgorithms.Values)
 			{
 				hashAlgorithm.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 			}
 
 			// Convert standard hash results to hex strings
-			foreach(KeyValuePair<HashType, HashAlgorithm> kvp in hashAlgorithms)
+			foreach (KeyValuePair<HashType, HashAlgorithm> kvp in hashAlgorithms)
 			{
 				string hashString = kvp.Value.Hash == null ? string.Empty : ToHex(kvp.Value.Hash);
 				hashResultsBuilder[kvp.Key] = hashString;
 			}
 
 			// Finalize and convert Blake3 results
-			if(useBlake3)
+			if (useBlake3)
 			{
 				Span<byte> blake3Hash = stackalloc byte[64];
 				blake3Hasher?.Finalize(blake3Hash);
 
-				if(needBlake3_256)
+				if (needBlake3_256)
 				{
 					hashResultsBuilder[HashType.BLAKE3_256] = ToHex(blake3Hash.Slice(0, 32));
 				}
 
-				if(needBlake3_512)
+				if (needBlake3_512)
 				{
 					hashResultsBuilder[HashType.BLAKE3_512] = ToHex(blake3Hash);
 				}
 			}
 
 			return new ReadOnlyDictionary<HashType, string>(hashResultsBuilder.ToImmutable());
-		} finally
+		}
+		finally
 		{
 			// Cleanup
-			foreach(HashAlgorithm hashAlgorithm in hashAlgorithms.Values)
+			foreach (HashAlgorithm hashAlgorithm in hashAlgorithms.Values)
 			{
 				hashAlgorithm.Dispose();
 			}

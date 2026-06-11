@@ -3,6 +3,7 @@ using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Compare;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Hashing;
+using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Strategies;
@@ -28,7 +29,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 		_formatValuesFactory = formatValuesFactory ?? throw new ArgumentNullException(nameof(formatValuesFactory));
 	}
 
-	public async Task<RenameCollisionResult> ResolveAsync(RenameCollisionRequest request, CancellationToken ct)
+	public async Task<RenameCollisionResult> ResolveAsync(RenameCollisionRequest request, IThrottler throttler, CancellationToken ct)
 	{
 		string dir = Path.GetDirectoryName(request.IntendedTargetPath)
 			?? throw new InvalidOperationException("IntendedTargetPath has no directory component.");
@@ -43,6 +44,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 				request.SourcePath,
 				request.IntendedTargetPath,
 				request,
+				throttler,
 				ct);
 
 			if(intendedIsIdentical)
@@ -70,6 +72,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 				request.SourcePath,
 				candidateTargetPath,
 				request,
+				throttler,
 				ct
 			);
 
@@ -207,13 +210,14 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 		string sourcePath,
 		string candidatePath,
 		RenameCollisionRequest request,
+		IThrottler throttler,
 		CancellationToken ct
 	)
 	{
 		return request.ComparisonType switch
 		{
 			CollisionComparisonType.Binary => await _fileCompareService.CompareAsync(sourcePath, candidatePath, ct),
-			CollisionComparisonType.Hash => await HashCompareAsync(candidatePath, request, ct),
+			CollisionComparisonType.Hash => await HashCompareAsync(candidatePath, request, throttler, ct),
 			CollisionComparisonType.None => false,
 			_ => throw new ArgumentOutOfRangeException(nameof(request.ComparisonType), request.ComparisonType, "Unknown collision comparison type."),
 		};
@@ -222,6 +226,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 	private async Task<bool> HashCompareAsync(
 		string candidatePath,
 		RenameCollisionRequest request,
+		IThrottler throttler,
 		CancellationToken ct
 	)
 	{
@@ -248,6 +253,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 				request.RelativeFilePath,
 				hashTypes,
 				progress: null, // TODO: In the future think about progress reporting for collision resolver
+				throttler,
 				cancellationToken: ct
 			);
 

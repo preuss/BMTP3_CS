@@ -1,6 +1,7 @@
 ﻿using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Exceptions;
 using BMTP3.Core4.Hashing;
+using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Hashing;
@@ -19,6 +20,7 @@ internal sealed class HashService : IHashService
 		string relativeFilePath,
 		IReadOnlyCollection<HashAlgorithmType> algorithms,
 		IProgress<ulong>? progress,
+		IThrottler throttler,
 		CancellationToken cancellationToken
 	)
 	{
@@ -26,11 +28,13 @@ internal sealed class HashService : IHashService
 		{
 			List<HashType> hashTypes = algorithms.Select(ToHashType).ToList();
 			await using Stream stream = await content.OpenReadAsync(cancellationToken);
-			return await _hashGenerator.ComputeHashesAsync(stream, hashTypes, progress, cancellationToken);
-		} catch(OperationCanceledException)
+			return await _hashGenerator.ComputeHashesAsync(stream, hashTypes, progress, throttler, cancellationToken);
+		}
+		catch (OperationCanceledException)
 		{
 			throw;
-		} catch(Exception ex)
+		}
+		catch (Exception ex)
 		{
 			throw new BackupHashException("Hashing failed for backup item.", relativeFilePath, ex);
 		}

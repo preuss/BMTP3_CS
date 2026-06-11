@@ -1,4 +1,5 @@
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Infrastructure.Throttling;
 
 namespace BMTP3.Core4.Engine.Strategies;
 
@@ -11,14 +12,14 @@ internal sealed class CollisionResolver : ICollisionResolver
 		_renameCollisionResolver = renameCollisionResolver ?? throw new ArgumentNullException(nameof(renameCollisionResolver));
 	}
 
-	public async Task<CollisionResult> ResolveAsync(CollisionResolveRequest request, CancellationToken ct)
+	public async Task<CollisionResult> ResolveAsync(CollisionResolveRequest request, IThrottler throttler, CancellationToken ct)
 	{
 		return request.Strategy switch
 		{
 			CollisionStrategy.Overwrite => new(CollisionResolutionAction.Overwrite, request.IntendedTargetPath),
 			CollisionStrategy.Skip => new(CollisionResolutionAction.Skip, TargetPath: request.IntendedTargetPath),
 			CollisionStrategy.Error => throw new IOException($"Destination already exists: {request.IntendedTargetPath}"),
-			CollisionStrategy.Rename => await HandleRenameAsync(CreateRenameCollisionRequest(request), ct),
+			CollisionStrategy.Rename => await HandleRenameAsync(CreateRenameCollisionRequest(request), throttler, ct),
 			_ => throw new ArgumentOutOfRangeException(nameof(request.Strategy), request.Strategy, null),
 		};
 	}
@@ -43,9 +44,9 @@ internal sealed class CollisionResolver : ICollisionResolver
 		);
 	}
 
-	private async Task<CollisionResult> HandleRenameAsync(RenameCollisionRequest request, CancellationToken ct)
+	private async Task<CollisionResult> HandleRenameAsync(RenameCollisionRequest request, IThrottler throttler, CancellationToken ct)
 	{
-		RenameCollisionResult renameCollisionResult = await _renameCollisionResolver.ResolveAsync(request, ct);
+		RenameCollisionResult renameCollisionResult = await _renameCollisionResolver.ResolveAsync(request, throttler, ct);
 
 
 		if(string.IsNullOrWhiteSpace(renameCollisionResult.TargetPath))

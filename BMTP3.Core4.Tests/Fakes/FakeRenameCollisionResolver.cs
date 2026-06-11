@@ -1,4 +1,5 @@
 using BMTP3.Core4.Engine.Strategies;
+using BMTP3.Core4.Infrastructure.Throttling;
 
 namespace BMTP3.Core4.Tests.Fakes;
 
@@ -16,6 +17,6 @@ internal sealed class FakeRenameCollisionResolver : IRenameCollisionResolver
 		_handler = handler;
 	}
 
-	public Task<RenameCollisionResult> ResolveAsync(RenameCollisionRequest request, CancellationToken ct) =>
+	public Task<RenameCollisionResult> ResolveAsync(RenameCollisionRequest request, IThrottler throttler, CancellationToken ct) =>
 		_handler(request, ct);
 }
