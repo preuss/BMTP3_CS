@@ -59,6 +59,100 @@ public class BackupPlan4ConfigTests
 	}
 
 	[Fact]
+	public void Load_JsonFile_FromDisk_ParsesAllSections()
+	{
+		string jsonPath = Path.Combine(TestDataDir, "backup_config_test.json");
+		Assert.True(File.Exists(jsonPath), $"Test JSON file not found: {jsonPath}");
+
+		BackupPlan4Config config = BackupPlan4Loader.Load(new FileInfo(jsonPath));
+
+		Assert.NotNull(config);
+		Assert.Equal("Pictures backup", config.Name);
+
+		Assert.NotNull(config.Source);
+		Assert.Equal("filesystem", config.Source.Type);
+		Assert.Equal(@"C:\Users\John\Pictures", config.Source.Path);
+		Assert.True(config.Source.Recursive);
+		Assert.Equal(["*.jpg", "*.jpeg", "*.png"], config.Source.IncludePatterns);
+		Assert.Equal(["*.tmp"], config.Source.ExcludePatterns);
+
+		Assert.NotNull(config.Destination);
+		Assert.Equal(@"D:\Backup\Pictures", config.Destination.Path);
+		Assert.Equal("preserve-hierarchy", config.Destination.OutputStructure);
+		Assert.Equal("", config.Destination.CustomOutputPattern);
+
+		Assert.NotNull(config.Collision);
+		Assert.Equal("rename", config.Collision.Strategy);
+		Assert.Equal("size-and-modified-time", config.Collision.Comparison);
+		Assert.Equal("increment", config.Collision.RenameStrategy);
+		Assert.Equal("", config.Collision.CustomPattern);
+
+		Assert.NotNull(config.Metadata);
+		Assert.Equal("ini", config.Metadata.SidecarFormat);
+		Assert.Equal("none", config.Metadata.IndexType);
+		Assert.Equal(["sha256"], config.Metadata.ComparisonHashAlgorithms);
+		Assert.Equal(["sha256"], config.Metadata.VerificationHashAlgorithms);
+		Assert.True(config.Metadata.EnableMetadata);
+		Assert.Equal("hash", config.Metadata.PostWriteVerification);
+		Assert.True(config.Metadata.EnableTimestampCorrection);
+
+		Assert.NotNull(config.Behavior);
+		Assert.False(config.Behavior.DryRun);
+		Assert.True(config.Behavior.StopOnError);
+		Assert.Equal(0, config.Behavior.Delay);
+		Assert.Equal("continue", config.Behavior.ResumeBehavior);
+
+		Assert.NotNull(config.Execution);
+	}
+
+	[Fact]
+	public void Load_Json5File_FromDisk_ParsesAllSections()
+	{
+		string json5Path = Path.Combine(TestDataDir, "backup_config_test.json5");
+		Assert.True(File.Exists(json5Path), $"Test JSON5 file not found: {json5Path}");
+
+		BackupPlan4Config config = BackupPlan4Loader.Load(new FileInfo(json5Path));
+
+		Assert.NotNull(config);
+		Assert.Equal("Pictures backup", config.Name);
+
+		Assert.NotNull(config.Source);
+		Assert.Equal("filesystem", config.Source.Type);
+		Assert.Equal(@"C:\Users\John\Pictures", config.Source.Path);
+		Assert.True(config.Source.Recursive);
+		Assert.Equal(["*.jpg", "*.jpeg", "*.png"], config.Source.IncludePatterns);
+		Assert.Equal(["*.tmp"], config.Source.ExcludePatterns);
+
+		Assert.NotNull(config.Destination);
+		Assert.Equal(@"D:\Backup\Pictures", config.Destination.Path);
+		Assert.Equal("preserve-hierarchy", config.Destination.OutputStructure);
+		Assert.Equal("", config.Destination.CustomOutputPattern);
+
+		Assert.NotNull(config.Collision);
+		Assert.Equal("rename", config.Collision.Strategy);
+		Assert.Equal("size-and-modified-time", config.Collision.Comparison);
+		Assert.Equal("increment", config.Collision.RenameStrategy);
+		Assert.Equal("", config.Collision.CustomPattern);
+
+		Assert.NotNull(config.Metadata);
+		Assert.Equal("ini", config.Metadata.SidecarFormat);
+		Assert.Equal("none", config.Metadata.IndexType);
+		Assert.Equal(["sha256"], config.Metadata.ComparisonHashAlgorithms);
+		Assert.Equal(["sha256"], config.Metadata.VerificationHashAlgorithms);
+		Assert.True(config.Metadata.EnableMetadata);
+		Assert.Equal("hash", config.Metadata.PostWriteVerification);
+		Assert.True(config.Metadata.EnableTimestampCorrection);
+
+		Assert.NotNull(config.Behavior);
+		Assert.False(config.Behavior.DryRun);
+		Assert.True(config.Behavior.StopOnError);
+		Assert.Equal(0, config.Behavior.Delay);
+		Assert.Equal("continue", config.Behavior.ResumeBehavior);
+
+		Assert.NotNull(config.Execution);
+	}
+
+	[Fact]
 	public void Load_TomlFile_EmptyExecution_DefaultsToNull()
 	{
 		string toml = @"
