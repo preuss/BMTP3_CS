@@ -1,52 +1,31 @@
-# Task: ISidecarService Public API
+# Task: ISidecarService Public API — ✅ WONTFIX
 
-> Overvej og implementér om `ISidecarService` skal være `public` i Core4.
-
----
-
-## Goal
-
-Beslut om `ISidecarService` (og evt. relaterede typer) skal være `public` som i Core3, eller forblive `internal` som nu.
+> **Beslutning truffet 11 Jun 2026:** `ISidecarService` forbliver `internal`.
 
 ---
 
-## Background
+## Baggrund
 
 - **Core3:** `ISidecarGenerator` / `SimpleSidecarGenerator` var `public` — eksterne API-brugere kunne generere sidecars selv.
 - **Core4:** `ISidecarService` er `internal` — kun `BackupEngine` kan generere sidecars.
 
 ---
 
-## Overvejelser
+## Afgørelse
 
-| For public | For internal |
-|------------|--------------|
-| Ekstern API-konsistens med Core3 | YAGNI — ingen kendt ekstern consumer |
-| Brugere kan generere sidecars til egne formål | Holder API flade mindre |
-| Framework/library scenario | Kan altid gøres public senere |
+**WONTFIX** — Forbliver `internal`. Begründung:
 
----
-
-## Hvis public — hvad skal ændres
-
-| Type | Nuværende | Skal være |
-|------|-----------|-----------|
-| `ISidecarService` | `internal interface` | `public interface` |
-| `SidecarService` | `internal sealed class` | `public sealed class` |
-| `SidecarRequest` | `internal sealed record` | `public sealed record` |
-| `ISidecarWriter` | `internal interface` | `public interface` (?) |
-| `SidecarFormat` (enum) | `public enum` | Allerede public — OK |
-| `IniSidecarWriter` | `internal` | Skal forblive internal? |
-| `JsonSidecarWriter` | `internal` | Skal forblive internal? |
+1. **YAGNI** — Ingen kendte eksterne consumere af Core4 biblioteket
+2. **Core4 bruges internt** via `BackupEngine.RunAsync()` — sidecar-generering sker automatisk baseret på `BackupPlan.SidecarFormat`
+3. **API-overflade holdes minimal** — kan altid gøres public senere hvis behov opstår
+4. **Anbefaling i task-fil** (linje 46): "Lad være internal indtil videre" — beslutning bekræftet
 
 ---
 
-## Anbefaling
+## Status
 
-**Lad være internal indtil videre.** Hvis en ekstern consumer opstår, kan det gøres public på få minutter. Core4 er stadig i udvikling.
+✅ **Afsluttet** — Ingen kodeændringer nødvendige. Dokumenteret i `plan.md` §8 og `mangler.md` § "Public API overvejelser" + Feature Audit tabel.
 
----
+## Note om `SidecarFormat`
 
-## Dependencies
-
-- Self-contained (beslutning + evt. access modifier ændringer)
+Kun `SidecarFormat` (enum) er `public` — den ligger i `BMTP3.Core4.Api.Models.Enums` namespace som er Core4's public API surface. Alle andre sidecar-typer (`ISidecarService`, `SidecarService`, `SidecarRequest`, `ISidecarWriter`, `IniSidecarWriter`, `JsonSidecarWriter`) er `internal` og forbliver det.

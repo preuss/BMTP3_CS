@@ -202,7 +202,7 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 
 ### 8. Public API overvejelser
 
-- `ISidecarService` public?
+- `ISidecarService` public? → ✅ **WONTFIX** — Forbliver `internal`. Core4 bruges internt via `BackupEngine.RunAsync()`. Ingen eksterne forbrugere har brug for direkte sidecar-generering. Sidecar-funktionalitet eksponeres via `BackupPlan.SidecarFormat` og kører automatisk i engine.
 
 ### 9. Senere (feature gates + default)
 

@@ -93,10 +93,10 @@
 
 **Status:** Pipeline (SourceConnector → ConnectedMediaDriveSource → MediaDeviceTraversal → MediaDeviceContent) er fuldt integreret. Kun discovery-laget mangler:
 
-| # | File | Nuværende | Skal ændres til |
-|---|------|-----------|-----------------|
-| 1 | `DriveDiscovery/MediaDeviceDriveProvider.cs` | `MediaDevice.GetDevices()` + `MediaDriveInfo` + `BackupMediaDriveInfo(device, drive)` | Brug `MediaDeviceInfo.GetDevices()` + `IMediaDrive` + `BackupMediaDriveInfo(IMediaDeviceInfo, IMediaDrive)` |
-| 2 | `Storage/BackupMediaDriveInfo.cs` | `(MediaDevice, MediaDriveInfo)` | `(IMediaDeviceInfo, IMediaDrive)` |
+| # | File | Status | Konklusion |
+|---|------|--------|------------|
+| 1 | `DriveDiscovery/MediaDeviceDriveProvider.cs` | ✅ **Allerede korrekt** | Bruger `MediaDeviceInfo.GetDevices()` + `IMediaDrive` + `BackupMediaDriveInfo(IMediaDevice, IMediaDrive)`. `IMediaDevice` er den abstraherede connected interface — kræves for `Model`/`SerialNumber` som ikke findes på `IMediaDeviceInfo`. |
+| 2 | `Storage/BackupMediaDriveInfo.cs` | ✅ **Allerede korrekt** | `FromDeviceAndDrive(IMediaDevice, IMediaDrive)` er korrekt. `IMediaDevice` har alt (Drives + Model + SerialNumber). Forslaget `(IMediaDeviceInfo, IMediaDrive)` ville være forkert. |
 
 ### ✅ Komplet gap-analyse (Core, Core2, Core3 → Core4)
 
@@ -167,9 +167,9 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 
 ### Medium prioritet — Public API overvejelser
 
-| # | Task |
-|---|------|
-| 1 | `ISidecarService` public? — var public i Core3, er `internal` i Core4. Overvej om eksterne forbrugere har brug for sidecar generation. |
+| # | Task | Status |
+|---|------|--------|
+| 1 | `ISidecarService` public? | ✅ **WONTFIX** — Forbliver `internal`. Core4 bruges internt via `BackupEngine.RunAsync()`. Ingen eksterne forbrugere har brug for direkte sidecar-generering. Sidecar-funktionalitet eksponeres via `BackupPlan.SidecarFormat` og kører automatisk i engine. |
 
 ### Høj prioritet — Integration test
 
@@ -333,7 +333,7 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **ConsolesServiceSetup NOT wired** | ❌ | `ApplicationStartup.cs` mangler `ConsolesServiceSetup` → `ConsolesPrinter` er null → alt progress er no-ops. **Blokerer Task 09.** |
 | **SpectreAnsiConsoleLogger markup safety** | ❌ | `MarkupLineInterpolated` parser markup — crash på `[`/`]` i log messages |
 | **Custom ProgressColumns/Spinners** | ❌ | 6 custom columns + 2 custom spinners i Core. Beslut: port eller skip? |
-| **ISidecarService public** | ⚠️ | `internal` i Core4, var `public` i Core3 |
+| **ISidecarService public** | ✅ **WONTFIX** | Forbliver `internal` — ingen eksterne forbrugere, funktionalitet eksponeres via `BackupPlan.SidecarFormat` i engine |
 | **MTP Discovery + Traversal** | ✅ **DONE** | Hele pipeline: `SourceConnector` (via `IMediaDeviceInfo`/`IMediaDrive`), `ConnectedMediaDriveSource` (`IMediaDevice`+`IMediaDrive`), `MediaDeviceTraversal` (`IMediaDirectory`/`IMediaFile`), `MediaDeviceContent` (`IMediaFile`). Kun `MediaDeviceDriveProvider` + `BackupMediaDriveInfo` mangler wrapper-opdatering. |
 | **Consoles CLI cleanup** | ⚠️ | Ubrugte options valideres, MTP path format, Core2 options config |
 | **INI/JSON sidecar** | ✅ **DONE** | Full Document/Section/Property model + Ini + Json writers |
