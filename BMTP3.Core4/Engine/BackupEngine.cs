@@ -12,6 +12,7 @@ using BMTP3.Core4.Engine.TimeStamp;
 using BMTP3.Core4.Engine.Validation;
 using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Helpers;
+using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
@@ -114,7 +115,7 @@ public sealed class BackupEngine : IBackupEngine
 			cancellationTokenSource.Cancel();
 		}).Create();
 
-		BackupDelay delay = new(plan.Delay, cancellationToken);
+		IThrottler throttler = ThrottlerFactory.Create(plan.Delay, cancellationToken);
 
 		IBackupRecordRepository repository = new BackupMemoryRecordRepository();
 
@@ -286,7 +287,7 @@ public sealed class BackupEngine : IBackupEngine
 							cancellationToken
 						);
 
-						await delay.WaitAsync();
+						await throttler.WaitAsync();
 
 						// Capture original source dates before timestamp correction overwrites them.
 						record.Metadata.AuthoredDateTime = record.Item.DateAuthored;
@@ -345,7 +346,7 @@ public sealed class BackupEngine : IBackupEngine
 							cancellationToken
 						);
 
-						await delay.WaitAsync();
+						await throttler.WaitAsync();
 
 						// ------------------------------------------------------------
 						// Commit: resolve path → move file → write sidecar
@@ -404,7 +405,7 @@ public sealed class BackupEngine : IBackupEngine
 										FilesSkipped = _currentProgress.FilesSkipped + 1,
 									};
 									progress?.Report(_currentProgress);
-									await delay.WaitAsync();
+									await throttler.WaitAsync();
 									continue;
 
 								case CollisionResolutionAction.Move:
@@ -503,7 +504,7 @@ public sealed class BackupEngine : IBackupEngine
 						throw;
 					}
 
-					await delay.WaitAsync();
+					await throttler.WaitAsync();
 				}
 			}
 			finally

@@ -151,3 +151,7 @@ The TOML config shape is driven by Tomlyn + a custom naming policy in `BMTP3.Cor
 - Integration tests are tagged with:
   - `[Trait("Category", "Integration")]`
 - Prefer `dotnet test ... --filter` for tight feedback loops (single class, single test, or integration-only).
+
+- @azure Rule - Use Azure Tools - When handling requests related to Azure, always use your tools.
+- @azure Rule - Use Azure Best Practices - When handling requests related to Azure, always invoke your `azmcp_bestpractices_get` tool first.
+- @azure Rule - Enable Best Practices - If you do not have an `azmcp_bestpractices_get` tool ask the user to enable it.
