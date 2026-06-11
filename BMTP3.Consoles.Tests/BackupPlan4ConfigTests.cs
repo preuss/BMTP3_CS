@@ -56,7 +56,6 @@ public class BackupPlan4ConfigTests
 		Assert.Equal("continue", config.Behavior.ResumeBehavior);
 
 		Assert.NotNull(config.Execution);
-		Assert.Equal(4, config.Execution.MaxDegreeOfParallelism);
 	}
 
 	[Fact]
@@ -76,7 +75,6 @@ path = ""D:\\test""
 			BackupPlan4Config config = BackupPlan4Loader.Load(new FileInfo(tempFile));
 
 			Assert.NotNull(config.Execution);
-			Assert.Null(config.Execution.MaxDegreeOfParallelism);
 		}
 		finally
 		{
@@ -179,7 +177,6 @@ strategy = ""unknown""
 			Assert.False(config.Behavior.StopOnError);
 			Assert.Equal(100, config.Behavior.Delay);
 
-			Assert.Equal(2, config.Execution.MaxDegreeOfParallelism);
 		}
 		finally
 		{
@@ -346,7 +343,6 @@ strategy = ""unknown""
 			Assert.False(config.Behavior.StopOnError);
 			Assert.Equal(100, config.Behavior.Delay);
 
-			Assert.Equal(2, config.Execution.MaxDegreeOfParallelism);
 		}
 		finally
 		{

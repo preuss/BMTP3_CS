@@ -67,9 +67,6 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.ResumeBehavior))
 			throw new BackupPlanArgumentException($"Invalid ResumeBehavior value: {plan.ResumeBehavior}.");
 
-		if(plan.MaxDegreeOfParallelism.HasValue && plan.MaxDegreeOfParallelism.Value <= 0)
-			throw new BackupPlanArgumentException("MaxDegreeOfParallelism must be greater than zero.");
-
 		// Delay is always valid (-1 = disabled, 0 = 0ms, >0 = N ms).
 		// No validation needed — any int is acceptable.
 
@@ -85,8 +82,5 @@ internal static class BackupPlanValidator
 		// Tier 4 — Features not implemented at all
 		if(plan.BackupIndexType == BackupIndexType.Database)
 			throw new FeatureNotImplementedException(4, "Backup index: Database");
-
-		if(plan.MaxDegreeOfParallelism.HasValue)
-			throw new FeatureNotImplementedException(4, "Parallel execution");
 	}
 }

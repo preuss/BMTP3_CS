@@ -168,6 +168,14 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public bool Simulate { get; set; }
 
+	public static Option<bool> StopOnErrorOption { get; } = new("--stop-on-error")
+	{
+		Description = "Stop the backup immediately on first error (fail-fast). Set to false to continue on errors.",
+		DefaultValueFactory = _ => true
+	};
+
+	public bool StopOnError { get; set; } = true;
+
 	// --------------------------------------------------
 	// VERIFICATION
 	// --------------------------------------------------

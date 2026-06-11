@@ -100,7 +100,6 @@ public class BackupEngineHappyPathIntegrationTests
 			StopOnError = true,
 			EnableMetadata = false,
 			BackupIndexType = BackupIndexType.None,
-			MaxDegreeOfParallelism = null,
 			PostWriteVerification = PostWriteVerificationType.None,
 			SidecarFormat = SidecarFormat.Ini,
 			CollisionStrategy = CollisionStrategy.Rename,

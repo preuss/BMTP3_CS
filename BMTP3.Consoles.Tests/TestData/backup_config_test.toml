@@ -34,4 +34,3 @@ delay = 0
 resume-behavior = "continue"
 
 [execution]
-max-degree-of-parallelism = 4

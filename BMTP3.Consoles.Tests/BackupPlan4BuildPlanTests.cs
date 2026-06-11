@@ -88,7 +88,6 @@ max-degree-of-parallelism = 8
 			Assert.False(plan.StopOnError);
 			Assert.Equal(500, plan.Delay);
 			Assert.Equal(SessionResumeStrategy.Restart, plan.ResumeBehavior);
-			Assert.Equal(8, plan.MaxDegreeOfParallelism);
 		}
 		finally
 		{
@@ -142,7 +141,6 @@ max-degree-of-parallelism = 8
 			Assert.Equal(SidecarFormat.Ini, plan.SidecarFormat);
 			Assert.True(plan.EnableMetadata);
 			Assert.False(plan.DryRun);
-			Assert.Equal(4, plan.MaxDegreeOfParallelism);
 		}
 		finally
 		{
@@ -202,7 +200,6 @@ max-degree-of-parallelism = 8
 			Assert.False(plan.EnableMetadata);
 			Assert.True(plan.EnableTimestampCorrection);
 			Assert.Equal(250, plan.Delay);
-			Assert.Equal(2, plan.MaxDegreeOfParallelism);
 		}
 		finally
 		{
@@ -334,7 +331,6 @@ dry-run = true
 		Assert.False(plan.EnableMetadata);
 		Assert.True(plan.EnableTimestampCorrection);
 		Assert.Equal(SessionResumeStrategy.Continue, plan.ResumeBehavior);
-		Assert.Null(plan.MaxDegreeOfParallelism);
 	}
 
 	[Fact]

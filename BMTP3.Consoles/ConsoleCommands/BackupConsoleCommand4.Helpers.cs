@@ -37,7 +37,6 @@ internal static class BackupConsoleCommand4Helpers
 		bool enableMetadata = false;
 		bool enableTimestampCorrection = true;
 		SessionResumeStrategy resumeBehavior = SessionResumeStrategy.Continue;
-		int? maxDegreeOfParallelism = null;
 
 		if (backupOptions.Config is { Exists: true })
 		{
@@ -125,10 +124,7 @@ internal static class BackupConsoleCommand4Helpers
 					resumeBehavior = ParseResumeBehavior(config.Behavior.ResumeBehavior);
 			}
 
-			if (config.Execution != null)
-			{
-				maxDegreeOfParallelism = config.Execution.MaxDegreeOfParallelism;
-			}
+			// Execution section exists but no longer used (MaxDegreeOfParallelism removed).
 		}
 
 		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.NameOption) && !string.IsNullOrWhiteSpace(backupOptions.Name))
@@ -157,6 +153,9 @@ internal static class BackupConsoleCommand4Helpers
 
 		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SimulateOption))
 			dryRun = backupOptions.Simulate;
+
+		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.StopOnErrorOption))
+			stopOnError = backupOptions.StopOnError;
 
 		if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.IncludePatternsOption) && backupOptions.IncludePatterns?.Count > 0)
 			includePatterns = backupOptions.IncludePatterns;
@@ -234,7 +233,6 @@ internal static class BackupConsoleCommand4Helpers
 			StopOnError = stopOnError,
 			Delay = delay,
 			ResumeBehavior = resumeBehavior,
-			MaxDegreeOfParallelism = maxDegreeOfParallelism,
 		};
 	}
 

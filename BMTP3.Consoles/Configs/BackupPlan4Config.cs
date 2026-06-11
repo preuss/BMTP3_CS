@@ -56,5 +56,4 @@ public sealed class BehaviorConfig
 
 public sealed class ExecutionConfig
 {
-	public int? MaxDegreeOfParallelism { get; set; }
 }

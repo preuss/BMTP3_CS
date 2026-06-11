@@ -192,13 +192,4 @@ public sealed record BackupPlan
 	public SessionResumeStrategy ResumeBehavior { get; init; } = SessionResumeStrategy.Continue;
 
 
-	// ---------------------------------------------------------------------
-	// Execution Hints
-	// ---------------------------------------------------------------------
-
-	/// <summary>
-	/// Optional hint to limit parallel execution.
-	/// A null value indicates that the engine may choose an appropriate default.
-	/// </summary>
-	public int? MaxDegreeOfParallelism { get; init; }
 }
