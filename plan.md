@@ -164,6 +164,7 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **SignalInterrupt cancel-wiring:** `Console.CancelKeyPress` fjernet fra `BackupConsoleCommand4`. Engine styrer selv cancellation.
 - [x] — **Skip cleanup:** Temp-fil slettes ved `CollisionResolutionAction.Skip`.
 - [x] — **TOML config reader:** `BackupPlan4Config.cs` (nested model: Source/Destination/Collision/Metadata/Behavior/Execution), `BackupPlan4Loader.cs` (TOML via PascalToKebab, JSON via PropertyNameCaseInsensitive). `BuildPlan()` loader config først, derefter `WasSupplied()` overrider CLI-args.
+- [x] — **Consolidation Phase 1:** `OptionHelpers.WasSupplied<T>()` extracted to shared file; `EngineArgumentBuilder()` dead code deleted from `BackupConsoleCommand2.cs`; `FakeFileTransfer.cs` (empty, unused) deleted; `FakeGatekeeper` consolidated to single shared class in `Fakes/`. **0 errors, 249 tests.**
 
 ## Næste opgaver (prioriteret)
 

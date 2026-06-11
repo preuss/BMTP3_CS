@@ -89,6 +89,15 @@
 
 ## Remaining Issues
 
+### ✅ Consolidation Phase 1 — Duplication cleanup
+
+| # | Task | Status | Evidence |
+|---|------|--------|----------|
+| 1 | Extract `WasSupplied<T>()` → shared `OptionHelpers` | ✅ **DONE** | `Consoles/ConsoleCommands/OptionHelpers.cs`. `BackupConsoleCommand2.Helpers.cs` + `BackupConsoleCommand4.Helpers.cs` refactored to use it. |
+| 2 | Delete dead `EngineArgumentBuilder()` | ✅ **DONE** | Removed from `BackupConsoleCommand2.cs` (lines 276-357, duplicate of `BuildPlan()`). |
+| 3 | Delete empty `FakeFileTransfer.cs` | ✅ **DONE** | File deleted — empty class without interface, unused. |
+| 4 | Consolidate `FakeGatekeeper` | ✅ **DONE** | Moved to `Core4.Tests/Fakes/FakeGatekeeper.cs` with shared `TrackingDisposable`. Both test files updated. |
+
 ### ✅ Devices wrapper-integration i discovery (småopgave — sidste 2 filer)
 
 **Status:** Pipeline (SourceConnector → ConnectedMediaDriveSource → MediaDeviceTraversal → MediaDeviceContent) er fuldt integreret. Kun discovery-laget mangler:

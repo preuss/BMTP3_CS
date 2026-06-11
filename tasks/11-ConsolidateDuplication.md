@@ -4,14 +4,14 @@
 
 ---
 
-## Phase 1 — Low-hanging fruit (no behavior change)
+## Phase 1 — Low-hanging fruit (no behavior change) ✅ **DONE**
 
 | # | File(s) | Task | Status |
 |---|---------|------|--------|
-| 1.1 | `BackupConsoleCommand4.Helpers.cs` + `BackupConsoleCommand2.Helpers.cs` | Extract `WasSupplied<T>()` → `OptionHelpers` in Consoles | ❌ |
-| 1.2 | `BackupConsoleCommand2.cs` (line 276-357) | Delete dead `EngineArgumentBuilder()` (duplicate of `BackupConsoleCommand2Helpers.BuildPlan()`) | ❌ |
-| 1.3 | `FakeFileTransfer.cs` | Delete — empty class without interface, unused | ❌ |
-| 1.4 | `MediaDeviceTraversalTests.cs` + `MediaDeviceContentTests.cs` | Consolidate `FakeGatekeeper` → single shared class in `Fakes/` | ❌ |
+| 1.1 | `BackupConsoleCommand4.Helpers.cs` + `BackupConsoleCommand2.Helpers.cs` | Extract `WasSupplied<T>()` → `OptionHelpers` in Consoles | ✅ |
+| 1.2 | `BackupConsoleCommand2.cs` (line 276-357) | Delete dead `EngineArgumentBuilder()` (duplicate of `BackupConsoleCommand2Helpers.BuildPlan()`) | ✅ |
+| 1.3 | `FakeFileTransfer.cs` | Delete — empty class without interface, unused | ✅ |
+| 1.4 | `MediaDeviceTraversalTests.cs` + `MediaDeviceContentTests.cs` | Consolidate `FakeGatekeeper` → single shared class in `Fakes/` | ✅ |
 
 ## Phase 2 — Config Loader boilerplate
 
