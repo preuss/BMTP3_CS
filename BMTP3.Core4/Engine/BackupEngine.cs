@@ -405,6 +405,7 @@ public sealed class BackupEngine : IBackupEngine
 							{
 								case CollisionResolutionAction.Skip:
 									record.Status = BackupItemStatus.Skipped;
+									TempDirectoryHelper.CleanupTempFiles(tempFile.FullName, null);
 									_currentProgress = _currentProgress with
 									{
 										FilesSkipped = _currentProgress.FilesSkipped + 1,

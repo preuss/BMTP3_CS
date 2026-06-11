@@ -16,7 +16,8 @@ namespace BMTP3.Core4.Engine;
 internal static class TempDirectoryHelper
 {
 	private const string TempRootDirName = ".tmp";
-	private const string TempFileExtension = ".tmp";
+	// Empty on purpose — no ".tmp" suffix makes forensic reading easier.
+	private const string TempFileExtension = "";
 	private const string TimestampFormat = "yyyyMMdd_HHmmss";
 	private const string ElementSeparator = "_";
 	private const int MaxFileNameLength = 200;
@@ -107,7 +108,7 @@ internal static class TempDirectoryHelper
 
 	/// <summary>
 	/// Builds a temporary file name using the pattern:
-	/// {guid}_{sanitizedFileName}.tmp
+	/// {guid}_{sanitizedFileName}
 	/// 
 	/// Guarantees uniqueness via GUID and preserves the original file name (sanitized)
 	/// for traceability. If necessary, the file name is truncated to fit within
@@ -214,7 +215,7 @@ internal static class TempDirectoryHelper
 
 	/// <summary>
 	/// Ensures that the final filename does not exceed the maximum allowed length.
-	/// The GUID and extension are preserved, and only the base file name is truncated if needed.
+	/// The GUID is preserved, and only the base file name is truncated if needed.
 	/// </summary>
 	private static string EnforceLength(
 		string guidPart,
