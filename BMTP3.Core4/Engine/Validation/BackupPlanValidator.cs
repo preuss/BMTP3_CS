@@ -79,9 +79,6 @@ internal static class BackupPlanValidator
 		if(plan.EnableMetadata)
 			throw new FeatureNotImplementedException(3, "Metadata extraction");
 
-		if(plan.BackupIndexType == BackupIndexType.Json)
-			throw new FeatureNotImplementedException(3, "Backup index: Json");
-
 		if(!plan.StopOnError)
 			throw new FeatureNotImplementedException(3, "Continue on error (StopOnError = false)");
 

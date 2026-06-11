@@ -5,6 +5,7 @@ using BMTP3.Core4.DriveDiscovery;
 using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
+using BMTP3.Core4.Engine.Index;
 using BMTP3.Core4.Engine.Session;
 using BMTP3.Core4.Engine.Sidecar;
 using BMTP3.Core4.Engine.Strategies;
@@ -44,6 +45,7 @@ public sealed class BackupEngine : IBackupEngine
 	private readonly ILogger<BackupEngine> _logger;
 	private readonly ITargetPathResolver _targetPathResolver;
 	private readonly ICollisionResolver _collisionResolver;
+	private readonly IBackupIndexWriter _backupIndexWriter;
 
 
 	internal BackupEngine(
@@ -58,7 +60,8 @@ public sealed class BackupEngine : IBackupEngine
 		IDiskSpaceValidator diskSpaceValidator,
 		ILogger<BackupEngine> logger,
 		ITargetPathResolver targetPathResolver,
-		ICollisionResolver collisionResolver
+		ICollisionResolver collisionResolver,
+		IBackupIndexWriter backupIndexWriter
 	)
 	{
 		_scanner = scanner;
@@ -73,6 +76,7 @@ public sealed class BackupEngine : IBackupEngine
 		_logger = logger;
 		_targetPathResolver = targetPathResolver;
 		_collisionResolver = collisionResolver;
+		_backupIndexWriter = backupIndexWriter;
 	}
 
 	public async Task<BackupResult> RunAsync(
@@ -580,6 +584,15 @@ public sealed class BackupEngine : IBackupEngine
 				State = anyFailed ? BackupResultState.Failed : BackupResultState.Completed,
 				ItemResults = itemResults.AsReadOnly(),
 			};
+
+			// ------------------------------------------------------------
+			// 8b. Write backup catalog
+			// ------------------------------------------------------------
+
+			if (plan.BackupIndexType == BackupIndexType.Json)
+			{
+				await _backupIndexWriter.WriteAsync(plan.Destination, sessionKey.SessionId, allRecords, plan, result, cancellationToken);
+			}
 
 			// ------------------------------------------------------------
 			// 9. Return BackupResult

@@ -7,6 +7,7 @@ using BMTP3.Core4.Engine.Compare.Algorithms;
 using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
 using BMTP3.Core4.Engine.Hashing;
+using BMTP3.Core4.Engine.Index;
 using BMTP3.Core4.Engine.Sidecar;
 using BMTP3.Core4.Engine.Strategies;
 using BMTP3.Core4.Engine.TimeStamp;
@@ -82,6 +83,9 @@ public static class ServiceCollectionExtensions
 		services.TryAddSingleton<ICollisionResolver, CollisionResolver>();
 		services.TryAddSingleton<IRenameCollisionResolver, RenameCollisionResolver>();
 
+		// Index writer
+		services.TryAddSingleton<IBackupIndexWriter, JsonBackupIndexWriter>();
+
 		// File compare
 		services.TryAddSingleton<WholeFileSequenceEqualBinaryComparer>();
 		services.TryAddSingleton<ChunkedSequenceEqualBinaryComparer>();
@@ -109,6 +113,7 @@ public static class ServiceCollectionExtensions
 			ILogger<BackupEngine> logger = sp.GetRequiredService<ILogger<BackupEngine>>();
 			ITargetPathResolver targetPathResolver = sp.GetRequiredService<ITargetPathResolver>();
 			ICollisionResolver collisionResolver = sp.GetRequiredService<ICollisionResolver>();
+			IBackupIndexWriter backupIndexWriter = sp.GetRequiredService<IBackupIndexWriter>();
 			return new BackupEngine(
 				scanner,
 				sourceTraversalFactory,
@@ -121,7 +126,8 @@ public static class ServiceCollectionExtensions
 				diskSpaceValidator,
 				logger,
 				targetPathResolver,
-				collisionResolver);
+				collisionResolver,
+				backupIndexWriter);
 		});
 
 		return services;

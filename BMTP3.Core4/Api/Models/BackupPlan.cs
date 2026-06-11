@@ -127,7 +127,7 @@ public sealed record BackupPlan
 	/// <summary>
 	/// The format for the centralized backup index / catalog file.
 	/// </summary>
-	public BackupIndexType BackupIndexType { get; init; }
+	public BackupIndexType BackupIndexType { get; init; } = BackupIndexType.None;
 
 	/// <summary>
 	/// The hash algorithms used when comparing files during collision detection.

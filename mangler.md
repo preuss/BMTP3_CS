@@ -124,9 +124,9 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 
 | # | Issue | Detail |
 |---|-------|--------|
-| 1 | **Tilføj `Delay` til `BackupPlan`** | ✅ **DONE** | `BackupPlan.Delay` (int), `BackupDelay` struct i `Helpers/`, validering i `BackupPlanValidator`, implementeret i `BackupEngine` loop, `--delay` CLI option i `BackupOptionsModel4`. 249 tests, 0 errors. |
-| 2 | **Delay/VerificationRetry/Timeout** — guarded men ikke implementeret | `Delay`, `VerificationRetryCount`, `VerificationRetryDelayMs`, `VerificationTimeoutMs`, `VerificationDeleteOnFailure` valideres i `BackupConsoleCommand4.ValidateBackupOptions` men findes ikke i Core4's `BackupPlan`. Skal enten (a) tilføjes til BackupPlan + implementeres i engine, eller (b) validering fjernes + options ignoreres med warning. |
-| 3 | **MTP source path format** | `--source-device` sætter bart device navn, men Core4 forventer `mtp://Device/Path`. Løsning: konstruer `mtp://{deviceName}/{subPath}` URI i `BuildPlan`. |
+| 1 | **Tilføj `Delay` til `BackupPlan`** | ✅ **DONE** | `BackupPlan.Delay` (int), `IThrottler` / `ThrottlerFactory` / `DelayThrottler`, implementeret i `BackupEngine` loop + threadet gennem hash pipeline og collision resolution, `--delay` CLI option i `BackupOptionsModel4`. |
+| 2 | **Delay/VerificationRetry/Timeout** — guarded men ikke implementeret | `Delay` ✅ **DONE** (se #1 — throttler). `VerificationRetryCount`, `VerificationRetryDelayMs`, `VerificationTimeoutMs`, `VerificationDeleteOnFailure` — **❌ WONTFIX — implementeres ikke.** Validering bør fjernes eller options ignoreres med warning. |
+| 3 | **MTP source path format** | ❌ **WONTFIX** — Core4 bruger `--source-path "mtp://Device/Path"`. `--source-device` hører til Core2 (archived). |
 | 4 | **`--backup-index` default** | `Json` er korrekt (skal implementeres), men CLI må ikke sende Json før writer er klar |
 | 5 | **Core2 options i ApplicationServiceSetup** | `services.Configure<BackupEngineOptions>(...)` konfigurerer Core2, ikke Core4 |
 | 6 | **SignalInterrupt cancel-wiring** | `BackupConsoleCommand4` bruger `Console.CancelKeyPress` i stedet for Core4's `SignalInterrupt.On(Interrupt).Bind(cts).Create()` |
