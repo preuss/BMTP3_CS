@@ -23,5 +23,5 @@ public enum RenameStrategy
 	/// <summary>
 	/// Use a user-defined pattern.
 	/// </summary>
-	Custom
+	CustomPattern
 }

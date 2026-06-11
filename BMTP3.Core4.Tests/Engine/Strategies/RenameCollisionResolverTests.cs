@@ -131,7 +131,7 @@ public class RenameCollisionResolverTests
 			IntendedTargetPath = intendedPath,
 			FileName = "photo.jpg",
 			RelativeFilePath = "photo.jpg",
-			RenameStrategy = RenameStrategy.Custom,
+			RenameStrategy = RenameStrategy.CustomPattern,
 			CustomRenamePattern = "{fileName}_{count}",
 		};
 
@@ -149,7 +149,7 @@ public class RenameCollisionResolverTests
 		RenameCollisionResolver resolver = CreateResolver();
 		RenameCollisionRequest request = BaseRequest with
 		{
-			RenameStrategy = RenameStrategy.Custom,
+			RenameStrategy = RenameStrategy.CustomPattern,
 			CustomRenamePattern = null,
 		};
 

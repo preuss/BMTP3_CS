@@ -264,7 +264,7 @@ strategy = ""skip""
 		try
 		{
 			File.WriteAllText(configPath, toml);
-			var (options, parseResult) = Parse($"--config \"{configPath}\" --collision-resolution Overwrite");
+			var (options, parseResult) = Parse($"--config \"{configPath}\" --collision-strategy Overwrite");
 
 			Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
@@ -351,7 +351,7 @@ dry-run = true
 			$"--source-path \"C:\\Src\" " +
 			$"--output \"D:\\Dst\" " +
 			$"--recursive false " +
-			$"--collision-resolution Skip " +
+			$"--collision-strategy Skip " +
 			$"--collision-compare None " +
 			$"--sidecar-format None " +
 			$"--dry-run true " +

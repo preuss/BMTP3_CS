@@ -122,7 +122,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 			RenameStrategy.Increment => Path.Combine(dir, $"{nameWithoutExt}_{count}{extension}"),
 			RenameStrategy.Timestamp => Path.Combine(dir, $"{nameWithoutExt}_{request.CreateFileDate:yyyyMMdd_HHmmss}{extension}"),
 			RenameStrategy.Hash => Path.Combine(dir, $"{nameWithoutExt}_{GetHashShort(request)}{extension}"),
-			RenameStrategy.Custom => GenerateCustomCandidate(dir, count, request),
+			RenameStrategy.CustomPattern => GenerateCustomCandidate(dir, count, request),
 			_ => throw new ArgumentOutOfRangeException(nameof(request.RenameStrategy), request.RenameStrategy, "Unknown rename strategy."),
 		};
 	}
@@ -131,7 +131,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 	{
 		if(string.IsNullOrWhiteSpace(request.CustomRenamePattern))
 		{
-			throw new InvalidOperationException("Custom rename pattern is required when RenameStrategy is Custom.");
+			throw new InvalidOperationException("Custom rename pattern is required when RenameStrategy is CustomPattern.");
 		}
 
 		FileFormatValuesRequest valuesRequest = new(

@@ -3,6 +3,7 @@ using BMTP3.Consoles.Progress;
 using BMTP3.Consoles.Services;
 using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Api.Models.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -41,6 +42,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		CancellationToken cancellationToken
 	)
 	{
+		ArgumentNullException.ThrowIfNull(ServiceProvider);
 		ConsolesPrinter? consolePrinter = ServiceProvider.GetService<ConsolesPrinter>();
 		consolePrinter?.PrintOptionsModel(GlobalOptions, BackupOptions);
 
@@ -86,21 +88,21 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 				result = await engine.RunAsync(plan, progress, cancellationToken);
 			});
-
+			ArgumentNullException.ThrowIfNull(result);
 			consolePrinter?.PrintResult(result);
 			logger.LogInformation("Job '{JobName}' finished: {State}", result.Name, result.State);
 			logger.LogInformation(
 				"Items: {Total} Succeeded: {Succeeded} Failed: {Failed}",
 				result.ItemResults.Count,
-				result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Succeeded),
-				result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Failed));
+				result.ItemResults.Count(r => r.State == BackupResultItemState.Succeeded),
+				result.ItemResults.Count(r => r.State == BackupResultItemState.Failed));
 
 			if (result.FailureReason is not null)
 			{
 				logger.LogWarning("Failure reason: {Reason}", result.FailureReason);
 			}
 
-			return result.State == BMTP3.Core4.Api.Models.Enums.BackupResultState.Completed ? 0 : 1;
+			return result.State == BackupResultState.Completed ? 0 : 1;
 		}
 		catch (OperationCanceledException)
 		{
@@ -123,16 +125,16 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 	private void ValidateBackupOptions(BackupOptionsModel4 backupOptions)
 	{
-		if (backupOptions.OutputStrategy == BMTP3.Core2.BackupNew.Api.Request.Enums.OutputStructureStrategy.CustomPathPattern
+		if (backupOptions.OutputStrategy == OutputStructureStrategy.CustomPathPattern
 			&& string.IsNullOrWhiteSpace(backupOptions.CustomOutputFilePath))
 		{
 			throw new ArgumentException("--path-pattern is required when --output-structure is CustomPathPattern.");
 		}
 
-		if (backupOptions.RenameStrategy == BMTP3.Core2.BackupNew.Api.Request.Enums.RenameStrategy.CustomCollisionPathPattern
+		if (backupOptions.RenameStrategy == RenameStrategy.CustomPattern
 			&& string.IsNullOrWhiteSpace(backupOptions.CustomCollisionOutputFilePath))
 		{
-			throw new ArgumentException("--collision-pattern is required when --rename-strategy is CustomCollisionPathPattern.");
+			throw new ArgumentException("--collision-pattern is required when --rename-strategy is CustomPattern.");
 		}
 
 		if ((backupOptions.Config == null || !backupOptions.Config.Exists)

@@ -132,8 +132,8 @@ public class BackupProgressDisplay
 			state.SeenInCurrentUpdate = false;
 		}
 
-		if(!string.IsNullOrWhiteSpace(report.ActiveFileName) &&
-			report.ActiveFileBytesTotal > 0)
+		if(!string.IsNullOrWhiteSpace(report.ActiveFileName) 
+		   && report.ActiveFileBytesTotal > 0)
 		{
 			if(!fileTasks.TryGetValue(report.ActiveFileName, out FileTaskState? activeState))
 			{

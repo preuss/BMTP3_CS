@@ -1,6 +1,6 @@
+using BMTP3.Core4.Api.Models.Enums;
 using System.CommandLine;
 using System.CommandLine.Parsing;
-using BMTP3.Core2.BackupNew.Api.Request.Enums;
 
 namespace BMTP3.Consoles.ConsoleCommands.Core4;
 
@@ -55,11 +55,11 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	// --------------------------------------------------
 	public static Option<OutputStructureStrategy> OutputStrategyOption { get; } = new("--output-structure")
 	{
-		Description = "Defines how destination folders are structured: PreserveSourceTree, Flat, or CustomPathPattern.",
-		DefaultValueFactory = argumentResult => OutputStructureStrategy.PreserveSourceTree
+		Description = "Defines how destination folders are structured: PreserveHierarchy, Flat, or CustomPathPattern.",
+		DefaultValueFactory = argumentResult => OutputStructureStrategy.PreserveHierarchy
 	};
 
-	public OutputStructureStrategy OutputStrategy { get; set; } = OutputStructureStrategy.PreserveSourceTree;
+	public OutputStructureStrategy OutputStrategy { get; set; } = OutputStructureStrategy.PreserveHierarchy;
 
 	public static Option<string> CustomOutputFilePathOption { get; } = new("--path-pattern")
 	{
@@ -72,17 +72,17 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	// --------------------------------------------------
 	// COLLISION HANDLING
 	// --------------------------------------------------
-	public static Option<CollisionResolutionType> CollisionResolutionTypeOption { get; } = new("--collision-resolution")
+	public static Option<CollisionStrategy> CollisionStrategyOption { get; } = new("--collision-strategy")
 	{
 		Description = "Defines how to handle existing files: Overwrite, Skip, Error, or Rename.",
-		DefaultValueFactory = argumentResult => CollisionResolutionType.Rename
+		DefaultValueFactory = argumentResult => CollisionStrategy.Rename
 	};
 
-	public CollisionResolutionType CollisionResolutionType { get; set; } = CollisionResolutionType.Rename;
+	public CollisionStrategy CollisionStrategy { get; set; } = CollisionStrategy.Rename;
 
 	public static Option<CollisionComparisonType> CollisionComparisonOption { get; } = new("--collision-compare")
 	{
-		Description = "Defines how to compare existing files before applying resolution: None, Hash, or Binary.",
+		Description = "Defines how to compare existing files before applying resolution: None, Hash, Binary, or SizeAndModifiedTime.",
 		Arity = ArgumentArity.ZeroOrOne,
 		DefaultValueFactory = argumentResult => CollisionComparisonType.Binary
 	};
@@ -92,7 +92,7 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	public static Option<RenameStrategy> RenameStrategyOption { get; } = new("--rename-strategy")
 	{
 		Description =
-			"Defines rename behavior when collision resolution is 'Rename': Increment, Timestamp, Hash, or CustomCollisionPathPattern.",
+			"Defines rename behavior when collision resolution is 'Rename': Increment, Timestamp, Hash, or CustomPattern.",
 		Arity = ArgumentArity.ZeroOrOne,
 		DefaultValueFactory = argumentResult => RenameStrategy.Increment
 	};
@@ -101,7 +101,7 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public static Option<string> CustomCollisionOutputFilePathOption { get; } = new("--collision-pattern")
 	{
-		Description = "Custom pattern used when RenameStrategy = CustomCollisionPathPattern."
+		Description = "Custom pattern used when RenameStrategy = CustomPattern."
 	};
 
 	public string? CustomCollisionOutputFilePath { get; set; }
@@ -174,7 +174,7 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public static Option<PostWriteVerificationType> PostWriteVerificationOption { get; } = new("--verify")
 	{
-		Description = "Post-write verification method: None, Hash, or Binary.",
+		Description = "Post-write verification method: None, or Hash.",
 		Arity = ArgumentArity.ZeroOrOne,
 		DefaultValueFactory = argumentResult => PostWriteVerificationType.Hash
 	};

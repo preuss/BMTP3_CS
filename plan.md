@@ -7,6 +7,8 @@
 > ⚠️ **FAIL-FIRST:** Alle gates/tjek i traversal og engine skal kaste exception ved fejl — aldrig `yield break`, `return` eller `continue` for at tie stille om problemer. Source der ikke findes = throw. Eneste undtagelse: per-item try-catch der markerer failed items men re-thrower (fail-fast).
 > 
 > ⚠️ **NO CORE/CORE2/CORE3 CHANGES:** `BMTP3.Core`, `BMTP3.Core2`, `BMTP3.Core3` og deres Consoles commands (`BackupConsoleCommand.cs`, `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs`) er **archived/readonly** — de ændres aldrig. Kun `BMTP3.Core4` og `BMTP3.Consoles` må redigeres.
+>
+> ⚠️ **CORE4-ONLY FOKUS:** Vi retter **aldrig** noget som ikke har direkte Core4-tilhørsforhold. Core2/Core3 cleanup, shared helpers på tværs af archived kode, og dokumentation af ikke-Core4 ting er aldrig fokus. Når Core4 er 100% færdig, slettes alle tilhørsforhold til Core2/Core3 i Consoles.
 > 
 > ⚠️ **PATH NAMING STANDARD:** Se `## Path Naming Standard` nedenfor.
 
