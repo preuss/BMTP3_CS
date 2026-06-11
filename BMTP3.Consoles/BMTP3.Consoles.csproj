@@ -18,14 +18,14 @@
 
   <ItemGroup>
     <PackageReference Include="DotNet.Glob" Version="3.2.0-alpha.36" />
-    <PackageReference Include="ExiftoolWrapper" Version="5.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.7" />
+    <PackageReference Include="ExiftoolWrapper" Version="5.2.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
     <PackageReference Include="SharpExifTool" Version="13.32.0.1" />
-    <PackageReference Include="Spectre.Console" Version="0.55.2" />
+    <PackageReference Include="Spectre.Console" Version="0.56.0" />
     <PackageReference Include="Spectre.Console.Cli" Version="0.55.0" />
-    <PackageReference Include="System.CommandLine" Version="2.0.7" />
-    <PackageReference Include="Tomlyn" Version="0.20.0" />
+    <PackageReference Include="System.CommandLine" Version="2.0.9" />
+    <PackageReference Include="Tomlyn" Version="2.5.0" />
   </ItemGroup>
 
   <ItemGroup>

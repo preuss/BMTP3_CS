@@ -1,3 +1,4 @@
+using System.Reflection;
 using BMTP3.Consoles.Configs;
 
 namespace BMTP3.Consoles.Tests;
@@ -214,5 +215,154 @@ strategy = ""unknown""
 	public void Load_NullFile_ThrowsArgumentNullException()
 	{
 		Assert.Throws<ArgumentNullException>(() => BackupPlan4Loader.Load(null!));
+	}
+
+	// ----------------------------------------------------------------
+	// JSON5 config loading
+	// ----------------------------------------------------------------
+
+	[Fact]
+	public void NormalizeJson5_UnquotedKeys_QuotesThem()
+	{
+		string raw = "{ name: \"test\", count: 42 }";
+		string result = InvokeNormalizeJson5(raw);
+		Assert.Contains("\"name\"", result);
+		Assert.Contains("\"count\"", result);
+	}
+
+	[Fact]
+	public void NormalizeJson5_SingleQuotedStrings_ConvertsToDouble()
+	{
+		string raw = "{ 'name': 'hello world' }";
+		string result = InvokeNormalizeJson5(raw);
+		Assert.Matches(@"\{\s*""name""\s*:\s*""hello world""\s*\}", result);
+	}
+
+	[Fact]
+	public void NormalizeJson5_LineComments_Stripped()
+	{
+		string raw = "{\n  // comment\n  \"key\": \"val\"\n}";
+		string result = InvokeNormalizeJson5(raw);
+		Assert.DoesNotContain("//", result);
+		Assert.Contains("\"key\"", result);
+	}
+
+	[Fact]
+	public void NormalizeJson5_BlockComments_Stripped()
+	{
+		string raw = "{ /* comment */ \"key\": \"val\" }";
+		string result = InvokeNormalizeJson5(raw);
+		Assert.DoesNotContain("/*", result);
+		Assert.DoesNotContain("*/", result);
+		Assert.Contains("\"key\"", result);
+	}
+
+	[Fact]
+	public void NormalizeJson5_TrailingCommas_Removed()
+	{
+		string raw = "{\"a\": 1,\"b\": 2,}";
+		string result = InvokeNormalizeJson5(raw);
+		Assert.Equal("{\"a\": 1,\"b\": 2}", result);
+	}
+
+	[Fact]
+	public void NormalizeJson5_SingleQuotedWithInternalDoubleQuotes_EscapesThem()
+	{
+		string raw = "{ 'key': 'value with \"quotes\" inside' }";
+		string result = InvokeNormalizeJson5(raw);
+		Assert.Contains("\\\"quotes\\\"", result);
+	}
+
+	[Fact]
+	public void NormalizeJson5_EscapedSingleQuoteInsideSingleQuoted_Unescapes()
+	{
+		string raw = "{ 'key': 'it\\'s working' }";
+		string result = InvokeNormalizeJson5(raw);
+		Assert.Contains("\"it's working\"", result);
+	}
+
+	[Fact]
+	public void Load_Json5File_ParsesAllSections()
+	{
+		string json5 = @"
+{
+  name: 'Pictures backup',
+  source: {
+    type: 'filesystem',
+    path: 'C:\\Users\\John\\Pictures',
+    recursive: true,
+    includePatterns: ['*.jpg', '*.jpeg', '*.png'],
+    excludePatterns: ['*.tmp'],
+  },
+  destination: {
+    path: 'D:\\Backup\\Pictures',
+    outputStructure: 'preserve-hierarchy',
+  },
+  collision: {
+    strategy: 'rename',
+    comparison: 'hash',
+    renameStrategy: 'timestamp',
+  },
+  metadata: {
+    sidecarFormat: 'json',
+    indexType: 'none',
+    enableMetadata: true,
+    postWriteVerification: 'hash',
+    enableTimestampCorrection: true,
+  },
+  behavior: {
+    dryRun: true,
+    stopOnError: false,
+    delay: 100,
+  },
+  execution: {
+    maxDegreeOfParallelism: 2,
+  },
+}
+";
+		string tempFile = Path.GetTempFileName() + ".json5";
+		try
+		{
+			File.WriteAllText(tempFile, json5);
+			BackupPlan4Config config = BackupPlan4Loader.Load(new FileInfo(tempFile));
+
+			Assert.NotNull(config);
+			Assert.Equal("Pictures backup", config.Name);
+
+			Assert.Equal("filesystem", config.Source.Type);
+			Assert.Equal(@"C:\Users\John\Pictures", config.Source.Path);
+			Assert.True(config.Source.Recursive);
+
+			Assert.Equal("preserve-hierarchy", config.Destination.OutputStructure);
+
+			Assert.Equal("rename", config.Collision.Strategy);
+			Assert.Equal("hash", config.Collision.Comparison);
+			Assert.Equal("timestamp", config.Collision.RenameStrategy);
+
+			Assert.Equal("json", config.Metadata.SidecarFormat);
+			Assert.True(config.Metadata.EnableMetadata);
+
+			Assert.True(config.Behavior.DryRun);
+			Assert.False(config.Behavior.StopOnError);
+			Assert.Equal(100, config.Behavior.Delay);
+
+			Assert.Equal(2, config.Execution.MaxDegreeOfParallelism);
+		}
+		finally
+		{
+			File.Delete(tempFile);
+		}
+	}
+
+	/// <summary>
+	/// Helper to call the private static BackupPlan4Loader.NormalizeJson5 via reflection.
+	/// </summary>
+	private static string InvokeNormalizeJson5(string raw)
+	{
+		Type loaderType = typeof(BackupPlan4Loader);
+		MethodInfo? method = loaderType.GetMethod("NormalizeJson5",
+			BindingFlags.NonPublic | BindingFlags.Static);
+		Assert.NotNull(method);
+		return (string)method.Invoke(null, new object[] { raw })!;
 	}
 }

@@ -1,8 +1,6 @@
 using System.Text;
 using System.Text.Json;
 using Tomlyn;
-using Tomlyn.Model;
-using Tomlyn.Syntax;
 
 namespace BMTP3.Consoles.Configs;
 
@@ -16,8 +14,11 @@ public static class BackupPlan4Loader
 		string ext = file.Extension.ToLowerInvariant();
 		string content = File.ReadAllText(file.FullName);
 
-		if (ext == ".json")
+		if (ext == ".json" || ext == ".json5")
 		{
+			if (ext == ".json5")
+				content = NormalizeJson5(content);
+
 			JsonSerializerOptions options = new()
 			{
 				PropertyNameCaseInsensitive = true,
@@ -25,34 +26,19 @@ public static class BackupPlan4Loader
 
 			BackupPlan4Config? config = JsonSerializer.Deserialize<BackupPlan4Config>(content, options);
 			if (config == null)
-				throw new InvalidOperationException($"Failed to deserialize JSON config: {file.FullName}");
+				throw new InvalidOperationException($"Failed to deserialize config: {file.FullName}");
 
 			return config;
 		}
 
 		if (ext == ".toml")
 		{
-			TomlModelOptions modelOptions = new()
+			TomlSerializerOptions options = new()
 			{
-				ConvertPropertyName = PascalToKebab,
+				PropertyNamingPolicy = new KebabCaseJsonNamingPolicy(),
 			};
 
-			BackupPlan4Config? config;
-			DiagnosticsBag? diagnostics;
-
-			if (!Toml.TryToModel(content, out config, out diagnostics, null, modelOptions))
-			{
-				StringBuilder sb = new();
-				sb.AppendLine($"Failed to parse TOML config: {file.FullName}");
-				if (diagnostics != null)
-				{
-					foreach (DiagnosticMessage d in diagnostics)
-					{
-						sb.AppendLine(d.ToString());
-					}
-				}
-				throw new InvalidOperationException(sb.ToString());
-			}
+			BackupPlan4Config? config = TomlSerializer.Deserialize<BackupPlan4Config>(content, options);
 
 			if (config == null)
 				throw new InvalidOperationException($"Failed to parse config file: {file.FullName}");
@@ -60,26 +46,149 @@ public static class BackupPlan4Loader
 			return config;
 		}
 
-		throw new NotSupportedException($"Unsupported config file extension '{ext}'. Supported: .toml, .json");
+		throw new NotSupportedException($"Unsupported config file extension '{ext}'. Supported: .toml, .json, .json5");
 	}
 
-	private static string PascalToKebab(string name)
+	internal static string NormalizeJson5(string raw)
 	{
-		if (string.IsNullOrEmpty(name)) return name;
-		StringBuilder sb = new();
-		for (int i = 0; i < name.Length; i++)
+		if (string.IsNullOrEmpty(raw)) return raw;
+
+		StringBuilder sb = new(raw.Length);
+		bool inString = false;
+		char stringDelim = '"';
+		bool inLineComment = false;
+		bool inBlockComment = false;
+
+		for (int i = 0; i < raw.Length; i++)
 		{
-			char c = name[i];
-			if (char.IsUpper(c))
+			char c = raw[i];
+
+			// Inside a string — handle escapes and delimiter matching
+			if (inString)
 			{
-				if (i > 0) sb.Append('-');
-				sb.Append(char.ToLowerInvariant(c));
-			}
-			else
-			{
+				if (c == '\\' && i + 1 < raw.Length)
+				{
+					char next = raw[i + 1];
+					// Unescape \' → ' when converting from single-quoted to double-quoted
+					if (stringDelim == '\'' && next == '\'')
+					{
+						sb.Append('\'');
+						i++;
+					}
+					else
+					{
+						sb.Append(c);
+						sb.Append(next);
+						i++;
+					}
+					continue;
+				}
+
+				if (c == stringDelim)
+				{
+					inString = false;
+					sb.Append('"');
+					continue;
+				}
+
+				// Escape embedded double quotes when converting from single-quoted
+				if (stringDelim == '\'' && c == '"')
+				{
+					sb.Append('\\');
+					sb.Append('"');
+					continue;
+				}
+
 				sb.Append(c);
+				continue;
 			}
+
+			// Line comment: //
+			if (!inBlockComment && c == '/' && i + 1 < raw.Length && raw[i + 1] == '/')
+			{
+				inLineComment = true;
+				i++;
+				continue;
+			}
+
+			if (inLineComment)
+			{
+				if (c == '\n')
+				{
+					inLineComment = false;
+					sb.Append(c);
+				}
+				continue;
+			}
+
+			// Block comment: /* ... */
+			if (!inLineComment && c == '/' && i + 1 < raw.Length && raw[i + 1] == '*')
+			{
+				inBlockComment = true;
+				i++;
+				continue;
+			}
+
+			if (inBlockComment)
+			{
+				if (c == '*' && i + 1 < raw.Length && raw[i + 1] == '/')
+				{
+					inBlockComment = false;
+					i++;
+				}
+				continue;
+			}
+
+			// String start — normalize to double quotes
+			if (c == '"' || c == '\'')
+			{
+				inString = true;
+				stringDelim = c;
+				sb.Append('"');
+				continue;
+			}
+
+			// Trailing comma — skip when followed by } or ]
+			if (c == ',')
+			{
+				int j = i + 1;
+				while (j < raw.Length && char.IsWhiteSpace(raw[j]))
+					j++;
+				if (j < raw.Length && (raw[j] == '}' || raw[j] == ']'))
+					continue;
+				sb.Append(c);
+				continue;
+			}
+
+			// Unquoted key: identifier followed by :
+			if (char.IsLetter(c) || c == '_' || c == '$')
+			{
+				int start = i;
+				while (i < raw.Length && (char.IsLetterOrDigit(raw[i]) || raw[i] == '_' || raw[i] == '$'))
+					i++;
+
+				string ident = raw[start..i];
+				i--;
+
+				int j = i + 1;
+				while (j < raw.Length && char.IsWhiteSpace(raw[j]))
+					j++;
+
+				if (j < raw.Length && raw[j] == ':')
+				{
+					sb.Append('"');
+					sb.Append(ident);
+					sb.Append('"');
+					continue;
+				}
+
+				sb.Append(ident);
+				continue;
+			}
+
+			sb.Append(c);
 		}
+
 		return sb.ToString();
 	}
 }
