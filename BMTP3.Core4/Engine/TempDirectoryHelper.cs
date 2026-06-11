@@ -266,15 +266,27 @@ internal static class TempDirectoryHelper
 		if(!SessionTempDirPattern.IsMatch(sessionTempDir.Name))
 			throw new InvalidOperationException($"Session temp directory '{sessionTempDir.Name}' does not match expected format.");
 
-		return TryDeleteIfEmpty(sessionTempDir);
+		bool removed = TryDeleteIfEmpty(sessionTempDir);
+
+		// If the session folder was deleted, also remove the root .tmp if now empty.
+		if(removed)
+		{
+			DirectoryInfo? tmpRoot = sessionTempDir.Parent;
+			if(tmpRoot != null && tmpRoot.Exists)
+			{
+				TryDeleteIfEmpty(tmpRoot);
+			}
+		}
+
+		return removed;
 	}
 
 	/// <summary>
 	/// Recursively deletes the directory and its empty subdirectories.
 	///
 	/// A subdirectory is only deleted if it contains no files. If any file
-	/// exists at any level — whether a .tmp file from a failed write or an
-	/// unknown file — the entire branch is preserved. This ensures no data is
+	/// exists at any level ï¿½ whether a .tmp file from a failed write or an
+	/// unknown file ï¿½ the entire branch is preserved. This ensures no data is
 	/// silently destroyed during cleanup and leaves forensic evidence intact.
 	/// </summary>
 	/// <param name="dir">The directory to attempt to delete.</param>
