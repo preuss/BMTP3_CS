@@ -20,5 +20,11 @@ public enum CollisionComparisonType
 	/// Compare file content byte-by-byte.
 	/// A collision exists only when all bytes match.
 	/// </summary>
-	Binary
+	Binary,
+
+	/// <summary>
+	/// Compare file size and last modified time.
+	/// A collision exists only when both size and modified time match.
+	/// </summary>
+	SizeAndModifiedTime
 }

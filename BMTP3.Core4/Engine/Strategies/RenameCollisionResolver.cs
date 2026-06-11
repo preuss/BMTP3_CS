@@ -218,6 +218,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 		{
 			CollisionComparisonType.Binary => await _fileCompareService.CompareAsync(sourcePath, candidatePath, ct),
 			CollisionComparisonType.Hash => await HashCompareAsync(candidatePath, request, throttler, ct),
+			CollisionComparisonType.SizeAndModifiedTime => await SizeAndModifiedTimeCompareAsync(sourcePath, candidatePath),
 			CollisionComparisonType.None => false,
 			_ => throw new ArgumentOutOfRangeException(nameof(request.ComparisonType), request.ComparisonType, "Unknown collision comparison type."),
 		};
@@ -277,6 +278,30 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 		} catch
 		{
 			return false;
+		}
+	}
+
+	private static Task<bool> SizeAndModifiedTimeCompareAsync(string sourcePath, string candidatePath)
+	{
+		try
+		{
+			FileInfo sourceFile = new(sourcePath);
+			FileInfo candidateFile = new(candidatePath);
+
+			if (!sourceFile.Exists || !candidateFile.Exists)
+				return Task.FromResult(false);
+
+			if (sourceFile.Length != candidateFile.Length)
+				return Task.FromResult(false);
+
+			if (sourceFile.LastWriteTimeUtc != candidateFile.LastWriteTimeUtc)
+				return Task.FromResult(false);
+
+			return Task.FromResult(true);
+		}
+		catch
+		{
+			return Task.FromResult(false);
 		}
 	}
 

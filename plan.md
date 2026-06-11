@@ -163,6 +163,7 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **Temp dir cleanup:** `.tmp`-rod slettes når tom efter session cleanup. Temp-filer har ikke længere `.tmp` suffiks.
 - [x] — **SignalInterrupt cancel-wiring:** `Console.CancelKeyPress` fjernet fra `BackupConsoleCommand4`. Engine styrer selv cancellation.
 - [x] — **Skip cleanup:** Temp-fil slettes ved `CollisionResolutionAction.Skip`.
+- [x] — **TOML config reader:** `BackupPlan4Config.cs` (nested model: Source/Destination/Collision/Metadata/Behavior/Execution), `BackupPlan4Loader.cs` (TOML via PascalToKebab, JSON via PropertyNameCaseInsensitive). `BuildPlan()` loader config først, derefter `WasSupplied()` overrider CLI-args.
 
 ## Næste opgaver (prioriteret)
 
@@ -170,11 +171,11 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 
 | # | Task | Status |
 |---|------|--------|
-| 1 | **Tilføj `Delay` til `BackupPlan`** — `int` property: `< 0` = disabled, `0` = 0ms, `> 0` = N ms. Validér i `BackupPlanValidator`. `BackupDelay` struct i `Helpers/`. Implementér i `BackupEngine` processing loop (efter hvert item). `--delay` CLI option. | ✅ |
-| 2 | MTP sourcePath format — `--source-path` CLI, prefix-detect i BuildPlan | ✅ |
-| 3 | `--backup-index` default guard — `IBackupIndexWriter`/`JsonBackupIndexWriter` implementeret | ✅ |
-| 4 | Core2 `BackupEngineOptions` config — udkommenteret, død for Core4 | ✅ |
-| 5 | SignalInterrupt cancel-wiring — `Console.CancelKeyPress` fjernet, engine styrer selv | ✅ |
+| 1 | **Tilføj `Delay` til `BackupPlan`** | ✅ |
+| 2 | MTP sourcePath format | ✅ |
+| 3 | `--backup-index` default guard | ✅ |
+| 4 | Core2 `BackupEngineOptions` config | ✅ |
+| 5 | SignalInterrupt cancel-wiring | ✅ |
 | 6 | Tests for backup4 BuildPlan enum-mapping | ❌ |
 
 ### 2. Integrér sidste wrapper-holdere (småopgave)
@@ -184,10 +185,9 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 | 1 | `MediaDeviceDriveProvider` | `MediaDevice` / `MediaDriveInfo` | `MediaDeviceInfo` / `MediaDrive` |
 | 2 | `BackupMediaDriveInfo` | `(MediaDevice, MediaDriveInfo)` | `(IMediaDeviceInfo, IMediaDrive)` |
 
-### 4. TOML config reader
+### 4. TOML config reader — ✅ DONE
 
-- Genbrug Core3's ConfigModel/BackupSettingsReader
-- CLI `--config` option + merge med CLI args
+`BackupPlan4Config.cs` + `BackupPlan4Loader.cs` + `WasSupplied()` merge i `BuildPlan()`. TOML (kebab-case via PascalToKebab), JSON (camelCase via PropertyNameCaseInsensitive). Alle felter mappet inkl. `MaxDegreeOfParallelism`, `EnableMetadata`, `EnableTimestampCorrection`, `ResumeBehavior`.
 
 ### 5. Retry / Resilience (især MTP)
 

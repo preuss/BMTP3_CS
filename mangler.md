@@ -134,13 +134,13 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 | 8 | **No tests for backup4** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
 
 
-### Høj prioritet — TOML config reader
+### ✅ Høj prioritet — TOML config reader — DONE
 
-| # | Task | Detail |
+| # | Task | Status |
 |---|------|--------|
-| 1 | `--config` fil support | Implementer TOML-reader (genbrug Core3's `ConfigModel`/`BackupSettingsReader` mønster) |
-| 2 | Map TOML til `BackupPlan` | Oversæt settings-felter til Core4's `BackupPlan` properties |
-| 3 | CLI integration | `--config` option i `list-sources` og `backup4` commands |
+| 1 | `--config` fil support | ✅ **DONE** | `BackupPlan4Config.cs` (nested model: Source/Destination/Collision/Metadata/Behavior/Execution), `BackupPlan4Loader.cs` (TOML via PascalToKebab, JSON via PropertyNameCaseInsensitive) |
+| 2 | Map TOML til `BackupPlan` | ✅ **DONE** | Overfører alle felter inkl. `MaxDegreeOfParallelism`, `EnableMetadata`, `EnableTimestampCorrection`, `ResumeBehavior`; string-to-enum parsers for alle værdier |
+| 3 | CLI integration | ✅ **DONE** | `BuildPlan()` loader config først som base, derefter `WasSupplied()` overrider eksplicitte CLI-args — CLI vinder altid |
 
 ### Høj prioritet — Retry / Resilience (især MTP)
 
