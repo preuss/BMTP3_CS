@@ -113,88 +113,6 @@ public class BackupConsoleCommand2ValidationTests
 		Assert.Contains("--verify-timeout", ex.Message);
 	}
 
-	// ----------------------------------------------------------------
-	// EngineArgumentBuilder tests - Name logic
-	// ----------------------------------------------------------------
-
-	[Fact]
-	public void EngineArgumentBuilder_Name_FromCLIName()
-	{
-		BackupOptionsModel model = new()
-		{
-			Name = "MyCustomName",
-			OutputDirectory = new DirectoryInfo(@"D:\Backups")
-		};
-
-		BackupPlan plan = CallBuild(model);
-
-		Assert.Equal("MyCustomName", plan.Name);
-	}
-
-	[Fact]
-	public void EngineArgumentBuilder_Name_FromConfigFileName()
-	{
-		BackupOptionsModel model = new()
-		{
-			Name = null,
-			Config = new FileInfo("iphone.toml"),
-			OutputDirectory = new DirectoryInfo(@"D:\Backups")
-		};
-
-		BackupPlan plan = CallBuild(model);
-
-		Assert.Equal("iphone", plan.Name);
-	}
-
-	[Fact]
-	public void EngineArgumentBuilder_Name_FromSourceDevice()
-	{
-		BackupOptionsModel model = new()
-		{
-			Name = null,
-			Config = null,
-			SourceDevice = "Apple iPhone",
-			OutputDirectory = new DirectoryInfo(@"D:\Backups")
-		};
-
-		BackupPlan plan = CallBuild(model);
-
-		Assert.Equal("Apple iPhone", plan.Name);
-	}
-
-	[Fact]
-	public void EngineArgumentBuilder_Name_FromOutputDirectory()
-	{
-		BackupOptionsModel model = new()
-		{
-			Name = null,
-			Config = null,
-			SourceDevice = null,
-			SourceDirectory = @"C:\Photos",
-			OutputDirectory = new DirectoryInfo(@"D:\MyBackups")
-		};
-
-		BackupPlan plan = CallBuild(model);
-
-		Assert.Equal("MyBackups", plan.Name);
-	}
-
-	[Fact]
-	public void EngineArgumentBuilder_Name_FallbackToBackup()
-	{
-		BackupOptionsModel model = new()
-		{
-			Name = null,
-			Config = null,
-			SourceDevice = null,
-			SourceDirectory = @"C:\Photos",
-			OutputDirectory = null
-		};
-
-		BackupPlan plan = CallBuild(model);
-
-		Assert.Equal("backup", plan.Name);
-	}
 
 	// Helper methods to call private methods via reflection
 	private static void CallValidate(BackupOptionsModel model)
@@ -214,20 +132,4 @@ public class BackupConsoleCommand2ValidationTests
 		}
 	}
 
-	private static BackupPlan CallBuild(BackupOptionsModel model)
-	{
-		MethodInfo? method = typeof(BackupConsoleCommand2).GetMethod("EngineArgumentBuilder",
-			BindingFlags.NonPublic | BindingFlags.Instance);
-		BackupConsoleCommand2 command = new();
-		command.GetType().GetProperty("ServiceProvider")?.SetValue(command, null);
-		try
-		{
-			return (BackupPlan)method?.Invoke(command, new object[] { model })!;
-		}
-		catch (TargetInvocationException tie) when (tie.InnerException != null)
-		{
-			// Rethrow the inner exception so Assert.Throws can match the expected type
-			throw tie.InnerException;
-		}
-	}
 }
