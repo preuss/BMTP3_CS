@@ -31,7 +31,7 @@ public sealed class CollisionConfig
 {
 	public string Strategy { get; set; } = "rename";
 	public string Comparison { get; set; } = "binary";
-	public string RenameStrategy { get; set; } = "append-number";
+	public string RenameStrategy { get; set; } = "increment";
 	public string CustomPattern { get; set; } = string.Empty;
 }
 

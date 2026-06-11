@@ -15,7 +15,7 @@ custom-output-pattern = ""
 [collision]
 strategy = "rename"
 comparison = "size-and-modified-time"
-rename-strategy = "append-number"
+rename-strategy = "increment"
 custom-pattern = ""
 
 [metadata]

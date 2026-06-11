@@ -3,15 +3,8 @@ using System.CommandLine.Parsing;
 using System.Reflection;
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.ConsoleCommands.Core4;
-using Core4Plan = BMTP3.Core4.Api.Models.BackupPlan;
-using Core4CollisionStrategy = BMTP3.Core4.Api.Models.Enums.CollisionStrategy;
-using Core4CollisionComparisonType = BMTP3.Core4.Api.Models.Enums.CollisionComparisonType;
-using Core4RenameStrategy = BMTP3.Core4.Api.Models.Enums.RenameStrategy;
-using Core4OutputStructureStrategy = BMTP3.Core4.Api.Models.Enums.OutputStructureStrategy;
-using Core4SidecarFormat = BMTP3.Core4.Api.Models.Enums.SidecarFormat;
-using Core4BackupIndexType = BMTP3.Core4.Api.Models.Enums.BackupIndexType;
-using Core4PostWriteVerificationType = BMTP3.Core4.Api.Models.Enums.PostWriteVerificationType;
-using Core4SessionResumeStrategy = BMTP3.Core4.Api.Models.Enums.SessionResumeStrategy;
+using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Api.Models.Enums;
 
 namespace BMTP3.Consoles.Tests;
 
@@ -75,7 +68,7 @@ max-degree-of-parallelism = 8
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 			Assert.Equal("MyTest", plan.Name);
 			Assert.Equal(@"C:\ConfigSource", plan.SourcePath);
@@ -83,18 +76,18 @@ max-degree-of-parallelism = 8
 			Assert.Equal(["*.jpg"], plan.IncludePatterns);
 			Assert.Equal(["*.tmp"], plan.ExcludePatterns);
 			Assert.Equal(@"D:\ConfigDest", plan.Destination);
-			Assert.Equal(Core4OutputStructureStrategy.Flat, plan.OutputStructureStrategy);
-			Assert.Equal(Core4CollisionStrategy.Skip, plan.CollisionStrategy);
-			Assert.Equal(Core4CollisionComparisonType.Hash, plan.CollisionComparisonType);
-			Assert.Equal(Core4RenameStrategy.Timestamp, plan.RenameStrategy);
-			Assert.Equal(Core4SidecarFormat.Json, plan.SidecarFormat);
+			Assert.Equal(OutputStructureStrategy.Flat, plan.OutputStructureStrategy);
+			Assert.Equal(CollisionStrategy.Skip, plan.CollisionStrategy);
+			Assert.Equal(CollisionComparisonType.Hash, plan.CollisionComparisonType);
+			Assert.Equal(RenameStrategy.Timestamp, plan.RenameStrategy);
+			Assert.Equal(SidecarFormat.Json, plan.SidecarFormat);
 			Assert.False(plan.EnableMetadata);
-			Assert.Equal(Core4PostWriteVerificationType.Hash, plan.PostWriteVerification);
+			Assert.Equal(PostWriteVerificationType.Hash, plan.PostWriteVerification);
 			Assert.False(plan.EnableTimestampCorrection);
 			Assert.True(plan.DryRun);
 			Assert.False(plan.StopOnError);
 			Assert.Equal(500, plan.Delay);
-			Assert.Equal(Core4SessionResumeStrategy.Restart, plan.ResumeBehavior);
+			Assert.Equal(SessionResumeStrategy.Restart, plan.ResumeBehavior);
 			Assert.Equal(8, plan.MaxDegreeOfParallelism);
 		}
 		finally
@@ -138,15 +131,15 @@ max-degree-of-parallelism = 8
 			File.WriteAllText(configPath, json);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 			Assert.Equal("JsonTest", plan.Name);
 			Assert.Equal(@"C:\JsonSource", plan.SourcePath);
 			Assert.True(plan.Recursive);
 			Assert.Equal(@"D:\JsonDest", plan.Destination);
-			Assert.Equal(Core4CollisionStrategy.Overwrite, plan.CollisionStrategy);
-			Assert.Equal(Core4CollisionComparisonType.Binary, plan.CollisionComparisonType);
-			Assert.Equal(Core4SidecarFormat.Ini, plan.SidecarFormat);
+			Assert.Equal(CollisionStrategy.Overwrite, plan.CollisionStrategy);
+			Assert.Equal(CollisionComparisonType.Binary, plan.CollisionComparisonType);
+			Assert.Equal(SidecarFormat.Ini, plan.SidecarFormat);
 			Assert.True(plan.EnableMetadata);
 			Assert.False(plan.DryRun);
 			Assert.Equal(4, plan.MaxDegreeOfParallelism);
@@ -174,7 +167,7 @@ max-degree-of-parallelism = 8
   collision: {
     strategy: 'rename',
     comparison: 'size-and-modified-time',
-    renameStrategy: 'append-number',
+    renameStrategy: 'increment',
   },
   metadata: {
     sidecarFormat: 'json',
@@ -196,16 +189,16 @@ max-degree-of-parallelism = 8
 			File.WriteAllText(configPath, json5);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 			Assert.Equal("Json5Test", plan.Name);
 			Assert.Equal(@"C:\Json5Source", plan.SourcePath);
 			Assert.True(plan.Recursive);
 			Assert.Equal(@"D:\Json5Dest", plan.Destination);
-			Assert.Equal(Core4CollisionStrategy.Rename, plan.CollisionStrategy);
-			Assert.Equal(Core4CollisionComparisonType.SizeAndModifiedTime, plan.CollisionComparisonType);
-			Assert.Equal(Core4RenameStrategy.Increment, plan.RenameStrategy);
-			Assert.Equal(Core4SidecarFormat.Json, plan.SidecarFormat);
+			Assert.Equal(CollisionStrategy.Rename, plan.CollisionStrategy);
+			Assert.Equal(CollisionComparisonType.SizeAndModifiedTime, plan.CollisionComparisonType);
+			Assert.Equal(RenameStrategy.Increment, plan.RenameStrategy);
+			Assert.Equal(SidecarFormat.Json, plan.SidecarFormat);
 			Assert.False(plan.EnableMetadata);
 			Assert.True(plan.EnableTimestampCorrection);
 			Assert.Equal(250, plan.Delay);
@@ -237,7 +230,7 @@ path = ""D:\\FromConfig""
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\" --source-path \"C:\\FromCli\" --output \"D:\\FromCli\"");
 
-			Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 			Assert.Equal(@"C:\FromCli", plan.SourcePath);
 			Assert.Equal(@"D:\FromCli", plan.Destination);
@@ -266,9 +259,9 @@ strategy = ""skip""
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\" --collision-strategy Overwrite");
 
-			Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
-			Assert.Equal(Core4CollisionStrategy.Overwrite, plan.CollisionStrategy);
+			Assert.Equal(CollisionStrategy.Overwrite, plan.CollisionStrategy);
 		}
 		finally
 		{
@@ -300,12 +293,12 @@ dry-run = true
 				$"--sidecar-format Json " +
 				$"--dry-run false");
 
-			Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 			Assert.Equal("Overridden", plan.Name);
-			Assert.Equal(Core4SidecarFormat.Json, plan.SidecarFormat);
+			Assert.Equal(SidecarFormat.Json, plan.SidecarFormat);
 			Assert.False(plan.DryRun);
-			Assert.Equal(Core4CollisionStrategy.Rename, plan.CollisionStrategy);
+			Assert.Equal(CollisionStrategy.Rename, plan.CollisionStrategy);
 			Assert.Equal(@"C:\Src", plan.SourcePath);
 		}
 		finally
@@ -325,22 +318,22 @@ dry-run = true
 		string destPath = @"D:\CliDest";
 		var (options, parseResult) = Parse($"--source-path \"{sourcePath}\" --output \"{destPath}\"");
 
-		Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 		Assert.Equal(sourcePath, plan.SourcePath);
 		Assert.Equal(destPath, plan.Destination);
 		Assert.True(plan.Recursive);
-		Assert.Equal(Core4CollisionStrategy.Rename, plan.CollisionStrategy);
-		Assert.Equal(Core4CollisionComparisonType.Binary, plan.CollisionComparisonType);
-		Assert.Equal(Core4RenameStrategy.Increment, plan.RenameStrategy);
-		Assert.Equal(Core4SidecarFormat.Ini, plan.SidecarFormat);
-		Assert.Equal(Core4BackupIndexType.None, plan.BackupIndexType);
+		Assert.Equal(CollisionStrategy.Rename, plan.CollisionStrategy);
+		Assert.Equal(CollisionComparisonType.Binary, plan.CollisionComparisonType);
+		Assert.Equal(RenameStrategy.Increment, plan.RenameStrategy);
+		Assert.Equal(SidecarFormat.Ini, plan.SidecarFormat);
+		Assert.Equal(BackupIndexType.None, plan.BackupIndexType);
 		Assert.False(plan.DryRun);
 		Assert.True(plan.StopOnError);
 		Assert.Equal(0, plan.Delay);
 		Assert.False(plan.EnableMetadata);
 		Assert.True(plan.EnableTimestampCorrection);
-		Assert.Equal(Core4SessionResumeStrategy.Continue, plan.ResumeBehavior);
+		Assert.Equal(SessionResumeStrategy.Continue, plan.ResumeBehavior);
 		Assert.Null(plan.MaxDegreeOfParallelism);
 	}
 
@@ -358,15 +351,15 @@ dry-run = true
 			$"--delay 0 " +
 			$"--verify Hash");
 
-		Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 		Assert.False(plan.Recursive);
-		Assert.Equal(Core4CollisionStrategy.Skip, plan.CollisionStrategy);
-		Assert.Equal(Core4CollisionComparisonType.None, plan.CollisionComparisonType);
-		Assert.Equal(Core4SidecarFormat.None, plan.SidecarFormat);
+		Assert.Equal(CollisionStrategy.Skip, plan.CollisionStrategy);
+		Assert.Equal(CollisionComparisonType.None, plan.CollisionComparisonType);
+		Assert.Equal(SidecarFormat.None, plan.SidecarFormat);
 		Assert.True(plan.DryRun);
 		Assert.Equal(0, plan.Delay);
-		Assert.Equal(Core4PostWriteVerificationType.Hash, plan.PostWriteVerification);
+		Assert.Equal(PostWriteVerificationType.Hash, plan.PostWriteVerification);
 	}
 
 	// ----------------------------------------------------------------
@@ -382,7 +375,7 @@ dry-run = true
 			$"--source-path \"C:\\Fallback\" " +
 			$"--output \"D:\\Fallback\"");
 
-		Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 		Assert.Equal(@"C:\Fallback", plan.SourcePath);
 		Assert.Equal(@"D:\Fallback", plan.Destination);
@@ -408,7 +401,7 @@ path = ""D:\\MinDst""
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			Core4Plan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
 
 			Assert.Equal("Minimal", plan.Name);
 			Assert.Equal(@"C:\MinSrc", plan.SourcePath);
@@ -416,9 +409,9 @@ path = ""D:\\MinDst""
 			Assert.True(plan.Recursive);
 			Assert.Null(plan.IncludePatterns);
 			Assert.Null(plan.ExcludePatterns);
-			Assert.Equal(Core4OutputStructureStrategy.PreserveHierarchy, plan.OutputStructureStrategy);
-			Assert.Equal(Core4CollisionStrategy.Rename, plan.CollisionStrategy);
-			Assert.Equal(Core4CollisionComparisonType.Binary, plan.CollisionComparisonType);
+			Assert.Equal(OutputStructureStrategy.PreserveHierarchy, plan.OutputStructureStrategy);
+			Assert.Equal(CollisionStrategy.Rename, plan.CollisionStrategy);
+			Assert.Equal(CollisionComparisonType.Binary, plan.CollisionComparisonType);
 			Assert.False(plan.DryRun);
 			Assert.True(plan.StopOnError);
 		}

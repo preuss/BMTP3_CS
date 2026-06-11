@@ -282,10 +282,9 @@ internal static class BackupConsoleCommand4Helpers
 		return value.ToLowerInvariant() switch
 		{
 			"increment" => RenameStrategy.Increment,
-			"append-number" => RenameStrategy.Increment,
 			"timestamp" => RenameStrategy.Timestamp,
 			"hash" => RenameStrategy.Hash,
-			"custom" => RenameStrategy.CustomPattern,
+			"custom-pattern" => RenameStrategy.CustomPattern,
 			_ => RenameStrategy.Increment,
 		};
 	}

@@ -1,10 +1,7 @@
 using BMTP3.Consoles.ConsoleCommands;
-using BMTP3.Core2.BackupNew.Api.Progress;
-using BMTP3.Core2.BackupNew.Api.Response;
 using Spectre.Console;
-using Core4BackupProgress = BMTP3.Core4.Api.Models.BackupProgress;
-using Core4BackupResult = BMTP3.Core4.Api.Models.BackupResult;
-using Core4BackupResultState = BMTP3.Core4.Api.Models.Enums.BackupResultState;
+using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Api.Models.Enums;
 
 namespace BMTP3.Consoles.Services;
 
@@ -56,13 +53,13 @@ public class ConsolesPrinter
 			$"{progress.Phase}: file={progress.CurrentFile} processed={progress.FilesProcessed}/{progress.FilesTotal} bytes={progress.BytesTransferred}");
 	}
 
-	public void PrintProgress(Core4BackupProgress progress)
+	public void PrintProgress(BackupProgress progress)
 	{
 		_console.WriteLine(
 			$"{progress.CurrentPhase}: discovered={progress.FilesDiscovered} succeeded={progress.FilesSucceeded} failed={progress.FilesFailed}");
 	}
 
-	public void PrintResult(BackupJobResult result)
+	public void PrintResult(BMTP3.Core2.BackupNew.Api.Response.BackupJobResult result)
 	{
 		_console.MarkupLine($"[bold]Job[/] '[green]{result.JobName.EscapeMarkup()}[/]' finished: {result.Status}");
 		_console.WriteLine(
@@ -77,19 +74,19 @@ public class ConsolesPrinter
 		}
 	}
 
-	public void PrintResult(Core4BackupResult result)
+	public void PrintResult(BackupResult result)
 	{
 		string stateColor = result.State switch
 		{
-			Core4BackupResultState.Completed => "green",
-			Core4BackupResultState.Cancelled => "yellow",
-			Core4BackupResultState.Failed => "red",
+			BackupResultState.Completed => "green",
+			BackupResultState.Cancelled => "yellow",
+			BackupResultState.Failed => "red",
 			_ => "white",
 		};
 		_console.MarkupLine($"[bold]Job[/] '[green]{result.Name.EscapeMarkup()}[/]' finished: [{stateColor}]{result.State}[/]");
-		int succeeded = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Succeeded);
-		int failed = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Failed);
-		int skipped = result.ItemResults.Count(r => r.State == BMTP3.Core4.Api.Models.Enums.BackupResultItemState.Skipped);
+		int succeeded = result.ItemResults.Count(r => r.State == BackupResultItemState.Succeeded);
+		int failed = result.ItemResults.Count(r => r.State == BackupResultItemState.Failed);
+		int skipped = result.ItemResults.Count(r => r.State == BackupResultItemState.Skipped);
 		_console.WriteLine($"Total: {result.ItemResults.Count} Succeeded: {succeeded} Failed: {failed} Skipped: {skipped}");
 		if(result.FailureReason is not null)
 		{

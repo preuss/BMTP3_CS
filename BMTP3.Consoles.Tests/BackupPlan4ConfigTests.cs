@@ -37,7 +37,7 @@ public class BackupPlan4ConfigTests
 		Assert.NotNull(config.Collision);
 		Assert.Equal("rename", config.Collision.Strategy);
 		Assert.Equal("size-and-modified-time", config.Collision.Comparison);
-		Assert.Equal("append-number", config.Collision.RenameStrategy);
+		Assert.Equal("increment", config.Collision.RenameStrategy);
 		Assert.Equal("", config.Collision.CustomPattern);
 
 		Assert.NotNull(config.Metadata);
