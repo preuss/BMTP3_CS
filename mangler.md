@@ -355,3 +355,85 @@ Core3 er en minimal sekventiel reference-implementation (19 filer). Core4 dække
 | **State machines** | ➡️ | Bevidst arkitekturvalg — inline status i record i stedet for state machine |
 | **Pipeline stages** | ➡️ | Bevidst arkitekturvalg — strategi-baseret loop i stedet for step-klasser |
 | **Handler hierarchy** | ➡️ | Bevidst arkitekturvalg — samlet i `BackupEngine` |
+
+---
+
+## Code Quality Audit (11 Jun 2026)
+
+Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architecture, Fail-Fast, DRY, KISS, YAGNI.
+
+---
+
+### Consoles — alle fund
+
+| ID | Fil | Linje | Princip | Sværhed | Beskrivelse |
+|----|-----|-------|---------|---------|-------------|
+| C-V01 | `BackupConsoleCommand4.Helpers.cs` | 11–237 | SOLID-SRP / KISS | **High** | `BuildPlan` er 237 linjer med 3 ansvar: defaults, config-merge, CLI-override. Bør splittes i 3 hjælpemetoder. |
+| C-V02 | `BackupConsoleCommand4.Helpers.cs` | 243–357 | DRY | **High** | 9 næsten-identiske `ParseXxx(string)` metoder. Alle laver `ToLowerInvariant()` + switch + fallback. Bør erstattes af én generisk `ParseEnum<T>`. |
+| C-V03 | `BackupConsoleCommand4.Helpers.cs` | 243–357 | Fail-Fast | **High** | `ParseXxx` returnerer hardkodet default ved ukendt input (fx typo `"bianry"`). Brugeren får ingen fejl. Bør kaste `ArgumentException`. |
+| C-V04 | `BackupConsoleCommand4.Helpers.cs` | 41–128 | YAGNI | Medium | `if (config.Source != null)` etc. er altid sande — `BackupPlan4Config` initialiserer alle sektioner med `= new()`. Dead conditions. |
+| C-V05 | `BackupConsoleCommand4.Helpers.cs` | 82–93 | YAGNI / Fail-Fast | Medium | `IsNullOrWhiteSpace`-guards på config-strenge der aldrig er tomme (har hardkodede defaults). Overskriver altid CLI-defaulten — selv når brugeren ikke har sat nøglen. |
+| C-V06 | `BackupConsoleCommand4.Helpers.cs` | 133–197 | DRY | Medium | `Path.GetFullPath` kaldes to gange på FileSystem source-path. Første kald på linje 144 er overflødigt. |
+| C-V07 | `BackupConsoleCommand4.Helpers.cs` | 200–208 | KISS / DRY | Low | Navn-fallback re-læser `backupOptions.Name` som allerede er anvendt på linje 131. Fragil logik. |
+| C-V08 | `BackupConsoleCommand4.Helpers.cs` | 127 | YAGNI | Low | `ExecutionConfig` er en tom klasse uden properties — kommenteret som "no longer used". Dead infrastructure. |
+| C-V09 | `BackupConsoleCommand4.cs` | 61–66 | Fail-Fast / YAGNI | **High** | `GetService<IBackupEngine>()` (returner null) i stedet for `GetRequiredService<>()` (kaster). `IBackupEngine` er obligatorisk. |
+| C-V10 | `BackupConsoleCommand4.cs` | 70–91 | Fail-Fast / KISS | Medium | `BackupResult? result = null` + `ThrowIfNull(result)` er unødigt komplekst. `RunAsync` returnerer aldrig null. |
+| C-V11 | `BackupConsoleCommand4.cs` | 94–98 | SOLID-SRP / DRY | Medium | Tæller `ItemResults` per state for logging — duplikerer samme tælling i `ConsolesPrinter.PrintResult`. |
+| C-V12 | `BackupConsoleCommand4.cs` | 49–52 | KISS / DRY | Medium | Tre-trins logger-resolution kopieret i `BackupConsoleCommand4ListDrives.cs`. Bør erstattes af `GetRequiredService<ILogger<T>>()`. |
+| C-V13 | `BackupConsoleCommand4.cs` | 68 | Clean Architecture / SOLID-D | Medium | `BackupProgressDisplay` instantieres med `AnsiConsole.Console` (static) i stedet for `IAnsiConsole` fra DI. |
+| C-V14 | `BackupConsoleCommand4.cs` | 121–124 | YAGNI | Low | `ExecuteAsyncForTests` er en public production-metode der kun eksisterer som test-seam. Lækker testinfrastruktur i production API. |
+| C-V15 | `BackupConsoleCommand4.cs` | 17–34 | KISS | Low | Public default constructor delegerer til privat 2-parameter constructor udelukkende for at gemme referencer som base class allerede holder. |
+| C-V16 | `BackupOptionsModel4.cs` | 155–162 | YAGNI | Medium | `--delay` option parses og bindes til `backupOptions.Delay`, men `WasSupplied` + override mangler i `BuildPlan`. CLI `--delay` ignoreres silently. |
+| C-V17 | `BackupOptionsModel4.cs` | 183–190 | Fail-Fast | Medium | `PostWriteVerificationOption` default er `Hash`, men `BuildPlan` initialiserer til `None`. `WasSupplied` returnerer false for implicit default → plan får `None` selvom option er `Hash`. Silent mismatch. |
+| C-V18 | `BackupOptionsModel4.cs` | 20 | YAGNI | Low | `ConfigOptionResult` property deklareres men læses aldrig i produktion. Overflødigt. |
+| C-V19 | `BackupOptionsModel4.cs` | 192–194 | SOLID-SRP | Low | `DoAddValidators()` er tom hook mens al validering sker i `BackupConsoleCommand4.ValidateBackupOptions()`. Inkonsistent mønster. |
+| C-V20 | `BackupPlan4Config.cs` | 57–59 | YAGNI | Low | `ExecutionConfig` er en tom sealed class uden properties. Deserialiseres og instantieres uden formål. |
+| C-V21 | `BackupPlan4Config.cs` | 1–59 | Clean Architecture / KISS | Medium | Alle enum-lignende værdier er `string`-typer (`"rename"`, `"binary"` etc.) i stedet for de enums der allerede findes i Core4. Tvinger 9 `ParseXxx`-metoder til at eksistere. |
+| C-V22 | `BackupPlan4Loader.cs` | 9–50 | DRY | Low | Strukturelt identisk med Core2's `BackupPlanLoader.Load` — extension/branch/deserialize/null-check/throw. Bør deles. |
+| C-V23 | `ConsolesPrinter.cs` | 44–54 | SOLID-SRP / Clean Architecture | Medium | Én klasse håndterer output for Core2, Core3 og Core4 — tre uafhængige grunde til at ændre klassen. Core4-printer bør separeres. |
+| C-V24 | `ConsolesPrinter.cs` + `BackupConsoleCommand4.cs` | 87–90 / 95–98 | DRY | Medium | `result.ItemResults.Count(r => r.State == X)` udføres uafhængigt to steder. Bør ligge ét sted. |
+| C-V25 | `BackupProgressDisplay.cs` | 100–112 | YAGNI | **High** | `MarkRemainingCompletedTasksAsInactive` er defineret men aldrig kaldt. Same logik inlineat i `UpdateFileTasks`. Dead method. |
+| C-V26 | `BackupProgressDisplay.cs` | 65–69 | Clean Architecture | Medium | `Console.WriteLine` (System.Console) bruges direkte til debug i stedet for injiceret `IAnsiConsole`. Untestbar og inkonsistent. |
+| C-V27 | `BackupProgressDisplay.cs` | 50–55 | KISS | Low | Triple-variabel polling (`latestReport`/`latestReportVersion`/`processedReportVersion`) er mere kompleks end nødvendigt ved 100ms poll-interval. |
+| C-V28 | `BackupConsoleCommand4ListDrives.cs` | 26–29 | Fail-Fast | Medium | `ServiceProvider` tilgås uden null-guard selv om det er nullable. `BackupConsoleCommand4` har guard; søster-klassen mangler den. |
+| C-V29 | `BackupConsoleCommand4ListDrives.cs` | 62 | KISS / YAGNI | Low | `return await Task.FromResult(0)` i async metode. `return 0` er identisk og allokerer intet. |
+| C-V30 | `BaseOptionsModel.cs` | 25–35 | SOLID-SRP / KISS | Medium | `DoAddValidators()` kaldes som side-effect inde i `ConcurrentDictionary.GetOrAdd` factory — kan køre flere gange ved concurrency. TODO-kommentar om thread safety er stadig tilstede. |
+| C-V31 | `BaseOptionsModel.cs` | 153–159 | DRY / KISS | Medium | `DoPopulate` kalder `DoDefineOptions()` direkte i stedet for `GetOrCreateOptionBinders()` — bypasser cachen og re-kører reflection ved hvert kald. |
+
+---
+
+### Core4 — alle fund
+
+| ID | Fil | Linje | Princip | Sværhed | Beskrivelse |
+|----|-----|-------|---------|---------|-------------|
+| K-V01 | `Engine/Runner/BackupRunner.cs` | hele filen | YAGNI / SOLID-SRP | **High** | Kommenteret dead code — "no longer called by BackupEngine." Indeholder sin egen sidecar/collision/move logik. `IBackupRunner` interface er også dead. Slet begge. |
+| K-V02 | `Engine/Runner/BackupRunnerProgress.cs` + `BackupRunnerRequest.cs` | hele filer | YAGNI | **High** | DTO'er der kun eksisterer for `BackupRunner` (dead). Slet begge med runner. |
+| K-V03 | `Engine/Session/OldState/BackupSessionState.cs` | hele filen | YAGNI | **High** | `OldState/`-mappe. Ingen referencer i codebase. Duplicerer guard-logik fra `BackupMemoryRecordRepository`. Slet. |
+| K-V04 | `Scanner/BackupScannerStub.cs` | hele filen | YAGNI | Medium | Kaster `NotImplementedException` på alt. Fuld `BackupScanner` eksisterer. Aldrig registreret i DI. Slet. |
+| K-V05 | `Helpers/BackupDelay.cs` | hele filen | YAGNI | Medium | Dead struct — ingen kaldere. `IThrottler`/`ThrottlerFactory` bruges overalt. Slet. |
+| K-V06 | `Engine/Helpers/TimestampHelpers.cs` | hele filen | YAGNI | Medium | `FindEarliestValidDate` har nul kaldere. `EarliestTimestampResolutionService` håndterer alt. Slet. |
+| K-V07 | `Hashing/HashCalculator.cs` | hele filen | YAGNI / DRY | **High** | Aldrig kaldt. Duplikerer algorithm-switch fra `StreamHashGenerator`. Slet. |
+| K-V08 | `Hashing/NoopHashGenerator.cs` | 8–18 | Fail-Fast / YAGNI | Medium | Returnerer tom dictionary uden exception. Aldrig registreret i DI, men hvis det sker kører engine videre med tomme hash-resultater — silent data-integrity bug. |
+| K-V09 | `Engine/Strategies/RenameCollisionResolver.cs` + `TargetPathResolver.cs` | 163–195 / 83–118 | DRY | **High** | `NormalizeCustomRelativePath` er tegn-for-tegn identisk i begge klasser. Bør udtrækkes til fælles `PathNormalizer`. |
+| K-V10 | `Engine/Hashing/HashService.cs` + `Engine/Strategies/RenameCollisionResolver.cs` | 43–55 / 308–320 | DRY | **High** | `ToHashType(HashAlgorithmType → HashType)` switch med 9 identiske cases i to klasser. Bør ligge ét sted. |
+| K-V11 | `Engine/BackupEngine.cs` | 565–580 / 623–639 / 700–713 | DRY | Medium | `new BackupResultItem { Id=…, State=… }` konstrueres tre steder. `BuildItemResults` blev udtrukket men bruges kun i cancellation-path. Normalt completion-path har sit eget verbatim copy. |
+| K-V12 | `Engine/BackupEngine.cs` | 138–139 | SOLID-D / Clean Architecture | **High** | `new BackupJsonSummaryStore(…)` og `new SessionStateService(…)` direkte i engine. `ISessionStateService` interface eksisterer — brug det via constructor injection. |
+| K-V13 | `Engine/BackupEngine.cs` | 124 | SOLID-D | Medium | `new BackupMemoryRecordRepository()` direkte i engine. `IBackupRecordRepository` interface eksisterer. |
+| K-V14 | `Engine/BackupEngine.cs` | 113–120 | SOLID-SRP / Clean Architecture | Medium | OS signal-håndtering (`SignalInterrupt.On(…)`) og `CancellationTokenSource` oprettelse inde i domain-orchestratoren. Kan ikke mockes i tests. Bør løftes til application host-laget. |
+| K-V15 | `Engine/BackupEngine.cs` | 261, 342, 468 | KISS / DRY | Low | Samme null-check + kommentar ("Stupid Visual Studio...") copy-pastat tre gange. Udtruk til `AssertRelativeFilePathNotNull(record)`. |
+| K-V16 | `Engine/Validation/BackupPlanValidator.cs` | 61–62 | Fail-Fast (forkert regel) | Medium | `VerificationHashAlgorithmTypes` kræves altid — men feltet er valgfrit når `PostWriteVerification == None`. Validator bør kun tjekke dette når verification er aktiveret. |
+| K-V17 | `Engine/BackupEngine.cs` | 608–612 | Fail-Fast / Clean Architecture | Medium | Ved cancellation sættes progress-phase til `Completed`. Burde være `Cancelled` (eller uændret). `BackupResultState.Cancelled` og `BackupProgressPhase.Completed` modsiger hinanden. |
+| K-V18 | `Engine/Strategies/RenameCollisionResolver.cs` | 278–281, 302–304 | Fail-Fast | **High** | Bare `catch { return false }` i `HashCompareAsync` og `SizeAndModifiedTimeCompareAsync`. I/O-fejl → engine behandler filer som unikke → duplikater skrives til disk. |
+| K-V19 | `Engine/DiskSpace/DiskSpaceValidator.cs` | 84–93 | Fail-Fast | Medium | `GetFreeSpace` swallower alle exceptions og returnerer `0`. Efterfølgende `< 100MB` check kaster `IOException("Insufficient disk space")` — forvirrer årsag og symptom. |
+| K-V20 | `Engine/Compare/BinaryFileComparerSelector.cs` | 37 | KISS | Low | `_chunkedAvx2.GetType().Assembly != null` er altid true i .NET. Dead condition. |
+| K-V21 | `Engine/Compare/Algorithms/WholeFileSequenceEqualBinaryComparer.cs` | 7–8 | KISS | Low | `File.ReadAllBytesAsync` loader begge filer (op til 20 MB) i hukommelsen. `ChunkedBinaryFileComparer` er strengt bedre. `WholeFile`-varianten er overflødig. |
+| K-V22 | `Engine/TimeStamp/Readers/XmpTimestampReader.cs` | 12–16, 112–138 | DRY | Medium | 5 parser-felter + `TryParseDateWithResolution` er tegn-for-tegn identisk med `BaseDirectoryTimestampReader`. Bør udtrækkes til `TimestampReaderHelper`. |
+| K-V23 | `Engine/TimeStamp/EarliestTimestampResolutionService.cs` | 38–41 | SOLID-D / Clean Architecture | Medium | Parameterløs constructor hard-coder `new CompositeTimestampReader()`. DI registrerer servicen som singleton — men reader-kæden kan ikke injiceres/erstattes udefra. |
+| K-V24 | `Engine/Sidecar/SidecarService.cs` | 150–154 | SOLID-O / SOLID-D | Low | `ResolveWriter` instantierer `new IniSidecarWriter()` / `new JsonSidecarWriter()` inline. Tilføjelse af nyt format kræver ændring af `SidecarService` (Open-Closed violation). |
+| K-V25 | `Engine/BackupEngine.cs` | 443–446 | DRY / Clean Architecture | Low | `BackupSourceType` → sidecar-string (`"MtpDevice"`, `"Drive"`) mappes inline i engine. Bør være extension method på enum. |
+| K-V26 | `Engine/Index/JsonBackupIndexWriter.cs` | 81 | Fail-Fast (data bug) | **High** | `SessionId = plan.Name` — bruger planens navn i stedet for den faktiske `sessionId` parameter. Catalog-filen skrives med forkert session-ID. Silent data corruption. |
+| K-V27 | `State/BackupJsonSummaryStore.cs` | 38–40, 46 | KISS / Clean Architecture | Low | `File.ReadAllText` (synkron) + `Task.FromResult` i async metode. Bør bruge `await File.ReadAllTextAsync`. |
+| K-V28 | `Engine/Session/BackupMemoryRecordRepository.cs` | 20–23 | KISS | Low | `GetAll()` returnerer `_records.ToList()` — ny kopi ved hvert kald. Returnér `IReadOnlyList<T>` via `AsReadOnly()` i stedet. |
+| K-V29 | `Engine/BackupEngine.cs` | 761–763 | KISS | Low | Sti-normalisering i `MatchDrive` udføres inde i `foreach`-løkken. Afhænger ikke af loop-variablen — bør hejses ud. |
+| K-V30 | `DependencyInjection/ServiceCollectionExtensions.cs` | 102–131 | KISS / SOLID-D | Medium | `IBackupEngine` registreres via håndskrevet factory-lambda der manuelt resolver alle afhængigheder. Tilføjelse/fjernelse af constructor-parameter kræver opdatering tre steder. |
+| K-V31 | `Engine/TimeStamp/Readers/QuickTimeTimestampReader.cs` | 7–8 | SOLID-D | Low | `QuickTimeMetadataHeaderTimestampReader` og `QuickTimeMovieHeaderTimestampReader` instantieres som private felter — ikke injicerbare. |

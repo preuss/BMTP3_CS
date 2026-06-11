@@ -221,6 +221,34 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 | State machines (JobStateMachine, ItemStateMachine) | ➡️ Inline status i record | State machines overkill for sekventielt flow |
 | ScannerGatherer / IFileScanner / IMediaFileScanner | ✅ Filesystem + MTP traversal | Begge dækket (`FileSystemTraversal` + `MediaDeviceTraversal`) |
 
+## Code Quality Audit (11 Jun 2026)
+
+Fuld gennemgang af Consoles og Core4 mod SOLID, Clean Architecture, Fail-Fast, DRY, KISS, YAGNI.
+Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
+
+### Consoles — kritiske fund (High)
+
+| ID | Fil | Problem |
+|----|-----|---------|
+| C-V01 | `BackupConsoleCommand4.Helpers.cs` | `BuildPlan` 237 linjer — 3 ansvar i én metode (SOLID-SRP/KISS) |
+| C-V02 | `BackupConsoleCommand4.Helpers.cs` | 9 næsten-identiske `ParseXxx` metoder — copy-paste (DRY) |
+| C-V03 | `BackupConsoleCommand4.Helpers.cs` | `ParseXxx` returnerer silent fallback på ukendt input (Fail-Fast) |
+| C-V09 | `BackupConsoleCommand4.cs:61` | `GetService<IBackupEngine>` i stedet for `GetRequiredService` (Fail-Fast) |
+| C-V25 | `BackupProgressDisplay.cs:100` | `MarkRemainingCompletedTasksAsInactive` — dead method, aldrig kaldt (YAGNI) |
+
+### Core4 — kritiske fund (High)
+
+| ID | Fil | Problem |
+|----|-----|---------|
+| K-V01 | `Engine/Runner/BackupRunner.cs` | Hele filen er dead code — aldrig kaldt af engine (YAGNI) |
+| K-V03 | `Engine/Session/OldState/BackupSessionState.cs` | `OldState/` mappe — dead code (YAGNI) |
+| K-V07 | `Hashing/HashCalculator.cs` | Dead code + duplikerer algorithm-switch fra `StreamHashGenerator` (YAGNI/DRY) |
+| K-V09 | `RenameCollisionResolver` + `TargetPathResolver` | `NormalizeCustomRelativePath` kopieret 1:1 (DRY) |
+| K-V10 | `HashService` + `RenameCollisionResolver` | `ToHashType` switch kopieret 1:1 (DRY) |
+| K-V12 | `Engine/BackupEngine.cs:138` | `new BackupJsonSummaryStore` + `new SessionStateService` direkte i engine (SOLID-D) |
+| K-V18 | `RenameCollisionResolver.cs:278` | `catch { return false }` i hash/size compare — silent swallow (Fail-Fast) |
+| K-V26 | `Engine/Index/JsonBackupIndexWriter.cs:81` | `SessionId = plan.Name` — forkert felt, data bug (Fail-Fast) |
+
 ## Ref
 
 - `Backup_Pipeline_Comparison_003.md` — comprehensive gap analysis (supersedes 001 and 002)
