@@ -146,7 +146,7 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **IMediaFile.OpenRead()** tilføjet, `MediaDeviceContent` opdateret til at bruge `IMediaFile`.
 - [x] — **BackupEngine.Create(connectedSource):** 1 arg (ingen `IBackupDriveInfo`).
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
-- [x] — **Validator gates relaxed**: 15 af 20 `FeatureNotImplementedException` gates fjernet. Resterer (5): `EnableMetadata` (T3), `BackupIndexType.Json` (T3), `StopOnError=false` (T3), `BackupIndexType.Database` (T4), `MaxDegreeOfParallelism` (T4).
+- [x] — **Validator gates relaxed**: 16 af 20 `FeatureNotImplementedException` gates fjernet. Resterer (4): `EnableMetadata` (T3), `StopOnError=false` (T3), `BackupIndexType.Database` (T4), `MaxDegreeOfParallelism` (T4).
 - [x] — **Core4 i Consoles:** `BackupConsoleCommand4.cs` + helpers, `ConsolesPrinter` opdateret med Core4 overloads, `ApplicationServiceSetup` registrerer `AddBMTP3Core4()`, `backup4` subcommand tilgængelig.
 - [x] — **Drive matching fix:** `BackupEngine.MatchDrive()` bruger `StartsWith` i stedet for `Equals`. Relative sub-path extracted til `SourceTraversalRequest.SubPath`.
 - [x] — **MediaDeviceTraversal sub-path:** `NavigateToSubDirectory()` navigerer gennem `IMediaDirectory.Directories` baseret på `SubPath`.
@@ -159,6 +159,10 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **Build:** 0 errors, 0 warnings. **Tests:** 249 passed.
 - [x] — **PreserveHierarchy default:** Enum-ordning (PreserveHierarchy=0). Eksplicit default i `BackupPlan.OutputStructureStrategy`.
 - [x] — **Custom columns/spinners til Consoles:** `ValueOfMaxColumn`, `ElapsedTimeAdvancedColumn`, `SequenceSpinner` kopieret fra Core, wired i `BackupProgressDisplay`.
+- [x] — **BackupIndexType.Json catalog:** `IBackupIndexWriter`/`JsonBackupIndexWriter`, `BackupIndexCatalog`/`BackupIndexFileEntry`/`BackupIndexTimestamps`, gemmes som `{dest}\.bmpt\{sessionId}\backup_catalog.json`. T3 gate fjernet.
+- [x] — **Temp dir cleanup:** `.tmp`-rod slettes når tom efter session cleanup. Temp-filer har ikke længere `.tmp` suffiks.
+- [x] — **SignalInterrupt cancel-wiring:** `Console.CancelKeyPress` fjernet fra `BackupConsoleCommand4`. Engine styrer selv cancellation.
+- [x] — **Skip cleanup:** Temp-fil slettes ved `CollisionResolutionAction.Skip`.
 
 ## Næste opgaver (prioriteret)
 
@@ -168,9 +172,9 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 |---|------|--------|
 | 1 | **Tilføj `Delay` til `BackupPlan`** — `int` property: `< 0` = disabled, `0` = 0ms, `> 0` = N ms. Validér i `BackupPlanValidator`. `BackupDelay` struct i `Helpers/`. Implementér i `BackupEngine` processing loop (efter hvert item). `--delay` CLI option. | ✅ |
 | 2 | MTP sourcePath format — `--source-path` CLI, prefix-detect i BuildPlan | ✅ |
-| 3 | `--backup-index` default guard | ❌ |
-| 4 | Fjern Core2 `BackupEngineOptions` config | ❌ |
-| 5 | SignalInterrupt cancel-wiring — brug Core4's SignalInterrupt | ❌ |
+| 3 | `--backup-index` default guard — `IBackupIndexWriter`/`JsonBackupIndexWriter` implementeret | ✅ |
+| 4 | Core2 `BackupEngineOptions` config — udkommenteret, død for Core4 | ✅ |
+| 5 | SignalInterrupt cancel-wiring — `Console.CancelKeyPress` fjernet, engine styrer selv | ✅ |
 | 6 | Tests for backup4 BuildPlan enum-mapping | ❌ |
 
 ### 2. Integrér sidste wrapper-holdere (småopgave)
@@ -195,11 +199,6 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 
 - MTP traversal pipeline test (mock via NSubstitute)
 - BackupEngine end-to-end test
-
-### 7. BackupIndexType.Json catalog
-
-- `IBackupIndexWriter` + `JsonBackupIndexWriter` + wire i engine
-
 ### 8. Public API overvejelser
 
 - `ISidecarService` public? → ✅ **WONTFIX** — Forbliver `internal`. Core4 bruges internt via `BackupEngine.RunAsync()`. Ingen eksterne forbrugere har brug for direkte sidecar-generering. Sidecar-funktionalitet eksponeres via `BackupPlan.SidecarFormat` og kører automatisk i engine.

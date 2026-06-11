@@ -127,9 +127,9 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 | 1 | **Tilføj `Delay` til `BackupPlan`** | ✅ **DONE** | `BackupPlan.Delay` (int), `IThrottler` / `ThrottlerFactory` / `DelayThrottler`, implementeret i `BackupEngine` loop + threadet gennem hash pipeline og collision resolution, `--delay` CLI option i `BackupOptionsModel4`. |
 | 2 | **Delay/VerificationRetry/Timeout** — guarded men ikke implementeret | `Delay` ✅ **DONE** (se #1 — throttler). `VerificationRetryCount`, `VerificationRetryDelayMs`, `VerificationTimeoutMs`, `VerificationDeleteOnFailure` — **❌ WONTFIX — implementeres ikke.** Validering bør fjernes eller options ignoreres med warning. |
 | 3 | **MTP source path format** | ❌ **WONTFIX** — Core4 bruger `--source-path "mtp://Device/Path"`. `--source-device` hører til Core2 (archived). |
-| 4 | **`--backup-index` default** | `Json` er korrekt (skal implementeres), men CLI må ikke sende Json før writer er klar |
-| 5 | **Core2 options i ApplicationServiceSetup** | `services.Configure<BackupEngineOptions>(...)` konfigurerer Core2, ikke Core4 |
-| 6 | **SignalInterrupt cancel-wiring** | `BackupConsoleCommand4` bruger `Console.CancelKeyPress` i stedet for Core4's `SignalInterrupt.On(Interrupt).Bind(cts).Create()` |
+| 4 | **`--backup-index` default** | ✅ **DONE** | `IBackupIndexWriter`/`JsonBackupIndexWriter` implementeret, T3 gate fjernet, catalog gemmes som `{dest}\.bmpt\{sessionId}\backup_catalog.json`. Default er `None` (som ønsket). |
+| 5 | **Core2 options i ApplicationServiceSetup** | ✅ **DONE** | Udkommenteret — dødt fra Core4's side, Core2 kan stadig bruge det. |
+| 6 | **SignalInterrupt cancel-wiring** | ✅ **DONE** | `Console.CancelKeyPress` fjernet fra `BackupConsoleCommand4`. Engine styrer selv cancellation via `SignalInterrupt` internt. |
 | 7 | **ConsolesPrinter progress** | Flyttet til Task 09 (Spectre Console). Skal bruge `AnsiConsole.Progress()` widget |
 | 8 | **No tests for backup4** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
 

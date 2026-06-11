@@ -34,7 +34,7 @@ public class ApplicationServiceSetup : IServiceSetup
 
 		// Enable single-threaded debug mode for the engine when running the console app.
 		// This uses the existing BackupEngineOptions.DebugSingleThreaded flag.
-		services.Configure<BackupEngineOptions>(o => o.DebugSingleThreaded = true);
+		// services.Configure<BackupEngineOptions>(o => o.DebugSingleThreaded = true);
 
 		// Override specific services if needed for the console app (e.g. Logging if not handled by generic host)
 		// services.AddTransient<IMyLogic, MyLogic>();

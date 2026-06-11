@@ -67,15 +67,6 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 		BackupResult? result = null;
 
-		CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		ConsoleCancelEventHandler? cancelHandler = (s, e) =>
-		{
-			e.Cancel = true;
-			logger.LogInformation("Cancellation requested, stopping Core4 backup...");
-			linkedCts.Cancel();
-		};
-		Console.CancelKeyPress += cancelHandler;
-
 		try
 		{
 			await display.RunAsync(plan.Name, async report =>
@@ -93,7 +84,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 					));
 				});
 
-				result = await engine.RunAsync(plan, progress, linkedCts.Token);
+				result = await engine.RunAsync(plan, progress, cancellationToken);
 			});
 
 			consolePrinter?.PrintResult(result);
@@ -122,10 +113,6 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 			consolePrinter?.PrintError($"Unhandled error in Core4 backup: {ex.Message}");
 			logger.LogError(ex, "Unhandled error in Core4 backup");
 			return 1;
-		}
-		finally
-		{
-			Console.CancelKeyPress -= cancelHandler!;
 		}
 	}
 
