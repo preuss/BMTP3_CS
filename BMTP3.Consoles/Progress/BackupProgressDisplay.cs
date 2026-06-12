@@ -97,21 +97,6 @@ public class BackupProgressDisplay
 				overallTask.Value = overallTask.MaxValue;
 			});
 	}
-	private static void MarkRemainingCompletedTasksAsInactive(Dictionary<string, FileTaskState> fileTasks)
-	{
-		DateTime now = DateTime.UtcNow;
-
-		foreach(FileTaskState state in fileTasks.Values)
-		{
-			bool isComplete = state.Task.Value >= state.Task.MaxValue;
-			if(isComplete && state.BecameInactiveAt == null)
-			{
-				state.BecameInactiveAt = now;
-			}
-		}
-	}
-
-
 	private static void UpdateOverall(ProgressTask overallTask, ProgressReport report)
 	{
 		overallTask.MaxValue = Math.Max(1, report.FilesTotal);

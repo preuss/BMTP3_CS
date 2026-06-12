@@ -234,15 +234,15 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 | C-V02 | `BackupConsoleCommand4.Helpers.cs` | 9 næsten-identiske `ParseXxx` metoder — copy-paste (DRY) |
 | C-V03 | `BackupConsoleCommand4.Helpers.cs` | `ParseXxx` returnerer silent fallback på ukendt input (Fail-Fast) |
 | C-V09 | `BackupConsoleCommand4.cs:61` | `GetService<IBackupEngine>` i stedet for `GetRequiredService` (Fail-Fast) |
-| C-V25 | `BackupProgressDisplay.cs:100` | `MarkRemainingCompletedTasksAsInactive` — dead method, aldrig kaldt (YAGNI) |
+| C-V25 | `BackupProgressDisplay.cs:100` | `MarkRemainingCompletedTasksAsInactive` — dead method ~~(YAGNI)~~ ✅ **FIXED** |
 
 ### Core4 — kritiske fund (High)
 
 | ID | Fil | Problem |
 |----|-----|---------|
-| K-V01 | `Engine/Runner/BackupRunner.cs` | Hele filen er dead code — aldrig kaldt af engine (YAGNI) |
-| K-V03 | `Engine/Session/OldState/BackupSessionState.cs` | `OldState/` mappe — dead code (YAGNI) |
-| K-V07 | `Hashing/HashCalculator.cs` | Dead code + duplikerer algorithm-switch fra `StreamHashGenerator` (YAGNI/DRY) |
+| K-V01 | `Engine/Runner/BackupRunner.cs` | Hele filen er dead code — aldrig kaldt af engine ~~(YAGNI)~~ ✅ **FIXED** |
+| K-V03 | `Engine/Session/OldState/BackupSessionState.cs` | `OldState/` mappe — dead code ~~(YAGNI)~~ ✅ **FIXED** |
+| K-V07 | `Hashing/HashCalculator.cs` | Dead code + duplikerer algorithm-switch fra `StreamHashGenerator` ~~(YAGNI/DRY)~~ ✅ **FIXED** |
 | K-V09 | `RenameCollisionResolver` + `TargetPathResolver` | `NormalizeCustomRelativePath` kopieret 1:1 (DRY) |
 | K-V10 | `HashService` + `RenameCollisionResolver` | `ToHashType` switch kopieret 1:1 (DRY) |
 | K-V12 | `Engine/BackupEngine.cs:138` | `new BackupJsonSummaryStore` + `new SessionStateService` direkte i engine (SOLID-D) |

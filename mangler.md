@@ -401,7 +401,7 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | C-V22 | `BackupPlan4Loader.cs` | 9–50 | DRY | Low | Strukturelt identisk med Core2's `BackupPlanLoader.Load` — extension/branch/deserialize/null-check/throw. Bør deles. |
 | C-V23 | `ConsolesPrinter.cs` | 44–54 | SOLID-SRP / Clean Architecture | Medium | Én klasse håndterer output for Core2, Core3 og Core4 — tre uafhængige grunde til at ændre klassen. Core4-printer bør separeres. |
 | C-V24 | `ConsolesPrinter.cs` + `BackupConsoleCommand4.cs` | 87–90 / 95–98 | DRY | Medium | `result.ItemResults.Count(r => r.State == X)` udføres uafhængigt to steder. Bør ligge ét sted. |
-| C-V25 | `BackupProgressDisplay.cs` | 100–112 | YAGNI | **High** | `MarkRemainingCompletedTasksAsInactive` er defineret men aldrig kaldt. Same logik inlineat i `UpdateFileTasks`. Dead method. |
+| C-V25 | `BackupProgressDisplay.cs` | 100–112 | YAGNI | **High** | ~~`MarkRemainingCompletedTasksAsInactive` er defineret men aldrig kaldt. Same logik inlineat i `UpdateFileTasks`. Dead method.~~ ✅ **FIXED** — slettet. |
 | C-V26 | `BackupProgressDisplay.cs` | 65–69 | Clean Architecture | Medium | `Console.WriteLine` (System.Console) bruges direkte til debug i stedet for injiceret `IAnsiConsole`. Untestbar og inkonsistent. |
 | C-V27 | `BackupProgressDisplay.cs` | 50–55 | KISS | Low | Triple-variabel polling (`latestReport`/`latestReportVersion`/`processedReportVersion`) er mere kompleks end nødvendigt ved 100ms poll-interval. |
 | C-V28 | `BackupConsoleCommand4ListDrives.cs` | 26–29 | Fail-Fast | Medium | `ServiceProvider` tilgås uden null-guard selv om det er nullable. `BackupConsoleCommand4` har guard; søster-klassen mangler den. |
@@ -415,13 +415,13 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 
 | ID | Fil | Linje | Princip | Sværhed | Beskrivelse |
 |----|-----|-------|---------|---------|-------------|
-| K-V01 | `Engine/Runner/BackupRunner.cs` | hele filen | YAGNI / SOLID-SRP | **High** | Kommenteret dead code — "no longer called by BackupEngine." Indeholder sin egen sidecar/collision/move logik. `IBackupRunner` interface er også dead. Slet begge. |
-| K-V02 | `Engine/Runner/BackupRunnerProgress.cs` + `BackupRunnerRequest.cs` | hele filer | YAGNI | **High** | DTO'er der kun eksisterer for `BackupRunner` (dead). Slet begge med runner. |
-| K-V03 | `Engine/Session/OldState/BackupSessionState.cs` | hele filen | YAGNI | **High** | `OldState/`-mappe. Ingen referencer i codebase. Duplicerer guard-logik fra `BackupMemoryRecordRepository`. Slet. |
-| K-V04 | `Scanner/BackupScannerStub.cs` | hele filen | YAGNI | Medium | Kaster `NotImplementedException` på alt. Fuld `BackupScanner` eksisterer. Aldrig registreret i DI. Slet. |
-| K-V05 | `Helpers/BackupDelay.cs` | hele filen | YAGNI | Medium | Dead struct — ingen kaldere. `IThrottler`/`ThrottlerFactory` bruges overalt. Slet. |
-| K-V06 | `Engine/Helpers/TimestampHelpers.cs` | hele filen | YAGNI | Medium | `FindEarliestValidDate` har nul kaldere. `EarliestTimestampResolutionService` håndterer alt. Slet. |
-| K-V07 | `Hashing/HashCalculator.cs` | hele filen | YAGNI / DRY | **High** | Aldrig kaldt. Duplikerer algorithm-switch fra `StreamHashGenerator`. Slet. |
+| K-V01 | `Engine/Runner/BackupRunner.cs` | hele filen | YAGNI / SOLID-SRP | **High** | ~~Kommenteret dead code — "no longer called by BackupEngine." Indeholder sin egen sidecar/collision/move logik. `IBackupRunner` interface er også dead. Slet begge.~~ ✅ **FIXED** — hele `Engine/Runner/` mappen slettet (4 filer + interface). |
+| K-V02 | `Engine/Runner/BackupRunnerProgress.cs` + `BackupRunnerRequest.cs` | hele filer | YAGNI | **High** | ~~DTO'er der kun eksisterer for `BackupRunner` (dead). Slet begge med runner.~~ ✅ **FIXED** — slettet med Runner. |
+| K-V03 | `Engine/Session/OldState/BackupSessionState.cs` | hele filen | YAGNI | **High** | ~~`OldState/`-mappe. Ingen referencer i codebase. Duplicerer guard-logik fra `BackupMemoryRecordRepository`. Slet.~~ ✅ **FIXED** — fil + `OldState/` mappe slettet. |
+| K-V04 | `Scanner/BackupScannerStub.cs` | hele filen | YAGNI | Medium | ~~Kaster `NotImplementedException` på alt. Fuld `BackupScanner` eksisterer. Aldrig registreret i DI. Slet.~~ ✅ **FIXED** — slettet. |
+| K-V05 | `Helpers/BackupDelay.cs` | hele filen | YAGNI | Medium | ~~Dead struct — ingen kaldere. `IThrottler`/`ThrottlerFactory` bruges overalt. Slet.~~ ✅ **FIXED** — slettet. |
+| K-V06 | `Engine/Helpers/TimestampHelpers.cs` | hele filen | YAGNI | Medium | ~~`FindEarliestValidDate` har nul kaldere. `EarliestTimestampResolutionService` håndterer alt. Slet.~~ ✅ **FIXED** — fil + `Engine/Helpers/` mappe slettet. |
+| K-V07 | `Hashing/HashCalculator.cs` | hele filen | YAGNI / DRY | **High** | ~~Aldrig kaldt. Duplikerer algorithm-switch fra `StreamHashGenerator`. Slet.~~ ✅ **FIXED** — slettet. |
 | K-V08 | `Hashing/NoopHashGenerator.cs` | 8–18 | Fail-Fast / YAGNI | Medium | Returnerer tom dictionary uden exception. Aldrig registreret i DI, men hvis det sker kører engine videre med tomme hash-resultater — silent data-integrity bug. |
 | K-V09 | `Engine/Strategies/RenameCollisionResolver.cs` + `TargetPathResolver.cs` | 163–195 / 83–118 | DRY | **High** | `NormalizeCustomRelativePath` er tegn-for-tegn identisk i begge klasser. Bør udtrækkes til fælles `PathNormalizer`. |
 | K-V10 | `Engine/Hashing/HashService.cs` + `Engine/Strategies/RenameCollisionResolver.cs` | 43–55 / 308–320 | DRY | **High** | `ToHashType(HashAlgorithmType → HashType)` switch med 9 identiske cases i to klasser. Bør ligge ét sted. |

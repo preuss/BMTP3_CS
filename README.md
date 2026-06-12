@@ -1,96 +1,143 @@
-# BMTP3
+# BMTP3 — Backup Media Transfer Protocol
 
-BMTP3 stands for **Backup Media Transfer Protocol**.
+**Version:** 0.4.0-beta | **Platform:** Windows (.NET 8, C# 12)
 
-This is the third major implementation of the backup program:
-- The first version was written in legacy C#.
-- The second version was implemented in Java with DLL support for MTP.
-- BMTP3 is now re-implemented using modern C# (.NET 8).
+BMTP3 is the third-generation backup solution for Windows, designed to securely back up data from smartphones, tablets, cameras, and external drives via **MTP**, **PTP**, and **MSC** protocols.
 
-## Overview
+## Project Status
 
-BMTP3 is a reliable and extensible backup solution for Windows, designed to securely back up data from a wide range of devices. Supported devices include smartphones, tablets, cameras, and external drives.  
-
-Device communication is handled via popular protocols:
-- **MTP (Media Transfer Protocol)**
-- **PTP (Picture Transfer Protocol)**
-- **MSC (Mass Storage Class)**
-
-BMTP3 provides a modern command-line interface (CLI) with advanced options, progress reporting, and verification features. The architecture is modular, making it easy to extend and customize for different backup scenarios.
-
-## Key Features
-
-- Backup files and folders from multiple device types
-- Verify backup integrity and data consistency
-- Modular architecture for easy extension and customization
-- Progress bars and status reporting in the console
-- Support for .NET 8 and C# 12 features
-- Dependency injection for testability and scalability
-- Configuration via TOML files for flexible setup
-- Extensible backup jobs for portable devices and drives
-
-## Who Should Use BMTP3?
-
-BMTP3 is ideal for:
-- Individuals seeking a reliable backup solution for their mobile devices
-- Power users and IT professionals needing reliable device backups
-- Developers looking for a customizable backup framework
-- Anyone who wants to automate and verify backups from mobile devices and external media
+| Layer | Status | Notes |
+|-------|--------|-------|
+| **Core4** (`backup4`) | **Active** | Primary engine with full pipeline, TOML config, progress display |
+| Core3 (`backup3`) | Archived | Read-only — intermediate refactor |
+| Core2 (`backup2`) | Archived | Read-only — first pipeline attempt |
+| Core (`backup`) | Archived | Read-only — original monolithic exe |
+| Consoles (`BMTP3.Consoles`) | **Active** | CLI host — updated with Core4 |
 
 ## Quick Start
 
-1. **Install .NET 8**  
-   Download and install the latest .NET 8 SDK from [dotnet.microsoft.com](https://dotnet.microsoft.com/download).
+```shell
+# List available MTP devices and drives
+bmtp3 list-sources
 
-2. **Clone the repository**  
-   `git clone https://github.com/preuss/BMTP3_CS.git`
+# Backup from a local folder
+bmtp3 backup4 --source-path "C:\Photos" --destination "D:\Backup"
 
-3. **Build the project**  
-   `dotnet build`
+# Backup from an MTP device
+bmtp3 backup4 --source-path "mtp://MyPhone/Internal Storage/DCIM" --destination "D:\Backup"
 
-4. **Run the application**  
-   See documentation for usage details.
+# Use a TOML config file
+bmtp3 backup4 --config "my-backup.toml"
+
+# Initialize a config template
+bmtp3 init-config
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                    BMTP3.Consoles                        │
+│  CLI (System.CommandLine) → DI → Progress (Spectre)     │
+├─────────────────────────────────────────────────────────┤
+│                    BMTP3.Core4                           │
+│  ┌──────────────────────────────────────────────────┐   │
+│  │  BackupPipeline                                  │   │
+│  │  Validate → Scan → Traverse → Download → Hash   │   │
+│  │  → Compare/Skip → Move → Sidecar → Index        │   │
+│  └──────────────────────────────────────────────────┘   │
+│  ┌──────┐ ┌────────┐ ┌──────────┐ ┌────────────────┐   │
+│  │ MTP  │ │Hashing │ │ Timestamp│ │ Collision       │   │
+│  │Traver│ │(Blake3,│ │Resolution│ │ Resolution      │   │
+│  │sal   │ │SHA-256)│ │(EXIF/GPS)│ │(Rename/Skip/Ov) │   │
+│  └──────┘ └────────┘ └──────────┘ └────────────────┘   │
+├─────────────────────────────────────────────────────────┤
+│                    BMTP3.Common                          │
+│           Message formatter, shared utilities            │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Key Design Decisions
+
+- **One CLI option for source:** `--source-path` accepts both filesystem paths and `mtp://` URIs — prefix detection only, no separate `--source-device` flag
+- **Post-write verification is opt-in:** default `None`, enable with `--verify hash`
+- **Fail-fast validation:** all pre-flight gates throw exceptions on failure — no silent fallbacks
+- **In-memory integration tests:** all service interfaces mocked via custom fakes — no physical files or MTP devices needed
+- **DI throughout:** all engine services resolved via `AddBMTP3Core4()` — no `new` in production code
+
+## CLI Commands
+
+| Command | Description | Engine |
+|---------|-------------|--------|
+| `backup4` **| Core4 backup — primary command** | Core4 |
+| `list-sources` | List MTP devices, drives, and folders | Core4 |
+| `init-config` | Generate a TOML config template | Core4 |
+| `backup2` | Legacy Core2 backup (archived) | Core2 |
+| `backup3` | Legacy Core3 backup (archived) | Core3 |
+| `backup` | Original Core backup (archived, exe) | Core |
+| `backup-test` | Test/experimental command | — |
+| `verify` | Verify existing backups | — |
+
+### `backup4` Options
+
+| Option | Alias | Default | Description |
+|--------|-------|---------|-------------|
+| `--source-path` | `-s` | *required* | Source path (`C:\...` or `mtp://...`) |
+| `--destination` | `-d` | *required* | Destination directory |
+| `--config` | `-c` | — | TOML config file path |
+| `--collision-strategy` | | `Skip` | How to handle filename collisions: `Skip`, `Overwrite`, `Rename`, `RenameWithPattern` |
+| `--rename-pattern` | | — | Custom rename pattern (requires `RenameWithPattern`) |
+| `--verify` | | `None` | Post-write verification: `None`, `Hash` |
+| `--enable-timestamp` | | `false` | Enable earliest-timestamp resolution |
+| `--enable-metadata` | | `false` | Enable metadata extraction (sidecar) |
+| `--index-type` | | `Json` | Backup index format: `Json`, `Database` |
+| `--dry-run` | | `false` | Simulate without copying files |
+| `--stop-on-error` | | `true` | Stop pipeline on first error |
+| `--include-pattern` | | `**/*` | Glob include filter |
+| `--exclude-pattern` | | — | Glob exclude filter |
+
+## Project Structure
+
+```
+BMTP3_CS.sln
+├── BMTP3.Consoles/          # CLI host (System.CommandLine, Spectre.Console)
+│   ├── ConsoleCommands/     # Command definitions (backup2, backup3, backup4...)
+│   ├── Configs/             # TOML config loader
+│   ├── Progress/            # Spectre progress display
+│   ├── Services/            # Printer, notifier, prompter
+│   └── Startup/             # DI, logging, config wiring
+├── BMTP3.Core4/             # Active backup engine
+│   ├── Api/                 # Public interfaces (IBackupEngine, IDriveCatalogService)
+│   ├── Engine/              # Pipeline: Compare, Download, Hash, Index, Sidecar, Strategies, Validation
+│   ├── Scanner/             # Source scanning
+│   ├── Traversal/           # MTP + filesystem traversal
+│   ├── Storage/             # Source connectors (MTP, filesystem)
+│   ├── DriveDiscovery/      # Drive catalogs (MTP + filesystem providers)
+│   ├── Devices/             # MTP device abstractions
+│   ├── Hashing/             # Hash generators (Blake3, SHA-256, BLAKE2)
+│   └── Models/              # Domain models + enums
+├── BMTP3.Core2/             # Archived — second-gen engine
+├── BMTP3.Core3/             # Archived — third-gen engine
+├── BMTP3.Core/              # Archived — first-gen monolithic exe
+├── BMTP3.Common/            # Shared utilities + message formatter
+├── BMTP3.MessageFormatter/  # Standalone template formatter
+├── BMTP3.Core4.Tests/       # 249 unit/integration tests
+├── BMTP3.Consoles.Tests/    # 83 unit tests
+└── libs/MediaDevices.dll    # External MTP library
+```
+
+## Test Suite
+
+| Project | Count | What it tests |
+|---------|-------|---------------|
+| `Core4.Tests` | 249 | Engine pipeline, strategies, validation, MtpUriParser, hash, sidecar, collision, integration |
+| `Consoles.Tests` | 83 | CLI parsing, BuildPlan, option mapping, config loading |
+| `Core2.Tests` | — | Legacy — not actively maintained |
+| `Core3.Tests` | — | Legacy — not actively maintained |
+| `Core.Tests` | — | Legacy — not actively maintained |
+
+**Run:** `dotnet test`
 
 ## License
 
-This project is licensed under the terms of the [GNU Affero General Public License v3.0](https://www.gnu.org/licenses/agpl-3.0.html).  
-See [LICENSE.md](LICENSE.md) for full license details.
-
-## Contributor License Agreement (CLA)
-
-By contributing to this project, you agree that your contributions are licensed under the AGPL-3.0 license, and you grant the project owner the right to relicense your contributions under other terms in the future.  
-See [CLA.md](CLA.md) for details.
-
-## Download
-
-Future: [NuGet Package](https://www.nuget.org/packages/MediaDevices/)
-
-## Documentation
-
-See `README.md` and project source for usage and API details.  
-Update documentation as new features are added.
-
-### Documentation Language and Comments
-
-All project documentation, inline code comments, and XML documentation comments must be written in English. Public API surface areas should include XML documentation summaries and parameter descriptions. Keep explanations concise, use clear examples when helpful, and avoid non-English text in code comments or public-facing docs.
-
-**Guidance:**
-- Write XML documentation for public APIs and important internal types.
-- Use English in inline comments and commit messages where they describe code behavior.
-- Keep examples short and focused; include usage snippets for public methods when relevant.
-
-This section documents the project's expectation for consistent English documentation.
-
-## Donate
-
-You are welcome to support this project. 
-
-[![Donate](https://raw.githubusercontent.com/preuss/BMTP3_CS/dev/develop_4_ai_refactor/.github/images/donate.gif)](https://www.paypal.me/JPreuss)
-
-## UUIDv7 (time-ordered UUID)
-
-This project may use UUIDv7 for time-ordered unique identifiers. For a small, well-maintained C# implementation, see Steve Simmons' repository:
-
-https://github.com/stevesimmons/uuid7-csharp
-
-Consider adding this library as a dependency when implementing UUIDv7 generation or testing time-ordered identifier behavior.
+AGPL-3.0 — see [LICENSE.md](LICENSE.md). Contributions are welcome under the [CLA](CLA.md).
