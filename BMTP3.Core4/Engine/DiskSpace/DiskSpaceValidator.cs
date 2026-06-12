@@ -82,14 +82,8 @@ internal sealed class DiskSpaceValidator : IDiskSpaceValidator
 
 	private static long GetFreeSpace(string path)
 	{
-		try
-		{
-			string root = Path.GetPathRoot(path) ?? path;
-			DriveInfo drive = new(root);
-			return drive.AvailableFreeSpace;
-		} catch(Exception)
-		{
-			return 0;
-		}
+		string root = Path.GetPathRoot(path) ?? path;
+		DriveInfo drive = new(root);
+		return drive.AvailableFreeSpace;
 	}
 }
