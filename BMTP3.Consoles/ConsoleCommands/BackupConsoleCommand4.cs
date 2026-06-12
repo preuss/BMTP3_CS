@@ -43,8 +43,8 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 	)
 	{
 		ArgumentNullException.ThrowIfNull(ServiceProvider);
-		ConsolesPrinter? consolePrinter = ServiceProvider.GetService<ConsolesPrinter>();
-		consolePrinter?.PrintOptionsModel(GlobalOptions, BackupOptions);
+		ConsolesPrinter consolePrinter = ServiceProvider.GetRequiredService<ConsolesPrinter>();
+		consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		ILogger<BackupConsoleCommand4> logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand4>>()
 												?? ServiceProvider.GetService<ILoggerFactory>()
@@ -55,15 +55,10 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(BackupOptions, parseResult);
 
-		consolePrinter?.PrintStatus($"Starting Core4 backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' Destination='{plan.Destination}'");
+		consolePrinter.PrintStatus($"Starting Core4 backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' Destination='{plan.Destination}'");
 		logger.LogInformation("Starting Core4 backup: Name='{Name}' SourceType={SourceType} SourcePath='{SourcePath}' Destination='{Destination}'", plan.Name, plan.SourceType, plan.SourcePath, plan.Destination);
 
-		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
-		if (engine == null)
-		{
-			logger.LogError("Core4 backup engine not configured in DI.");
-			return 1;
-		}
+		IBackupEngine engine = ServiceProvider.GetRequiredService<IBackupEngine>();
 
 		BackupProgressDisplay display = new BackupProgressDisplay(AnsiConsole.Console);
 
@@ -89,7 +84,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 				result = await engine.RunAsync(plan, progress, cancellationToken);
 			});
 			ArgumentNullException.ThrowIfNull(result);
-			consolePrinter?.PrintResult(result);
+			consolePrinter.PrintResult(result);
 			logger.LogInformation("Job '{JobName}' finished: {State}", result.Name, result.State);
 			logger.LogInformation(
 				"Items: {Total} Succeeded: {Succeeded} Failed: {Failed}",
@@ -106,13 +101,13 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		}
 		catch (OperationCanceledException)
 		{
-			consolePrinter?.PrintStatus("Core4 backup cancelled.");
+			consolePrinter.PrintStatus("Core4 backup cancelled.");
 			logger.LogInformation("Core4 backup cancelled.");
 			return 2;
 		}
 		catch (Exception ex)
 		{
-			consolePrinter?.PrintError($"Unhandled error in Core4 backup: {ex.Message}");
+			consolePrinter.PrintError($"Unhandled error in Core4 backup: {ex.Message}");
 			logger.LogError(ex, "Unhandled error in Core4 backup");
 			return 1;
 		}

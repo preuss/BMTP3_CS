@@ -55,11 +55,11 @@ internal static class BackupPlanValidator
 		if(!Enum.IsDefined(plan.BackupIndexType))
 			throw new BackupPlanArgumentException($"Invalid BackupIndexType value: {plan.BackupIndexType}.");
 
-		if(plan.ComparisonHashAlgorithmTypes is not { Count: > 0 })
-			throw new BackupPlanArgumentException("ComparisonHashAlgorithmTypes must not be null and must contain at least one algorithm.");
+		if(plan.CollisionComparisonType == CollisionComparisonType.Hash && plan.ComparisonHashAlgorithmTypes is not { Count: > 0 })
+			throw new BackupPlanArgumentException("ComparisonHashAlgorithmTypes must not be null and must contain at least one algorithm when CollisionComparisonType is Hash.");
 
-		if(plan.VerificationHashAlgorithmTypes is not { Count: > 0 })
-			throw new BackupPlanArgumentException("VerificationHashAlgorithmTypes must contain at least one algorithm if specified.");
+		if(plan.PostWriteVerification == PostWriteVerificationType.Hash && plan.VerificationHashAlgorithmTypes is not { Count: > 0 })
+			throw new BackupPlanArgumentException("VerificationHashAlgorithmTypes must not be null and must contain at least one algorithm when PostWriteVerification is Hash.");
 
 		if(!Enum.IsDefined(plan.PostWriteVerification))
 			throw new BackupPlanArgumentException($"Invalid PostWriteVerification value: {plan.PostWriteVerification}.");

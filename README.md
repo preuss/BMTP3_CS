@@ -62,8 +62,10 @@ bmtp3 init-config
 - **One CLI option for source:** `--source-path` accepts both filesystem paths and `mtp://` URIs — prefix detection only, no separate `--source-device` flag
 - **Post-write verification is opt-in:** default `None`, enable with `--verify hash`
 - **Fail-fast validation:** all pre-flight gates throw exceptions on failure — no silent fallbacks
+- **Essential DI services use `GetRequiredService<T>()`:** `IBackupEngine` and `ConsolesPrinter` throw on missing registration rather than silently returning null
+- **Session-scoped services use `new`:** `SessionStateService` and `BackupMemoryRecordRepository` are runtime-dependent (metadata path, per-run in-memory store) — DI would hide their session-scoped nature
 - **In-memory integration tests:** all service interfaces mocked via custom fakes — no physical files or MTP devices needed
-- **DI throughout:** all engine services resolved via `AddBMTP3Core4()` — no `new` in production code
+- **DI throughout:** all engine services resolved via `AddBMTP3Core4()`
 
 ## CLI Commands
 
@@ -93,6 +95,7 @@ bmtp3 init-config
 | `--index-type` | | `Json` | Backup index format: `Json`, `Database` |
 | `--dry-run` | | `false` | Simulate without copying files |
 | `--stop-on-error` | | `true` | Stop pipeline on first error |
+| `--delay` | `-w` | `0` | Delay between items in ms. `-1`=disabled, `0`=fastest, `>0`=N ms |
 | `--include-pattern` | | `**/*` | Glob include filter |
 | `--exclude-pattern` | | — | Glob exclude filter |
 

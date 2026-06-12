@@ -230,10 +230,10 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 
 | ID | Fil | Problem |
 |----|-----|---------|
-| C-V01 | `BackupConsoleCommand4.Helpers.cs` | `BuildPlan` 237 linjer — 3 ansvar i én metode (SOLID-SRP/KISS) |
+| C-V01 | `BackupConsoleCommand4.Helpers.cs` | ~~`BuildPlan` 237 linjer~~ ✅ **DONE** — Splittet i `BackupPlanBuilder.cs` + `Helpers.cs` (~29 linjer). |
 | C-V02 | `BackupConsoleCommand4.Helpers.cs` | 9 næsten-identiske `ParseXxx` metoder — copy-paste (DRY) |
-| C-V03 | `BackupConsoleCommand4.Helpers.cs` | `ParseXxx` returnerer silent fallback på ukendt input (Fail-Fast) |
-| C-V09 | `BackupConsoleCommand4.cs:61` | `GetService<IBackupEngine>` i stedet for `GetRequiredService` (Fail-Fast) |
+| C-V03 | `BackupConsoleCommand4.Helpers.cs` | ~~`ParseXxx` silent fallback~~ ✅ **DONE** — `_ => throw` implementeret. |
+| C-V09 | `BackupConsoleCommand4.cs:61` | ~~`GetService<IBackupEngine>`~~ ✅ **DONE** — `GetRequiredService<T>()` for `IBackupEngine` og `ConsolesPrinter`. |
 | C-V25 | `BackupProgressDisplay.cs:100` | `MarkRemainingCompletedTasksAsInactive` — dead method ~~(YAGNI)~~ ✅ **FIXED** |
 
 ### Core4 — kritiske fund (High)
