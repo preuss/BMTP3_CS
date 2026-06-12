@@ -70,6 +70,9 @@ public class ConsolesProgram
 		BackupConsoleCommand4ListDrives listSourcesCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(listSourcesCommand);
 
+		BackupConsoleCommand4InitConfig initConfigCommand = new();
+		rootCommand.Subcommands.Add(initConfigCommand);
+
 		//ReplaceHelp(rootCommand);
 
 

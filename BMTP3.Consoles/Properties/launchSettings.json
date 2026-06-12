@@ -15,6 +15,10 @@
     "Backup_Source_Temp": {
       "commandName": "Project",
       "commandLineArgs": "backup4 -s \"C:\\temp\\source\" -o \"C:\\temp\\target\" --delay 1"
+    },
+    "InitConfig": {
+      "commandName": "Project",
+      "commandLineArgs": "init-config"
     }
   }
 }

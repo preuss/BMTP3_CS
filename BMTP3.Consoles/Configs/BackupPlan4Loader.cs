@@ -6,6 +6,19 @@ namespace BMTP3.Consoles.Configs;
 
 public static class BackupPlan4Loader
 {
+	private static readonly string[] DefaultConfigCandidates = { "default.toml", "default.json", "default.json5" };
+
+	public static FileInfo? FindDefaultConfig()
+	{
+		string cwd = Directory.GetCurrentDirectory();
+		foreach (string name in DefaultConfigCandidates)
+		{
+			FileInfo fi = new(Path.Combine(cwd, name));
+			if (fi.Exists) return fi;
+		}
+		return null;
+	}
+
 	public static BackupPlan4Config Load(FileInfo file)
 	{
 		if (file == null) throw new ArgumentNullException(nameof(file));

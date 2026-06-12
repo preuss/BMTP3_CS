@@ -15,9 +15,13 @@ internal static class BackupConsoleCommand4Helpers
 		ArgumentNullException.ThrowIfNull(parseResult);
 
 		BackupPlanBuilder builder = BackupPlanBuilder.CreateDefault();
+		FileInfo? configFile = backupOptions.Config;
 
-		if (backupOptions.Config is { Exists: true })
-			builder.ApplyConfig(BackupPlan4Loader.Load(backupOptions.Config));
+		if (configFile == null && OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.ConfigOption))
+			configFile = BackupPlan4Loader.FindDefaultConfig();
+
+		if (configFile?.Exists == true)
+			builder.ApplyConfig(BackupPlan4Loader.Load(configFile));
 
 		builder.ApplyCliOverrides(backupOptions, parseResult);
 

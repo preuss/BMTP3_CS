@@ -378,6 +378,102 @@ dry-run = true
 	}
 
 	// ----------------------------------------------------------------
+	// Default config (--config without value)
+	// ----------------------------------------------------------------
+
+	[Fact]
+	public void BuildPlan_WithConfigFlagOnly_UsesDefaultToml()
+	{
+		string cwd = Directory.GetCurrentDirectory();
+		string defaultTomlPath = Path.Combine(cwd, "default.toml");
+		try
+		{
+			File.WriteAllText(defaultTomlPath, @"
+name = ""DefaultTest""
+[source]
+path = ""C:\\DefaultSrc""
+[destination]
+path = ""D:\\DefaultDst""
+");
+			var (options, parseResult) = Parse("--config");
+
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+
+			Assert.Equal("DefaultTest", plan.Name);
+			Assert.Equal(@"C:\DefaultSrc", plan.SourcePath);
+			Assert.Equal(@"D:\DefaultDst", plan.Destination);
+		}
+		finally
+		{
+			if (File.Exists(defaultTomlPath))
+				File.Delete(defaultTomlPath);
+		}
+	}
+
+	[Fact]
+	public void BuildPlan_WithConfigFlagOnly_UsesDefaultJson()
+	{
+		string cwd = Directory.GetCurrentDirectory();
+		string defaultJsonPath = Path.Combine(cwd, "default.json");
+		try
+		{
+			File.WriteAllText(defaultJsonPath, @"
+{
+  ""name"": ""DefaultJsonTest"",
+  ""source"": {
+    ""path"": ""C:\\JsonSrc""
+  },
+  ""destination"": {
+    ""path"": ""D:\\JsonDst""
+  }
+}
+");
+			var (options, parseResult) = Parse("--config");
+
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+
+			Assert.Equal("DefaultJsonTest", plan.Name);
+			Assert.Equal(@"C:\JsonSrc", plan.SourcePath);
+			Assert.Equal(@"D:\JsonDst", plan.Destination);
+		}
+		finally
+		{
+			if (File.Exists(defaultJsonPath))
+				File.Delete(defaultJsonPath);
+		}
+	}
+
+	[Fact]
+	public void BuildPlan_ConfigFlagWithoutDefault_UsesCliValues()
+	{
+		string cwd = Directory.GetCurrentDirectory();
+		string defaultTomlPath = Path.Combine(cwd, "default.toml");
+		try
+		{
+			if (File.Exists(defaultTomlPath))
+				File.Delete(defaultTomlPath);
+			string defaultJsonPath = Path.Combine(cwd, "default.json");
+			if (File.Exists(defaultJsonPath))
+				File.Delete(defaultJsonPath);
+			string defaultJson5Path = Path.Combine(cwd, "default.json5");
+			if (File.Exists(defaultJson5Path))
+				File.Delete(defaultJson5Path);
+
+			var (options, parseResult) = Parse("--config --source-path \"C:\\NoDefault\" --output \"D:\\NoDefault\"");
+
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+
+			Assert.Equal(@"C:\NoDefault", plan.SourcePath);
+			Assert.Equal(@"D:\NoDefault", plan.Destination);
+		}
+		finally
+		{
+			if (File.Exists(defaultTomlPath))
+				File.Delete(defaultTomlPath);
+		}
+	}
+
+	// ----------------------------------------------------------------
 	// Config with partial values (minimal config)
 	// ----------------------------------------------------------------
 

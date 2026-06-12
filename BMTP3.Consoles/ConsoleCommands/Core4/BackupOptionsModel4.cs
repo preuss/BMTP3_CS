@@ -12,7 +12,7 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public static Option<FileInfo> ConfigOption { get; } = new("--config", "-c")
 	{
-		Description = "Path to the backup configuration file (TOML or JSON).",
+		Description = "Path to the backup configuration file (TOML, JSON or JSON5).",
 		Arity = ArgumentArity.ZeroOrOne
 	};
 
