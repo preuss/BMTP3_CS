@@ -1,5 +1,6 @@
 ﻿using BMTP3.Common.MessageFormatterParser;
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Helpers;
 
 namespace BMTP3.Core4.Engine.Strategies;
 
@@ -80,40 +81,6 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 			.Trim('/', '\\');
 	}
 
-	private static string NormalizeCustomRelativePath(string relativePath)
-	{
-		if(string.IsNullOrWhiteSpace(relativePath))
-		{
-			throw new InvalidOperationException("Custom path pattern produced an empty path.");
-		}
-
-		string normalized = relativePath
-			.Trim()
-			.Replace('\\', Path.DirectorySeparatorChar)
-			.Replace('/', Path.DirectorySeparatorChar);
-
-		// Block Windows drive rooted paths like C:\Temp\file.jpg
-		if(normalized.Length >= 2 && normalized[1] == ':')
-		{
-			throw new InvalidOperationException("Custom path pattern produced an absolute path. Remove drive letter.");
-		}
-
-		normalized = normalized.Trim(Path.DirectorySeparatorChar);
-
-		if(normalized.Length == 0)
-		{
-			throw new InvalidOperationException("Custom path pattern produced an empty path.");
-		}
-
-		string[] parts = normalized.Split(
-			Path.DirectorySeparatorChar,
-			StringSplitOptions.RemoveEmptyEntries);
-
-		if(parts.Any(part => part == ".."))
-		{
-			throw new InvalidOperationException("Custom path pattern must not contain parent directory traversal.");
-		}
-
-		return string.Join(Path.DirectorySeparatorChar, parts);
-	}
+	private static string NormalizeCustomRelativePath(string relativePath) =>
+		PathHelper.NormalizeCustomRelativePath(relativePath);
 }

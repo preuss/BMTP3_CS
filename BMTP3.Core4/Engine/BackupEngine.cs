@@ -562,28 +562,14 @@ public sealed class BackupEngine : IBackupEngine
 
 
 
-			List<BackupResultItem> itemResults = new(allRecords.Count);
-			bool anyFailed = false;
-
-			foreach (BackupRecord record in allRecords)
-			{
-				itemResults.Add(new BackupResultItem
-				{
-					Id = record.Item.Id,
-					SourcePath = record.Item.SourcePath,
-					DestinationPath = record.DestinationPath,
-					Length = (long)record.Item.Content.Length,
-					State = MapItemState(record.Status),
-				});
-
-				if (record.Status == BackupItemStatus.Failed) anyFailed = true;
-			}
+			IReadOnlyList<BackupResultItem> itemResults = BuildItemResults(allRecords);
+			bool anyFailed = itemResults.Any(r => r.State == BackupResultItemState.Failed);
 
 			BackupResult result = new()
 			{
 				Name = plan.Name,
 				State = anyFailed ? BackupResultState.Failed : BackupResultState.Completed,
-				ItemResults = itemResults.AsReadOnly(),
+				ItemResults = itemResults,
 			};
 
 			// ------------------------------------------------------------
@@ -695,29 +681,15 @@ public sealed class BackupEngine : IBackupEngine
 		};
 		progress?.Report(currentProgress);
 
-		List<BackupResultItem> itemResults = new(allRecords.Count);
-		bool anyFailed = false;
-
-		foreach (BackupRecord record in allRecords)
-		{
-			itemResults.Add(new BackupResultItem
-			{
-				Id = record.Item.Id,
-				SourcePath = record.Item.SourcePath,
-				DestinationPath = record.DestinationPath,
-				Length = (long)record.Item.Content.Length,
-				State = MapItemState(record.Status),
-			});
-
-			if (record.Status == BackupItemStatus.Failed) anyFailed = true;
-		}
+		IReadOnlyList<BackupResultItem> itemResults = BuildItemResults(allRecords);
+		bool anyFailed = itemResults.Any(r => r.State == BackupResultItemState.Failed);
 
 		return new BackupResult
 		{
 			Name = plan.Name,
 			State = anyFailed ? BackupResultState.Failed : BackupResultState.Completed,
 			IsDryRun = true,
-			ItemResults = itemResults.AsReadOnly(),
+			ItemResults = itemResults,
 		};
 	}
 
