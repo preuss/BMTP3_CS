@@ -8,7 +8,6 @@ public sealed class BackupPlan4Config
 	public CollisionConfig Collision { get; set; } = new();
 	public MetadataConfig Metadata { get; set; } = new();
 	public BehaviorConfig Behavior { get; set; } = new();
-	public ExecutionConfig Execution { get; set; } = new();
 }
 
 public sealed class SourceConfig
@@ -52,8 +51,4 @@ public sealed class BehaviorConfig
 	public bool StopOnError { get; set; } = true;
 	public int Delay { get; set; }
 	public string ResumeBehavior { get; set; } = "continue";
-}
-
-public sealed class ExecutionConfig
-{
 }

@@ -17,6 +17,15 @@
 
 | Item | Status | Evidence |
 |------|--------|----------|
+| C-V01: BuildPlan refactor | ✅ **DONE** | Splittet i `BackupPlanBuilder` + `CreateDefault()` / `ApplyConfig()` / `ApplyCliOverrides()`. `BuildPlan` ~10 linjer. |
+| C-V02: ParseXxx DRY | ✅ **DONE** | 8 parsere → `ParseEnum<T>()`. `ParseHashAlgorithm` beholdt som specifik. |
+| C-V03: Fail-fast config enums | ✅ **DONE** | Ukendte config-værdier kaster `ArgumentException` i stedet for silent fallback. |
+| C-V04: Dead null checks | ✅ **DONE** | `if (config.Source != null)` etc. fjernet — altid sande. |
+| C-V05: IsNullOrWhiteSpace guards | ✅ **DONE** | Fjernet på enum-strenge. ParseEnum kaster på tomme/ugyldige værdier. |
+| C-V06: Path.GetFullPath double | ✅ **DONE** | Fjernet første kald i CLI block. Global normalization fanger den. |
+| C-V16: CLI --delay override | ✅ **DONE** | `WasSupplied(DelayOption)` tilføjet i `ApplyCliOverrides()`. |
+| C-V07: Navn-fallback død kode | ✅ **DONE** | `backupOptions.Name` branch fjernet — kunne aldrig nås. |
+| C-V08: ExecutionConfig tom klasse | ✅ **DONE** | Klasse + property slettet. Test `Load_TomlFile_EmptyExecution_DefaultsToNull` fjernet (16→15 tests). |
 | DryRun not implemented | ✅ **DONE** | `BuildDryRunResult` helper, short-circuit før processing loop. `BackupResult.IsDryRun = true`. |
 | ParallelBackupRunner cleanup | ✅ **DONE** | `ParallelBackupRunner` + `LimitedParallelBackupRunner` slettet. `BackupRunner` beholdt. |
 | N5: Ryd op ubrugte `BackupRunner`-klasser | ✅ **DONE** | `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
@@ -368,14 +377,14 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 
 | ID | Fil | Linje | Princip | Sværhed | Beskrivelse |
 |----|-----|-------|---------|---------|-------------|
-| C-V01 | `BackupConsoleCommand4.Helpers.cs` | 11–237 | SOLID-SRP / KISS | **High** | `BuildPlan` er 237 linjer med 3 ansvar: defaults, config-merge, CLI-override. Bør splittes i 3 hjælpemetoder. |
-| C-V02 | `BackupConsoleCommand4.Helpers.cs` | 243–357 | DRY | **High** | 9 næsten-identiske `ParseXxx(string)` metoder. Alle laver `ToLowerInvariant()` + switch + fallback. Bør erstattes af én generisk `ParseEnum<T>`. |
-| C-V03 | `BackupConsoleCommand4.Helpers.cs` | 243–357 | Fail-Fast | **High** | `ParseXxx` returnerer hardkodet default ved ukendt input (fx typo `"bianry"`). Brugeren får ingen fejl. Bør kaste `ArgumentException`. |
-| C-V04 | `BackupConsoleCommand4.Helpers.cs` | 41–128 | YAGNI | Medium | `if (config.Source != null)` etc. er altid sande — `BackupPlan4Config` initialiserer alle sektioner med `= new()`. Dead conditions. |
-| C-V05 | `BackupConsoleCommand4.Helpers.cs` | 82–93 | YAGNI / Fail-Fast | Medium | `IsNullOrWhiteSpace`-guards på config-strenge der aldrig er tomme (har hardkodede defaults). Overskriver altid CLI-defaulten — selv når brugeren ikke har sat nøglen. |
-| C-V06 | `BackupConsoleCommand4.Helpers.cs` | 133–197 | DRY | Medium | `Path.GetFullPath` kaldes to gange på FileSystem source-path. Første kald på linje 144 er overflødigt. |
-| C-V07 | `BackupConsoleCommand4.Helpers.cs` | 200–208 | KISS / DRY | Low | Navn-fallback re-læser `backupOptions.Name` som allerede er anvendt på linje 131. Fragil logik. |
-| C-V08 | `BackupConsoleCommand4.Helpers.cs` | 127 | YAGNI | Low | `ExecutionConfig` er en tom klasse uden properties — kommenteret som "no longer used". Dead infrastructure. |
+| ~~C-V01~~ | `BackupConsoleCommand4.Helpers.cs` | 11–237 | SOLID-SRP / KISS | **High** | ✅ **FIXED** — `BuildPlan` splittet i `BackupPlanBuilder.CreateDefault()` + `ApplyConfig()` + `ApplyCliOverrides()`. `BuildPlan` nu ~10 linjer. |
+| ~~C-V02~~ | `BackupConsoleCommand4.Helpers.cs` | 243–357 | DRY | **High** | ✅ **FIXED** — 8 parsere erstattet af én generisk `ParseEnum<T>()`. `ParseHashAlgorithm` beholdt som specifik (multi-alias). |
+| ~~C-V03~~ | `BackupConsoleCommand4.Helpers.cs` | 243–357 | Fail-Fast | **High** | ✅ **FIXED** — `_ =>` silent fallback erstattet af `throw new ArgumentException(...)`. |
+| ~~C-V04~~ | `BackupConsoleCommand4.Helpers.cs` | 41–128 | YAGNI | Medium | ✅ **FIXED** — `if (config.Source != null)` etc. fjernet. Alle sektioner initialiseres med `= new()`. |
+| ~~C-V05~~ | `BackupConsoleCommand4.Helpers.cs` | 82–93 | YAGNI / Fail-Fast | Medium | ✅ **FIXED** — `IsNullOrWhiteSpace`-guards på enum-strenge fjernet. ParseEnum kaster på tomme/ugyldige værdier. |
+| ~~C-V06~~ | `BackupConsoleCommand4.Helpers.cs` | 133–197 | DRY | Medium | ✅ **FIXED** — `Path.GetFullPath` fjernet fra CLI block (linje 152). Global normalization (linje 204) fanger den. |
+| ~~C-V07~~ | `BackupConsoleCommand4.Helpers.cs` | 200–208 | KISS / DRY | Low | ✅ **FIXED** — Død `backupOptions.Name` branch fjernet fra fallback. |
+| ~~C-V08~~ | `BackupConsoleCommand4.Helpers.cs` | 127 | YAGNI | Low | ✅ **FIXED** — `ExecutionConfig` klasse + `Execution` property slettet. Tom og uden formål. |
 | C-V09 | `BackupConsoleCommand4.cs` | 61–66 | Fail-Fast / YAGNI | **High** | `GetService<IBackupEngine>()` (returner null) i stedet for `GetRequiredService<>()` (kaster). `IBackupEngine` er obligatorisk. |
 | C-V10 | `BackupConsoleCommand4.cs` | 70–91 | Fail-Fast / KISS | Medium | `BackupResult? result = null` + `ThrowIfNull(result)` er unødigt komplekst. `RunAsync` returnerer aldrig null. |
 | C-V11 | `BackupConsoleCommand4.cs` | 94–98 | SOLID-SRP / DRY | Medium | Tæller `ItemResults` per state for logging — duplikerer samme tælling i `ConsolesPrinter.PrintResult`. |
@@ -383,7 +392,7 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | C-V13 | `BackupConsoleCommand4.cs` | 68 | Clean Architecture / SOLID-D | Medium | `BackupProgressDisplay` instantieres med `AnsiConsole.Console` (static) i stedet for `IAnsiConsole` fra DI. |
 | C-V14 | `BackupConsoleCommand4.cs` | 121–124 | YAGNI | Low | `ExecuteAsyncForTests` er en public production-metode der kun eksisterer som test-seam. Lækker testinfrastruktur i production API. |
 | C-V15 | `BackupConsoleCommand4.cs` | 17–34 | KISS | Low | Public default constructor delegerer til privat 2-parameter constructor udelukkende for at gemme referencer som base class allerede holder. |
-| C-V16 | `BackupOptionsModel4.cs` | 155–162 | YAGNI | Medium | `--delay` option parses og bindes til `backupOptions.Delay`, men `WasSupplied` + override mangler i `BuildPlan`. CLI `--delay` ignoreres silently. |
+| ~~C-V16~~ | `BackupOptionsModel4.cs` | 155–162 | YAGNI | Medium | ✅ **FIXED** — `WasSupplied(DelayOption)` tilføjet i `ApplyCliOverrides()`. |
 | C-V17 | `BackupOptionsModel4.cs` + `BackupConsoleCommand4.Helpers.cs` | 183 / 33 | Fail-Fast | Medium | ~~`PostWriteVerificationOption` default `Hash`, men `BuildPlan` initialiserer til `None`. `WasSupplied` returnerer false for implicit default → plan får `None` selvom option er `Hash`. Silent mismatch.~~ ✅ **FIXED** — Begge defaults ændret til `None` så de matcher. Brugeren vælger eksplicit `--verify hash`. |
 | C-V18 | `BackupOptionsModel4.cs` | 20 | YAGNI | Low | `ConfigOptionResult` property deklareres men læses aldrig i produktion. Overflødigt. |
 | C-V19 | `BackupOptionsModel4.cs` | 192–194 | SOLID-SRP | Low | `DoAddValidators()` er tom hook mens al validering sker i `BackupConsoleCommand4.ValidateBackupOptions()`. Inkonsistent mønster. |

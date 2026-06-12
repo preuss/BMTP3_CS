@@ -54,8 +54,6 @@ public class BackupPlan4ConfigTests
 		Assert.True(config.Behavior.StopOnError);
 		Assert.Equal(0, config.Behavior.Delay);
 		Assert.Equal("continue", config.Behavior.ResumeBehavior);
-
-		Assert.NotNull(config.Execution);
 	}
 
 	[Fact]
@@ -101,8 +99,6 @@ public class BackupPlan4ConfigTests
 		Assert.True(config.Behavior.StopOnError);
 		Assert.Equal(0, config.Behavior.Delay);
 		Assert.Equal("continue", config.Behavior.ResumeBehavior);
-
-		Assert.NotNull(config.Execution);
 	}
 
 	[Fact]
@@ -148,32 +144,6 @@ public class BackupPlan4ConfigTests
 		Assert.True(config.Behavior.StopOnError);
 		Assert.Equal(0, config.Behavior.Delay);
 		Assert.Equal("continue", config.Behavior.ResumeBehavior);
-
-		Assert.NotNull(config.Execution);
-	}
-
-	[Fact]
-	public void Load_TomlFile_EmptyExecution_DefaultsToNull()
-	{
-		string toml = @"
-name = ""test""
-[source]
-path = ""C:\\test""
-[destination]
-path = ""D:\\test""
-";
-		string tempFile = Path.GetTempFileName() + ".toml";
-		try
-		{
-			File.WriteAllText(tempFile, toml);
-			BackupPlan4Config config = BackupPlan4Loader.Load(new FileInfo(tempFile));
-
-			Assert.NotNull(config.Execution);
-		}
-		finally
-		{
-			File.Delete(tempFile);
-		}
 	}
 
 	[Fact]

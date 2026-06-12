@@ -144,13 +144,9 @@ internal static class BackupConsoleCommand4Helpers
 			if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SourcePathOption) && !string.IsNullOrWhiteSpace(backupOptions.SourcePath))
 			{
 				SourcePath = backupOptions.SourcePath;
-				if (SourcePath.StartsWith("mtp://", StringComparison.Ordinal))
-					SourceType = BackupSourceType.MediaDevice;
-				else
-				{
-					SourceType = BackupSourceType.FileSystem;
-					SourcePath = Path.GetFullPath(SourcePath);
-				}
+				SourceType = SourcePath.StartsWith("mtp://", StringComparison.Ordinal)
+					? BackupSourceType.MediaDevice
+					: BackupSourceType.FileSystem;
 			}
 
 			if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.OutputDirectoryOption) && backupOptions.OutputDirectory != null)
@@ -206,9 +202,7 @@ internal static class BackupConsoleCommand4Helpers
 
 			if (string.IsNullOrWhiteSpace(Name) || Name == "backup")
 			{
-				if (!string.IsNullOrWhiteSpace(backupOptions.Name))
-					Name = backupOptions.Name;
-				else if (!string.IsNullOrWhiteSpace(SourcePath))
+				if (!string.IsNullOrWhiteSpace(SourcePath))
 					Name = Path.GetFileName(SourcePath.TrimEnd('/', '\\'));
 				else if (!string.IsNullOrWhiteSpace(Destination))
 					Name = Path.GetFileName(Destination.TrimEnd('/', '\\'));
