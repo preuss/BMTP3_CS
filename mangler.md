@@ -95,16 +95,25 @@
 | **ConnectedMediaDriveSource bruger wrappers** | ✅ **DONE** | `ConnectedMediaDriveSource(IMediaDevice, IMediaDrive)` i stedet for concrete `MediaDevice`/`MediaDriveInfo` |
 | **MediaDeviceTraversal bruger wrappers** | ✅ **DONE** | `IMediaDevice`, `IMediaDrive`, `IMediaDirectory.Directories`/`Files` — ingen `MediaDevices.dll` typer i body |
 | **MediaDeviceContent bruger IMediaFile** | ✅ **DONE** | `IMediaFile.OpenRead()` i stedet for concrete `MediaFileInfo` |
+| **K-V32(1): SidecarRequest SourceType string → enum** | ✅ **DONE** | `string` → `BackupSourceType`. `SidecarService.BuildDocument` + `BackupEngine` opdateret. |
+| **K-V32(2)(4): SourcePersistentUniqueId → SourceId + sat i engine** | ✅ **DONE** | Omdøbt til `SourceId`. `SourceId = record.Item.Id` tilføjet i `BackupEngine.cs:440-461`. |
+| **K-V33: WPD-leak — MediaDeviceTraversal.SourcePath** | ✅ **DONE** | `file.FullName` → `BuildMtpSourcePath()` konstruerer `mtp://{device}/{drive}/{subPath}/{file}`. |
 
 ---
 
 ## Remaining Issues
 
-### ❌ SidecarRequest — forkert design (High)
+### ❌ SidecarRequest — tilbageværende designfejl
 
 | # | Issue | Severity | Detail |
 |---|-------|----------|--------|
-| 1 | **SidecarRequest design — forkert type-safe + død kode** | **High** | `SourceType` er `string` (skal være `BackupSourceType`). `SourcePersistentUniqueId` er MTP-specifikt navn — top-level felt bør hedde `SourceId`; selve `PersistentUniqueId` hører i `MediaDeviceSourceDetails`. `SourceDetails`/`SourceDetailsSectionName` (`IReadOnlyDictionary<string, string>`) er u-type-sikker og **aldrig sat** (død kode i `SidecarService.BuildDocument`). `SourcePersistentUniqueId` sættes aldrig i `BackupEngine.cs:440-461` selvom `record.Item.Id` bærer værdien. Skal redesignes til proper records: `FileSystemSourceDetails` + `MediaDeviceSourceDetails`. |
+| 1 | **SourceDetails/SourceDetailsSectionName** — død kode | **High** | `IReadOnlyDictionary<string, string>` aldrig sat nogen steder. Skal redesignes til proper records: `FileSystemSourceDetails` + `MediaDeviceSourceDetails`. `SourceDetailsSectionName` + `SourceDetails` dictionary + `SourceDevice`/`SourceDrive` gren i `SidecarService.BuildDocument` er død kode. 🔒 UDSKUDT til super-refactor. |
+
+### ❌ MTP Cross-Connection Resume — GenerateAlmostUniqueId ikke koblet ind
+
+| # | Issue | Severity | Detail |
+|---|-------|----------|--------|
+| 1 | **Cross-connection resume for MTP** | **Medium** | `GenerateAlmostUniqueId` eksisterer i `MediaDeviceTraversal.cs:243` men er ikke koblet ind i `SessionStateService`. Apple MTP regenererer `PersistentUniqueId` ved reconnect → match fejler → dubletter. Løsning: `ContentHash` felt på `SourceTraversalItem`/`BackupItem` + fallback matching i `SessionStateService`. Se `tasks/12-CrossConnectionResume.md`. |
 
 ### ✅ Consolidation Phase 1 — Duplication cleanup
 

@@ -38,12 +38,10 @@ internal sealed class SidecarService : ISidecarService
 			await writer.WriteToStreamAsync(document, fileStream, cancellationToken);
 
 			_logger.LogDebug("Sidecar written: {SidecarPath}", sidecarPath);
-		}
-		catch (OperationCanceledException)
+		} catch(OperationCanceledException)
 		{
 			throw;
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			_logger.LogWarning(ex, "Sidecar generation failed for {TargetPath}", targetFilePath);
 			throw;
@@ -79,7 +77,7 @@ internal sealed class SidecarService : ISidecarService
 		// ------------------------------------------------------------
 		// [SourceDevice] or [SourceDrive] — only when SourceDetails exist
 		// ------------------------------------------------------------
-		if (request.SourceDetails is { Count: > 0 } && request.SourceDetailsSectionName is not null)
+		if(request.SourceDetails is { Count: > 0 } && request.SourceDetailsSectionName is not null)
 		{
 			string? sectionComment = request.SourceDetailsSectionName switch
 			{
@@ -90,7 +88,7 @@ internal sealed class SidecarService : ISidecarService
 
 			SidecarSection detailsSection = doc.WithSection(request.SourceDetailsSectionName, weight: 20, comment: sectionComment);
 
-			foreach (KeyValuePair<string, string> detail in request.SourceDetails)
+			foreach(KeyValuePair<string, string> detail in request.SourceDetails)
 			{
 				detailsSection.WithProperty(detail.Key, detail.Value);
 			}
@@ -133,7 +131,7 @@ internal sealed class SidecarService : ISidecarService
 		// SHA3_512 is an alias for SHA3_512_FIPS202
 		hashesSection.WithProperty("SHA3_512", fips202Value);
 
-		foreach (HashType hashType in allHashTypes)
+		foreach(HashType hashType in allHashTypes)
 		{
 			string? value = request.Hashes?.GetValueOrDefault(hashType) ?? string.Empty;
 			string keyName = hashType switch
