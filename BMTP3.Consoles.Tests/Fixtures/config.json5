@@ -1,0 +1,45 @@
+{
+  name: 'Pictures backup',
+
+  source: {
+    type: 'filesystem',
+    path: 'C:\\Users\\John\\Pictures',
+    recursive: true,
+    includePatterns: ['*.jpg', '*.jpeg', '*.png'],
+    excludePatterns: ['*.tmp'],
+  },
+
+  destination: {
+    path: 'D:\\Backup\\Pictures',
+    outputStructure: 'preserve-hierarchy',
+    customOutputPattern: '',
+  },
+
+  collision: {
+    strategy: 'rename',
+    comparison: 'size-and-modified-time',
+    renameStrategy: 'append-number',
+    customPattern: '',
+  },
+
+  metadata: {
+    sidecarFormat: 'ini',
+    indexType: 'none',
+    comparisonHashAlgorithms: ['sha256'],
+    verificationHashAlgorithms: ['sha256'],
+    enableMetadata: true,
+    postWriteVerification: 'hash',
+    enableTimestampCorrection: true,
+  },
+
+  behavior: {
+    dryRun: false,
+    stopOnError: true,
+    delay: 0,
+    resumeBehavior: 'continue',
+  },
+
+  execution: {
+    maxDegreeOfParallelism: 4,
+  },
+}

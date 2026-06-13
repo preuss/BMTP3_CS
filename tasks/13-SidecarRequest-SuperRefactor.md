@@ -5,7 +5,7 @@
 `SidecarRequest` har to properties der er død kode:
 
 - `SourceDetailsSectionName` — `string?`, kun brugt som section navn
-- `SourceDetails` — `IReadOnlyDictionary<string, string>?`, aldrig population nogen steder
+- `SourceDetails` — `IReadOnlyDictionary<string, string>?`, aldrig populatet nogen steder
 
 `SidecarService.BuildDocument` har en gren (linje 80-95) der tjekker `SourceDetails is { Count: > 0 }` — kører aldrig.
 
@@ -15,14 +15,20 @@ Dictionary er u-type-sikker, u-testbar, og giver ingen garanti om hvilke nøgler
 
 Erstat dictionary med to proper typed records:
 
-- `MediaDeviceSourceDetails` — device-specifik info (device name, model, serial)
-- `FileSystemDriveSourceDetails` — drive-specifik info (drive name, volume label)
+- `MediaDeviceSourceDetails` — device-specifik info (device + drive fields for MTP)
+- `FileSystemDriveSourceDetails` — drive-specifik info (kun FileSystem)
 
 `SidecarRequest` får nullable properties for hver type i stedet for dictionary.
 
 `BackupEngine` populationslogik sætter den relevante type baseret på `plan.SourceType`.
 
 `SidecarService.BuildDocument` matcher på typen og skriver korrekt section.
+
+## Regler
+
+- `[SourceDevice]` section er **kun** for MTP (`SourceType=MediaDevice`).
+- `[SourceDrive]` section er **kun** for FileSystem (`SourceType=FileSystem`).
+- For MTP: drive-felter (`DriveName`, `VolumeLabel`, `DriveFormat`) placeres **nederst i `[SourceDevice]`** — ikke i en separat `[SourceDrive]`.
 
 ## Steps
 
@@ -35,9 +41,16 @@ namespace BMTP3.Core4.Engine.Sidecar;
 
 internal sealed record MediaDeviceSourceDetails
 {
-    public required string DeviceName { get; init; }
+    public required string DeviceId { get; init; }
+    public string? Description { get; init; }
+    public string? FriendlyName { get; init; }
+    public string? Manufacturer { get; init; }
     public string? Model { get; init; }
     public string? SerialNumber { get; init; }
+    public string? FirmwareVersion { get; init; }
+    public string? DriveName { get; init; }
+    public string? VolumeLabel { get; init; }
+    public string? DriveFormat { get; init; }
 }
 ```
 
@@ -52,6 +65,7 @@ internal sealed record FileSystemDriveSourceDetails
 {
     public required string DriveName { get; init; }
     public string? VolumeLabel { get; init; }
+    public string? DriveFormat { get; init; }
 }
 ```
 
@@ -91,18 +105,26 @@ Med:
 if(request.MediaDeviceDetails is not null)
 {
     doc.WithSection("SourceDevice", weight: 20,
-        comment: "SourceDevice is used only when SourceType=MtpDevice. It contains device details for the MTP source.")
-        .WithProperty("DeviceName", request.MediaDeviceDetails.DeviceName)
+        comment: "SourceDevice is used only when SourceType=MediaDevice. It contains device details for the MTP source.")
+        .WithProperty("DeviceId", request.MediaDeviceDetails.DeviceId)
+        .WithProperty("Description", request.MediaDeviceDetails.Description)
+        .WithProperty("FriendlyName", request.MediaDeviceDetails.FriendlyName)
+        .WithProperty("Manufacturer", request.MediaDeviceDetails.Manufacturer)
         .WithProperty("Model", request.MediaDeviceDetails.Model)
-        .WithProperty("SerialNumber", request.MediaDeviceDetails.SerialNumber);
+        .WithProperty("SerialNumber", request.MediaDeviceDetails.SerialNumber)
+        .WithProperty("FirmwareVersion", request.MediaDeviceDetails.FirmwareVersion)
+        .WithProperty("DriveName", request.MediaDeviceDetails.DriveName)
+        .WithProperty("VolumeLabel", request.MediaDeviceDetails.VolumeLabel)
+        .WithProperty("DriveFormat", request.MediaDeviceDetails.DriveFormat);
 }
 
 if(request.FileSystemDriveDetails is not null)
 {
     doc.WithSection("SourceDrive", weight: 20,
-        comment: "SourceDrive is used only when SourceType=Drive. It contains drive information.")
+        comment: "SourceDrive is used only when SourceType=FileSystem. It contains drive information.")
         .WithProperty("DriveName", request.FileSystemDriveDetails.DriveName)
-        .WithProperty("VolumeLabel", request.FileSystemDriveDetails.VolumeLabel);
+        .WithProperty("VolumeLabel", request.FileSystemDriveDetails.VolumeLabel)
+        .WithProperty("DriveFormat", request.FileSystemDriveDetails.DriveFormat);
 }
 ```
 
@@ -118,22 +140,30 @@ FileSystemDriveSourceDetails? fileSystemDriveDetails = null;
 
 if(plan.SourceType == BackupSourceType.MediaDevice)
 {
-    // Hent device info fra IConnectedMediaDriveSource
     mediaDeviceDetails = new()
     {
-        DeviceName = connectedMediaDriveSource.Device.Name,
-        Model = connectedMediaDriveSource.Device.Model,
-        SerialNumber = connectedMediaDriveSource.Device.SerialNumber,
+        DeviceId = connectedDevice.DeviceId,
+        Description = connectedDevice.Description,
+        FriendlyName = connectedDevice.FriendlyName,
+        Manufacturer = connectedDevice.Manufacturer,
+        Model = connectedDevice.Model,
+        SerialNumber = connectedDevice.SerialNumber,
+        FirmwareVersion = connectedDevice.FirmwareVersion,
+        DriveName = connectedDrive.Name,
+        VolumeLabel = connectedDrive.VolumeLabel,
+        DriveFormat = connectedDrive.DriveFormat,
     };
 } else
 {
-    // Hent drive info fra IConnectedFileSystemSource
     fileSystemDriveDetails = new()
     {
         DriveName = Path.GetPathRoot(plan.SourcePath) ?? "Unknown",
         VolumeLabel = DriveInfo.GetDrives()
             .FirstOrDefault(d => d.Name.StartsWith(Path.GetPathRoot(plan.SourcePath) ?? ""))
             ?.VolumeLabel,
+        DriveFormat = DriveInfo.GetDrives()
+            .FirstOrDefault(d => d.Name.StartsWith(Path.GetPathRoot(plan.SourcePath) ?? ""))
+            ?.DriveFormat,
     };
 }
 
@@ -169,8 +199,6 @@ Step 2 ──┤
          └────────────┴────────────┴── Step 6 → Step 7
 ```
 
-Step 1 og 2 er uafhængige. Step 3 afhænger af 1+2. Step 4 afhænger af 3. Step 5 afhænger af 4. Step 6+7 sidst.
-
 ## Files berørt
 
 | Fil | Step | Ændring |
@@ -181,3 +209,37 @@ Step 1 og 2 er uafhængige. Step 3 afhænger af 1+2. Step 4 afhænger af 3. Step
 | `Engine/Sidecar/SidecarService.cs` | 4 | Erstat død gren med type-matchet section |
 | `Engine/BackupEngine.cs` | 5 | Population af details baseret på SourceType |
 | `mangler.md`, `plan.md` | 7 | Status update |
+
+## Fixture Files (dokumentation)
+
+| Fil | Formål |
+|-----|--------|
+| `Fixtures/sidecar_device.ini` | Template — `[SourceDevice]` med tomme værdier |
+| `Fixtures/sidecar_device_example.ini` | Eksempel — iPad MTP med udfyldte data |
+| `Fixtures/sidecar_drive.ini` | Template — `[SourceDrive]` med tomme værdier |
+| `Fixtures/sidecar_drive_example.ini` | Eksempel — FileSystem med udfyldte data |
+
+## Endelig feltliste
+
+### `[SourceDevice]` (MTP only)
+
+```
+DeviceId        — required (device identifier)
+Description     — optional
+FriendlyName    — optional
+Manufacturer    — optional
+Model           — optional
+SerialNumber    — optional
+FirmwareVersion — optional
+DriveName       — optional (MTP drive name, nederst i section)
+VolumeLabel     — optional (MTP drive volume label, nederst)
+DriveFormat     — optional (MTP drive format, nederst)
+```
+
+### `[SourceDrive]` (FileSystem only)
+
+```
+DriveName       — required (drive root, fx C:\)
+VolumeLabel     — optional (fx "System")
+DriveFormat     — optional (fx "NTFS")
+```

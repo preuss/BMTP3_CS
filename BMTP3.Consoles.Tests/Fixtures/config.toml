@@ -1,0 +1,37 @@
+name = "Pictures backup"
+
+[source]
+type = "filesystem"
+path = "C:\\Users\\John\\Pictures"
+recursive = true
+include-patterns = ["*.jpg", "*.jpeg", "*.png"]
+exclude-patterns = ["*.tmp"]
+
+[destination]
+path = "D:\\Backup\\Pictures"
+output-structure = "preserve-hierarchy"
+custom-output-pattern = ""
+
+[collision]
+strategy = "rename"
+comparison = "size-and-modified-time"
+rename-strategy = "append-number"
+custom-pattern = ""
+
+[metadata]
+sidecar-format = "ini"
+index-type = "none"
+comparison-hash-algorithms = ["sha256"]
+verification-hash-algorithms = ["sha256"]
+enable-metadata = true
+post-write-verification = "hash"
+enable-timestamp-correction = true
+
+[behavior]
+dry-run = false
+stop-on-error = true
+delay = 0
+resume-behavior = "continue"
+
+[execution]
+max-degree-of-parallelism = 4

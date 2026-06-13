@@ -110,7 +110,7 @@
 
 | # | Issue | Severity | Detail |
 |---|-------|----------|--------|
-| 1 | **Redesign `SidecarRequest`** — erstat utypet dictionary med proper typed records | **🔴 HIGHEST** | `SourceDetails` (`IReadOnlyDictionary<string, string>`) skal væk. Opret `MediaDeviceSourceDetails` + `FileSystemDriveSourceDetails` records. Opdater `SidecarService.BuildDocument` til at matche på type i stedet for sectionName/dictionary. Population i `BackupEngine` ved sidecar-konstruktion. Se `tasks/13-SidecarRequest-SuperRefactor.md`. |
+| 1 | **Redesign `SidecarRequest`** — erstat utypet dictionary med proper typed records | **🔴 HIGHEST** | `SourceDetails` (`IReadOnlyDictionary<string, string>`) skal væk. Opret `MediaDeviceSourceDetails` + `FileSystemDriveSourceDetails` records. Opdater `SidecarService.BuildDocument` til at matche på type i stedet for sectionName/dictionary. Population i `BackupEngine` ved sidecar-konstruktion. Se `tasks/13-SidecarRequest-SuperRefactor.md`. Feltlister finaliseret — se `docs/SIDECAR_FORMAT.md`. |
 
 ### ❌ MTP Cross-Connection Resume — GenerateAlmostUniqueId ikke koblet ind
 
