@@ -91,7 +91,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 					// For true cross-connection matching, see GenerateAlmostUniqueId() which
 					// combines path + size + timestamps as a future fallback strategy.
 					Id = Guard.RequireNonNull(file.PersistentUniqueId),
-					SourcePath = file.FullName,
+					SourcePath = BuildMtpSourcePath(_mediaDevice.FriendlyName, _mediaDrive.Name, request.SubPath, relativeFilePath),
 					RelativeFilePath = relativeFilePath,
 					FileName = fileName,
 					Content = new MediaDeviceContent(file, _gatekeeper),
@@ -252,5 +252,16 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		ArgumentNullException.ThrowIfNull(size);
 
 		return $"{fullFilePath}_{size}_{dateCreated?.Ticks}_{dateModified?.Ticks}_{dateAuthored?.Ticks}";
+	}
+
+	internal static string BuildMtpSourcePath(string deviceName, string driveName, string? subPath, string relativeFilePath)
+	{
+		string normalizedRel = relativeFilePath.Replace('\\', '/');
+		string normalizedSub = subPath?.Replace('\\', '/') ?? "";
+
+		if (string.IsNullOrEmpty(normalizedSub))
+			return $"mtp://{deviceName}/{driveName}/{normalizedRel}";
+
+		return $"mtp://{deviceName}/{driveName}/{normalizedSub}/{normalizedRel}";
 	}
 }

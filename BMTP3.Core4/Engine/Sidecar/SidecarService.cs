@@ -67,8 +67,8 @@ internal sealed class SidecarService : ISidecarService
 		// ------------------------------------------------------------
 		doc.WithSection("Source", weight: 10,
 			comment: "[Source] is the central section.\nIt holds common source file information:\nsource type, source identity, source file name, and all source dates.")
-			.WithProperty("SourceType", request.SourceType, comment: "Either MtpDevice or Drive.")
-			.WithProperty("SourcePersistentUniqueId", request.SourcePersistentUniqueId, comment: "Stable identity for the source file, if available.")
+			.WithProperty("SourceType", request.SourceType.ToString(), comment: "Either MtpDevice or Drive.")
+			.WithProperty("SourceId", request.SourceId, comment: "Stable identity for the source file, if available.")
 			.WithProperty("SourceFileName", request.SourceFileName, comment: "The file name of the source file.")
 			.WithProperty("MediaTakenDateTime", request.MediaTakenDateTime, comment: "The resolved media date for the source file.\nThis is the date previously referred to as the resolved media datetime.")
 			.WithProperty("AuthoredDateTime", request.AuthoredDateTime, comment: "Special source date commonly found in MTP device metadata.\nIt may not correspond to any regular filesystem date.")

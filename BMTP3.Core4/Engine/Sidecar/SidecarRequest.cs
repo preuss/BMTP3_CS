@@ -8,9 +8,9 @@ internal record SidecarRequest
 	public required SidecarFormat Format { get; init; }
 
 	// ---------- Source ----------
-	public required string SourceType { get; init; }
+	public required BackupSourceType SourceType { get; init; }
 	public required string SourceFileName { get; init; }
-	public string? SourcePersistentUniqueId { get; init; }
+	public string? SourceId { get; init; }
 	public string? SourceFullPath { get; init; }
 
 	// Date fields — [Source] section

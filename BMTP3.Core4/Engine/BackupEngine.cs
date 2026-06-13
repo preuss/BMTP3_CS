@@ -440,12 +440,8 @@ public sealed class BackupEngine : IBackupEngine
 							SidecarRequest sidecarRequest = new()
 							{
 								Format = plan.SidecarFormat,
-								SourceType = plan.SourceType switch
-								{
-									BackupSourceType.MediaDevice => "MtpDevice",
-									BackupSourceType.FileSystem => "Drive",
-									_ => "Unknown",
-								},
+								SourceType = plan.SourceType,
+								SourceId = record.Item.Id,
 								SourceFileName = record.Item.FileName,
 								SourceFullPath = record.Item.SourcePath,
 								MediaTakenDateTime = record.Metadata.MediaTakenDateTime,

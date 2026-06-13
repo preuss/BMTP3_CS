@@ -25,7 +25,7 @@ public class SidecarServiceTests
 		Assert.Contains("[Backup]", content);
 		Assert.Contains("[Path]", content);
 		Assert.Contains("[Hashes]", content);
-		Assert.Contains("SourceType=Drive", content);
+		Assert.Contains("SourceType=FileSystem", content);
 		Assert.Contains("SourceFileName=photo.jpg", content);
 		Assert.Contains("SHA2_256=abc123", content);
 		Assert.Contains("MD5=def456", content);
@@ -47,7 +47,7 @@ public class SidecarServiceTests
 		Assert.Contains("\"Backup\"", content);
 		Assert.Contains("\"Path\"", content);
 		Assert.Contains("\"Hashes\"", content);
-		Assert.Contains("\"SourceType\": \"Drive\"", content);
+		Assert.Contains("\"SourceType\": \"FileSystem\"", content);
 		Assert.Contains("\"SourceFileName\": \"photo.jpg\"", content);
 	}
 
@@ -86,9 +86,9 @@ public class SidecarServiceTests
 		var request = new SidecarRequest
 		{
 			Format = SidecarFormat.Ini,
-			SourceType = "MtpDevice",
+			SourceType = BackupSourceType.MediaDevice,
 			SourceFileName = "vacation.mp4",
-			SourcePersistentUniqueId = "MTP:12345",
+			SourceId = "MTP:12345",
 			SourceFullPath = @"Computer\Phone\DCIM\vacation.mp4",
 			MediaTakenDateTime = new DateTimeOffset(2026, 6, 1, 14, 30, 0, TimeSpan.Zero),
 			AuthoredDateTime = new DateTimeOffset(2026, 6, 1, 14, 28, 0, TimeSpan.Zero),
@@ -128,7 +128,7 @@ public class SidecarServiceTests
 	private static SidecarRequest SampleRequest(SidecarFormat format) => new()
 	{
 		Format = format,
-		SourceType = "Drive",
+		SourceType = BackupSourceType.FileSystem,
 		SourceFileName = "photo.jpg",
 		BackupStartDateTime = new DateTimeOffset(2026, 6, 3, 12, 0, 0, TimeSpan.Zero),
 		SourceRelativeFilePath = @"photos\photo.jpg",
