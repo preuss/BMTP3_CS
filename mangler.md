@@ -106,17 +106,17 @@
 
 ## Remaining Issues
 
-### ❌ SidecarRequest — tilbageværende designfejl
+### ⭐ SIDECARREQUEST SUPER-REFACTOR — HØJESTE PRIORITET
 
 | # | Issue | Severity | Detail |
 |---|-------|----------|--------|
-| 1 | **SourceDetails/SourceDetailsSectionName** — død kode | **High** | `IReadOnlyDictionary<string, string>` aldrig sat nogen steder. Skal redesignes til proper records: `FileSystemSourceDetails` + `MediaDeviceSourceDetails`. `SourceDetailsSectionName` + `SourceDetails` dictionary + `SourceDevice`/`SourceDrive` gren i `SidecarService.BuildDocument` er død kode. 🔒 UDSKUDT til super-refactor. |
+| 1 | **Redesign `SidecarRequest`** — erstat utypet dictionary med proper typed records | **🔴 HIGHEST** | `SourceDetails` (`IReadOnlyDictionary<string, string>`) skal væk. Opret `MediaDeviceSourceDetails` + `FileSystemDriveSourceDetails` records. Opdater `SidecarService.BuildDocument` til at matche på type i stedet for sectionName/dictionary. Population i `BackupEngine` ved sidecar-konstruktion. Se `tasks/13-SidecarRequest-SuperRefactor.md`. |
 
 ### ❌ MTP Cross-Connection Resume — GenerateAlmostUniqueId ikke koblet ind
 
 | # | Issue | Severity | Detail |
 |---|-------|----------|--------|
-| 1 | **Cross-connection resume for MTP** | **Medium** | `GenerateAlmostUniqueId` eksisterer i `MediaDeviceTraversal.cs:243` men er ikke koblet ind i `SessionStateService`. Apple MTP regenererer `PersistentUniqueId` ved reconnect → match fejler → dubletter. Løsning: `ContentHash` felt på `SourceTraversalItem`/`BackupItem` + fallback matching i `SessionStateService`. Se `tasks/12-CrossConnectionResume.md`. |
+| 1 | **Kobl `GenerateAlmostUniqueId` ind i `SessionStateService`** som fallback match for MTP reconnect | **Medium** | Apple MTP regenererer `PersistentUniqueId` ved reconnect → match fejler → dubletter. Løsning: `ContentHash` felt på `SourceTraversalItem`/`BackupItem` + fallback matching i `SessionStateService`. Se `tasks/12-CrossConnectionResume.md`. |
 
 ### ✅ Consolidation Phase 1 — Duplication cleanup
 
@@ -163,13 +163,13 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 | # | Issue | Detail |
 |---|-------|--------|
 | 1 | **Tilføj `Delay` til `BackupPlan`** | ✅ **DONE** | `BackupPlan.Delay` (int), `IThrottler` / `ThrottlerFactory` / `DelayThrottler`, implementeret i `BackupEngine` loop + threadet gennem hash pipeline og collision resolution, `--delay` CLI option i `BackupOptionsModel4`. |
-| 2 | **Delay/VerificationRetry/Timeout** — guarded men ikke implementeret | `Delay` ✅ **DONE** (se #1 — throttler). `VerificationRetryCount`, `VerificationRetryDelayMs`, `VerificationTimeoutMs`, `VerificationDeleteOnFailure` — **❌ WONTFIX — implementeres ikke.** Validering bør fjernes eller options ignoreres med warning. |
-| 3 | **MTP source path format** | ❌ **WONTFIX** — Core4 bruger `--source-path "mtp://Device/Path"`. `--source-device` hører til Core2 (archived). |
-| 4 | **`--backup-index` default** | ✅ **DONE** | `IBackupIndexWriter`/`JsonBackupIndexWriter` implementeret, T3 gate fjernet, catalog gemmes som `{dest}\.bmpt\{sessionId}\backup_catalog.json`. Default er `None` (som ønsket). |
-| 5 | **Core2 options i ApplicationServiceSetup** | ✅ **DONE** | Udkommenteret — dødt fra Core4's side, Core2 kan stadig bruge det. |
-| 6 | **SignalInterrupt cancel-wiring** | ✅ **DONE** | `Console.CancelKeyPress` fjernet fra `BackupConsoleCommand4`. Engine styrer selv cancellation via `SignalInterrupt` internt. |
-| 7 | **ConsolesPrinter progress** | Flyttet til Task 09 (Spectre Console). Skal bruge `AnsiConsole.Progress()` widget |
-| 8 | **No tests for backup4** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
+| 2 | **Fjern eller ignorer `VerificationRetry`/`Timeout` options** | ❌ **WONTFIX** — `VerificationRetryCount`, `VerificationRetryDelayMs`, `VerificationTimeoutMs`, `VerificationDeleteOnFailure` implementeres ikke. Validering bør fjernes eller options ignoreres med warning. |
+| 3 | **Fjern `--source-device`** | ❌ **WONTFIX** — Core4 bruger `--source-path "mtp://Device/Path"`. `--source-device` hører til Core2 (archived). |
+| 4 | **Sæt `--backup-index` default** | ✅ **DONE** | `IBackupIndexWriter`/`JsonBackupIndexWriter` implementeret, T3 gate fjernet, catalog gemmes som `{dest}\.bmpt\{sessionId}\backup_catalog.json`. Default er `None` (som ønsket). |
+| 5 | **Ryd op i Core2 options i `ApplicationServiceSetup`** | ✅ **DONE** | Udkommenteret — dødt fra Core4's side, Core2 kan stadig bruge det. |
+| 6 | **Kobl SignalInterrupt cancel-wiring** | ✅ **DONE** | `Console.CancelKeyPress` fjernet fra `BackupConsoleCommand4`. Engine styrer selv cancellation via `SignalInterrupt` internt. |
+| 7 | **Refaktorér ConsolesPrinter progress til `AnsiConsole.Progress()`** | Flyttet til Task 09 (Spectre Console). Skal bruge `AnsiConsole.Progress()` widget |
+| 8 | **Tilføj tests for backup4 BuildPlan enum-mapping** | Tilføj tests for `BackupConsoleCommand4Helpers.BuildPlan` enum-mapping |
 
 
 ### ✅ Høj prioritet — TOML config reader — DONE
@@ -180,13 +180,13 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 | 2 | Map TOML til `BackupPlan` | ✅ **DONE** | Overfører alle felter inkl. `MaxDegreeOfParallelism`, `EnableMetadata`, `EnableTimestampCorrection`, `ResumeBehavior`; string-to-enum parsers for alle værdier |
 | 3 | CLI integration | ✅ **DONE** | `BuildPlan()` loader config først som base, derefter `WasSupplied()` overrider eksplicitte CLI-args — CLI vinder altid |
 
-### Høj prioritet — Retry / Resilience (især MTP)
+### Høj prioritet — Implementer retry/resilience (især MTP)
 
 | # | Task | Detail |
 |---|------|--------|
-| 1 | Retry strategy | Exponential backoff for transient I/O failures (download, hash, move, sidecar write) |
-| 2 | MTP resilience | Gatekeeper timeout + retry ved COMException/disconnect mid-session |
-| 3 | Overvej | Genbrug Core2's Polly `BackupResiliencePipeline` eller implementer lightweight retry |
+| 1 | **Implementer exponential backoff** for transient I/O failures (download, hash, move, sidecar write) |
+| 2 | **Implementér MTP resilience** — Gatekeeper timeout + retry ved COMException/disconnect mid-session |
+| 3 | **Beslut** — Genbrug Core2's Polly `BackupResiliencePipeline` eller implementer lightweight retry |
 
 ### ✅ Spectre Console progress redesign — DONE
 
@@ -209,21 +209,21 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 |---|------|--------|
 | 1 | `ISidecarService` public? | ✅ **WONTFIX** — Forbliver `internal`. Core4 bruges internt via `BackupEngine.RunAsync()`. Ingen eksterne forbrugere har brug for direkte sidecar-generering. Sidecar-funktionalitet eksponeres via `BackupPlan.SidecarFormat` og kører automatisk i engine. |
 
-### Høj prioritet — Integration test
+### Høj prioritet — Skriv integration tests
 
 | # | Task |
 |---|------|
-| 1 | Full MTP traversal pipeline (gatekeeper → connector → traversal → content) |
-| 2 | BackupEngine end-to-end (filesystem → download → hash → sidecar → verify) |
+| 1 | **Test fuld MTP traversal pipeline** (gatekeeper → connector → traversal → content) |
+| 2 | **Test BackupEngine end-to-end** (filesystem → download → hash → sidecar → verify) |
 
-### Senere
+### Feature gates — implementér når behov opstår
 
 | # | Task | Feature gate |
 |---|------|-------------|
-| 1 | **`StopOnError=false`** — continue-on-error (per-item catch + Failed status findes, men `throw` på linje 485 forhindrer det) | Linje 81 (Tier 3) |
-| 2 | **`BackupIndexType.Database`** — SQLite catalog | Linje 84-85 (Tier 4) |
-| 3 | **`EnableMetadata`** — metadata extraction | Linje 77-78 (Tier 3) |
-| 4 | **`MaxDegreeOfParallelism`** — parallel execution | Linje 88-89 (Tier 4) |
+| 1 | **Implementér `StopOnError=false`** — per-item catch findes men `throw` på linje 485 forhindrer continue-on-error | Linje 81 (Tier 3) |
+| 2 | **Implementér `BackupIndexType.Database`** — SQLite catalog | Linje 84-85 (Tier 4) |
+| 3 | **Implementér `EnableMetadata`** — metadata extraction | Linje 77-78 (Tier 3) |
+| 4 | **Implementér `MaxDegreeOfParallelism`** — parallel execution | Linje 88-89 (Tier 4) |
 
 
 ### Low / Deferred

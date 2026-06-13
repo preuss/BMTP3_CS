@@ -26,7 +26,7 @@ public sealed class SidecarDocument
 
 	private SidecarSection GetOrCreateSection(string name, int weight = 100, string? comment = null)
 	{
-		if (_sections.TryGetValue(name, out SidecarSection? existing))
+		if(_sections.TryGetValue(name, out SidecarSection? existing))
 			return existing;
 
 		SidecarSection section = new(name, weight, comment);
