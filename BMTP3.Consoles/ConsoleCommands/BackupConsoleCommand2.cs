@@ -15,7 +15,7 @@ namespace BMTP3.Consoles.ConsoleCommands;
 
 public class BackupConsoleCommand2 : BaseConsoleCommand
 {
-	public BackupConsoleCommand2() : this("backup", "Perform backup", new GlobalOptionsModel(),
+	public BackupConsoleCommand2() : this("backup2", "Perform backup (legacy v2 engine)", new GlobalOptionsModel(),
 	new BackupOptionsModel())
 	{
 	}

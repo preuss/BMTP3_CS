@@ -189,6 +189,26 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public PostWriteVerificationType PostWriteVerification { get; set; } = PostWriteVerificationType.None;
 
+	// --------------------------------------------------
+	// HASH ALGORITHMS
+	// --------------------------------------------------
+
+	public static Option<List<string>> ComparisonHashOption { get; } = new("--comparison-hash")
+	{
+		Description = "Hash algorithms for collision comparison (e.g. '--comparison-hash sha256 --comparison-hash blake3-256'). Defaults to all supported algorithms.",
+		Arity = ArgumentArity.OneOrMore
+	};
+
+	public List<string> ComparisonHash { get; set; } = new();
+
+	public static Option<List<string>> VerificationHashOption { get; } = new("--verification-hash")
+	{
+		Description = "Hash algorithms for post-write verification (e.g. '--verification-hash sha512'). Defaults to all supported algorithms.",
+		Arity = ArgumentArity.OneOrMore
+	};
+
+	public List<string> VerificationHash { get; set; } = new();
+
 	protected override void DoAddValidators()
 	{
 	}

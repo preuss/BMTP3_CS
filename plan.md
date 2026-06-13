@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 11 Jun 2026** — Spectre Console progress redesign ✅. Custom columns/spinners kopieret til Consoles. Core/Core2/Core3 officielt archived/readonly.
+> **Opdateret 13 Jun 2026** — Core4 er default `backup` command. `--comparison-hash` / `--verification-hash` CLI options. Hash CLI options + backup rename.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -179,7 +179,10 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 | 3 | `--backup-index` default guard | ✅ |
 | 4 | Core2 `BackupEngineOptions` config | ✅ |
 | 5 | SignalInterrupt cancel-wiring | ✅ |
-| 6 | Tests for backup4 BuildPlan enum-mapping | ❌ |
+| 6 | Tests for backup4 BuildPlan enum-mapping | ✅ |
+| 7 | `--comparison-hash` / `--verification-hash` CLI options | ✅ |
+| 8 | Omdøb backup4 → backup, backup (Core2) → backup2 | ✅ |
+| 9 | BackupPlanBuilder defaults til ALLE hash-typer | ✅ |
 
 ### 2. Integrér sidste wrapper-holdere (småopgave)
 
@@ -218,11 +221,9 @@ Se `tasks/12-CrossConnectionResume.md` for detaljer.
 
 - `ISidecarService` public? → ✅ **WONTFIX** — Forbliver `internal`. Core4 bruges internt via `BackupEngine.RunAsync()`. Ingen eksterne forbrugere har brug for direkte sidecar-generering. Sidecar-funktionalitet eksponeres via `BackupPlan.SidecarFormat` og kører automatisk i engine.
 
-### 9. Senere (feature gates + default)
+### 9. Senere (feature gates)
 
 - `StopOnError=false` (T3), `BackupIndexType.Database` (T4), `EnableMetadata` (T3), `MaxDegreeOfParallelism` (T4)
-- Hash algorithm CLI options
-- Erstat Core2 `backup` med Core4 som default
 
 ### Arkitekturforskelle (ikke 1:1 — bevidste valg)
 
@@ -262,6 +263,10 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 | K-V26 | `Engine/Index/JsonBackupIndexWriter.cs:81` | `SessionId = plan.Name` — forkert felt, data bug ~~(Fail-Fast)~~ ✅ **FIXED** |
 | K-V32 | `Engine/Sidecar/SidecarRequest.cs` | Hele `SidecarRequest` er forkert designet: (1) ~~`SourceType` er `string` — skal være `BackupSourceType` enum.~~ ✅ **DONE** (2) ~~`SourcePersistentUniqueId` er MTP-specifik terminologi — omdøbes til `SourceId`~~ ✅ **DONE**; `PersistentUniqueId`-værdien hører i `MediaDeviceSourceDetails`. (3) `SourceDetails`/`SourceDetailsSectionName` er `IReadOnlyDictionary<string, string>` — u-type-sikker, aldrig sat (død kode). 🔒 **UDVIKLET til super-refactor**. (4) ~~`SourcePersistentUniqueId` sættes aldrig i `BackupEngine.cs:440-461` selvom `record.Item.Id` bærer værdien.~~ ✅ **DONE** — nu `SourceId = record.Item.Id`. |
 | K-V33 | `Traversal/MediaDeviceTraversal.cs:94` | `SourcePath = file.FullName` — WPD-sti (`\Internal Storage\...`) i stedet for `mtp://` URI. Lækker WPD-specifik formattering til generisk lag. ✅ **FIXED** — `BuildMtpSourcePath()` konstruerer `mtp://{device}/{drive}/{subPath}/{file}`. |
+| K-V34 | `BackupPlanBuilder.cs:29-30` | Default hash kun `SHA2_256` — bør være alle `HashAlgorithmType` values. ✅ **FIXED** — `Enum.GetValues<HashAlgorithmType>()` |
+| K-V35 | `BackupOptionsModel4.cs` | Mangler `--comparison-hash` / `--verification-hash` CLI options. ✅ **FIXED** — `Option<List<string>>` med `Arity = OneOrMore`. |
+| K-V36 | `BackupPlanBuilder.cs:121-192` | `ApplyCliOverrides` mangler hash CLI handling. ✅ **FIXED** — hash CLI overrider config/når angivet. |
+| K-V37 | `ConsolesProgram.cs:58-68` | Core4 hedder `backup4`, Core2 er default `backup`. ✅ **FIXED** — Core4 er nu `backup`, Core2 er `backup2`. |
 
 ## Ref
 

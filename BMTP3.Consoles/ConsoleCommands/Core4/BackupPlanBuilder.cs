@@ -26,8 +26,8 @@ internal sealed class BackupPlanBuilder
     public SidecarFormat SidecarFormat = SidecarFormat.Ini;
     public BackupIndexType BackupIndexType;
     public PostWriteVerificationType PostWriteVerification;
-    public List<HashAlgorithmType> ComparisonHashAlgorithmTypes = new() { HashAlgorithmType.SHA2_256 };
-    public List<HashAlgorithmType> VerificationHashAlgorithmTypes = new() { HashAlgorithmType.SHA2_256 };
+    public List<HashAlgorithmType> ComparisonHashAlgorithmTypes = new(Enum.GetValues<HashAlgorithmType>());
+    public List<HashAlgorithmType> VerificationHashAlgorithmTypes = new(Enum.GetValues<HashAlgorithmType>());
     public bool EnableMetadata;
     public bool EnableTimestampCorrection = true;
     public int Delay;
@@ -175,6 +175,12 @@ internal sealed class BackupPlanBuilder
 
         if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.PostWriteVerificationOption))
             PostWriteVerification = backupOptions.PostWriteVerification;
+
+        if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.ComparisonHashOption) && backupOptions.ComparisonHash?.Count > 0)
+            ComparisonHashAlgorithmTypes = ParseHashAlgorithms(backupOptions.ComparisonHash);
+
+        if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.VerificationHashOption) && backupOptions.VerificationHash?.Count > 0)
+            VerificationHashAlgorithmTypes = ParseHashAlgorithms(backupOptions.VerificationHash);
 
         if (OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.DelayOption))
             Delay = backupOptions.Delay;

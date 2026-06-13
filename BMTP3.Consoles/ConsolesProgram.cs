@@ -55,17 +55,17 @@ public class ConsolesProgram
 		GlobalOptionsModel globalOptions = new();
 		globalOptions.GetAllOptions().ForEach(option => rootCommand.Options.Add(option));
 
-		BackupConsoleCommand2 backupCommand = new() { ServiceProvider = serviceProvider };
+		BackupConsoleCommand4 backupCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(backupCommand);
+
+		BackupConsoleCommand2 backup2Command = new() { ServiceProvider = serviceProvider };
+		rootCommand.Subcommands.Add(backup2Command);
 
 		BackupTestConsoleCommand backupTestCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(backupTestCommand);
 
 		VerifyConsoleCommand verifyCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(verifyCommand);
-
-		BackupConsoleCommand4 backup4Command = new() { ServiceProvider = serviceProvider };
-		rootCommand.Subcommands.Add(backup4Command);
 
 		BackupConsoleCommand4ListDrives listSourcesCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(listSourcesCommand);

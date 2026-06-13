@@ -1,7 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 11 Jun 2026** — Spectre Console progress redesign ✅. Custom columns/spinners kopieret til Consoles. Core/Core2/Core3 officielt archived/readonly.
-> **#1 prioritet:** Spectre Console — Fix ConsolesServiceSetup wiring, progress redesign (Task 09), CLI cleanup (Task 02).
+> **Opdateret 13 Jun 2026** — Core4 er default `backup` command. `--comparison-hash` / `--verification-hash` CLI options.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -98,6 +97,10 @@
 | **K-V32(1): SidecarRequest SourceType string → enum** | ✅ **DONE** | `string` → `BackupSourceType`. `SidecarService.BuildDocument` + `BackupEngine` opdateret. |
 | **K-V32(2)(4): SourcePersistentUniqueId → SourceId + sat i engine** | ✅ **DONE** | Omdøbt til `SourceId`. `SourceId = record.Item.Id` tilføjet i `BackupEngine.cs:440-461`. |
 | **K-V33: WPD-leak — MediaDeviceTraversal.SourcePath** | ✅ **DONE** | `file.FullName` → `BuildMtpSourcePath()` konstruerer `mtp://{device}/{drive}/{subPath}/{file}`. |
+| **K-V34: Default hash kun SHA2_256** | ✅ **DONE** | `Enum.GetValues<HashAlgorithmType>()` — alle hash-typer som default. |
+| **K-V35: Mangler --comparison-hash / --verification-hash CLI options** | ✅ **DONE** | `Option<List<string>>` med `Arity = OneOrMore` i `BackupOptionsModel4`. |
+| **K-V36: ApplyCliOverrides mangler hash CLI** | ✅ **DONE** | Hash CLI overrider config i `ApplyCliOverrides()`. |
+| **K-V37: Core4 hedder backup4, Core2 er default backup** | ✅ **DONE** | Core4 er nu `backup`, Core2 er `backup2`. |
 
 ---
 
@@ -221,8 +224,6 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 | 2 | **`BackupIndexType.Database`** — SQLite catalog | Linje 84-85 (Tier 4) |
 | 3 | **`EnableMetadata`** — metadata extraction | Linje 77-78 (Tier 3) |
 | 4 | **`MaxDegreeOfParallelism`** — parallel execution | Linje 88-89 (Tier 4) |
-| 5 | Hash algorithm CLI options | Expose comparison/verification hash valg |
-| 6 | Erstat Core2 `backup` med Core4 som default | Når Core4 er feature-complete |
 
 
 ### Low / Deferred
