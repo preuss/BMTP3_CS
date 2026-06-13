@@ -19,6 +19,10 @@
     "InitConfig": {
       "commandName": "Project",
       "commandLineArgs": "init-config"
+    },
+    "Backup_iPad_Temp": {
+      "commandName": "Project",
+      "commandLineArgs": "backup4 -o C:\\temp\\target_ipad_test -s \"mtp://Apple iPad/Internal Storage\""
     }
   }
 }

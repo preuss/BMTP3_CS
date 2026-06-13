@@ -51,12 +51,13 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		int dirCount = 0;
 		int fileCount = 0;
 
-		await foreach ((IMediaFile file, string fileName, string relativeFilePath) in EnumerateRecursiveAsync(
-						  startDirectory,
-						  relativePrefix: "",
-						  recursive: request.Recursive,
-						  onDirectoryEntered: () => dirCount++,
-						  cancellationToken).ConfigureAwait(false))
+		await foreach((IMediaFile file, string fileName, string relativeFilePath) in EnumerateRecursiveAsync(
+				startDirectory,
+				relativePrefix: "",
+				recursive: request.Recursive,
+				onDirectoryEntered: () => dirCount++, cancellationToken
+			).ConfigureAwait(false)
+		)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
@@ -68,7 +69,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				FilesDiscovered = fileCount,
 			});
 
-			if (!GlobMatcher.IsIncluded(relativeFilePath, request.IncludePatterns, request.ExcludePatterns))
+			if(!GlobMatcher.IsIncluded(relativeFilePath, request.IncludePatterns, request.ExcludePatterns))
 				continue;
 
 			SourceTraversalItem item = await _gatekeeper.ExecuteAsync(_ =>
@@ -79,7 +80,9 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 
 				SourceTraversalItem result = new()
 				{
-					Id = file.FullName,
+					// WPD object ID — guaranteed unique within a single scan session.
+					// NOT stable across device reconnections (WPD may reassign IDs).
+					Id = file.Id,
 					SourcePath = file.FullName,
 					RelativeFilePath = relativeFilePath,
 					FileName = fileName,
@@ -120,7 +123,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 			return Task.FromResult((files, dirs));
 		}, cancellationToken).ConfigureAwait(false);
 
-		foreach ((IMediaFile file, string fileName) in files)
+		foreach((IMediaFile file, string fileName) in files)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
@@ -131,10 +134,10 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 			yield return (file, fileName, rel);
 		}
 
-		if (!recursive)
+		if(!recursive)
 			yield break;
 
-		foreach ((IMediaDirectory subDir, string subDirName) in dirs)
+		foreach((IMediaDirectory subDir, string subDirName) in dirs)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
@@ -144,7 +147,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				? subDirName
 				: $"{relativePrefix}\\{subDirName}";
 
-			await foreach ((IMediaFile file, string fileName, string rel) in EnumerateRecursiveAsync(
+			await foreach((IMediaFile file, string fileName, string rel) in EnumerateRecursiveAsync(
 					subDir,
 					subPrefix,
 					recursive,
@@ -170,15 +173,15 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		{
 			IMediaDirectory current = root;
 
-			foreach (string segment in segments)
+			foreach(string segment in segments)
 			{
-				if (string.IsNullOrWhiteSpace(segment))
+				if(string.IsNullOrWhiteSpace(segment))
 					continue;
 
 				IMediaDirectory? next = current.Directories
 					.FirstOrDefault(d => string.Equals(d.Name, segment, StringComparison.OrdinalIgnoreCase));
 
-				if (next == null)
+				if(next == null)
 				{
 					throw new DirectoryNotFoundException(
 						$"Directory '{segment}' not found in '{current.Name}' while navigating to '{subPath}'.");
