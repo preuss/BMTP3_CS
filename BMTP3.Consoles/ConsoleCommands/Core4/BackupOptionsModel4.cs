@@ -21,7 +21,13 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public static Option<string> NameOption { get; } = new("--name")
 	{
-		Description = "Friendly name for this backup job (e.g. 'iPhone Photos'). Used in logs and reports."
+		Description = "Friendly name for this backup job (e.g. 'iPhone Photos'). Used in logs and reports.",
+		Validators = { result =>
+			{
+				if(result.Tokens.Count > 0 && string.IsNullOrWhiteSpace(result.Tokens[0].Value))
+					result.AddError("--name cannot be empty or whitespace.");
+			}
+		}
 	};
 
 	public string? Name { get; set; }
