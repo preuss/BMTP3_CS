@@ -100,6 +100,12 @@
 
 ## Remaining Issues
 
+### ❌ SidecarRequest — forkert design (High)
+
+| # | Issue | Severity | Detail |
+|---|-------|----------|--------|
+| 1 | **SidecarRequest design — forkert type-safe + død kode** | **High** | `SourceType` er `string` (skal være `BackupSourceType`). `SourcePersistentUniqueId` er MTP-specifikt navn — top-level felt bør hedde `SourceId`; selve `PersistentUniqueId` hører i `MediaDeviceSourceDetails`. `SourceDetails`/`SourceDetailsSectionName` (`IReadOnlyDictionary<string, string>`) er u-type-sikker og **aldrig sat** (død kode i `SidecarService.BuildDocument`). `SourcePersistentUniqueId` sættes aldrig i `BackupEngine.cs:440-461` selvom `record.Item.Id` bærer værdien. Skal redesignes til proper records: `FileSystemSourceDetails` + `MediaDeviceSourceDetails`. |
+
 ### ✅ Consolidation Phase 1 — Duplication cleanup
 
 | # | Task | Status | Evidence |

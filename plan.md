@@ -248,6 +248,7 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 | K-V12 | `Engine/BackupEngine.cs:138` | ~~`new BackupJsonSummaryStore` + `new SessionStateService` direkte i engine (SOLID-D)~~ ✅ **WONTFIX** — `SessionStateService` kræver runtime-værdi (`metadataPath`), `BackupMemoryRecordRepository` er session-scoped. Korrekt som de er. |
 | K-V18 | `RenameCollisionResolver.cs:278` | `catch { return false }` i hash/size compare — silent swallow (Fail-Fast) |
 | K-V26 | `Engine/Index/JsonBackupIndexWriter.cs:81` | `SessionId = plan.Name` — forkert felt, data bug ~~(Fail-Fast)~~ ✅ **FIXED** |
+| K-V32 | `Engine/Sidecar/SidecarRequest.cs` | Hele `SidecarRequest` er forkert designet: (1) `SourceType` er `string` — skal være `BackupSourceType` enum. (2) `SourcePersistentUniqueId` er MTP-specifik terminologi på top-level — omdøbes til `SourceId`; `PersistentUniqueId`-værdien hører i `MediaDeviceSourceDetails`. (3) `SourceDetails`/`SourceDetailsSectionName` er `IReadOnlyDictionary<string, string>` — u-type-sikker, aldrig sat (død kode). (4) `SourcePersistentUniqueId` sættes aldrig i `BackupEngine.cs:440-461` selvom `record.Item.Id` bærer værdien. |
 
 ## Ref
 
