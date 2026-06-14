@@ -108,6 +108,26 @@
 | **BackupEngineHappyPathIntegrationTests — FakeBackupDriveInfo** | ✅ **DONE** | Implementerer `IBackupFileSystemDriveInfo`. |
 | **Core4 code smell analysis** | ✅ **DONE** | 25+ fund (H1-H7 High, M1-M14 Medium, L1-L11 Low). Se § Code Quality Audit. |
 | **Build: 0 errors, 353 tests** | ✅ **DONE** | 249 Core4 + 104 Consoles. |
+| **Progress display: Core4 scanning counts fixed, Consoles display rewritten** | ✅ **DONE** | `BackupScanner` bridger `SourceTraversalProgress` (var `null`). `FileSystemTraversal` tæller directories. `ProgressReport` har `DirectoriesTraversed` + `FilesDiscovered`. **Consoles display:** `BackupProgressDisplay` omskrevet — ingen polling loop, ingen lock/gate/version counter. `Progress<T>` skabes før `StartAsync` (null SyncContext). Se `§ Progress Display Bugs`. |
+
+---
+
+### ✅ Progress Display Bugs — `BackupProgressDisplay.cs` Rewritten
+
+| # | Problem | Fix |
+|---|---------|-----|
+| 1 | **Manuelt polling loop (100ms)** | **Fjernet.** Spectre.Console renderer selv. `engineRunAsync` awaites direkte. |
+| 2 | **`lock(gate)` + version counter** | **Fjernet.** `report` action opdaterer Spectre tasks direkte — thread-safe (Spectre bruger internal locks). |
+| 3 | **`Progress<T>` dispatcher via SyncContext fanget inde i StartAsync** | **Fjernet.** `Progress<T>` skabes før `StartAsync` (linje 67 i `BackupConsoleCommand4.cs`). Capturer `null` context → dispatcher via `ThreadPool.QueueUserWorkItem`. |
+| 4 | **`await Task.Delay(100)` fanger context** | **Fjernet.** Ingen polling loop — `await engineRunAsync(...)` awaites direkte i `StartAsync` callback. |
+| 5 | **`RemoveExpiredInactiveTasks` i polling loop** | **Omskrevet.** File task expiry tjekkes inline i `UpdateFileTasks` (timestamp vs. 5s threshold). `RemoveAllFileTasks` kører efter engine completion. |
+
+**Hvad ændret:**
+
+| Fil | Før | Nu |
+|-----|-----|-----|
+| `BackupProgressDisplay.cs` | 183 linjer, polling loop, lock/gate, version counter | ~120 linjer, event-driven, direkte task updates, timestamp-based expiry |
+| `BackupConsoleCommand4.cs` | `Progress<T>` inde i `StartAsync` callback | `Progress<T>` før `StartAsync` (null SyncContext), closure `reportAction` |
 
 ---
 

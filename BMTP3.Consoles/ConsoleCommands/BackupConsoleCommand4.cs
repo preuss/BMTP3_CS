@@ -64,23 +64,38 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 		BackupResult? result = null;
 
+		Action<ProgressReport>? reportAction = null;
+
+		IProgress<BackupProgress> progress = new Progress<BackupProgress>(p =>
+		{
+			Action<ProgressReport>? action = reportAction;
+			if(action is null)
+				return;
+
+			bool isScanning = p.CurrentPhase == BackupProgressPhase.Scanning;
+			int completed = isScanning ? 0 : p.FilesSucceeded + p.FilesSkipped + p.FilesFailed;
+			int total = isScanning ? 1 : p.TotalFilesSelected;
+			string phase = isScanning
+				? $"Scanning: {p.DirectoriesTraversed} dirs, {p.FilesDiscovered} files"
+				: $"Transferring: {completed}/{total} files";
+			BackupProgressItem? active = p.ActiveFiles.Count > 0 ? p.ActiveFiles[0] : null;
+			action(new ProgressReport(
+				completed,
+				total,
+				p.DirectoriesTraversed,
+				p.FilesDiscovered,
+				phase,
+				active?.RelativeFilePath,
+				active?.BytesProcessed ?? 0,
+				active?.Length ?? 0
+			));
+		});
+
 		try
 		{
 			await display.RunAsync(plan.Name, async report =>
 			{
-				Progress<BackupProgress> progress = new(p =>
-				{
-					BackupProgressItem? active = p.ActiveFiles.Count > 0 ? p.ActiveFiles[0] : null;
-					report(new ProgressReport(
-						p.FilesSucceeded + p.FilesSkipped + p.FilesFailed,
-						p.TotalFilesSelected,
-						p.CurrentPhase.ToString(),
-						active is not null ? active.RelativeFilePath : null,
-						active?.BytesProcessed ?? 0,
-						active?.Length ?? 0
-					));
-				});
-
+				reportAction = report;
 				result = await engine.RunAsync(plan, progress, cancellationToken);
 			});
 			ArgumentNullException.ThrowIfNull(result);

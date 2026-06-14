@@ -21,7 +21,7 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 		int dirCount = 0;
 		int fileCount = 0;
 
-		await foreach(FileInfo file in EnumerateFilesRecursiveAsync(rootDir, request.Recursive, cancellationToken))
+		await foreach(FileInfo file in EnumerateFilesRecursiveAsync(rootDir, request.Recursive, () => dirCount++, cancellationToken))
 		{
 			fileCount++;
 			progress?.Report(new SourceTraversalProgress
@@ -55,6 +55,7 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 	private static async IAsyncEnumerable<FileInfo> EnumerateFilesRecursiveAsync(
 		DirectoryInfo dir,
 		bool recursive,
+		Action? onDirectoryEntered,
 		[EnumeratorCancellation] CancellationToken cancellationToken)
 	{
 		foreach(FileInfo file in SafeGetFiles(dir))
@@ -69,8 +70,9 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 		foreach(DirectoryInfo subDir in SafeGetDirectories(dir))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
+			onDirectoryEntered?.Invoke();
 
-			await foreach(FileInfo file in EnumerateFilesRecursiveAsync(subDir, recursive, cancellationToken))
+			await foreach(FileInfo file in EnumerateFilesRecursiveAsync(subDir, recursive, onDirectoryEntered, cancellationToken))
 			{
 				yield return file;
 			}

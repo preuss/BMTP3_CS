@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 14 Jun 2026** — Core4 code smells analysed. SidecarRequest super-refactor complete. 353 tests (249 Core4 + 104 Consoles).
+> **Opdateret 14 Jun 2026** — Progress display rewritten. `BackupProgressDisplay.cs` er omskrevet: ingen polling loop, ingen lock/gate, ingen version counter. Event-driven med direkte Spectre task updates. `Progress<T>` skabes før `StartAsync` (null SyncContext). Engineer/scanner er uændret (standard `Progress<T>`).
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -172,6 +172,7 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **SourceType fjernet fra BackupSourceDetails:** Polymorfi bærer typen — redundant enum property.
 - [x] — **SidecarServiceTests + BackupEngineHappyPathIntegrationTests fixed:** Opdateret til polymorphic API. 353 tests total (249 Core4 + 104 Consoles).
 - [x] — **Core4 code smell analysis:** 25+ fund dokumenteret — H1-H7 (High), M1-M14 (Medium), L1-L11 (Low). Se `mangler.md § Code Quality Audit` for detaljer.
+- [x] — **Progress display rewrite:** `BackupProgressDisplay.cs` omskrevet — event-driven, direkte Spectre task updates, ingen polling/lock/gate. `BackupConsoleCommand4.cs` skaber `Progress<T>` før `StartAsync` (null SyncContext). `BackupScanner` bridger `SourceTraversalProgress` (var `null`). `ProgressReport` har `DirectoriesTraversed` + `FilesDiscovered`. Traversal tæller directories.
 
 ## Næste opgaver (prioriteret)
 

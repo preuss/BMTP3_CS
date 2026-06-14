@@ -23,6 +23,10 @@
     "Backup_iPad_Temp": {
       "commandName": "Project",
       "commandLineArgs": "backup4 -o C:\\temp\\target_ipad_test -s \"mtp://Apple iPad/Internal Storage\""
+    },
+    "Backup_iPhone_Temp": {
+      "commandName": "Project",
+      "commandLineArgs": "backup4 -o C:\\temp\\target_iphone_test -s \"mtp://Apple iPhone/Internal Storage\""
     }
   }
 }

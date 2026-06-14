@@ -16,9 +16,6 @@ internal sealed class BackupScanner : IBackupScanner
 		ArgumentNullException.ThrowIfNull(traversal);
 		ArgumentNullException.ThrowIfNull(request);
 
-		int dirCount = 0;
-		int fileCount = 0;
-
 		SourceTraversalRequest traversalRequest = new()
 		{
 			SourcePath = request.SourcePath,
@@ -28,16 +25,17 @@ internal sealed class BackupScanner : IBackupScanner
 			ExcludePatterns = request.ExcludePatterns,
 		};
 
-		await foreach(SourceTraversalItem sourceItem in traversal.TraverseAsync(traversalRequest, null, cancellationToken))
+		IProgress<SourceTraversalProgress>? traversalProgress = progress is not null
+			? new Progress<SourceTraversalProgress>(tp => progress.Report(new BackupScanProgress
+			{
+				DirectoriesTraversed = tp.DirectoriesTraversed,
+				FilesDiscovered = tp.FilesDiscovered,
+			}))
+			: null;
+
+		await foreach(SourceTraversalItem sourceItem in traversal.TraverseAsync(traversalRequest, traversalProgress, cancellationToken))
 		{
 			cancellationToken.ThrowIfCancellationRequested();
-
-			fileCount++;
-			progress?.Report(new BackupScanProgress
-			{
-				DirectoriesTraversed = dirCount,
-				FilesDiscovered = fileCount,
-			});
 
 			BackupItem item = new(sourceItem.Content)
 			{

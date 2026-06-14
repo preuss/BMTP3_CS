@@ -8,6 +8,8 @@ namespace BMTP3.Consoles.Progress;
 public sealed record ProgressReport(
 	int FilesCompleted,
 	int FilesTotal,
+	int DirectoriesTraversed,
+	int FilesDiscovered,
 	string Phase,
 	string? ActiveFileName,
 	long ActiveFileBytesRead,
@@ -46,136 +48,96 @@ public class BackupProgressDisplay
 			.StartAsync(async ctx =>
 			{
 				ProgressTask overallTask = ctx.AddTask($"[green]{jobName.EscapeMarkup()}[/]");
-
 				Dictionary<string, FileTaskState> fileTasks = new();
-				object gate = new();
 
-				ProgressReport? latestReport = null;
-				int latestReportVersion = 0;
-				int processedReportVersion = 0;
-
-				Task engineTask = engineRunAsync(report =>
+				await engineRunAsync(report =>
 				{
-					lock(gate)
-					{
-						latestReport = report;
-						latestReportVersion++;
-					}
+					UpdateOverall(overallTask, report);
+					UpdateFileTasks(ctx, fileTasks, report);
 
 					if(_debug)
 					{
-						Console.WriteLine(
+						System.Console.WriteLine(
 							$"DEBUG: {report.ActiveFileName} {report.ActiveFileBytesRead}/{report.ActiveFileBytesTotal} Files={report.FilesCompleted}/{report.FilesTotal}");
 					}
 				});
 
-				while(!engineTask.IsCompleted)
-				{
-					ProgressReport? reportToProcess = null;
-
-					lock(gate)
-					{
-						if(latestReportVersion != processedReportVersion)
-						{
-							reportToProcess = latestReport;
-							processedReportVersion = latestReportVersion;
-						}
-					}
-
-					if(reportToProcess != null)
-					{
-						UpdateOverall(overallTask, reportToProcess);
-						UpdateFileTasks(ctx, fileTasks, reportToProcess);
-					}
-
-					RemoveExpiredInactiveTasks(ctx, fileTasks);
-
-					await Task.Delay(100);
-				}
-
-				await engineTask;
+				RemoveAllFileTasks(ctx, fileTasks);
 				overallTask.Value = overallTask.MaxValue;
 			});
 	}
+
 	private static void UpdateOverall(ProgressTask overallTask, ProgressReport report)
 	{
 		overallTask.MaxValue = Math.Max(1, report.FilesTotal);
 		overallTask.Value = Math.Min(report.FilesCompleted, overallTask.MaxValue);
-		overallTask.Description = $"{report.Phase}: {report.FilesCompleted}/{report.FilesTotal} files";
+		overallTask.Description = report.Phase;
 	}
 
 	private static void UpdateFileTasks(
 		ProgressContext ctx,
 		Dictionary<string, FileTaskState> fileTasks,
-		ProgressReport report
-	)
+		ProgressReport report)
 	{
 		DateTime now = DateTime.UtcNow;
 
-		foreach(FileTaskState state in fileTasks.Values)
-		{
-			state.SeenInCurrentUpdate = false;
-		}
-
-		if(!string.IsNullOrWhiteSpace(report.ActiveFileName) 
+		// Add or update active file sub-task
+		if(!string.IsNullOrWhiteSpace(report.ActiveFileName)
 		   && report.ActiveFileBytesTotal > 0)
 		{
-			if(!fileTasks.TryGetValue(report.ActiveFileName, out FileTaskState? activeState))
+			if(!fileTasks.TryGetValue(report.ActiveFileName, out FileTaskState? state))
 			{
-				ProgressTask task = ctx.AddTask(report.ActiveFileName ?? "");
-				activeState = new FileTaskState(task);
-				fileTasks.Add(report.ActiveFileName, activeState);
+				state = new FileTaskState(ctx.AddTask(report.ActiveFileName));
+				fileTasks.Add(report.ActiveFileName, state);
 			}
 
-			activeState.SeenInCurrentUpdate = true;
-			activeState.BecameInactiveAt = null;
-
-			activeState.Task.Description = report.ActiveFileName ?? "";
-			activeState.Task.MaxValue = Math.Max(1, report.ActiveFileBytesTotal);
-			activeState.Task.Value = Math.Min(report.ActiveFileBytesRead, activeState.Task.MaxValue);
+			state.LastUpdateUtc = now;
+			state.Task.MaxValue = Math.Max(1, report.ActiveFileBytesTotal);
+			state.Task.Value = Math.Min(report.ActiveFileBytesRead, state.Task.MaxValue);
+			state.Task.Description = report.ActiveFileName;
 		}
 
-		foreach(FileTaskState state in fileTasks.Values)
+		// Remove tasks that haven't been updated in 5 seconds
+		if(fileTasks.Count == 0)
+			return;
+
+		List<string>? expired = null;
+		foreach(KeyValuePair<string, FileTaskState> kvp in fileTasks)
 		{
-			if(state.SeenInCurrentUpdate)
-				continue;
-
-			bool isComplete = state.Task.Value >= state.Task.MaxValue;
-
-			if(isComplete && state.BecameInactiveAt == null)
+			if((now - kvp.Value.LastUpdateUtc).TotalSeconds >= 5)
 			{
-				state.BecameInactiveAt = now;
+				(expired ??= new List<string>()).Add(kvp.Key);
+			}
+		}
+
+		if(expired is not null)
+		{
+			foreach(string key in expired)
+			{
+				ctx.RemoveTask(fileTasks[key].Task);
+				fileTasks.Remove(key);
 			}
 		}
 	}
 
-	private static void RemoveExpiredInactiveTasks(ProgressContext ctx, Dictionary<string, FileTaskState> fileTasks)
+	private static void RemoveAllFileTasks(ProgressContext ctx, Dictionary<string, FileTaskState> fileTasks)
 	{
-		DateTime now = DateTime.UtcNow;
-
-		List<string> expiredKeys = fileTasks
-			.Where(kvp =>
-				kvp.Value.BecameInactiveAt is not null &&
-				(now - kvp.Value.BecameInactiveAt.Value).TotalSeconds >= 5)
-			.Select(kvp => kvp.Key)
-			.ToList();
-
-		foreach(string key in expiredKeys)
+		foreach(FileTaskState state in fileTasks.Values)
 		{
-			ctx.RemoveTask(fileTasks[key].Task);
-			fileTasks.Remove(key);
+			ctx.RemoveTask(state.Task);
 		}
+		fileTasks.Clear();
 	}
 
 	private sealed class FileTaskState
 	{
 		public ProgressTask Task { get; }
-		public bool SeenInCurrentUpdate { get; set; }
-		public DateTime? BecameInactiveAt { get; set; }
+		public DateTime LastUpdateUtc { get; set; }
 
 		public FileTaskState(ProgressTask task)
 		{
 			Task = task;
+			LastUpdateUtc = DateTime.UtcNow;
 		}
 	}
 }
