@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 13 Jun 2026** — Core4 er default `backup` command. `--comparison-hash` / `--verification-hash` CLI options. Hash CLI options + backup rename.
+> **Opdateret 14 Jun 2026** — Core4 code smells analysed. SidecarRequest super-refactor complete. 353 tests (249 Core4 + 104 Consoles).
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -132,7 +132,7 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — `SourceTraversalItem`: `FileName` + `RelativePath` (begge `required`) — traversal leverer alt, `BackupScanner` mapper kun properties
 - [x] — `BackupScanner` renset: ingen `Path.*` kald, `Id = sourceItem.Id` i stedet for `relativePath`
 - [x] — `MtpUriParser` + `MtpUriParseResult` — parse `mtp://Device/Path`. 15 tests.
-- [x] — `IMtpGatekeeper` + `MtpGatekeeper` — `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests.
+- [x] — `IMtpGatekeeper` → `IMediaDeviceGatekeeper` — `Func<CancellationToken, Task<T>>`, `AcquireAsync(TimeSpan, ...)`, `ThrowIfDisposed`, `Interlocked` dispose. 9 tests.
 - [x] — `IMediaDeviceSession` erstattet af `ISession`/`IConnectedSource`/`IConnectedMediaDriveSource`. `MediaDeviceSession`/`IMediaDeviceSession` slettet.
 - [x] — **IFileStore redesign → `IBackupDriveInfo`** — `IBackupDriveInfo` (base), `IBackupFileSystemDriveInfo`, `IBackupMediaDriveInfo` (specialized). `BackupFileSystemDriveInfo` (fail-first med `IsReady` guard, `long` i stedet for `ulong?`). `BackupMediaDriveInfo` (`MediaDevice` + `MediaDriveInfo`, `Name.TrimStart('\\')` som `DriveName`). Omdøbt: `FileSystemFileStore` → `BackupFileSystemDriveInfo`, `MediaDeviceFileStore` → `BackupMediaDriveInfo`.)
 - [x] — **MTP test cleanup** — Fjernet 16 tests der kaldte `MediaDevice.GetDevices()` direkte (kræver real MTP device). Kun constructor null-check tests tilbage. Opgraderet til xunit.v3 3.2.2.
@@ -167,6 +167,11 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **Skip cleanup:** Temp-fil slettes ved `CollisionResolutionAction.Skip`.
 - [x] — **TOML config reader:** `BackupPlan4Config.cs` (nested model: Source/Destination/Collision/Metadata/Behavior/Execution), `BackupPlan4Loader.cs` (TOML via PascalToKebab, JSON via PropertyNameCaseInsensitive). `BuildPlan()` loader config først, derefter `WasSupplied()` overrider CLI-args.
 - [x] — **Consolidation Phase 1:** `OptionHelpers.WasSupplied<T>()` extracted to shared file; `EngineArgumentBuilder()` dead code deleted from `BackupConsoleCommand2.cs`; `FakeFileTransfer.cs` (empty, unused) deleted; `FakeGatekeeper` consolidated to single shared class in `Fakes/`. **0 errors, 249 tests.**
+- [x] — **SidecarRequest super-refactor:** Dictionary + section name fjernet. Polymorphic `BackupSourceDetails` abstract record med `MediaDeviceDriveSourceDetails` (MTP) og `FileSystemDriveSourceDetails` (FileSystem). `BackupRecord` fik `required BackupSourceDetails SourceDetails`. `SidecarService.BuildDocument` bruger `switch` på `SourceDetails`. `BackupEngine` pattern matcher `matchedDrive` én gang ved connection, sætter `SourceDetails` på alle records og sidecar.
+- [x] — **BackupSourceDetails + derived flyttet til Models/:** `Engine/BackupSourceDetails.cs` → `Models/BackupSourceDetails.cs`. `Engine/Sidecar/MediaDeviceDriveSourceDetails.cs` → `Models/MediaDeviceDriveSourceDetails.cs`. `Engine/Sidecar/FileSystemDriveSourceDetails.cs` → `Models/FileSystemDriveSourceDetails.cs`. Namespace: `BMTP3.Core4.Models`.
+- [x] — **SourceType fjernet fra BackupSourceDetails:** Polymorfi bærer typen — redundant enum property.
+- [x] — **SidecarServiceTests + BackupEngineHappyPathIntegrationTests fixed:** Opdateret til polymorphic API. 353 tests total (249 Core4 + 104 Consoles).
+- [x] — **Core4 code smell analysis:** 25+ fund dokumenteret — H1-H7 (High), M1-M14 (Medium), L1-L11 (Low). Se `mangler.md § Code Quality Audit` for detaljer.
 
 ## Næste opgaver (prioriteret)
 
@@ -234,7 +239,7 @@ Se `tasks/12-CrossConnectionResume.md` for detaljer.
 | State machines (JobStateMachine, ItemStateMachine) | ➡️ Inline status i record | State machines overkill for sekventielt flow |
 | ScannerGatherer / IFileScanner / IMediaFileScanner | ✅ Filesystem + MTP traversal | Begge dækket (`FileSystemTraversal` + `MediaDeviceTraversal`) |
 
-## Code Quality Audit (11 Jun 2026)
+## Code Quality Audit (14 Jun 2026)
 
 Fuld gennemgang af Consoles og Core4 mod SOLID, Clean Architecture, Fail-Fast, DRY, KISS, YAGNI.
 Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
@@ -249,24 +254,51 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 | C-V09 | `BackupConsoleCommand4.cs:61` | ~~`GetService<IBackupEngine>`~~ ✅ **DONE** — `GetRequiredService<T>()` for `IBackupEngine` og `ConsolesPrinter`. |
 | C-V25 | `BackupProgressDisplay.cs:100` | `MarkRemainingCompletedTasksAsInactive` — dead method ~~(YAGNI)~~ ✅ **FIXED** |
 
-### Core4 — kritiske fund (High)
+### Core4 — nye kritiske fund (High) — 14 Jun 2026
+
+| ID | Fil | Problem | Severity |
+|----|-----|---------|----------|
+| K-V38 | `SidecarRequest.cs:12` | `SourceType` er redundant — `SourceDetails` er polymorfisk, typen kan udledes via pattern match | **High** |
+| K-V39 | `BackupEngine.cs:287-288,369-370,492-493` | 3 identiske null-tjek på `required string` — compiler garanterer non-null. Uprofessionel kommentar ("Stupid Visual Studio...") | **High** |
+| K-V40 | `BackupEngine.cs:82-627` | `RunAsync` er ~545 linjer. `foreach` over `pendingRecords` (280-538) bør ekstraheres | **High** |
+| K-V41 | `SidecarDocument.cs:3`, `SidecarSection.cs:3`, `SidecarProperty.cs:3` | `public` men er interne implementeringsdetaljer — skal være `internal` | **High** |
+| K-V42 | `BackupEngine.cs:34,51` | `public sealed` med `internal` constructor — modsigelse. DI resolver via `IBackupEngine` | **High** |
+| K-V43 | `InternalsVisibleTo.cs:1-5` | 4 ubrugte `using` directives | **High** |
+| K-V44 | `Models/IContent.cs:2-4` | 3 ubrugte `using` directives | **High** |
+
+### Core4 — medium fund (14 Jun 2026)
 
 | ID | Fil | Problem |
 |----|-----|---------|
-| K-V01 | `Engine/Runner/BackupRunner.cs` | Hele filen er dead code — aldrig kaldt af engine ~~(YAGNI)~~ ✅ **FIXED** |
-| K-V03 | `Engine/Session/OldState/BackupSessionState.cs` | `OldState/` mappe — dead code ~~(YAGNI)~~ ✅ **FIXED** |
-| K-V07 | `Hashing/HashCalculator.cs` | Dead code + duplikerer algorithm-switch fra `StreamHashGenerator` ~~(YAGNI/DRY)~~ ✅ **FIXED** |
-| K-V09 | `RenameCollisionResolver` + `TargetPathResolver` | `NormalizeCustomRelativePath` kopieret 1:1 (DRY) |
-| K-V10 | `HashService` + `RenameCollisionResolver` | `ToHashType` switch kopieret 1:1 (DRY) |
-| K-V12 | `Engine/BackupEngine.cs:138` | ~~`new BackupJsonSummaryStore` + `new SessionStateService` direkte i engine (SOLID-D)~~ ✅ **WONTFIX** — `SessionStateService` kræver runtime-værdi (`metadataPath`), `BackupMemoryRecordRepository` er session-scoped. Korrekt som de er. |
-| K-V18 | `RenameCollisionResolver.cs:278` | `catch { return false }` i hash/size compare — silent swallow (Fail-Fast) |
-| K-V26 | `Engine/Index/JsonBackupIndexWriter.cs:81` | `SessionId = plan.Name` — forkert felt, data bug ~~(Fail-Fast)~~ ✅ **FIXED** |
-| K-V32 | `Engine/Sidecar/SidecarRequest.cs` | Hele `SidecarRequest` er forkert designet: (1) ~~`SourceType` er `string` — skal være `BackupSourceType` enum.~~ ✅ **DONE** (2) ~~`SourcePersistentUniqueId` er MTP-specifik terminologi — omdøbes til `SourceId`~~ ✅ **DONE**; `PersistentUniqueId`-værdien hører i `MediaDeviceSourceDetails`. (3) `SourceDetails`/`SourceDetailsSectionName` er `IReadOnlyDictionary<string, string>` — u-type-sikker, aldrig sat (død kode). 🔒 **UDVIKLET til super-refactor** — feltlister finaliseret i `docs/SIDECAR_FORMAT.md` og `tasks/13-SidecarRequest-SuperRefactor.md`. (4) ~~`SourcePersistentUniqueId` sættes aldrig i `BackupEngine.cs:440-461` selvom `record.Item.Id` bærer værdien.~~ ✅ **DONE** — nu `SourceId = record.Item.Id`. |
-| K-V33 | `Traversal/MediaDeviceTraversal.cs:94` | `SourcePath = file.FullName` — WPD-sti (`\Internal Storage\...`) i stedet for `mtp://` URI. Lækker WPD-specifik formattering til generisk lag. ✅ **FIXED** — `BuildMtpSourcePath()` konstruerer `mtp://{device}/{drive}/{subPath}/{file}`. |
-| K-V34 | `BackupPlanBuilder.cs:29-30` | Default hash kun `SHA2_256` — bør være alle `HashAlgorithmType` values. ✅ **FIXED** — `Enum.GetValues<HashAlgorithmType>()` |
-| K-V35 | `BackupOptionsModel4.cs` | Mangler `--comparison-hash` / `--verification-hash` CLI options. ✅ **FIXED** — `Option<List<string>>` med `Arity = OneOrMore`. |
-| K-V36 | `BackupPlanBuilder.cs:121-192` | `ApplyCliOverrides` mangler hash CLI handling. ✅ **FIXED** — hash CLI overrider config/når angivet. |
-| K-V37 | `ConsolesProgram.cs:58-68` | Core4 hedder `backup4`, Core2 er default `backup`. ✅ **FIXED** — Core4 er nu `backup`, Core2 er `backup2`. |
+| K-V45 | `BackupMediaDriveInfo.cs:37-38,101,111` | `DeviceName` == `FriendlyName` altid — redundant property |
+| K-V46 | `TempDirectoryHelper.cs:321` | `CleanupTempFiles` anden parameter altid `null` |
+| K-V47 | `FileContent.cs:96-98,111` | `CancellationToken` accepteres men anvendes ikke |
+| K-V48 | `BackupEngine.cs:135-136` | `.bmtp3` magic string bør være konstant |
+| K-V49 | `SidecarService.cs:29-36` | Sidecar file extensions som magic strings |
+| K-V50 | `BackupEngine.cs:114` | Parameter `cancellationToken` reassignes |
+| K-V51 | `BackupEngine.cs:103` | `_currentProgress` er lokal variabel med felt-præfiks |
+| K-V52 | `SourceTraversalFactory.cs:43-45` | `#pragma warning disable CA1416` for bred |
+| K-V53 | `BackupPlanValidator.cs:80` | `StopOnError=false` kaster `FeatureNotImplementedException` |
+| K-V54 | `RenameCollisionResolver.cs:286` + `HashService.cs:43` | `ToHashType` switch duplikeret |
+| K-V55 | `BackupEngine.cs:751` | Unødigt null-guard i loop |
+| K-V56 | `RenameCollisionResolver.cs:213,214,223` | 3 TODO-kommentarer i production |
+| K-V57 | `MediaDeviceWrapper.cs:48` | TODO i production |
+| K-V58 | `SignalInterruptEngine.cs:200` | TODO i production |
+
+### Core4 — low fund (14 Jun 2026)
+
+| ID | Fil | Problem |
+|----|-----|---------|
+| K-V59 | Flere filer | Exception messages mangler identifiers |
+| K-V60 | `SidecarRequest.cs:9` | `Format` bør hedde `SidecarFormat` |
+| K-V61 | `BackupEngine.cs:753` | `"mtp://"` magic string — bør være delt konstant |
+| K-V62 | `DriveCatalogEntry.cs:13` | `SourceType` mangler `required` |
+| K-V63 | `BackupSessionKeyFactory.cs:23` | `plan.SourcePath.Trim()` uden null-check |
+| K-V64 | `BackupEngine.cs` diverse | Verbose step-kommentarer, double blank lines |
+| K-V65 | `SidecarSection.cs:33-67` / `SidecarProperty.cs:8-24` | `WithProperty` overloads duplikerer `From` factories |
+| K-V66 | `JsonSidecarWriter.cs:36,40` | `OrdinalIgnoreCase` dictionary — inkonsistent med INI writer |
+| K-V67 | `RenameCollisionResolver.cs:51` | Double blank line |
+| K-V68 | `ServiceCollectionExtensions.cs:136-139` | `AddIfNotNull` helper med én caller
 
 ## Ref
 

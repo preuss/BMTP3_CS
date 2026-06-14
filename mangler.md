@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 13 Jun 2026** — Core4 er default `backup` command. `--comparison-hash` / `--verification-hash` CLI options.
+> **Opdateret 14 Jun 2026** — Core4 code smells analysed. SidecarRequest super-refactor complete. 353 tests (249 Core4 + 104 Consoles).
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -101,16 +101,23 @@
 | **K-V35: Mangler --comparison-hash / --verification-hash CLI options** | ✅ **DONE** | `Option<List<string>>` med `Arity = OneOrMore` i `BackupOptionsModel4`. |
 | **K-V36: ApplyCliOverrides mangler hash CLI** | ✅ **DONE** | Hash CLI overrider config i `ApplyCliOverrides()`. |
 | **K-V37: Core4 hedder backup4, Core2 er default backup** | ✅ **DONE** | Core4 er nu `backup`, Core2 er `backup2`. |
+| **SidecarRequest super-refactor: dictionary → polymorphic records** | ✅ **DONE** | `BackupSourceDetails` abstract record + `MediaDeviceDriveSourceDetails`/`FileSystemDriveSourceDetails`. `SidecarService.BuildDocument` bruger `switch`. |
+| **BackupSourceDetails + derived flyttet til Models/** | ✅ **DONE** | `Engine/` → `Models/`. Namespace `BMTP3.Core4.Models`. |
+| **SourceType fjernet fra BackupSourceDetails** | ✅ **DONE** | Polymorfi bærer typen — redundant enum property. |
+| **SidecarServiceTests opdateret til polymorphic API** | ✅ **DONE** | `WriteAsync_WithAllOptionalFields` + `SampleRequest` bruger typed records. |
+| **BackupEngineHappyPathIntegrationTests — FakeBackupDriveInfo** | ✅ **DONE** | Implementerer `IBackupFileSystemDriveInfo`. |
+| **Core4 code smell analysis** | ✅ **DONE** | 25+ fund (H1-H7 High, M1-M14 Medium, L1-L11 Low). Se § Code Quality Audit. |
+| **Build: 0 errors, 353 tests** | ✅ **DONE** | 249 Core4 + 104 Consoles. |
 
 ---
 
 ## Remaining Issues
 
-### ⭐ SIDECARREQUEST SUPER-REFACTOR — HØJESTE PRIORITET
+### ✅ SIDECARREQUEST SUPER-REFACTOR — DONE
 
-| # | Issue | Severity | Detail |
-|---|-------|----------|--------|
-| 1 | **Redesign `SidecarRequest`** — erstat utypet dictionary med proper typed records | **🔴 HIGHEST** | `SourceDetails` (`IReadOnlyDictionary<string, string>`) skal væk. Opret `MediaDeviceSourceDetails` + `FileSystemDriveSourceDetails` records. Opdater `SidecarService.BuildDocument` til at matche på type i stedet for sectionName/dictionary. Population i `BackupEngine` ved sidecar-konstruktion. Se `tasks/13-SidecarRequest-SuperRefactor.md`. Feltlister finaliseret — se `docs/SIDECAR_FORMAT.md`. |
+| # | Issue | Severity | Detail | Status |
+|---|-------|----------|--------|--------|
+| 1 | **Redesign `SidecarRequest`** — erstat utypet dictionary med proper typed records | ~~**🔴 HIGHEST**~~ | `SourceDetails` (`IReadOnlyDictionary<string, string>`) → polymorphic `BackupSourceDetails` med `MediaDeviceDriveSourceDetails`/`FileSystemDriveSourceDetails`. `SidecarService.BuildDocument` matcher på type. Population i `BackupEngine` ved connection (linje 166-192). | ✅ **DONE** |
 
 ### ❌ MTP Cross-Connection Resume — GenerateAlmostUniqueId ikke koblet ind
 
@@ -462,3 +469,34 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | K-V29 | `Engine/BackupEngine.cs` | 761–763 | KISS | Low | Sti-normalisering i `MatchDrive` udføres inde i `foreach`-løkken. Afhænger ikke af loop-variablen — bør hejses ud. |
 | K-V30 | `DependencyInjection/ServiceCollectionExtensions.cs` | 102–131 | KISS / SOLID-D | Medium | `IBackupEngine` registreres via håndskrevet factory-lambda der manuelt resolver alle afhængigheder. Tilføjelse/fjernelse af constructor-parameter kræver opdatering tre steder. |
 | K-V31 | `Engine/TimeStamp/Readers/QuickTimeTimestampReader.cs` | 7–8 | SOLID-D | Low | `QuickTimeMetadataHeaderTimestampReader` og `QuickTimeMovieHeaderTimestampReader` instantieres som private felter — ikke injicerbare. |
+| K-V38 | `Engine/Sidecar/SidecarRequest.cs` | 12 | DRY | **High** | `SourceType` er redundant — `SourceDetails` er polymorfisk, typen kan udledes via pattern match. |
+| K-V39 | `Engine/BackupEngine.cs` | 287–288, 369–370, 492–493 | YAGNI / KISS | **High** | 3 identiske null-tjek på `required string`. Kommentaren "Stupid Visual Studio thinks that..." er uprofessionel. |
+| K-V40 | `Engine/BackupEngine.cs` | 82–627 | SOLID-SRP | **High** | `RunAsync` er ~545 linjer. `foreach` over `pendingRecords` (280–538) bør ekstraheres. |
+| K-V41 | `Engine/Sidecar/Document/SidecarDocument.cs`, `SidecarSection.cs`, `SidecarProperty.cs` | 3 (alle) | Encapsulation | **High** | `public` men er interne implementeringsdetaljer i `Engine.Sidecar.Document` — skal være `internal`. |
+| K-V42 | `Engine/BackupEngine.cs` | 34, 51 | Consistency | **High** | `public sealed` med `internal` constructor — modsigelse. Bør være `internal sealed`. |
+| K-V43 | `InternalsVisibleTo.cs` | 1–5 | Dead code | **High** | 4 ubrugte `using` directives: `System.Collections.Generic`, `System.Linq`, `System.Text`, `System.Threading.Tasks`. |
+| K-V44 | `Models/IContent.cs` | 2–4 | Dead code | **High** | 3 ubrugte `using` directives: `System.Collections.Generic`, `System.Linq`, `System.Text`. |
+| K-V45 | `Storage/BackupMediaDriveInfo.cs` | 37–38, 101, 111 | DRY | Medium | `DeviceName` == `FriendlyName` altid — redundant property. |
+| K-V46 | `Engine/TempDirectoryHelper.cs` | 321 | YAGNI | Medium | `CleanupTempFiles` anden parameter `tempSidecarPath` altid `null`. |
+| K-V47 | `Models/FileContent.cs` | 96–98, 111 | Correctness | Medium | `CancellationToken` accepteres men anvendes ikke — dokumenteret som "not currently used". |
+| K-V48 | `Engine/BackupEngine.cs` | 135–136 | Magic string | Medium | `.bmtp3` hardcoded to gange — bør være `private const`. |
+| K-V49 | `Engine/Sidecar/SidecarService.cs` | 29–36 | Magic string | Medium | `.ini`, `.json`, `.sidecar` extensions hardcoded — bør være `private const`. |
+| K-V50 | `Engine/BackupEngine.cs` | 114 | Maintainability | Medium | Parameter `cancellationToken` reassignes til `linkedToken`. Brug separat variabel. |
+| K-V51 | `Engine/BackupEngine.cs` | 103 | Naming | Medium | `_currentProgress` bruger felt-præfiks men er lokal variabel. |
+| K-V52 | `Traversal/SourceTraversalFactory.cs` | 43–45 | Maintainability | Medium | `#pragma warning disable CA1416` bør scopes smallere. |
+| K-V53 | `Engine/Validation/BackupPlanValidator.cs` | 80 | Design | Medium | `StopOnError=false` kaster `FeatureNotImplementedException`. Implementér eller fjern. |
+| K-V54 | `Engine/Strategies/RenameCollisionResolver.cs` + `Engine/Hashing/HashService.cs` | 286 / 43 | DRY | Medium | `ToHashType` switch med 9 identiske cases i to klasser. |
+| K-V55 | `Engine/BackupEngine.cs` | 751 | YAGNI | Medium | `Guard.RequireNonNull(drive)` inde i foreach — unødigt per-iteration check. |
+| K-V56 | `Engine/Strategies/RenameCollisionResolver.cs` | 213, 214, 223 | Maintainability | Medium | 3 TODO-kommentarer i production code. |
+| K-V57 | `Devices/MediaDeviceWrapper.cs` | 48 | Maintainability | Medium | TODO-kommentar i production code. |
+| K-V58 | `SignalInterrupts/SignalInterruptEngine.cs` | 200 | Maintainability | Medium | TODO-kommentar i production code. |
+| K-V59 | Flere filer (`FileContent.cs`, `RenameCollisionResolver.cs`, `SourceConnector.cs`) | diverse | Maintainability | Low | Exception messages mangler identifiers — gør debugging sværere. |
+| K-V60 | `Engine/Sidecar/SidecarRequest.cs` | 9 | Naming | Low | `Format` bør hedde `SidecarFormat` for konsistens. |
+| K-V61 | `Engine/BackupEngine.cs` | 753 | Magic string | Low | `"mtp://"` hardcoded inline — bør være delt konstant. |
+| K-V62 | `Api/Models/DriveCatalogEntry.cs` | 13 | Consistency | Low | `SourceType` mangler `required` — alle andre properties har det. |
+| K-V63 | `Engine/Session/BackupSessionKeyFactory.cs` | 23 | Null safety | Low | `plan.SourcePath.Trim()` uden null-check. |
+| K-V64 | `Engine/BackupEngine.cs` | diverse | Cleanliness | Low | Verbose step-kommentarer, double blank lines. |
+| K-V65 | `Engine/Sidecar/Document/SidecarSection.cs` + `SidecarProperty.cs` | 33–67 / 8–24 | DRY | Low | `WithProperty` overloads duplikerer `SidecarProperty.From` factories. |
+| K-V66 | `Engine/Sidecar/Writers/JsonSidecarWriter.cs` | 36, 40 | Consistency | Low | `OrdinalIgnoreCase` dictionary — INI writer er case-sensitive. Bør matches. |
+| K-V67 | `Engine/Strategies/RenameCollisionResolver.cs` | 51 | Formatting | Low | Double blank line. |
+| K-V68 | `DependencyInjection/ServiceCollectionExtensions.cs` | 136–139 | KISS | Low | `AddIfNotNull` helper med kun én caller — inline hellere. |
