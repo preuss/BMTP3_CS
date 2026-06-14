@@ -4,7 +4,7 @@ using BMTP3.Core2.BackupNew.Api.Request.Enums;
 using BMTP3.Core2.BackupNew.Content;
 using BMTP3.Core2.BackupNew.Domain.Item;
 using BMTP3.Core2.BackupNew.Infrastructure.Traversal;
-using BMTP3.Core2.BackupNew.Utilities;
+using BMTP3.Common.Utilities;
 using MediaDevices;
 using Microsoft.Extensions.Logging;
 
