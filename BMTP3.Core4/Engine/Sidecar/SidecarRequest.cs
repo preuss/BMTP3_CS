@@ -1,5 +1,6 @@
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Hashing;
+using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Sidecar;
 
@@ -31,8 +32,6 @@ internal record SidecarRequest
 	// ---------- Hashes ----------
 	public IReadOnlyDictionary<HashType, string>? Hashes { get; init; }
 
-	// ---------- Source details (optional) ----------
-	// Section name: "SourceDevice" or "SourceDrive"
-	public string? SourceDetailsSectionName { get; init; }
-	public IReadOnlyDictionary<string, string>? SourceDetails { get; init; }
+	// ---------- Source details ----------
+	public required BackupSourceDetails SourceDetails { get; init; }
 }

@@ -1,6 +1,7 @@
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Sidecar;
 using BMTP3.Core4.Hashing;
+using BMTP3.Core4.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BMTP3.Core4.Tests.Engine.Sidecar;
@@ -104,11 +105,18 @@ public class SidecarServiceTests
 				[HashType.SHA3_512_FIPS202] = "fips202hash",
 				[HashType.BLAKE3_512] = "blake3hash",
 			},
-			SourceDetailsSectionName = "SourceDevice",
-			SourceDetails = new Dictionary<string, string>
+			SourceDetails = new MediaDeviceDriveSourceDetails
 			{
-				["DeviceName"] = "MyPhone",
-				["DeviceSerial"] = "ABC123",
+				DeviceId = "MTP:PHONE123",
+				Description = "Google Pixel 9",
+				FriendlyName = "MyPhone",
+				Manufacturer = "Google",
+				Model = "Pixel 9",
+				SerialNumber = "ABC123",
+				FirmwareVersion = "15.0",
+				DriveName = "Internal Storage",
+				VolumeLabel = "Phone",
+				DriveFormat = "FAT32",
 			},
 		};
 
@@ -119,8 +127,8 @@ public class SidecarServiceTests
 
 		string content = await File.ReadAllTextAsync(sidecarPath);
 		Assert.Contains("[SourceDevice]", content);
-		Assert.Contains("DeviceName=MyPhone", content);
-		Assert.Contains("DeviceSerial=ABC123", content);
+		Assert.Contains("FriendlyName=MyPhone", content);
+		Assert.Contains("SerialNumber=ABC123", content);
 		Assert.Contains("SHA3_512=fips202hash", content);
 		Assert.Contains("BLAKE3_512=blake3hash", content);
 	}
@@ -137,6 +145,12 @@ public class SidecarServiceTests
 		{
 			[HashType.SHA2_256] = "abc123",
 			[HashType.MD5_128] = "def456",
+		},
+		SourceDetails = new FileSystemDriveSourceDetails
+		{
+			DriveName = "D:",
+			VolumeLabel = "Photos",
+			DriveFormat = "NTFS",
 		},
 	};
 

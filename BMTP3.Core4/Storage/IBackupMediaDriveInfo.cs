@@ -19,4 +19,10 @@ internal interface IBackupMediaDriveInfo : IBackupDriveInfo
 	string Model { get; }
 
 	string SerialNumber { get; }
+
+	string FirmwareVersion { get; }
+
+	string VolumeLabel { get; }
+
+	string DriveFormat { get; }
 }

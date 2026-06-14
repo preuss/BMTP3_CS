@@ -1,5 +1,4 @@
 ﻿using BMTP3.Core4.Models.Enums;
-using System;
 
 namespace BMTP3.Core4.Models;
 
@@ -31,4 +30,9 @@ internal sealed record BackupRecord
 	/// Item-level metadata (hashes, timestamps, etc.) accumulated during processing.
 	/// </summary>
 	public ItemMetadata Metadata { get; } = new();
+
+	/// <summary>
+	/// Source-level details (device or drive info) common to all items in this job.
+	/// </summary>
+	public required BackupSourceDetails SourceDetails { get; init; }
 }

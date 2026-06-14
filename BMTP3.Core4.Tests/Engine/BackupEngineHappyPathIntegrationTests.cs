@@ -6,6 +6,7 @@ using BMTP3.Core4.Models;
 using BMTP3.Core4.Storage;
 using BMTP3.Core4.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.IO;
 
 namespace BMTP3.Core4.Tests.Engine;
 
@@ -131,7 +132,7 @@ public class BackupEngineHappyPathIntegrationTests
 		};
 	}
 
-	private sealed class FakeBackupDriveInfo : IBackupDriveInfo
+	private sealed class FakeBackupDriveInfo : IBackupFileSystemDriveInfo
 	{
 		public FakeBackupDriveInfo(string rootPath, string driveName)
 		{
@@ -148,5 +149,8 @@ public class BackupEngineHappyPathIntegrationTests
 		public string RootPath { get; }
 		public long TotalSize => 1024 * 1024 * 1024;
 		public long AvailableFreeSpace => 512 * 1024 * 1024;
+		public string VolumeLabel => DriveName;
+		public string DriveFormat => "NTFS";
+		public DriveType DriveType => DriveType.Fixed;
 	}
 }

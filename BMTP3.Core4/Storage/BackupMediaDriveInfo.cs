@@ -19,7 +19,10 @@ internal sealed class BackupMediaDriveInfo : IBackupMediaDriveInfo
 		string friendlyName,
 		string manufacturer,
 		string model,
-		string serialNumber
+		string serialNumber,
+		string firmwareVersion,
+		string volumeLabel,
+		string driveFormat
 	)
 	{
 		Id = id;
@@ -36,6 +39,9 @@ internal sealed class BackupMediaDriveInfo : IBackupMediaDriveInfo
 		Manufacturer = manufacturer;
 		Model = model;
 		SerialNumber = serialNumber;
+		FirmwareVersion = firmwareVersion;
+		VolumeLabel = volumeLabel;
+		DriveFormat = driveFormat;
 	}
 
 	public static BackupMediaDriveInfo FromDeviceAndDrive(IMediaDevice device, IMediaDrive drive)
@@ -60,7 +66,10 @@ internal sealed class BackupMediaDriveInfo : IBackupMediaDriveInfo
 			friendlyName: friendlyName,
 			manufacturer: device.Manufacturer,
 			model: device.Model,
-			serialNumber: device.SerialNumber
+			serialNumber: device.SerialNumber,
+			firmwareVersion: device.FirmwareVersion,
+			volumeLabel: drive.VolumeLabel,
+			driveFormat: drive.DriveFormat
 		);
 	}
 
@@ -106,6 +115,12 @@ internal sealed class BackupMediaDriveInfo : IBackupMediaDriveInfo
 	public string Model { get; }
 
 	public string SerialNumber { get; }
+
+	public string FirmwareVersion { get; }
+
+	public string VolumeLabel { get; }
+
+	public string DriveFormat { get; }
 
 	#endregion IBackupMediaDriveInfo_Specific
 

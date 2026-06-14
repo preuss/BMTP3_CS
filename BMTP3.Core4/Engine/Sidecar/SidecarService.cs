@@ -2,6 +2,7 @@ using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Sidecar.Document;
 using BMTP3.Core4.Engine.Sidecar.Writers;
 using BMTP3.Core4.Hashing;
+using BMTP3.Core4.Models;
 using Microsoft.Extensions.Logging;
 
 namespace BMTP3.Core4.Engine.Sidecar;
@@ -75,23 +76,32 @@ internal sealed class SidecarService : ISidecarService
 			.WithProperty("LastAccessDateTime", request.LastAccessDateTime);
 
 		// ------------------------------------------------------------
-		// [SourceDevice] or [SourceDrive] — only when SourceDetails exist
+		// [SourceDevice] or [SourceDrive] — polymorphic on SourceDetails type
 		// ------------------------------------------------------------
-		if(request.SourceDetails is { Count: > 0 } && request.SourceDetailsSectionName is not null)
+		switch(request.SourceDetails)
 		{
-			string? sectionComment = request.SourceDetailsSectionName switch
-			{
-				"SourceDevice" => "SourceDevice is used only when SourceType=MtpDevice. It contains device details for the MTP source.",
-				"SourceDrive" => "SourceDrive is used only when SourceType=Drive. It contains drive information.",
-				_ => null,
-			};
+			case MediaDeviceDriveSourceDetails m:
+				doc.WithSection("SourceDevice", weight: 20,
+					comment: "SourceDevice is used only when SourceType=MediaDevice. It contains device details for the MTP source, including drive fields at the bottom.")
+					.WithProperty("DeviceId", m.DeviceId)
+					.WithProperty("Description", m.Description)
+					.WithProperty("FriendlyName", m.FriendlyName)
+					.WithProperty("Manufacturer", m.Manufacturer)
+					.WithProperty("Model", m.Model)
+					.WithProperty("SerialNumber", m.SerialNumber)
+					.WithProperty("FirmwareVersion", m.FirmwareVersion)
+					.WithProperty("DriveName", m.DriveName)
+					.WithProperty("VolumeLabel", m.VolumeLabel)
+					.WithProperty("DriveFormat", m.DriveFormat);
+				break;
 
-			SidecarSection detailsSection = doc.WithSection(request.SourceDetailsSectionName, weight: 20, comment: sectionComment);
-
-			foreach(KeyValuePair<string, string> detail in request.SourceDetails)
-			{
-				detailsSection.WithProperty(detail.Key, detail.Value);
-			}
+			case FileSystemDriveSourceDetails f:
+				doc.WithSection("SourceDrive", weight: 20,
+					comment: "SourceDrive is used only when SourceType=FileSystem. It contains drive information.")
+					.WithProperty("DriveName", f.DriveName)
+					.WithProperty("VolumeLabel", f.VolumeLabel)
+					.WithProperty("DriveFormat", f.DriveFormat);
+				break;
 		}
 
 		// ------------------------------------------------------------
