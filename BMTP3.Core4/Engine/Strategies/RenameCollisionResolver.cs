@@ -227,7 +227,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 
 			foreach(HashAlgorithmType algorithmType in hashTypes)
 			{
-				HashType hashType = ToHashType(algorithmType);
+				HashType hashType = HashTypeMapper.ToHashType(algorithmType);
 
 				if(!candidateHashes.TryGetValue(hashType, out string? candidateHash))
 				{
@@ -283,5 +283,4 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 		}
 	}
 
-	private static HashType ToHashType(HashAlgorithmType algorithmType) => HashTypeMapper.ToHashType(algorithmType);
 }

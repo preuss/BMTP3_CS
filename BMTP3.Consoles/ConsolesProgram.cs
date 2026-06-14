@@ -3,7 +3,7 @@ using System.CommandLine.Help;
 using System.Text.RegularExpressions;
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.Startup.Configurations;
-using BMTP3.Consoles.Utilities;
+using BMTP3.Core2.BackupNew.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -194,7 +194,7 @@ public class ConsolesProgram
 			pathConverted = pathConverted.Replace('\\', '/');
 
 			bool actualMatch = dglob.IsMatch(pathConverted);
-			string regexPattern = GlobConverter.GlobToRegex(globPattern);
+			string regexPattern = GlobMatcher.GlobToRegex(globPattern);
 			Console.WriteLine("Regex Pattern: " + regexPattern);
 			Regex regex = new(regexPattern, RegexOptions.IgnoreCase);
 			actualMatch = regex.Match(pathConverted).Success;

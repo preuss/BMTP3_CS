@@ -26,7 +26,7 @@ internal sealed class HashService : IHashService
 	{
 		try
 		{
-			List<HashType> hashTypes = algorithms.Select(ToHashType).ToList();
+			List<HashType> hashTypes = algorithms.Select(HashTypeMapper.ToHashType).ToList();
 			await using Stream stream = await content.OpenReadAsync(cancellationToken);
 			return await _hashGenerator.ComputeHashesAsync(stream, hashTypes, progress, throttler, cancellationToken);
 		}
@@ -40,5 +40,4 @@ internal sealed class HashService : IHashService
 		}
 	}
 
-	private static HashType ToHashType(HashAlgorithmType a) => HashTypeMapper.ToHashType(a);
 }

@@ -1,14 +1,14 @@
+using BMTP3.Utilities;
 using System.Text.RegularExpressions;
-using BMTP3.Consoles.Utilities;
 
 namespace BMTP3.Consoles.Tests;
 
-public class GlobConverterTests
+public class GlobMatcherTests
 {
 	[Fact]
 	public void StarMatchesFilename()
 	{
-		string re = GlobConverter.GlobToRegex("*.txt");
+		string re = GlobMatcher.GlobToRegex("*.txt");
 		Assert.True(Regex.IsMatch("file.txt", re));
 		Assert.False(Regex.IsMatch("file.jpg", re));
 		Assert.False(Regex.IsMatch("sub/file.txt", re));
@@ -17,7 +17,7 @@ public class GlobConverterTests
 	[Fact]
 	public void RecursiveMatches()
 	{
-		string re = GlobConverter.GlobToRegex("**/*.txt");
+		string re = GlobMatcher.GlobToRegex("**/*.txt");
 		Assert.True(Regex.IsMatch("a/b/c.txt", re));
 		Assert.True(Regex.IsMatch("file.txt", re));
 	}
@@ -25,7 +25,7 @@ public class GlobConverterTests
 	[Fact]
 	public void SeparatorFlexibility()
 	{
-		string re = GlobConverter.GlobToRegex("sub/*.txt");
+		string re = GlobMatcher.GlobToRegex("sub/*.txt");
 		Assert.True(Regex.IsMatch(@"sub\\file.txt", re));
 		Assert.True(Regex.IsMatch("sub/file.txt", re));
 	}
@@ -33,7 +33,7 @@ public class GlobConverterTests
 	[Fact]
 	public void ExtglobAlternation()
 	{
-		string re = GlobConverter.GlobToRegex("@(foo|bar).txt");
+		string re = GlobMatcher.GlobToRegex("@(foo|bar).txt");
 		Assert.True(Regex.IsMatch("foo.txt", re));
 		Assert.True(Regex.IsMatch("bar.txt", re));
 		Assert.False(Regex.IsMatch("baz.txt", re));
@@ -42,7 +42,7 @@ public class GlobConverterTests
 	[Fact]
 	public void SuffixNegation()
 	{
-		string re = GlobConverter.GlobToRegex("*.!(jpg)");
+		string re = GlobMatcher.GlobToRegex("*.!(jpg)");
 		Assert.True(Regex.IsMatch("file.png", re));
 		Assert.False(Regex.IsMatch("file.jpg", re));
 	}
@@ -50,7 +50,7 @@ public class GlobConverterTests
 	[Fact]
 	public void GlobalNegation()
 	{
-		string re = GlobConverter.GlobToRegex("!(foo)");
+		string re = GlobMatcher.GlobToRegex("!(foo)");
 		Assert.True(Regex.IsMatch("bar", re));
 		Assert.False(Regex.IsMatch("foo", re));
 	}

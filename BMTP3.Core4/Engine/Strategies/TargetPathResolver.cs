@@ -64,23 +64,13 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 		PreparedMessageFormat prepared = new(_formatter, request.CustomPattern, values);
 
 		string relativePath = prepared.Format();
-		relativePath = NormalizeCustomRelativePath(relativePath);
+		relativePath = PathHelper.NormalizeCustomRelativePath(relativePath);
 
 		return Path.Combine(request.DestinationRoot, relativePath);
 	}
 
 	private static string NormalizeRelativeDirectoryPath(string? relativeDirectoryPath)
 	{
-		if(string.IsNullOrWhiteSpace(relativeDirectoryPath))
-		{
-			return string.Empty;
-		}
-
-		return relativeDirectoryPath
-			.Trim()
-			.Trim('/', '\\');
+		return PathHelper.NormalizeCustomRelativePath(relativeDirectoryPath, normalizeNull: true);
 	}
-
-	private static string NormalizeCustomRelativePath(string relativePath) =>
-		PathHelper.NormalizeCustomRelativePath(relativePath);
 }

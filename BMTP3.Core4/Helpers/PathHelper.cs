@@ -2,38 +2,72 @@ namespace BMTP3.Core4.Helpers;
 
 internal static class PathHelper
 {
-	public static string NormalizeCustomRelativePath(string relativePath)
+	/// <summary>
+	/// Normalizes a custom relative path into the internal path format.
+	///
+	/// Rules:
+	/// - Both '\' and '/' are accepted as input separators.
+	/// - Output uses <see cref="Path.DirectorySeparatorChar"/> as the internal separator.
+	/// - Leading and trailing separators are treated as input noise and removed.
+	/// - Empty path segments are removed.
+	/// - ':' is not allowed anywhere in the relative path.
+	/// - Parent traversal segments ("..") are not allowed.
+	///
+	/// Examples:
+	/// - "Folder/File.jpg" becomes "Folder\File.jpg" on Windows.
+	/// - "\Folder\File.jpg" becomes "Folder\File.jpg" on Windows.
+	/// - "/Folder/File.jpg" becomes "Folder\File.jpg" on Windows.
+	///
+	/// When <paramref name="normalizeNull"/> is <c>true</c>, <c>null</c> and whitespace-only
+	/// input returns <see cref="string.Empty"/> instead of throwing.
+	///
+	/// Other invalid input, such as paths containing ':' or parent traversal segments (".."),
+	/// always throws.
+	/// </summary>
+	public static string NormalizeCustomRelativePath(string? relativePath, bool normalizeNull = false)
 	{
-		if(string.IsNullOrWhiteSpace(relativePath))
+		if(normalizeNull && string.IsNullOrWhiteSpace(relativePath))
 		{
-			throw new InvalidOperationException("Relative path must not be null or empty.");
+			return string.Empty;
 		}
+
+		ArgumentException.ThrowIfNullOrWhiteSpace(relativePath);
+
+		char separator = Path.DirectorySeparatorChar;
 
 		string normalized = relativePath
 			.Trim()
-			.Replace('\\', Path.DirectorySeparatorChar)
-			.Replace('/', Path.DirectorySeparatorChar);
+			.Replace('\\', separator)
+			.Replace('/', separator);
 
-		// Block Windows drive rooted paths like C:\Temp\file.jpg
-		if(normalized.Length >= 2 && normalized[1] == ':')
+		// ':' is not valid inside this custom relative path format.
+		// This also rejects Windows drive prefixes such as "C:\Temp\File.jpg"
+		// and full custom URI strings such as "mtp://Device/Storage/File.jpg".
+		if(normalized.Contains(':'))
 		{
-			throw new InvalidOperationException("Relative path must not be an absolute path. Remove drive letter.");
+			throw new ArgumentException("Relative path must not contain ':'.", nameof(relativePath));
 		}
 
-		normalized = normalized.Trim(Path.DirectorySeparatorChar);
+		// Leading and trailing separators are treated as input noise.
+		// This preserves the previous behavior where "\Folder\File.jpg"
+		// and "/Folder/File.jpg" normalize to "Folder\File.jpg".
+		normalized = normalized.Trim(separator);
 
 		if(normalized.Length == 0)
 		{
-			throw new InvalidOperationException("Relative path consists only of directory separators.");
+			throw new ArgumentException("Relative path must contain at least one non-separator segment.", nameof(relativePath));
 		}
 
-		string[] parts = normalized.Split(Path.DirectorySeparatorChar, StringSplitOptions.RemoveEmptyEntries);
+		string[] parts = normalized.Split(separator, StringSplitOptions.RemoveEmptyEntries);
 
-		if(parts.Any(part => part == ".."))
+		foreach(string part in parts)
 		{
-			throw new InvalidOperationException("Relative path must not contain parent directory traversal.");
+			if(part == "..")
+			{
+				throw new ArgumentException("Relative path must not contain parent directory traversal.", nameof(relativePath));
+			}
 		}
 
-		return string.Join(Path.DirectorySeparatorChar, parts);
+		return string.Join(separator, parts);
 	}
 }

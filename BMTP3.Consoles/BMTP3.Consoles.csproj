@@ -8,13 +8,6 @@
     <Version>$(VersionPrefix)</Version>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="exifreader\ExifReader.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="exifreader\ExifReader.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="DotNet.Glob" Version="3.2.0-alpha.36" />

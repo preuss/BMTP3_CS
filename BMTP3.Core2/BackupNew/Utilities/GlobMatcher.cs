@@ -1,184 +1,396 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
 namespace BMTP3.Core2.BackupNew.Utilities;
 
 /// <summary>
-///     Converts glob patterns into compiled <see cref="Regex" /> instances and tests
-///     file paths against include/exclude pattern lists.
-///     Supported glob syntax (mirrors <c>GlobConverter</c> in BMTP3.Consoles):
-///     <list type="bullet">
-///         <item><c>*</c> — matches any characters except path separators</item>
-///         <item><c>?</c> — matches one character except path separators</item>
-///         <item><c>**</c> — matches zero or more directory segments</item>
-///         <item><c>[abc]</c> / <c>[a-z]</c> — character classes</item>
-///         <item><c>[!abc]</c> — negated character classes</item>
-///         <item><c>@(a|b)</c> — extglob: exactly one of the alternatives</item>
-///         <item><c>*(a|b)</c> — extglob: zero or more</item>
-///         <item><c>+(a|b)</c> — extglob: one or more</item>
-///         <item><c>?(a|b)</c> — extglob: zero or one</item>
-///         <item><c>!(pattern)</c> — global negation: anything that does NOT match pattern</item>
-///         <item><c>prefix.!(ext)</c> — suffix negation: exclude a specific extension</item>
-///     </list>
+/// v4.1: A utility class for matching file paths against glob patterns, supporting .gitignore-style semantics.
+/// Matches file-system-like paths against glob patterns.
+///
+/// Supported syntax:
+/// - *          : zero or more characters except path separators
+/// - ?          : exactly one character except path separators
+/// - **         : zero or more directory segments
+/// - [abc]      : character class
+/// - [a-z]      : character range
+/// - [!abc]     : negated character class
+/// - {a,b}      : simple brace expansion
+/// - @(a|b)     : exactly one alternative
+/// - *(a|b)     : zero or more repetitions
+/// - +(a|b)     : one or more repetitions
+/// - ?(a|b)     : zero or one repetition
+/// - !(pattern) : global negation
+/// - *.!(ext)   : suffix negation
+///
+/// Rules:
+/// - Matching is case-insensitive and culture-invariant.
+/// - Both '/' and '\' are treated as path separators.
+/// - This is a practical glob matcher, not a full Bash parser.
+/// - Nested brace expansion and complex nested extglobs are intentionally not supported.
+///
+/// Error handling:
+/// - Exclude evaluation fails closed: an error rejects the path.
+/// - Include evaluation is tolerant: an error skips the current pattern and continues.
 /// </summary>
-public static class GlobMatcher
+internal static class GlobMatcher
 {
 	private const string SeparatorRegex = @"[/\\]+";
 
-	private static readonly RegexOptions DefaultOptions =
-		RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled;
+	private static readonly RegexOptions DefaultRegexOptions =
+		RegexOptions.IgnoreCase |
+		RegexOptions.CultureInvariant |
+		RegexOptions.Compiled;
+
+	// A timeout reduces the risk of pathological regex execution consuming too much CPU.
+	private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(200);
+
+	// Use a case-insensitive comparer because matching itself is case-insensitive.
+	private static readonly ConcurrentDictionary<string, Regex> RegexCache =
+		new(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
-	///     Returns <c>true</c> when <paramref name="path" /> should be processed
-	///     given the supplied include and exclude pattern lists.
-	///     Rules (same as .gitignore-style semantics):
-	///     <list type="number">
-	///         <item>If <paramref name="excludePatterns" /> is non-empty and any pattern matches → exclude.</item>
-	///         <item>If <paramref name="includePatterns" /> is non-empty → include only when at least one pattern matches.</item>
-	///         <item>If both lists are empty → include everything.</item>
-	///     </list>
+	/// Returns <c>true</c> when <paramref name="path"/> should be processed
+	/// according to include and exclude patterns.
+	///
+	/// Rules:
+	/// 1. If any exclude pattern matches, the path is excluded.
+	/// 2. If an exclude pattern errors or times out, the path is excluded.
+	/// 3. If include patterns are provided, at least one non-blank, valid include pattern must match.
+	/// 4. If an include pattern errors or times out, it is ignored and evaluation continues.
+	/// 5. Blank include patterns are ignored.
+	/// 6. If no non-blank include patterns exist, the path is included by default.
 	/// </summary>
-	public static bool IsIncluded(string path, IEnumerable<string>? includePatterns,
+	public static bool IsIncluded(
+		string path,
+		IEnumerable<string>? includePatterns,
 		IEnumerable<string>? excludePatterns)
 	{
-		// Normalise separators so both / and \ work uniformly against patterns.
-		string normPath = path.Replace('\\', '/');
+		ArgumentNullException.ThrowIfNull(path);
 
-		if (excludePatterns != null)
+		string normalizedPath = NormalizePath(path);
+
+		// Exclude evaluation is fail-closed.
+		if(MatchesAnyNormalizedPath(normalizedPath, excludePatterns, failClosedOnError: true))
 		{
-			foreach (string pattern in excludePatterns)
-			{
-				if (string.IsNullOrWhiteSpace(pattern))
-				{
-					continue;
-				}
+			return false;
+		}
 
-				if (Matches(normPath, pattern))
-				{
-					return false;
-				}
+		if(includePatterns is null)
+		{
+			return true;
+		}
+
+		bool hasIncludePatterns = false;
+
+		foreach(string pattern in includePatterns)
+		{
+			if(string.IsNullOrWhiteSpace(pattern))
+			{
+				continue;
+			}
+
+			hasIncludePatterns = true;
+
+			MatchResult result = MatchNormalizedPath(normalizedPath, pattern);
+
+			if(result == MatchResult.Error)
+			{
+				// Ignore invalid or timed-out include patterns and continue evaluating
+				// the remaining include list. Inclusion is additive: one good match is enough.
+				continue;
+			}
+
+			if(result == MatchResult.Match)
+			{
+				return true;
 			}
 		}
 
-		if (includePatterns != null)
-		{
-			bool hasAny = false;
-			foreach (string pattern in includePatterns)
-			{
-				if (string.IsNullOrWhiteSpace(pattern))
-				{
-					continue;
-				}
+		return !hasIncludePatterns;
+	}
 
-				hasAny = true;
-				if (Matches(normPath, pattern))
-				{
-					return true;
-				}
+	/// <summary>
+	/// Returns <c>true</c> when <paramref name="path"/> matches <paramref name="pattern"/>.
+	///
+	/// If regex evaluation times out or regex construction fails, the method returns <c>false</c>.
+	/// </summary>
+	public static bool Matches(string path, string pattern)
+	{
+		ArgumentNullException.ThrowIfNull(path);
+		ArgumentException.ThrowIfNullOrWhiteSpace(pattern);
+
+		string normalizedPath = NormalizePath(path);
+		return MatchNormalizedPath(normalizedPath, pattern) == MatchResult.Match;
+	}
+
+	/// <summary>
+	/// Converts a glob pattern into an anchored regex pattern string.
+	/// </summary>
+	public static string GlobToRegex(string pattern)
+	{
+		ArgumentException.ThrowIfNullOrWhiteSpace(pattern);
+
+		string glob = NormalizePattern(pattern);
+		glob = ExpandSimpleBraces(glob);
+
+		if(TryBuildLeadingRecursiveRegex(glob, out string? regex))
+		{
+			return regex;
+		}
+
+		if(TryBuildGlobalNegationRegex(glob, out regex))
+		{
+			return regex;
+		}
+
+		if(TryBuildSuffixNegationRegex(glob, out regex))
+		{
+			return regex;
+		}
+
+		return ConvertCore(glob, anchor: true);
+	}
+
+	private static bool MatchesAnyNormalizedPath(
+		string normalizedPath,
+		IEnumerable<string>? patterns,
+		bool failClosedOnError)
+	{
+		if(patterns is null)
+		{
+			return false;
+		}
+
+		foreach(string pattern in patterns)
+		{
+			if(string.IsNullOrWhiteSpace(pattern))
+			{
+				continue;
 			}
 
-			if (hasAny)
+			MatchResult result = MatchNormalizedPath(normalizedPath, pattern);
+
+			if(result == MatchResult.Error)
 			{
-				return false; // had patterns but none matched
+				return failClosedOnError;
+			}
+
+			if(result == MatchResult.Match)
+			{
+				return true;
 			}
 		}
 
+		return false;
+	}
+
+	private static MatchResult MatchNormalizedPath(string normalizedPath, string pattern)
+	{
+		try
+		{
+			Regex regex = GetOrCreateRegex(pattern);
+
+			return regex.IsMatch(normalizedPath)
+				? MatchResult.Match
+				: MatchResult.NoMatch;
+		} catch(RegexMatchTimeoutException)
+		{
+			return MatchResult.Error;
+		} catch(ArgumentException)
+		{
+			return MatchResult.Error;
+		}
+	}
+
+	private static Regex GetOrCreateRegex(string pattern)
+	{
+		string normalizedPattern = NormalizePattern(pattern);
+		return RegexCache.GetOrAdd(normalizedPattern, CreateRegex);
+	}
+
+	private static Regex CreateRegex(string normalizedPattern)
+	{
+		string regexPattern = GlobToRegex(normalizedPattern);
+		return new Regex(regexPattern, DefaultRegexOptions, RegexTimeout);
+	}
+
+	private static string NormalizePath(string path)
+	{
+		return path.Replace('\\', '/');
+	}
+
+	private static string NormalizePattern(string pattern)
+	{
+		return pattern.Replace('\\', '/');
+	}
+
+	/// <summary>
+	/// Expands simple brace expressions like "{a,b,c}" into "@(a|b|c)".
+	/// This intentionally supports only flat, comma-separated alternatives.
+	/// </summary>
+	private static string ExpandSimpleBraces(string glob)
+	{
+		return Regex.Replace(
+			glob,
+			@"\{([^{},]+(?:,[^{}]+)+)\}",
+			match =>
+			{
+				string[] alternatives = match.Groups[1].Value
+					.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+				return "@(" + string.Join("|", alternatives) + ")";
+			});
+	}
+
+	/// <summary>
+	/// Handles the special case where the pattern starts with "**/".
+	/// This should match both nested paths and files directly at the root.
+	/// </summary>
+	private static bool TryBuildLeadingRecursiveRegex(string glob, out string? regex)
+	{
+		regex = null;
+
+		if(!glob.StartsWith("**/", StringComparison.Ordinal))
+		{
+			return false;
+		}
+
+		string remainder = glob.Substring(3);
+		regex = "^(?:.*(?:/|\\\\))?" + ConvertCore(remainder, anchor: false) + "$";
 		return true;
 	}
 
 	/// <summary>
-	///     Tests whether <paramref name="path" /> matches a single glob <paramref name="pattern" />.
+	/// Handles global negation like "!(pattern)".
 	/// </summary>
-	public static bool Matches(string path, string pattern)
+	private static bool TryBuildGlobalNegationRegex(string glob, out string? regex)
 	{
-		string regexStr = GlobToRegex(pattern);
-		return Regex.IsMatch(path, regexStr, DefaultOptions);
+		regex = null;
+
+		if(!glob.StartsWith("!(", StringComparison.Ordinal) || !glob.EndsWith(')'))
+		{
+			return false;
+		}
+
+		int end = FindMatchingParenthesis(glob, 1);
+		if(end != glob.Length - 1)
+		{
+			return false;
+		}
+
+		string positivePattern = glob.Substring(2, glob.Length - 3);
+		string positiveRegex = ConvertCore(positivePattern, anchor: false);
+
+		regex = $"^(?!(?:{positiveRegex})$).*$";
+		return true;
 	}
 
 	/// <summary>
-	///     Converts a glob pattern string into its equivalent regular-expression string.
-	///     The resulting pattern is anchored (<c>^...$</c>) and case-insensitive by default
-	///     when used via <see cref="Matches" />.
+	/// Handles suffix negation like "*.!(jpg)".
 	/// </summary>
-	public static string GlobToRegex(string globPattern)
+	private static bool TryBuildSuffixNegationRegex(string glob, out string? regex)
 	{
-		// Special-case: pattern starting with extglob alternation like @(a|b)rest
-		if (globPattern.StartsWith("@(") && globPattern.Contains(')'))
+		regex = null;
+
+		int negationStart = glob.LastIndexOf("!(", StringComparison.Ordinal);
+		if(negationStart <= 0 || !glob.EndsWith(')'))
 		{
-			int end = globPattern.IndexOf(')');
-			if (end > 2)
-			{
-				string inner = globPattern.Substring(2, end - 2);
-				string remainder = globPattern.Substring(end + 1);
-				string remRegex = ConvertCore(remainder, true);
-				return $"^({inner}){remRegex}$";
-			}
+			return false;
 		}
 
-		// Special-case: leading **/ should allow zero or more directory segments
-		// including files directly at root (no separator required).
-		if (globPattern.StartsWith("**/") || globPattern.StartsWith("**\\"))
+		int openParenIndex = negationStart + 1;
+		int negationEnd = FindMatchingParenthesis(glob, openParenIndex);
+
+		if(negationEnd != glob.Length - 1)
 		{
-			string remainder = globPattern.Substring(3);
-			string remRegex = ConvertCore(remainder, true);
-			return "^(?:.*(?:/|\\\\))?" + remRegex + "$";
+			return false;
 		}
 
-		// Global negation: !(pattern)
-		if (globPattern.StartsWith("!(") && globPattern.EndsWith(')'))
-		{
-			string positivePattern = globPattern.Substring(2, globPattern.Length - 3);
-			string positiveRegex = ConvertCore(positivePattern, true).Replace("\\|", "|");
-			return $"^(?!(?:{positiveRegex})$).*$";
-		}
+		string prefixGlob = glob.Substring(0, negationStart);
+		string negatedSuffixGlob = glob.Substring(negationStart + 2, negationEnd - (negationStart + 2));
 
-		// Extended suffix negation: *.!(ext)
-		if (globPattern.Contains("!(") && globPattern.EndsWith(')'))
-		{
-			int negStart = globPattern.LastIndexOf("!(");
-			int negEnd = globPattern.LastIndexOf(')');
+		string prefixRegex = ConvertCore(prefixGlob, anchor: false);
+		string negatedSuffixRegex = ConvertCore(negatedSuffixGlob, anchor: false);
 
-			if (negStart > 0 && negEnd == globPattern.Length - 1)
-			{
-				string negSuffix = globPattern.Substring(negStart + 2, negEnd - (negStart + 2));
-				string negRegex = Regex.Escape(negSuffix).Replace(@"\*", ".*").Replace(@"\?", ".").Replace("\\|", "|");
-				string prefixGlob = globPattern.Substring(0, negStart);
-				string prefixRegex = ConvertCore(prefixGlob, true);
-				return $"^{prefixRegex}(?!(?:{negRegex})$)(.*)$";
-			}
-		}
-
-		return ConvertCore(globPattern, false);
+		regex = $"^{prefixRegex}(?!(?:{negatedSuffixRegex})$).*$";
+		return true;
 	}
 
-	private static string ConvertCore(string glob, bool ignoreAnchors)
+	/// <summary>
+	/// Converts the core glob syntax into regex syntax.
+	/// </summary>
+	private static string ConvertCore(string glob, bool anchor)
 	{
-		string r = Regex.Escape(glob);
+		string regex = Regex.Escape(glob);
 
-		// Restore character classes [ ] and convert negation [!...] → [^...]
-		r = r.Replace(@"\[", "[").Replace(@"\]", "]");
-		r = Regex.Replace(r, @"\[!(.+?)\]", "[^$1]");
+		// Restore character classes and convert glob-style negation.
+		regex = regex.Replace(@"\[", "[").Replace(@"\]", "]");
+		regex = Regex.Replace(regex, @"\[!(.+?)\]", "[^$1]");
 
-		// Extglob operators — unescape | inside groups so alternation works
-		r = Regex.Replace(r, @"\\\*\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})*");
-		r = Regex.Replace(r, @"@\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})");
-		r = Regex.Replace(r, @"\\\+\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})+");
-		r = Regex.Replace(r, @"\\\?\\\((.+?)\\\)", m => $"({m.Groups[1].Value.Replace("\\|", "|")})?");
+		// Convert practical extglobs.
+		regex = Regex.Replace(regex, @"\\\*\\\((.+?)\\\)", m => $"(?:{m.Groups[1].Value.Replace(@"\|", "|")})*");
+		regex = Regex.Replace(regex, @"@\\\((.+?)\\\)", m => $"(?:{m.Groups[1].Value.Replace(@"\|", "|")})");
+		regex = Regex.Replace(regex, @"\\\+\\\((.+?)\\\)", m => $"(?:{m.Groups[1].Value.Replace(@"\|", "|")})+");
+		regex = Regex.Replace(regex, @"\\\?\\\((.+?)\\\)", m => $"(?:{m.Groups[1].Value.Replace(@"\|", "|")})?");
 
-		// Literal path separators → flexible separator regex
-		r = Regex.Replace(r, @"\\{2}", SeparatorRegex); // escaped backslash
-		r = r.Replace("/", SeparatorRegex); // forward slash
+		// Convert literal path separators into a separator-tolerant regex.
+		regex = Regex.Replace(regex, @"\\{2}", SeparatorRegex);
+		regex = regex.Replace("/", SeparatorRegex);
 
-		// **/ → zero-or-more directory segments
-		string recursiveMatcher = $@"((?:[^/\\]*{SeparatorRegex})*)";
-		r = Regex.Replace(r, @"\*\*" + SeparatorRegex, recursiveMatcher);
+		// Convert recursive directory matching.
+		string recursiveDirectoryMatcher = $@"(?:[^/\\]*{SeparatorRegex})*";
+		regex = Regex.Replace(regex, @"\*\*" + SeparatorRegex, recursiveDirectoryMatcher);
 
-		// ** (not followed by separator) → .*
-		r = r.Replace(@"\*\*", ".*");
+		// Convert remaining recursive wildcards.
+		regex = regex.Replace(@"\*\*", ".*");
 
-		// * → [^/\\]*   ? → [^/\\]?
-		r = r.Replace(@"\*", @"[^/\\]*");
-		r = r.Replace(@"\?", @"[^/\\]?");
+		// Convert standard wildcards.
+		regex = regex.Replace(@"\*", @"[^/\\]*");
 
-		return ignoreAnchors ? r : $"^{r}$";
+		// '?' means exactly one non-separator character.
+		regex = regex.Replace(@"\?", @"[^/\\]");
+
+		return anchor ? $"^{regex}$" : regex;
+	}
+
+	/// <summary>
+	/// Finds the matching closing parenthesis for the opening parenthesis at <paramref name="openIndex"/>.
+	/// Returns -1 if no valid match exists.
+	/// </summary>
+	private static int FindMatchingParenthesis(string value, int openIndex)
+	{
+		if(openIndex < 0 || openIndex >= value.Length || value[openIndex] != '(')
+		{
+			return -1;
+		}
+
+		int depth = 0;
+
+		for(int i = openIndex; i < value.Length; i++)
+		{
+			char c = value[i];
+
+			if(c == '(')
+			{
+				depth++;
+			} else if(c == ')')
+			{
+				depth--;
+
+				if(depth == 0)
+				{
+					return i;
+				}
+			}
+		}
+
+		return -1;
+	}
+
+	private enum MatchResult
+	{
+		NoMatch = 0,
+		Match = 1,
+		Error = 2
 	}
 }
