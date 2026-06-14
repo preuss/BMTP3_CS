@@ -35,7 +35,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 	private GlobalOptionsModel GlobalOptions { get; }
 	private BackupOptionsModel4 BackupOptions { get; }
-	public IServiceProvider? ServiceProvider { get; init; }
+	public required IServiceProvider ServiceProvider { get; init; }
 
 	protected override async Task<int> DoExecuteAsync(
 		ParseResult parseResult,

@@ -55,11 +55,8 @@ public class ConsolesProgram
 		GlobalOptionsModel globalOptions = new();
 		globalOptions.GetAllOptions().ForEach(option => rootCommand.Options.Add(option));
 
-		BackupConsoleCommand4 backupCommand = new() { ServiceProvider = serviceProvider };
-		rootCommand.Subcommands.Add(backupCommand);
-
-		BackupConsoleCommand2 backup2Command = new() { ServiceProvider = serviceProvider };
-		rootCommand.Subcommands.Add(backup2Command);
+		BackupConsoleCommand2 backupCommand2 = new() { ServiceProvider = serviceProvider };
+		rootCommand.Subcommands.Add(backupCommand2);
 
 		BackupTestConsoleCommand backupTestCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(backupTestCommand);
@@ -67,15 +64,18 @@ public class ConsolesProgram
 		VerifyConsoleCommand verifyCommand = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(verifyCommand);
 
-		BackupConsoleCommand4ListDrives listSourcesCommand = new() { ServiceProvider = serviceProvider };
-		rootCommand.Subcommands.Add(listSourcesCommand);
+		// Command 4 - Newest version with improved options and features
+		BackupConsoleCommand4 backupCommand4 = new() { ServiceProvider = serviceProvider };
+		rootCommand.Subcommands.Add(backupCommand4);
 
-		BackupConsoleCommand4InitConfig initConfigCommand = new();
-		rootCommand.Subcommands.Add(initConfigCommand);
+		BackupConsoleCommand4ListDrives listDrivesCommand4 = new() { ServiceProvider = serviceProvider };
+		rootCommand.Subcommands.Add(listDrivesCommand4);
+
+		BackupConsoleCommand4InitConfig initConfigCommand4 = new();
+		rootCommand.Subcommands.Add(initConfigCommand4);
 
 		//ReplaceHelp(rootCommand);
-
-
+		
 		ParseResult parseResult = rootCommand.Parse(args);
 		return await parseResult.InvokeAsync();
 	}
