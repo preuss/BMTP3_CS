@@ -1,55 +1,44 @@
 using System.CommandLine;
+using BMTP3.Consoles.ConsoleCommands.Core4;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
-public class BackupConsoleCommand4InitConfig : Command
+public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 {
 	private static readonly HashSet<string> SupportedExtensions = [".toml", ".json", ".json5"];
 
-	public static readonly Option<FileInfo> OutputOption = new("--output", "-o")
-	{
-		Description = "Output path: directory or filename. Extension determines format: .toml, .json, or .json5. Default: default.toml.",
-		Arity = ArgumentArity.ZeroOrOne
-	};
+	public BackupConsoleCommand4InitConfig() : this(null)
+	{ }
 
-	public BackupConsoleCommand4InitConfig() : base("init-config", "Generate a default backup configuration file.")
+	private BackupConsoleCommand4InitConfig(
+		InitConfigOptionsModel? initConfigOptions
+	) : base("init-config", "Generate a default backup configuration file.", initConfigOptions ?? new InitConfigOptionsModel())
 	{
-		Options.Add(OutputOption);
-		this.SetAction(Execute);
+		InitConfigOptions = initConfigOptions ?? new InitConfigOptionsModel();
 	}
 
-	private static string ResolvePath(FileInfo? output)
+	private InitConfigOptionsModel InitConfigOptions { get; }
+
+	public IServiceProvider? ServiceProvider { get; init; }
+
+	protected override async Task<int> DoExecuteAsync(
+		ParseResult parseResult,
+		CancellationToken cancellationToken
+	)
 	{
-		if (output == null)
-			return Path.Combine(Directory.GetCurrentDirectory(), "default.toml");
-
-		if (output.FullName.EndsWith(Path.DirectorySeparatorChar) || Directory.Exists(output.FullName))
-		{
-			Directory.CreateDirectory(output.FullName);
-			return Path.Combine(output.FullName, "default.toml");
-		}
-
-		string? dir = Path.GetDirectoryName(output.FullName);
-		if (!string.IsNullOrEmpty(dir))
-			Directory.CreateDirectory(dir);
-		return output.FullName;
-	}
-
-	private int Execute(ParseResult parseResult)
-	{
-		FileInfo? output = parseResult.GetValue(OutputOption);
+		FileInfo? output = InitConfigOptions.Output;
 		string path = ResolvePath(output);
 
 		string ext = Path.GetExtension(path).ToLowerInvariant();
 		if (!SupportedExtensions.Contains(ext))
 		{
-			Console.Error.WriteLine($"Unsupported format '{ext}'. Supported: .toml, .json, .json5");
+			await Console.Error.WriteLineAsync($"Unsupported format '{ext}'. Supported: .toml, .json, .json5");
 			return 2;
 		}
 
 		if (File.Exists(path))
 		{
-			Console.Error.WriteLine($"'{path}' already exists. Delete it, use a different output path, or choose a different config filename.");
+			await Console.Error.WriteLineAsync($"'{path}' already exists. Delete it, use a different output path, or choose a different config filename.");
 			return 1;
 		}
 
@@ -61,8 +50,8 @@ public class BackupConsoleCommand4InitConfig : Command
 			_ => throw new InvalidOperationException("Unhandled extension")
 		};
 
-		File.WriteAllText(path, content);
-		Console.Out.WriteLine($"Generated: {path}");
+		await File.WriteAllTextAsync(path, content, cancellationToken);
+		await Console.Out.WriteLineAsync($"Generated: {path}");
 		return 0;
 	}
 
@@ -241,5 +230,22 @@ resume-behavior = "continue"
   }
 }
 """;
+	}
+
+	private static string ResolvePath(FileInfo? output)
+	{
+		if (output == null)
+			return Path.Combine(Directory.GetCurrentDirectory(), "default.toml");
+
+		if (output.FullName.EndsWith(Path.DirectorySeparatorChar) || Directory.Exists(output.FullName))
+		{
+			Directory.CreateDirectory(output.FullName);
+			return Path.Combine(output.FullName, "default.toml");
+		}
+
+		string? dir = Path.GetDirectoryName(output.FullName);
+		if (!string.IsNullOrEmpty(dir))
+			Directory.CreateDirectory(dir);
+		return output.FullName;
 	}
 }

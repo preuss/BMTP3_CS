@@ -14,7 +14,7 @@ public class BackupPlan4BuildPlanTests
 
 	private static BackupConsoleCommand4 CreateTestCommand()
 	{
-		return new BackupConsoleCommand4();
+		return new BackupConsoleCommand4 { ServiceProvider = null! };
 	}
 
 	private static (BackupOptionsModel4, ParseResult) Parse(string cli)
