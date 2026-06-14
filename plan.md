@@ -213,6 +213,15 @@ Se `mangler.md § Smelly Code` for fuld analyse og fix-plan. Kort:
 | 1 | `MediaDeviceDriveProvider` | `MediaDevice` / `MediaDriveInfo` | `MediaDeviceInfo` / `MediaDrive` |
 | 2 | `BackupMediaDriveInfo` | `(MediaDevice, MediaDriveInfo)` | `(IMediaDeviceInfo, IMediaDrive)` |
 
+### 3. 🔧 Byg advarsler — ryd op (~45 warnings i non-archived projekter)
+
+| Område | Antal | Typiske fejl |
+|--------|-------|-------------|
+| `Core4.Tests` | ~14 | `CS8625`: null literal til non-nullable reference type |
+| `Consoles` | ~5 | `CS8604`: null reference argument for `IServiceProvider` |
+| `Consoles.Tests` | ~27 | `CS8604`/`CS8602` null reference + `xUnit2008` regex patterns |
+| **I alt** | **~45** | Fikses i takt med andet arbejde |
+
 ### 4. TOML config reader — ✅ DONE
 
 `BackupPlan4Config.cs` + `BackupPlan4Loader.cs` + `WasSupplied()` merge i `BuildPlan()`. TOML (kebab-case via PascalToKebab), JSON (camelCase via PropertyNameCaseInsensitive). Alle felter mappet inkl. `MaxDegreeOfParallelism`, `EnableMetadata`, `EnableTimestampCorrection`, `ResumeBehavior`.
@@ -227,6 +236,21 @@ Se `mangler.md § Smelly Code` for fuld analyse og fix-plan. Kort:
 
 - MTP traversal pipeline test (mock via NSubstitute)
 - BackupEngine end-to-end test
+
+### 6.1 🧪 Specifikke test huller
+
+| # | Manglende test | Severity |
+|---|---------------|----------|
+| 1 | MTP traversal pipeline (gatekeeper → connector → traversal → content) | Høj |
+| 2 | BackupEngine end-to-end (filesystem → download → hash → sidecar → verify) | Høj |
+| 3 | Apple MTP reconnect med ContentHash fallback matching | Medium |
+| 4 | `backup4` `BuildPlan` enum-mapping (alle options → plan felter) | Medium |
+
+### 6.2 📖 Dokumentation huller
+
+| # | Mangler |
+|---|---------|
+| 1 | JSON schema for `backup_catalog.json` — felter, struktur, eksempel |
 
 ### 7. 🥈 MTP Cross-Connection Resume
 

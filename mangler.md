@@ -238,10 +238,12 @@ Overflødig — `BackupJsonSummaryStore` + sidecars dækker samme behov.
 
 ### Høj prioritet — Skriv integration tests
 
-| # | Task |
-|---|------|
-| 1 | **Test fuld MTP traversal pipeline** (gatekeeper → connector → traversal → content) |
-| 2 | **Test BackupEngine end-to-end** (filesystem → download → hash → sidecar → verify) |
+| # | Task | Severity |
+|---|------|----------|
+| 1 | **Test fuld MTP traversal pipeline** (gatekeeper → connector → traversal → content) | **Høj** |
+| 2 | **Test BackupEngine end-to-end** (filesystem → download → hash → sidecar → verify) | **Høj** |
+| 3 | **Apple MTP reconnect** med ContentHash fallback matching | **Medium** |
+| 4 | **`backup4` BuildPlan** enum-mapping (alle options til plan felter) | **Medium** |
 
 ### Feature gates — implementér når behov opstår
 
@@ -538,6 +540,25 @@ Consoles indeholder kode der manuelt reimplementerer hvad Core4 allerede tilbyde
 | \xifreader/ExifDateTimeParser.cs\ (3 formater) | \Core4/Engine/TimeStamp/Parsers/DateTimeParser.cs\ (40+ formater) | **Samme formaal, inferior.** Consoles parser kun 3 formater. Fejler paa \/\, \-\, \.\, ms, ISO8601. |
 | \xifreader/ExifReader2.cs\ (3 hardcodede tags) | \Core4/Engine/TimeStamp/Readers/ExifTimestampReader.cs\ + \TimestampCandidateFactory.cs\ | **Samme EXIF-extraction.** Consoles hardcoder 3 tags. Core4 er generisk via \TagGroups.Exif\. |
 
+
+---
+
+### Build Warnings (non-archived projects)
+
+~45 warnings i Core4.Tests + Consoles + Consoles.Tests. Fikses i takt med andet arbejde.
+
+| Område | Antal | Typiske fejl |
+|--------|-------|-------------|
+| `Core4.Tests` | ~14 | `CS8625`: null literal til non-nullable reference type (test data) |
+| `Consoles` | ~5 | `CS8604`: null reference argument for `IServiceProvider` |
+| `Consoles.Tests` | ~27 | `CS8604`/`CS8602` null reference + `xUnit2008` regex patterns |
+| **I alt** | **~45** | |
+
+### Dokumentation huller
+
+| # | Mangler | Severity |
+|---|---------|----------|
+| 1 | JSON schema for `backup_catalog.json` — felter, struktur, eksempel | Low |
 
 ---
 
