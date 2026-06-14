@@ -1,10 +1,10 @@
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 
-namespace BMTP3.Core4.Utilities;
+namespace BMTP3.Common.Utilities;
 
 /// <summary>
-/// v4.1: A utility class for matching file paths against glob patterns, supporting .gitignore-style semantics.
+/// v4.6: A utility class for matching file paths against glob patterns, supporting .gitignore-style semantics.
 /// Matches file-system-like paths against glob patterns.
 ///
 /// Supported syntax:
@@ -32,7 +32,7 @@ namespace BMTP3.Core4.Utilities;
 /// - Exclude evaluation fails closed: an error rejects the path.
 /// - Include evaluation is tolerant: an error skips the current pattern and continues.
 /// </summary>
-internal static class GlobMatcher
+public static class GlobMatcher
 {
 	private const string SeparatorRegex = @"[/\\]+";
 
@@ -45,8 +45,7 @@ internal static class GlobMatcher
 	private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(200);
 
 	// Use a case-insensitive comparer because matching itself is case-insensitive.
-	private static readonly ConcurrentDictionary<string, Regex> RegexCache =
-		new(StringComparer.OrdinalIgnoreCase);
+	private static readonly ConcurrentDictionary<string, Regex> RegexCache = new(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	/// Returns <c>true</c> when <paramref name="path"/> should be processed
@@ -60,10 +59,7 @@ internal static class GlobMatcher
 	/// 5. Blank include patterns are ignored.
 	/// 6. If no non-blank include patterns exist, the path is included by default.
 	/// </summary>
-	public static bool IsIncluded(
-		string path,
-		IEnumerable<string>? includePatterns,
-		IEnumerable<string>? excludePatterns)
+	public static bool IsIncluded(string path, IEnumerable<string>? includePatterns, IEnumerable<string>? excludePatterns)
 	{
 		ArgumentNullException.ThrowIfNull(path);
 
@@ -135,26 +131,23 @@ internal static class GlobMatcher
 
 		if(TryBuildLeadingRecursiveRegex(glob, out string? regex))
 		{
-			return regex;
+			return regex!;
 		}
 
 		if(TryBuildGlobalNegationRegex(glob, out regex))
 		{
-			return regex;
+			return regex!;
 		}
 
 		if(TryBuildSuffixNegationRegex(glob, out regex))
 		{
-			return regex;
+			return regex!;
 		}
 
 		return ConvertCore(glob, anchor: true);
 	}
 
-	private static bool MatchesAnyNormalizedPath(
-		string normalizedPath,
-		IEnumerable<string>? patterns,
-		bool failClosedOnError)
+	private static bool MatchesAnyNormalizedPath(string normalizedPath, IEnumerable<string>? patterns, bool failClosedOnError)
 	{
 		if(patterns is null)
 		{
@@ -224,23 +217,30 @@ internal static class GlobMatcher
 		return pattern.Replace('\\', '/');
 	}
 
+
 	/// <summary>
 	/// Expands simple brace expressions like "{a,b,c}" into "@(a|b|c)".
+	///
+	/// Empty alternatives are preserved, so "{a,b,}" becomes "@(a|b|)"
+	/// and therefore also matches the empty string.
+	///
 	/// This intentionally supports only flat, comma-separated alternatives.
+	/// Nested brace expansion is not supported.
 	/// </summary>
 	private static string ExpandSimpleBraces(string glob)
 	{
 		return Regex.Replace(
 			glob,
-			@"\{([^{},]+(?:,[^{}]+)+)\}",
+			@"\{([^{}]*,[^{}]*)\}",
 			match =>
 			{
 				string[] alternatives = match.Groups[1].Value
-					.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+					.Split(',', StringSplitOptions.TrimEntries);
 
 				return "@(" + string.Join("|", alternatives) + ")";
 			});
 	}
+
 
 	/// <summary>
 	/// Handles the special case where the pattern starts with "**/".
@@ -259,6 +259,7 @@ internal static class GlobMatcher
 		regex = "^(?:.*(?:/|\\\\))?" + ConvertCore(remainder, anchor: false) + "$";
 		return true;
 	}
+
 
 	/// <summary>
 	/// Handles global negation like "!(pattern)".
@@ -279,14 +280,18 @@ internal static class GlobMatcher
 		}
 
 		string positivePattern = glob.Substring(2, glob.Length - 3);
-		string positiveRegex = ConvertCore(positivePattern, anchor: false);
+
+		// Inside global negation, '|' is treated as alternation.
+		// ConvertCore escapes it as '\|', so restore it here.
+		string positiveRegex = ConvertCore(positivePattern, anchor: false)
+			.Replace(@"\|", "|");
 
 		regex = $"^(?!(?:{positiveRegex})$).*$";
 		return true;
 	}
 
 	/// <summary>
-	/// Handles suffix negation like "*.!(jpg)".
+	/// Handles suffix negation like "*.!(jpg)" or "*.!(jpg|png)".
 	/// </summary>
 	private static bool TryBuildSuffixNegationRegex(string glob, out string? regex)
 	{
@@ -310,9 +315,13 @@ internal static class GlobMatcher
 		string negatedSuffixGlob = glob.Substring(negationStart + 2, negationEnd - (negationStart + 2));
 
 		string prefixRegex = ConvertCore(prefixGlob, anchor: false);
-		string negatedSuffixRegex = ConvertCore(negatedSuffixGlob, anchor: false);
 
-		regex = $"^{prefixRegex}(?!(?:{negatedSuffixRegex})$).*$";
+		// Inside suffix negation, '|' is treated as alternation.
+		// ConvertCore escapes it as '\|', so restore it here.
+		string negatedSuffixRegex = ConvertCore(negatedSuffixGlob, anchor: false)
+			.Replace(@"\|", "|");
+
+		regex = $"^(?>{prefixRegex})(?!(?:{negatedSuffixRegex})$)[^/\\\\]*$";
 		return true;
 	}
 
@@ -333,13 +342,18 @@ internal static class GlobMatcher
 		regex = Regex.Replace(regex, @"\\\+\\\((.+?)\\\)", m => $"(?:{m.Groups[1].Value.Replace(@"\|", "|")})+");
 		regex = Regex.Replace(regex, @"\\\?\\\((.+?)\\\)", m => $"(?:{m.Groups[1].Value.Replace(@"\|", "|")})?");
 
+		// Mark recursive directory wildcards before separator conversion.
+		// This preserves the "zero or more directory segments" semantics for patterns like "a/**/b.txt".
+		const string recursiveDirectoryPlaceholder = "\uE000";
+		regex = regex.Replace(@"\*\*/", recursiveDirectoryPlaceholder);
+
 		// Convert literal path separators into a separator-tolerant regex.
 		regex = Regex.Replace(regex, @"\\{2}", SeparatorRegex);
 		regex = regex.Replace("/", SeparatorRegex);
 
 		// Convert recursive directory matching.
 		string recursiveDirectoryMatcher = $@"(?:[^/\\]*{SeparatorRegex})*";
-		regex = Regex.Replace(regex, @"\*\*" + SeparatorRegex, recursiveDirectoryMatcher);
+		regex = regex.Replace(recursiveDirectoryPlaceholder, recursiveDirectoryMatcher);
 
 		// Convert remaining recursive wildcards.
 		regex = regex.Replace(@"\*\*", ".*");

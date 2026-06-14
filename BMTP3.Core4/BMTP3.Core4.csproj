@@ -19,6 +19,7 @@
 		<Folder Include="Scanner\Filesystem\" />
 		<Folder Include="Sidecar\" />
 		<Folder Include="Transfer\Filesystem\" />
+		<Folder Include="Utilities\" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -4,7 +4,7 @@ using System.Text.RegularExpressions;
 namespace BMTP3.Core2.BackupNew.Utilities;
 
 /// <summary>
-/// v4.1: A utility class for matching file paths against glob patterns, supporting .gitignore-style semantics.
+/// v4.3: A utility class for matching file paths against glob patterns, supporting .gitignore-style semantics.
 /// Matches file-system-like paths against glob patterns.
 ///
 /// Supported syntax:
@@ -45,8 +45,7 @@ internal static class GlobMatcher
 	private static readonly TimeSpan RegexTimeout = TimeSpan.FromMilliseconds(200);
 
 	// Use a case-insensitive comparer because matching itself is case-insensitive.
-	private static readonly ConcurrentDictionary<string, Regex> RegexCache =
-		new(StringComparer.OrdinalIgnoreCase);
+	private static readonly ConcurrentDictionary<string, Regex> RegexCache = new(StringComparer.OrdinalIgnoreCase);
 
 	/// <summary>
 	/// Returns <c>true</c> when <paramref name="path"/> should be processed
@@ -60,10 +59,7 @@ internal static class GlobMatcher
 	/// 5. Blank include patterns are ignored.
 	/// 6. If no non-blank include patterns exist, the path is included by default.
 	/// </summary>
-	public static bool IsIncluded(
-		string path,
-		IEnumerable<string>? includePatterns,
-		IEnumerable<string>? excludePatterns)
+	public static bool IsIncluded(string path, IEnumerable<string>? includePatterns, IEnumerable<string>? excludePatterns)
 	{
 		ArgumentNullException.ThrowIfNull(path);
 
@@ -135,26 +131,23 @@ internal static class GlobMatcher
 
 		if(TryBuildLeadingRecursiveRegex(glob, out string? regex))
 		{
-			return regex;
+			return regex!;
 		}
 
 		if(TryBuildGlobalNegationRegex(glob, out regex))
 		{
-			return regex;
+			return regex!;
 		}
 
 		if(TryBuildSuffixNegationRegex(glob, out regex))
 		{
-			return regex;
+			return regex!;
 		}
 
 		return ConvertCore(glob, anchor: true);
 	}
 
-	private static bool MatchesAnyNormalizedPath(
-		string normalizedPath,
-		IEnumerable<string>? patterns,
-		bool failClosedOnError)
+	private static bool MatchesAnyNormalizedPath(string normalizedPath, IEnumerable<string>? patterns, bool failClosedOnError)
 	{
 		if(patterns is null)
 		{

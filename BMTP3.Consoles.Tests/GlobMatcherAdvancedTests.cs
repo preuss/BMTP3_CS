@@ -1,4 +1,4 @@
-using BMTP3.Utilities;
+using BMTP3.Common.Utilities;
 using System.Text.RegularExpressions;
 
 namespace BMTP3.Consoles.Tests;

@@ -1,6 +1,7 @@
-using BMTP3.Core4.Utilities;
 
-namespace BMTP3.Core4.Tests.Utilities;
+using BMTP3.Common.Utilities;
+
+namespace BMTP3.Common.Tests.Utilities;
 
 /// <summary>
 ///     Adversarial edge-case tests for <see cref="GlobMatcher"/>.
@@ -246,6 +247,66 @@ public class GlobMatcherAdversarialTests
 	[Theory]
 	[InlineData("a/b\\c/d.txt", "**/*.txt", true)]
 	public void MixedSeparators(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("file.txt", "[")]
+	[InlineData("file.txt", "[abc")]
+	[InlineData("file.txt", "[!")]
+	public void Matches_InvalidPatternReturnsFalse(string path, string pattern)
+	{
+		Assert.False(GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("file.jpg", "*.!(jpg)", false)]
+	[InlineData("archive.tar.jpg", "*.!(jpg)", false)]
+	[InlineData("archive.tar.png", "*.!(jpg)", true)]
+	[InlineData("file.jpgg", "*.!(jpg)", true)]
+	public void SuffixNegation_UsesFinalSuffix(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("file.jpg", "*.!(jpg|png)", false)]
+	[InlineData("file.png", "*.!(jpg|png)", false)]
+	[InlineData("archive.tar.jpg", "*.!(jpg|png)", false)]
+	[InlineData("archive.tar.png", "*.!(jpg|png)", false)]
+	[InlineData("archive.tar.gif", "*.!(jpg|png)", true)]
+	public void SuffixNegation_WithPipeAlternationUsesFinalSuffix(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("fooa+b", "foo@(a+b|c$d)", true)]
+	[InlineData("fooc$d", "foo@(a+b|c$d)", true)]
+	[InlineData("fooab", "foo@(a+b|c$d)", false)]
+	[InlineData("foocd", "foo@(a+b|c$d)", false)]
+	public void ExtglobAlternatives_WithRegexSpecialCharactersAreLiteral(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("file.c++", "file.{c++,h}", true)]
+	[InlineData("file.h", "file.{c++,h}", true)]
+	[InlineData("file.cpp", "file.{c++,h}", false)]
+	public void BraceExpansion_WithRegexSpecialCharacters(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Theory]
+	[InlineData("a.txt", "[abc].txt", true)]
+	[InlineData("b.txt", "[abc].txt", true)]
+	[InlineData("c.txt", "[abc].txt", true)]
+	[InlineData("ab.txt", "[abc].txt", false)]
+	[InlineData("d.txt", "[abc].txt", false)]
+	public void CharacterClass_MatchesExactlyOneCharacter(string path, string pattern, bool expected)
 	{
 		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
 	}

@@ -1,6 +1,7 @@
-using BMTP3.Core4.Utilities;
 
-namespace BMTP3.Core4.Tests.Utilities;
+using BMTP3.Common.Utilities;
+
+namespace BMTP3.Common.Tests.Utilities;
 
 /// <summary>
 ///     Unit tests for <see cref="GlobMatcher" />.
@@ -192,5 +193,40 @@ public class GlobMatcherTests
 		// Path uses backslash — GlobMatcher normalises to forward slash internally
 		Assert.True(GlobMatcher.IsIncluded(@"C:\Photos\2024\img.jpg", include, null));
 		Assert.False(GlobMatcher.IsIncluded(@"C:\Docs\readme.txt", include, null));
+	}
+
+	[Theory]
+	[InlineData("a.txt", "?.txt", true)]
+	[InlineData("ab.txt", "?.txt", false)]
+	[InlineData(".txt", "?.txt", false)]
+	[InlineData("a/b.txt", "?/b.txt", true)]
+	[InlineData("ab/b.txt", "?/b.txt", false)]
+	public void QuestionMark_MatchesExactlyOneNonSeparatorCharacter(string path, string pattern, bool expected)
+	{
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+	}
+
+	[Fact]
+	public void IsIncluded_InvalidIncludePatternIsSkipped()
+	{
+		List<string> include = new() { "[", "**/*.txt" };
+
+		Assert.True(GlobMatcher.IsIncluded("docs/readme.txt", include, null));
+	}
+
+	[Fact]
+	public void IsIncluded_InvalidExcludePatternRejectsPath()
+	{
+		List<string> exclude = new() { "[" };
+
+		Assert.False(GlobMatcher.IsIncluded("docs/readme.txt", null, exclude));
+	}
+
+	[Fact]
+	public void IsIncluded_OnlyInvalidIncludePatternsDoNotIncludePath()
+	{
+		List<string> include = new() { "[" };
+
+		Assert.False(GlobMatcher.IsIncluded("docs/readme.txt", include, null));
 	}
 }

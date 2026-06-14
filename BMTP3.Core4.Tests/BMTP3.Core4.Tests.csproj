@@ -33,6 +33,7 @@
     <Folder Include="Scanner\" />
     <Folder Include="Sidecar\" />
     <Folder Include="Transfer\" />
+    <Folder Include="Utilities\" />
   </ItemGroup>
 
   <ItemGroup>

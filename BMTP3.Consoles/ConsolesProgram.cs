@@ -1,12 +1,12 @@
-﻿using System.CommandLine;
-using System.CommandLine.Help;
-using System.Text.RegularExpressions;
+﻿using BMTP3.Common.Utilities;
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.Startup.Configurations;
-using BMTP3.Core2.BackupNew.Utilities;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using System.CommandLine;
+using System.CommandLine.Help;
+using System.Text.RegularExpressions;
 using DGlob = DotNet.Globbing;
 
 namespace BMTP3.Consoles;
@@ -15,7 +15,7 @@ public class ConsolesProgram
 {
 	public static void ApplyConfigSetups(IConfigurationManager configuration, IEnumerable<IConfigSetup> setups)
 	{
-		foreach (IConfigSetup setup in setups)
+		foreach(IConfigSetup setup in setups)
 		{
 			setup.Configure(configuration);
 		}
@@ -24,7 +24,7 @@ public class ConsolesProgram
 	public static void ApplyServiceSetups(IServiceCollection services, IEnumerable<IServiceSetup> setups,
 		IConfiguration configuration)
 	{
-		foreach (IServiceSetup setup in setups)
+		foreach(IServiceSetup setup in setups)
 		{
 			setup.Configure(services, configuration);
 		}
@@ -75,7 +75,7 @@ public class ConsolesProgram
 		rootCommand.Subcommands.Add(initConfigCommand4);
 
 		//ReplaceHelp(rootCommand);
-		
+
 		ParseResult parseResult = rootCommand.Parse(args);
 		return await parseResult.InvokeAsync();
 	}
@@ -86,7 +86,7 @@ public class ConsolesProgram
 			.OfType<HelpOption>()
 			.FirstOrDefault();
 
-		if (old != null)
+		if(old != null)
 		{
 			command.Options.Remove(old);
 		}
@@ -97,7 +97,7 @@ public class ConsolesProgram
 			Action = new CustomHelpAction()
 		});
 
-		foreach (Command sub in command.Subcommands)
+		foreach(Command sub in command.Subcommands)
 		{
 			ReplaceHelp(sub);
 		}
@@ -188,7 +188,7 @@ public class ConsolesProgram
 		Console.WriteLine("{\"Sti\",-" + padding + "} {\"Forventet\",-10} {\"Faktisk\",-10} {\"Status\",-10}");
 		Console.WriteLine(new string('-', padding + 30));
 
-		foreach (var testCase in testCases)
+		foreach(var testCase in testCases)
 		{
 			string pathConverted = testCase.Path; // Use the actual path
 			pathConverted = pathConverted.Replace('\\', '/');
