@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 14 Jun 2026** — Progress display rewritten. `BackupProgressDisplay.cs` er omskrevet: ingen polling loop, ingen lock/gate, ingen version counter. Event-driven med direkte Spectre task updates. `Progress<T>` skabes før `StartAsync` (null SyncContext). Engineer/scanner er uændret (standard `Progress<T>`).
+> **Opdateret 14 Jun 2026** — Progress display rewritten. Smelly Code analyse i mangler.md § Smelly Code. Task #0 tilfoejet nedenfor.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -175,6 +175,22 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **Progress display rewrite:** `BackupProgressDisplay.cs` omskrevet — event-driven, direkte Spectre task updates, ingen polling/lock/gate. `BackupConsoleCommand4.cs` skaber `Progress<T>` før `StartAsync` (null SyncContext). `BackupScanner` bridger `SourceTraversalProgress` (var `null`). `ProgressReport` har `DirectoriesTraversed` + `FilesDiscovered`. Traversal tæller directories.
 
 ## Næste opgaver (prioriteret)
+
+### 0. 🧹 Smelly Code Cleanup — Consoles reimplementerer Core4 (DRY)
+
+Se `mangler.md § Smelly Code` for fuld analyse og fix-plan. Kort:
+
+| # | Slet i Consoles | Erstat med | Prio |
+|---|---|---|---|
+| 1 | `Utilities/GlobConverter.cs` | `Core4.Utilities.GlobMatcher` | Høj |
+| 2 | `MetadataDirectoryExtensions.cs` | Brug Core4's version | Høj |
+| 3 | `exifreader/` mappe | Core4's `ExifTimestampReader` + `DateTimeParser` | Høj |
+| 4 | `ConsoleProgressBar.cs`, `ProgressBar.cs`, `FileAndDirectoryCounter.cs` | `AnsiConsole.Progress()` | Medium |
+| 5 | `ProgressStatusContext.cs` + `ProgressStatusTask.cs` | Brug `ProgressContext`/`ProgressTask` direkte | Medium |
+| 6 | `OptionsBuilder.cs` | `parseResult.GetValue(option)` | Medium |
+| 7 | `AbstractCommandBase.cs` | `BaseConsoleCommand` | Medium |
+| 8 | `BackupOptions.cs` + `GlobalOptions.cs` | Slet — tomme classes | Lav |
+| 9 | `BackupPlan4Config.cs` (DTO) | Serialiser direkte til `BackupPlan` | Lav |
 
 ### 1. 🥇 Consoles CLI cleanup + BackupPlan Delay
 

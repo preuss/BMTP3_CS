@@ -520,3 +520,82 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | K-V66 | `Engine/Sidecar/Writers/JsonSidecarWriter.cs` | 36, 40 | Consistency | Low | `OrdinalIgnoreCase` dictionary — INI writer er case-sensitive. Bør matches. |
 | K-V67 | `Engine/Strategies/RenameCollisionResolver.cs` | 51 | Formatting | Low | Double blank line. |
 | K-V68 | `DependencyInjection/ServiceCollectionExtensions.cs` | 136–139 | KISS | Low | `AddIfNotNull` helper med kun én caller — inline hellere. |
+
+---
+
+## S Smelly Code -- Consoles reimplementerer Core4
+
+Consoles indeholder kode der manuelt reimplementerer hvad Core4 allerede tilbyder -- DRY-kraenkelser, SOLID-problemer og KISS-overtraedelser.
+
+> **Principper:** FIXME -> Slet Consoles' version, brug Core4's. Aldrig duplikere. Aldrig reimplementere. Aldrig laane kode paa tvaers af projekter.
+
+### 🔴 Direkte duplikater (Consoles = Core4 kopi)
+
+| Consoles fil | Core4 original | Risiko |
+|---|---|---|
+| \Utilities/GlobConverter.cs\ (200+ linjer) | \Core4/Utilities/GlobMatcher.cs\ | **Identisk algoritme.** Consoles mangler brace expansion som Core4 har. Flippet: rettelser skal goeres to steder. |
+| \MetadataDirectoryExtensions.cs\ (2 metoder) | \Core4/Engine/TimeStamp/Extensions/MetadataDirectoryExtensions.cs\ | **Identisk kode.** \SafeGetString\ / \SafeTryGetDateTime\ -- kopieret ordret. |
+| \xifreader/ExifDateTimeParser.cs\ (3 formater) | \Core4/Engine/TimeStamp/Parsers/DateTimeParser.cs\ (40+ formater) | **Samme formaal, inferior.** Consoles parser kun 3 formater. Fejler paa \/\, \-\, \.\, ms, ISO8601. |
+| \xifreader/ExifReader2.cs\ (3 hardcodede tags) | \Core4/Engine/TimeStamp/Readers/ExifTimestampReader.cs\ + \TimestampCandidateFactory.cs\ | **Samme EXIF-extraction.** Consoles hardcoder 3 tags. Core4 er generisk via \TagGroups.Exif\. |
+
+
+---
+
+## § Smelly Code — Consoles reimplementerer Core4
+
+Consoles indeholder kode der manuelt reimplementerer hvad Core4 allerede tilbyder — DRY-kraenkelser, SOLID-problemer og KISS-overtraedelser.
+
+> **Principper:** FIXME → Slet Consoles' version, brug Core4's. Aldrig duplikere. Aldrig reimplementere. Aldrig "laane" kode paa tvaers af projekter.
+
+### 🔴 Direkte duplikater (Consoles = Core4 kopi)
+
+| Consoles fil | Core4 original | Risiko |
+|---|---|---|
+| `Utilities/GlobConverter.cs` (200+ linjer) | `Core4/Utilities/GlobMatcher.cs` | **Identisk algoritme.** Consoles mangler brace expansion som Core4 har. Flippet: rettelser skal goeres to steder. |
+| `MetadataDirectoryExtensions.cs` (2 metoder) | `Core4/Engine/TimeStamp/Extensions/MetadataDirectoryExtensions.cs` | **Identisk kode.** `SafeGetString` / `SafeTryGetDateTime` — kopieret ordret. |
+| `exifreader/ExifDateTimeParser.cs` (3 formater) | `Core4/Engine/TimeStamp/Parsers/DateTimeParser.cs` (40+ formater) | **Samme formaal, inferior.** Consoles parser kun 3 formater. Fejler paa `/`, `-`, `.`, ms, ISO8601. |
+| `exifreader/ExifReader2.cs` (3 hardcodede tags) | `Core4/Engine/TimeStamp/Readers/ExifTimestampReader.cs` + `TimestampCandidateFactory.cs` | **Samme EXIF-extraction.** Consoles hardcoder 3 tags. Core4 er generisk via `TagGroups.Exif`. |
+
+### 🟡 Delvise/inferiøre reimplementeringer
+
+| Consoles | Core4 | Problemet |
+|---|---|---|
+| `Configs/BackupPlan4Loader.cs` — `NormalizeJson5()` (140 linjer) | — (boer vaere NuGet) | **Manuel JSON5 parser** med index-baseret string walking. Haandterer ikke escaped chars ordentligt. |
+| `Configs/BackupPlan4Config.cs` (DTO) | `Core4/Api/Models/BackupPlan.cs` (record) | **DTO spejler `BackupPlan` felter.** Manuel mapping i `BackupPlanBuilder.ToBackupPlan()`. |
+
+### 🟠 Over-engineered / unødvendige konstruktioner (KISS)
+
+| Fil | Problem |
+|---|---|
+| `IO/Consoles/Progress/ConsoleProgressBar.cs` | Tredje progress bar i projektet. Manuelt `Console.Write(" ")`, `Console.CursorVisible = false`. Spectre.Console har `AnsiConsole.Progress()` built-in. |
+| `IO/Consoles/ProgressBar/ProgressBar.cs` | Fjerde progress bar. `Timer` + `Interlocked.Exchange` + manuelle `\b` backspace chars. 8Hz tick. Demo-kode (`UsageTest()`) i klassen. |
+| `IO/Consoles/ProgressStatus/ProgressStatusContext.cs` + `ProgressStatusTask.cs` | ~287 linjer zero-value pass-through wrappers om `Spectre.Console.ProgressContext`/`ProgressTask`. **Bug: `ProgressStatusTask.cs:43`** — `set => ProgressTask.Value = Value;` (skal vaere `value`). |
+| `IO/Consoles/Progress/FileAndDirectoryCounter.cs` | `Task.Run` med `while(!cancel)` busy-wait loop. `lock` for integer increment. |
+| `ConsoleCommands/OptionsBuilder.cs` | Reflection + `CallerArgumentExpression` + `MakeGenericMethod` for at undgaa `parseResult.GetValue(option)`. |
+| `ConsoleCommands/AbstractCommandBase.cs` — `PopulateOptions<T>()` | Tung reflection til option binding. `OptionNameMatchesProperty` har bug: `--output` kan aldrig matche `OutputDirectory`. |
+| `ConsoleCommands/ConsoleOptions/BackupOptions.cs` + `GlobalOptions.cs` | To tomme classes — dead code. |
+
+### 🔵 SOLID-problemer
+
+| Princip | Overtraedelser |
+|---|---|
+| **SRP** | `BackupConsoleCommand2.cs`: command execution + `ValidateBackupOptions` + programmatic `TryRunAsync`. `ProgressStatus`: single-task AND multi-task rendering. |
+| **OCP** | 4 backup commands (1/2/3/Test) i stedet for eén generisk command med `IBackupEngine` injection — hver ny Core version kraever ny klasse. |
+| **DIP** | Flere commands bruger `ServiceProvider.GetService<T>()` (service locator). `ConsoleProgressBar`: `System.Console` direkte. |
+
+### 🟢 Fix-plan (Consoles → Core4 konvertering)
+
+| # | Slet i Consoles | Erstat med |
+|---|---|---|
+| 1 | `Utilities/GlobConverter.cs` | `Core4.Utilities.GlobMatcher` — tilfoej `using BMTP3.Core4.Utilities` |
+| 2 | `MetadataDirectoryExtensions.cs` | Brug Core4's version — den er `public` |
+| 3 | `exifreader/` mappe | `Core4.Engine.TimeStamp.Readers.ExifTimestampReader` + `DateTimeParser` |
+| 4 | `IO/Consoles/Progress/ConsoleProgressBar.cs` | `AnsiConsole.Progress()` |
+| 5 | `IO/Consoles/ProgressBar/ProgressBar.cs` + `FileAndDirectoryCounter.cs` | `AnsiConsole.Progress()` |
+| 6 | `IO/Consoles/ProgressStatus/ProgressStatusContext.cs` + `ProgressStatusTask.cs` | Brug `ProgressContext`/`ProgressTask` direkte |
+| 7 | `ConsoleCommands/OptionsBuilder.cs` | `parseResult.GetValue(option)` |
+| 8 | `ConsoleCommands/AbstractCommandBase.cs` | `BaseConsoleCommand` daekker samme formaal |
+| 9 | `ConsoleCommands/ConsoleOptions/BackupOptions.cs` + `GlobalOptions.cs` | Slet — tomme classes |
+| 10 | `Configs/BackupPlan4Config.cs` (DTO) | Serialiser direkte til `BackupPlan` |
+
+Se `plan.md (plan.md Smelly Code Cleanup)` for task-management.
