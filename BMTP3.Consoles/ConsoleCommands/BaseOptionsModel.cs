@@ -7,382 +7,483 @@ namespace BMTP3.Consoles.ConsoleCommands;
 
 /// <summary>
 ///     Base class for command line options models.
-///     Automatically binds static Option{T} properties to instance properties using naming convention.
+///     Automatically binds static Option&lt;T&gt; properties to instance properties using naming convention.
 /// </summary>
 /// <remarks>
-///     Convention: For each static property named {Name}Option of type Option{T},
-///     there must be an instance property named {Name} of type T.
+///     Convention:
+///     For each public static property named {Name}Option of type Option&lt;T&gt;,
+///     there must be a public instance property named {Name} of type T.
+///     
+///     Optional:
+///     A public instance property named {Name}OptionResult of type OptionResult may be added
+///     to receive the raw parse result for the option.
 /// </remarks>
 public abstract class BaseOptionsModel
 {
-	private static readonly ConcurrentDictionary<Type, Dictionary<Option, Action<ParseResult>>> _optionBindersCache =
-		new();
+	private const string OptionSuffix = "Option";
+	private const string OptionResultSuffix = "OptionResult";
+
+	private static readonly ConcurrentDictionary<Type, Lazy<ModelDefinition>> _definitions = new();
+
+	private static readonly MethodInfo _getValueOpenMethod = ResolveGetValueMethod();
+
+	#region Public API
 
 	/// <summary>
-	///     Gets or creates the option binders for this model type.
+	///     Applies parsed command line options to this model instance.
 	/// </summary>
-	/// <returns>A dictionary mapping options to actions that bind their values to instance properties.</returns>
-	private Dictionary<Option, Action<ParseResult>> GetOrCreateOptionBinders()
-	{
-		// TODO: Add thread safe caching
-		Type type = GetType();
-		// Use GetOrAdd to guarantee thread-safe lazy initialization
-		return _optionBindersCache.GetOrAdd(type, t =>
-		{
-			Dictionary<Option, Action<ParseResult>> binders = DoDefineOptions();
-			DoAddValidators();
-			return binders;
-		});
-	}
-
-	/// <summary>
-	///     Validates that there are no duplicate option names or aliases across the provided models.
-	///     Throws an exception if duplicates are found.
-	/// </summary>
-	/// <param name="models">The option models to validate.</param>
-	public static void ValidateDuplicateNameAndAlias(IEnumerable<BaseOptionsModel> models)
-	{
-		// Collect all option names and aliases, with references to their Option and model Type
-		var allNames = models
-			.SelectMany(optionsModel => optionsModel.GetAllOptions().Select(option =>
-				new
-				{
-					Names = new[] { option.Name }.Concat(option.Aliases),
-					Option = option,
-					ModelType = optionsModel.GetType()
-				}))
-			.SelectMany(x => x.Names.Select(name => new { Name = name, x.Option, x.ModelType }))
-			.ToList();
-
-		// Find duplicates (collisions)
-		var duplicates = allNames
-			.GroupBy(x => x.Name, StringComparer.OrdinalIgnoreCase)
-			.Where(g => g.Count() > 1)
-			.ToList();
-
-		if (duplicates.Any())
-		{
-			string msg = string.Join(
-				Environment.NewLine,
-				duplicates.Select(g =>
-					$"Collision for name/alias '{g.Key}':" + Environment.NewLine +
-					string.Join(Environment.NewLine, g.Select(x =>
-						$"  Option: {x.Option}, Model: {x.ModelType.FullName}"
-					))
-				)
-			);
-			throw new InvalidOperationException("Duplicate option names or aliases detected:" + Environment.NewLine +
-												msg);
-		}
-	}
-
-	/// <summary>
-	///     Defines the options and their binders for this model type.
-	/// </summary>
-	/// <returns>A dictionary mapping options to actions that bind their values to instance properties.</returns>
-	protected virtual Dictionary<Option, Action<ParseResult>> DoDefineOptions()
-	{
-		Dictionary<Option, Action<ParseResult>> dict = new();
-
-		Type type = GetType();
-		List<PropertyInfo> optionProps = type.GetProperties(BindingFlags.Public | BindingFlags.Static)
-			.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType))
-			.Where(p => p.Name.EndsWith("Option", StringComparison.Ordinal))
-			.Where(p => IsGenericTypeAssignableFrom(p.PropertyType, typeof(Option<>)))
-			.ToList();
-
-		Dictionary<string, PropertyInfo> instanceProps = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-			.Where(p => p.CanWrite)
-			.Where(p => p.CanRead)
-			.ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
-
-		foreach (PropertyInfo optionProp in optionProps)
-		{
-			string baseName = ExtractOptionBaseName(optionProp.Name);
-			if (!instanceProps.TryGetValue(baseName, out PropertyInfo? instanceProp))
-			{
-				throw new InvalidOperationException(
-					$"The corresponding instance property {baseName} does not exist for {optionProp.Name}");
-			}
-
-			// Find the opt-in *OptionResult property (e.g. "ConfigOptionResult")
-			instanceProps.TryGetValue(baseName + "OptionResult", out PropertyInfo? optionResultProp);
-			if (optionResultProp != null && optionResultProp.PropertyType != typeof(OptionResult))
-			{
-				throw new InvalidOperationException(
-					$"Type mismatch: {optionResultProp.Name} must be of type OptionResult");
-			}
-
-			Option? optionInstance = (Option?)optionProp.GetValue(null);
-			ArgumentNullException.ThrowIfNull(optionInstance);
-
-			dict.Add(optionInstance,
-				parseResult =>
-					BindOptionPropertyFromParseResult(parseResult, optionProp, instanceProp, optionResultProp));
-		}
-
-		return dict;
-	}
-
-	/// <summary>
-	///     Extracts the base property name from a static option property name.
-	/// </summary>
-	/// <param name="optionPropertyName">The static option property name.</param>
-	/// <returns>The base property name.</returns>
-	private static string ExtractOptionBaseName(string optionPropertyName)
-	{
-		return optionPropertyName.Substring(0, optionPropertyName.Length - "Option".Length);
-	}
-
-	/// <summary>
-	///     Applies command line options from the given <see cref="ParseResult" /> to this model instance.
-	///     Calls <see cref="DoPopulate" /> and <see cref="DoValidateAndSetDefaults" /> in sequence.
-	/// </summary>
-	/// <param name="parseResult">The parsed command line result.</param>
 	public void ApplyOptions(ParseResult parseResult)
 	{
-		DoPopulate(parseResult);
+		ArgumentNullException.ThrowIfNull(parseResult);
+
+		ModelDefinition definition = GetOrBuildDefinition();
+
+		foreach (OptionBinding binding in definition.Bindings)
+		{
+			object? value = binding.GetValue(parseResult);
+			SetPropertyValue(binding.ValueProperty, value);
+
+			if (binding.OptionResultProperty is { } resultProperty)
+			{
+				resultProperty.SetValue(this, parseResult.GetResult(binding.Option));
+			}
+		}
+
 		DoValidateAndSetDefaults(parseResult);
 	}
 
 	/// <summary>
-	///     Populates this model's properties from the provided <see cref="ParseResult" />.
-	///     Binds values from static Option{T} properties to corresponding instance properties.
+	///     Returns all options defined by this model type.
 	/// </summary>
-	/// <param name="parseResult">The parsed command line result.</param>
-	protected virtual void DoPopulate(ParseResult parseResult)
-	{
-		Dictionary<Option, Action<ParseResult>> optionBinders = DoDefineOptions();
-		foreach (Action<ParseResult> binder in optionBinders.Values)
-		{
-			binder(parseResult);
-		}
-	}
-
-	/// <summary>
-	///     Gets the generic argument type from a candidate type if it matches the generic type definition.
-	/// </summary>
-	/// <param name="candidate">The candidate type.</param>
-	/// <param name="genericTypeDefinition">The generic type definition.</param>
-	/// <returns>The generic argument type, or null if not found.</returns>
-	private static Type? GetGenericType(Type? candidate, Type genericTypeDefinition)
-	{
-		while (candidate != null && candidate != typeof(object))
-		{
-			if (candidate.IsGenericType && candidate.GetGenericTypeDefinition() == genericTypeDefinition)
-			{
-				return candidate.GetGenericArguments()[0];
-			}
-
-			candidate = candidate.BaseType!;
-		}
-
-		return null;
-	}
-
-	/// <summary>
-	///     Checks if a candidate type is assignable from a generic type definition.
-	/// </summary>
-	/// <param name="candidate">The candidate type.</param>
-	/// <param name="genericTypeDefinition">The generic type definition.</param>
-	/// <returns>True if assignable, otherwise false.</returns>
-	private static bool IsGenericTypeAssignableFrom(Type? candidate, Type genericTypeDefinition)
-	{
-		return GetGenericType(candidate, genericTypeDefinition) != null;
-	}
-
-	/// <summary>
-	///     Binds the value of an option from a <see cref="ParseResult" /> to an instance property.
-	/// </summary>
-	/// <param name="parseResult">The parse result.</param>
-	/// <param name="optionProp">The static option property.</param>
-	/// <param name="instanceProp">The instance property.</param>
-	/// <param name="optionResultProp">The optional OptionResult property.</param>
-	private void BindOptionPropertyFromParseResult(ParseResult parseResult, PropertyInfo optionProp,
-		PropertyInfo instanceProp, PropertyInfo? optionResultProp)
-	{
-		Type optionType = optionProp.PropertyType;
-		Type? optionArgumentType = GetGenericType(optionType, typeof(Option<>));
-		if (optionArgumentType == null)
-		{
-			throw new InvalidOperationException($"{optionProp.Name} is not an Option<T>");
-		}
-
-		if (instanceProp.PropertyType != optionArgumentType)
-		{
-			throw new InvalidOperationException(
-				$"Type mismatch: {optionProp.Name} is Option<{optionArgumentType.Name}>, but {instanceProp.Name} is {instanceProp.PropertyType.Name}");
-		}
-
-		if (optionProp.GetValue(null) is not Option optionInstance)
-		{
-			throw new InvalidOperationException($"Option instance for {optionProp.Name} is not an Option");
-		}
-
-		if (!optionType.IsInstanceOfType(optionInstance))
-		{
-			throw new InvalidOperationException(
-				$"Option instance for {optionProp.Name} is not of type Option<{optionArgumentType.Name}>. Actual type: {optionInstance.GetType()}");
-		}
-
-		MethodInfo? getValueMethod = typeof(ParseResult)
-			.GetMethods()
-			.FirstOrDefault(m =>
-				m.Name == nameof(ParseResult.GetValue)
-				&& m.IsGenericMethod
-				&& m.GetParameters().Length == 1
-				&& m.GetParameters()[0].ParameterType.IsGenericType
-				&& m.GetParameters()[0].ParameterType.GetGenericTypeDefinition() == typeof(Option<>)
-			);
-		if (getValueMethod == null)
-		{
-			throw new InvalidOperationException("Could not find generic GetValue<T>(Option<T>) method on ParseResult");
-		}
-
-		MethodInfo genericGetValue = getValueMethod.MakeGenericMethod(optionArgumentType);
-
-		object? value = genericGetValue.Invoke(parseResult, new object[] { optionInstance });
-
-		// Assign if value is present or property is nullable.
-		if (value != null || IsNullableType(instanceProp.PropertyType))
-		{
-			if (value != null && value.GetType() != instanceProp.PropertyType)
-			{
-				throw new InvalidOperationException(
-					$"Resolved value type '{value.GetType().Name}' does not match instance property '{instanceProp.Name}' of type '{instanceProp.PropertyType.Name}'.");
-			}
-
-			instanceProp.SetValue(this, value);
-		}
-
-
-		// Injects OptionResult into the OptionsModel's opt-in (nullable property)
-		if (optionResultProp != null && optionResultProp.CanWrite)
-		{
-			optionResultProp.SetValue(this, parseResult.GetResult(optionInstance));
-		}
-	}
-
-	/// <summary>
-	///     Checks if a type is nullable.
-	/// </summary>
-	/// <param name="type">The type to check.</param>
-	/// <returns>True if nullable, otherwise false.</returns>
-	private static bool IsNullableType(Type type)
-	{
-		return Nullable.GetUnderlyingType(type) != null || !type.IsValueType;
-	}
-
-	/// <summary>
-	///     Returns all defined static Option properties for this model type.
-	/// </summary>
-	/// <returns>A list of all options defined for this model.</returns>
 	public List<Option> GetAllOptions()
 	{
-		return GetOrCreateOptionBinders().Keys.ToList();
+		return GetOrBuildDefinition().Options.ToList();
 	}
 
-	public List<string> GetOptionPropertyValues()
+	/// <summary>
+	///     Validates that no option names or aliases collide across the provided models.
+	/// </summary>
+	public static void ValidateDuplicateOptionNamesOrAliases(IEnumerable<BaseOptionsModel> models)
 	{
-		List<string> result = new();
-		Type type = GetType();
+		ArgumentNullException.ThrowIfNull(models);
 
-		List<PropertyInfo> optionProps = type
-			.GetProperties(BindingFlags.Public | BindingFlags.Static)
-			.Where(p => typeof(Option).IsAssignableFrom(p.PropertyType) && p.Name.EndsWith("Option"))
-			.ToList();
+		Dictionary<string, (Option Option, Type ModelType)> seen =
+			new(StringComparer.OrdinalIgnoreCase);
 
-		Dictionary<string, PropertyInfo> instanceProps = type
-			.GetProperties(BindingFlags.Public | BindingFlags.Instance)
-			.Where(p => p.CanRead)
-			.ToDictionary(p => p.Name, p => p, StringComparer.OrdinalIgnoreCase);
+		List<string> collisions = new();
 
-		string[] headers = { "Option", "Property", "Type", "Value" };
-
-		int optionNameWidth =
-			Math.Max(optionProps.Select(p => ((Option)p.GetValue(null)!).Name.Length).DefaultIfEmpty(0).Max(),
-				headers[0].Length);
-		int propertyNameWidth = Math.Max(instanceProps.Keys.Select(k => k.Length).DefaultIfEmpty(0).Max(),
-			headers[1].Length);
-		int propertyTypeWidth =
-			Math.Max(instanceProps.Values.Select(p => p.PropertyType.Name.Length).DefaultIfEmpty(0).Max(),
-				headers[2].Length);
-		int valueWidth = headers[3].Length;
-
-		string header = string.Format(
-			"{0,-" + optionNameWidth + "}  {1,-" + propertyNameWidth + "}  {2,-" + propertyTypeWidth + "}  {3}",
-			headers[0], headers[1], headers[2], headers[3]
-		);
-		result.Add(header);
-
-		string underline = string.Format(
-			"{0,-" + optionNameWidth + "}  {1,-" + propertyNameWidth + "}  {2,-" + propertyTypeWidth + "}  {3}",
-			new string('-', headers[0].Length),
-			new string('-', headers[1].Length),
-			new string('-', headers[2].Length),
-			new string('-', headers[3].Length)
-		);
-		result.Add(underline);
-
-		foreach (PropertyInfo optionProp in optionProps)
+		foreach (BaseOptionsModel model in models)
 		{
-			string baseName = optionProp.Name.Substring(0, optionProp.Name.Length - "Option".Length);
-			if (instanceProps.TryGetValue(baseName, out PropertyInfo? instanceProp))
+			Type modelType = model.GetType();
+
+			foreach (Option option in model.GetAllOptions())
 			{
-				Option? optionInstance = optionProp.GetValue(null) as Option;
-				object? value = instanceProp.GetValue(this);
-
-				string optionName = optionInstance?.Name ?? "(unknown)";
-				string propertyName = instanceProp.Name;
-
-				// Show List<string> instead of List`1
-				string propertyType = instanceProp.PropertyType == typeof(List<string>)
-					? "List<string>"
-					: instanceProp.PropertyType.Name;
-
-				// Render List<string> as comma-separated
-				string valueStr;
-				if (value is List<string> list)
+				foreach (string name in GetAllNames(option))
 				{
-					valueStr = "[" + string.Join(", ", list.Select(s => $"\"{s}\"")) + "]";
+					if (seen.TryGetValue(name, out (Option Option, Type ModelType) existing))
+					{
+						collisions.Add(
+							$"  '{name}' used by [{existing.Option}] in {existing.ModelType.FullName} " +
+							$"and [{option}] in {modelType.FullName}");
+					}
+					else
+					{
+						seen[name] = (option, modelType);
+					}
 				}
-				else if (value is string str)
-				{
-					valueStr = $"\"{str}\"";
-				}
-				else if (value is FileSystemInfo info)
-				{
-					valueStr = $"\"{info}\"";
-				}
-				else
-				{
-					valueStr = value?.ToString() ?? "(null)";
-				}
-
-				result.Add(
-					string.Format(
-						"{0,-" + optionNameWidth + "}  {1,-" + propertyNameWidth + "}  {2,-" + propertyTypeWidth +
-						"}  {3}",
-						optionName, propertyName, propertyType, valueStr
-					)
-				);
 			}
+		}
+
+		if (collisions.Count > 0)
+		{
+			throw new InvalidOperationException(
+				"Duplicate option names or aliases detected:" + Environment.NewLine +
+				string.Join(Environment.NewLine, collisions));
+		}
+	}
+
+	/// <summary>
+	///     Returns current option/property values as formatted diagnostic lines.
+	/// </summary>
+	public IReadOnlyList<string> GetOptionPropertyValues()
+	{
+		ModelDefinition definition = GetOrBuildDefinition();
+
+		var rows = definition.Bindings.Select(binding => new
+		{
+			Option = binding.Option.Name,
+			Property = binding.ValueProperty.Name,
+			Type = FormatTypeName(binding.ValueProperty.PropertyType),
+			Value = FormatValue(binding.ValueProperty.GetValue(this))
+		}).ToList();
+
+		const string hOption = "Option";
+		const string hProperty = "Property";
+		const string hType = "Type";
+		const string hValue = "Value";
+
+		int optionWidth = Math.Max(
+			hOption.Length,
+			rows.Select(row => row.Option.Length).DefaultIfEmpty(0).Max());
+
+		int propertyWidth = Math.Max(
+			hProperty.Length,
+			rows.Select(row => row.Property.Length).DefaultIfEmpty(0).Max());
+
+		int typeWidth = Math.Max(
+			hType.Length,
+			rows.Select(row => row.Type.Length).DefaultIfEmpty(0).Max());
+
+		string FormatRow(string option, string property, string type, string value)
+		{
+			return $"{option.PadRight(optionWidth)}  {property.PadRight(propertyWidth)}  {type.PadRight(typeWidth)}  {value}";
+		}
+
+		List<string> result = new(rows.Count + 2)
+		{
+			FormatRow(hOption, hProperty, hType, hValue),
+			FormatRow(
+				new string('-', hOption.Length),
+				new string('-', hProperty.Length),
+				new string('-', hType.Length),
+				new string('-', hValue.Length))
+		};
+
+		foreach (var row in rows)
+		{
+			result.Add(FormatRow(row.Option, row.Property, row.Type, row.Value));
 		}
 
 		return result;
 	}
 
+	#endregion
 
+	#region Extension points
+
+	/// <summary>
+	///     Override to add validators to this model's static options.
+	///     Executed once per model type when the definition is first built.
+	/// </summary>
 	protected virtual void DoAddValidators()
 	{
 	}
 
 	/// <summary>
-	///     Performs validation and/or sets default values for this model after population.
-	///     Override in derived classes to implement custom validation or defaulting logic.
+	///     Override to validate populated values and/or set derived defaults after parsing.
 	/// </summary>
-	/// <param name="result">The parsed command line result.</param>
 	protected virtual void DoValidateAndSetDefaults(ParseResult result)
 	{
 	}
+
+	#endregion
+
+	#region Definition building
+
+	private ModelDefinition GetOrBuildDefinition()
+	{
+		return _definitions.GetOrAdd(
+			GetType(),
+			type => new Lazy<ModelDefinition>(
+				() =>
+				{
+					ModelDefinition definition = BuildDefinition(type);
+					DoAddValidators();
+					return definition;
+				},
+				LazyThreadSafetyMode.ExecutionAndPublication)
+		).Value;
+	}
+
+	private static ModelDefinition BuildDefinition(Type modelType)
+	{
+		List<PropertyInfo> optionProperties = modelType
+			.GetProperties(BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)
+			.Where(property => property.Name.EndsWith(OptionSuffix, StringComparison.Ordinal))
+			.Where(property => typeof(Option).IsAssignableFrom(property.PropertyType))
+			.OrderBy(property => property.MetadataToken)
+			.ToList();
+
+		Dictionary<string, PropertyInfo> instanceProperties = modelType
+			.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+			.Where(property => property.CanRead)
+			.ToDictionary(
+				property => property.Name,
+				property => property,
+				StringComparer.OrdinalIgnoreCase);
+
+		List<OptionBinding> bindings = new();
+
+		foreach (PropertyInfo optionProperty in optionProperties)
+		{
+			if (!TryGetOptionValueType(optionProperty.PropertyType, out Type? valueType))
+			{
+				throw new InvalidOperationException(
+					$"Static option property '{optionProperty.Name}' must be of type Option<T>.");
+			}
+
+			OptionBinding binding = CreateBinding(optionProperty, valueType, instanceProperties);
+			bindings.Add(binding);
+		}
+
+		ValidateNoDuplicateOptionInstances(modelType, bindings);
+
+		return new ModelDefinition(bindings);
+	}
+
+	private static OptionBinding CreateBinding(
+		PropertyInfo optionProperty,
+		Type valueType,
+		Dictionary<string, PropertyInfo> instanceProperties)
+	{
+		string baseName = optionProperty.Name[..^OptionSuffix.Length];
+
+		if (!instanceProperties.TryGetValue(baseName, out PropertyInfo? valueProperty))
+		{
+			throw new InvalidOperationException(
+				$"No instance property '{baseName}' found for static option '{optionProperty.Name}'.");
+		}
+
+		if (!valueProperty.CanWrite)
+		{
+			throw new InvalidOperationException(
+				$"Instance property '{valueProperty.Name}' must have a setter.");
+		}
+
+		if (valueProperty.PropertyType != valueType)
+		{
+			throw new InvalidOperationException(
+				$"Type mismatch: '{optionProperty.Name}' is Option<{valueType.Name}> " +
+				$"but '{valueProperty.Name}' is {valueProperty.PropertyType.Name}.");
+		}
+
+		PropertyInfo? optionResultProperty = ResolveOptionResultProperty(
+			baseName,
+			instanceProperties);
+
+		Option option = optionProperty.GetValue(null) as Option
+			?? throw new InvalidOperationException(
+				$"Option '{optionProperty.Name}' returned null.");
+
+		if (!optionProperty.PropertyType.IsInstanceOfType(option))
+		{
+			throw new InvalidOperationException(
+				$"Option instance for '{optionProperty.Name}' is not of expected type '{optionProperty.PropertyType.Name}'. " +
+				$"Actual type: '{option.GetType().Name}'.");
+		}
+
+		MethodInfo getValueMethod = _getValueOpenMethod.MakeGenericMethod(valueType);
+
+		return new OptionBinding(
+			option,
+			valueProperty,
+			optionResultProperty,
+			getValueMethod);
+	}
+
+	private static PropertyInfo? ResolveOptionResultProperty(
+		string baseName,
+		Dictionary<string, PropertyInfo> instanceProperties)
+	{
+		string optionResultPropertyName = baseName + OptionResultSuffix;
+
+		if (!instanceProperties.TryGetValue(optionResultPropertyName, out PropertyInfo? optionResultProperty))
+		{
+			return null;
+		}
+
+		if (optionResultProperty.PropertyType != typeof(OptionResult))
+		{
+			throw new InvalidOperationException(
+				$"'{optionResultProperty.Name}' must be of type {nameof(OptionResult)}.");
+		}
+
+		if (!optionResultProperty.CanWrite)
+		{
+			throw new InvalidOperationException(
+				$"'{optionResultProperty.Name}' must have a setter.");
+		}
+
+		return optionResultProperty;
+	}
+
+	private static void ValidateNoDuplicateOptionInstances(
+		Type modelType,
+		IReadOnlyList<OptionBinding> bindings)
+	{
+		List<string> duplicates = bindings
+			.GroupBy(binding => binding.Option)
+			.Where(group => group.Count() > 1)
+			.Select(group =>
+				$"  Option '{group.Key}' bound to: " +
+				string.Join(", ", group.Select(binding => binding.ValueProperty.Name)))
+			.ToList();
+
+		if (duplicates.Count > 0)
+		{
+			throw new InvalidOperationException(
+				$"Duplicate option instances in {modelType.FullName}:" + Environment.NewLine +
+				string.Join(Environment.NewLine, duplicates));
+		}
+	}
+
+	#endregion
+
+	#region Helpers
+
+	private void SetPropertyValue(PropertyInfo property, object? value)
+	{
+		if (value is null &&
+			property.PropertyType.IsValueType &&
+			Nullable.GetUnderlyingType(property.PropertyType) is null)
+		{
+			return;
+		}
+
+		if (value is not null)
+		{
+			Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
+
+			if (!targetType.IsInstanceOfType(value))
+			{
+				throw new InvalidOperationException(
+					$"Value of type '{value.GetType().Name}' is not assignable to " +
+					$"'{property.Name}' of type '{property.PropertyType.Name}'.");
+			}
+		}
+
+		property.SetValue(this, value);
+	}
+
+	private static IEnumerable<string> GetAllNames(Option option)
+	{
+		yield return option.Name;
+
+		foreach (string alias in option.Aliases)
+		{
+			yield return alias;
+		}
+	}
+
+	private static bool TryGetOptionValueType(Type type, out Type? valueType)
+	{
+		for (Type? current = type; current is not null && current != typeof(object); current = current.BaseType)
+		{
+			if (current.IsGenericType && current.GetGenericTypeDefinition() == typeof(Option<>))
+			{
+				valueType = current.GetGenericArguments()[0];
+				return true;
+			}
+		}
+
+		valueType = null;
+		return false;
+	}
+
+	private static MethodInfo ResolveGetValueMethod()
+	{
+		MethodInfo? method = typeof(ParseResult)
+			.GetMethods(BindingFlags.Public | BindingFlags.Instance)
+			.FirstOrDefault(method =>
+			{
+				if (method.Name != nameof(ParseResult.GetValue))
+				{
+					return false;
+				}
+
+				if (!method.IsGenericMethodDefinition)
+				{
+					return false;
+				}
+
+				ParameterInfo[] parameters = method.GetParameters();
+
+				if (parameters.Length != 1)
+				{
+					return false;
+				}
+
+				Type parameterType = parameters[0].ParameterType;
+
+				return parameterType.IsGenericType &&
+					   parameterType.GetGenericTypeDefinition() == typeof(Option<>);
+			});
+
+		if (method is null)
+		{
+			throw new InvalidOperationException(
+				$"Could not find generic {nameof(ParseResult.GetValue)}<T>(Option<T>) method on {nameof(ParseResult)}.");
+		}
+
+		return method;
+	}
+
+	private static string FormatTypeName(Type type)
+	{
+		if (Nullable.GetUnderlyingType(type) is { } underlyingType)
+		{
+			return FormatTypeName(underlyingType) + "?";
+		}
+
+		if (!type.IsGenericType)
+		{
+			return type.Name;
+		}
+
+		string name = type.Name;
+		int tickIndex = name.IndexOf('`');
+
+		if (tickIndex >= 0)
+		{
+			name = name[..tickIndex];
+		}
+
+		string arguments = string.Join(
+			", ",
+			type.GetGenericArguments().Select(FormatTypeName));
+
+		return $"{name}<{arguments}>";
+	}
+
+	private static string FormatValue(object? value)
+	{
+		return value switch
+		{
+			null => "(null)",
+			string text => $"\"{text}\"",
+			FileSystemInfo fileSystemInfo => $"\"{fileSystemInfo}\"",
+			IEnumerable<string> items => "[" + string.Join(", ", items.Select(item => $"\"{item}\"")) + "]",
+			_ => value.ToString() ?? "(null)"
+		};
+	}
+
+	#endregion
+
+	#region Inner types
+
+	private sealed class ModelDefinition
+	{
+		public IReadOnlyList<OptionBinding> Bindings { get; }
+		public IReadOnlyList<Option> Options { get; }
+
+		public ModelDefinition(IReadOnlyList<OptionBinding> bindings)
+		{
+			Bindings = bindings;
+			Options = bindings.Select(binding => binding.Option).ToList();
+		}
+	}
+
+	private sealed record OptionBinding(
+		Option Option,
+		PropertyInfo ValueProperty,
+		PropertyInfo? OptionResultProperty,
+		MethodInfo GetValueMethod)
+	{
+		public object? GetValue(ParseResult parseResult)
+		{
+			return GetValueMethod.Invoke(parseResult, new object[] { Option });
+		}
+	}
+
+	#endregion
 }

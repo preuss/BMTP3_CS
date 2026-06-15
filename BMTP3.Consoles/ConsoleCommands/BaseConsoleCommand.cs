@@ -28,7 +28,7 @@ public abstract class BaseConsoleCommand : Command
 			}
 		}
 
-		BaseOptionsModel.ValidateDuplicateNameAndAlias(_optionsModels);
+		BaseOptionsModel.ValidateDuplicateOptionNamesOrAliases(_optionsModels);
 
 		SetAction(ExecuteInternalAsync);
 	}
