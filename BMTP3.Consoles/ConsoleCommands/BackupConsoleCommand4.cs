@@ -6,7 +6,6 @@ using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Spectre.Console;
 using System.CommandLine;
 
@@ -46,10 +45,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		ConsolesPrinter consolePrinter = ServiceProvider.GetRequiredService<ConsolesPrinter>();
 		consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
 
-		ILogger<BackupConsoleCommand4> logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand4>>()
-												?? ServiceProvider.GetService<ILoggerFactory>()
-												?.CreateLogger<BackupConsoleCommand4>()
-												?? NullLogger<BackupConsoleCommand4>.Instance;
+		ILogger<BackupConsoleCommand4> logger = ServiceProvider.GetRequiredService<ILogger<BackupConsoleCommand4>>();
 
 		ValidateBackupOptions(BackupOptions);
 
@@ -60,57 +56,14 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 		IBackupEngine engine = ServiceProvider.GetRequiredService<IBackupEngine>();
 
-		BackupProgressDisplay display = new BackupProgressDisplay(AnsiConsole.Console);
-
-		BackupResult? result = null;
-
-		Action<ProgressReport>? reportAction = null;
-
-		IProgress<BackupProgress> progress = new Progress<BackupProgress>(p =>
-		{
-			Action<ProgressReport>? action = reportAction;
-			if(action is null)
-				return;
-
-			bool isScanning = p.CurrentPhase == BackupProgressPhase.Scanning;
-			int completed = isScanning ? 0 : p.FilesSucceeded + p.FilesSkipped + p.FilesFailed;
-			int total = isScanning ? 1 : p.TotalFilesSelected;
-			string phase = isScanning
-				? $"Scanning: {p.DirectoriesTraversed} dirs, {p.FilesDiscovered} files"
-				: $"Transferring: {completed}/{total} files";
-			BackupProgressItem? active = p.ActiveFiles.Count > 0 ? p.ActiveFiles[0] : null;
-			action(new ProgressReport(
-				completed,
-				total,
-				p.DirectoriesTraversed,
-				p.FilesDiscovered,
-				phase,
-				active?.RelativeFilePath,
-				active?.BytesProcessed ?? 0,
-				active?.Length ?? 0
-			));
-		});
+		BackupProgressDisplay display = new(ServiceProvider.GetRequiredService<IAnsiConsole>());
 
 		try
 		{
-			await display.RunAsync(plan.Name, async report =>
-			{
-				reportAction = report;
-				result = await engine.RunAsync(plan, progress, cancellationToken);
-			});
-			ArgumentNullException.ThrowIfNull(result);
+			BackupResult result = await RunBackupWithProgressAsync(
+				display, engine, plan, cancellationToken);
 			consolePrinter.PrintResult(result);
-			logger.LogInformation("Job '{JobName}' finished: {State}", result.Name, result.State);
-			logger.LogInformation(
-				"Items: {Total} Succeeded: {Succeeded} Failed: {Failed}",
-				result.ItemResults.Count,
-				result.ItemResults.Count(r => r.State == BackupResultItemState.Succeeded),
-				result.ItemResults.Count(r => r.State == BackupResultItemState.Failed));
-
-			if (result.FailureReason is not null)
-			{
-				logger.LogWarning("Failure reason: {Reason}", result.FailureReason);
-			}
+			LogResult(logger, result);
 
 			return result.State == BackupResultState.Completed ? 0 : 1;
 		}
@@ -128,13 +81,59 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		}
 	}
 
-	public Task<int> ExecuteAsyncForTests(ParseResult parseResult, CancellationToken cancellationToken)
+	internal Task<int> ExecuteAsyncForTests(ParseResult parseResult, CancellationToken cancellationToken)
 	{
 		return DoExecuteAsync(parseResult, cancellationToken);
 	}
 
-	private void ValidateBackupOptions(BackupOptionsModel4 backupOptions)
+	private static Task<BackupResult> RunBackupWithProgressAsync(
+		BackupProgressDisplay display,
+		IBackupEngine engine,
+		BackupPlan plan,
+		CancellationToken cancellationToken)
 	{
+		ArgumentNullException.ThrowIfNull(display);
+		ArgumentNullException.ThrowIfNull(engine);
+		ArgumentNullException.ThrowIfNull(plan);
+
+		return display.RunAsync(plan.Name, displayProgress =>
+		{
+			IProgress<BackupProgress> engineProgress = new Progress<BackupProgress>(progress =>
+			{
+				displayProgress.Report(ProgressReportMapper.ToReport(progress));
+			});
+
+			return engine.RunAsync(plan, engineProgress, cancellationToken);
+		});
+	}
+
+	private static void LogResult(
+		ILogger<BackupConsoleCommand4> logger,
+		BackupResult result)
+	{
+		BackupResultCounts counts = result.Counts;
+
+		logger.LogInformation("Job '{JobName}' finished: {State}", result.Name, result.State);
+
+		logger.LogInformation(
+			"Items: {Total} Succeeded: {Succeeded} Failed: {Failed} Skipped: {Skipped}",
+			counts.Total,
+			counts.Succeeded,
+			counts.Failed,
+			counts.Skipped);
+
+		if (result.FailureReason is not null)
+		{
+			logger.LogWarning("Failure reason: {Reason}", result.FailureReason);
+		}
+	}
+
+	private static void ValidateBackupOptions(BackupOptionsModel4 backupOptions)
+	{
+		ArgumentNullException.ThrowIfNull(backupOptions);
+
+		bool hasConfig = backupOptions.Config?.Exists == true;
+
 		if (backupOptions.OutputStrategy == OutputStructureStrategy.CustomPathPattern
 			&& string.IsNullOrWhiteSpace(backupOptions.CustomOutputFilePath))
 		{
@@ -147,14 +146,12 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 			throw new ArgumentException("--collision-pattern is required when --rename-strategy is CustomPattern.");
 		}
 
-		if ((backupOptions.Config == null || !backupOptions.Config.Exists)
-			&& backupOptions.OutputDirectory == null)
+		if (!hasConfig && backupOptions.OutputDirectory is null)
 		{
 			throw new ArgumentException("--output is required when not using a config file.");
 		}
 
-		if ((backupOptions.Config == null || !backupOptions.Config.Exists)
-			&& string.IsNullOrWhiteSpace(backupOptions.SourcePath))
+		if (!hasConfig && string.IsNullOrWhiteSpace(backupOptions.SourcePath))
 		{
 			throw new ArgumentException("--source-path is required when not using a config file.");
 		}

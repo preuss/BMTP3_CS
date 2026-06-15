@@ -40,4 +40,12 @@ public sealed record BackupResult
 	// ---------------------------------------------------------------------
 
 	public IReadOnlyList<BackupResultItem> ItemResults { get; init; } = ImmutableList<BackupResultItem>.Empty;
+
+	public BackupResultCounts Counts => new()
+	{
+		Total = ItemResults.Count,
+		Succeeded = ItemResults.Count(r => r.State == BackupResultItemState.Succeeded),
+		Failed = ItemResults.Count(r => r.State == BackupResultItemState.Failed),
+		Skipped = ItemResults.Count(r => r.State == BackupResultItemState.Skipped),
+	};
 }

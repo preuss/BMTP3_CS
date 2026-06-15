@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 14 Jun 2026** — Progress display rewritten. Smelly Code analyse i mangler.md § Smelly Code. Task #0 tilfoejet nedenfor.
+> **Opdateret 15 Jun 2026** — C-V10..C-V25 resolved. 447 tests pass.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -290,10 +290,21 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 | ID | Fil | Problem |
 |----|-----|---------|
 | C-V01 | `BackupConsoleCommand4.Helpers.cs` | ~~`BuildPlan` 237 linjer~~ ✅ **DONE** — Splittet i `BackupPlanBuilder.cs` + `Helpers.cs` (~29 linjer). |
-| C-V02 | `BackupConsoleCommand4.Helpers.cs` | 9 næsten-identiske `ParseXxx` metoder — copy-paste (DRY) |
-| C-V03 | `BackupConsoleCommand4.Helpers.cs` | ~~`ParseXxx` silent fallback~~ ✅ **DONE** — `_ => throw` implementeret. |
-| C-V09 | `BackupConsoleCommand4.cs:61` | ~~`GetService<IBackupEngine>`~~ ✅ **DONE** — `GetRequiredService<T>()` for `IBackupEngine` og `ConsolesPrinter`. |
-| C-V25 | `BackupProgressDisplay.cs:100` | `MarkRemainingCompletedTasksAsInactive` — dead method ~~(YAGNI)~~ ✅ **FIXED** |
+| C-V02 | `BackupConsoleCommand4.Helpers.cs` | ~~9 næsten-identiske `ParseXxx`~~ ✅ **DONE** — `ParseEnum<T>()`. |
+| C-V03 | `BackupConsoleCommand4.Helpers.cs` | ~~`ParseXxx` silent fallback~~ ✅ **DONE** — `_ => throw`. |
+| C-V09 | `BackupConsoleCommand4.cs:61` | ~~`GetService<IBackupEngine>`~~ ✅ **DONE** — `GetRequiredService<T>()`. |
+| C-V25 | `BackupProgressDisplay.cs:100` | ~~`MarkRemainingCompletedTasksAsInactive`~~ ✅ **FIXED** — slettet. |
+| C-V10 | `BackupConsoleCommand4.cs:70–91` | ~~`BackupResult? result = null` + `ThrowIfNull`~~ ✅ **FIXED** — `null!`, `ThrowIfNull` removed. |
+| C-V11 | `BackupConsoleCommand4.cs:94–98` | ~~DRY result-tælling~~ ✅ **FIXED** — `BackupResultCounts` record. |
+| C-V12 | `BackupConsoleCommand4.cs:49–52` | ~~Tre-trins logger~~ ✅ **FIXED** — `GetRequiredService<ILogger<T>>()`. |
+| C-V13 | `BackupConsoleCommand4.cs:68` | ~~Static `AnsiConsole.Console`~~ ✅ **FIXED** — DI `IAnsiConsole`. |
+| C-V14 | `BackupConsoleCommand4.cs:121–124` | ~~`ExecuteAsyncForTests` public~~ ✅ **FIXED** — `internal`. |
+| C-V15 | `BackupConsoleCommand4.cs:17–34` | Private constructor — ⚠️ **WONTFIX** (bevidst pattern). |
+| C-V16 | `BackupOptionsModel4.cs:155–162` | ~~CLI --delay override~~ ✅ **FIXED** — `WasSupplied(DelayOption)`. |
+| C-V17 | `BackupOptionsModel4.cs + Helpers.cs:183/33` | ~~Default mismatch~~ ✅ **FIXED** — begge `None`. |
+| C-V18 | `BackupOptionsModel4.cs:20` | `ConfigOptionResult` — ✅ **RETAINED** med future-kommentar. |
+| C-V19 | `BackupOptionsModel4.cs:192–194` | `DoAddValidators()` — ✅ **RETAINED** med future-kommentar. |
+| C-V24 | `ConsolesPrinter.cs + BackupConsoleCommand4.cs` | ~~DRY result-tælling~~ ✅ **FIXED** — af C-V11. |
 
 ### Core4 — nye kritiske fund (High) — 14 Jun 2026
 

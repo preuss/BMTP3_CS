@@ -3,7 +3,6 @@ using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Spectre.Console;
 using System.CommandLine;
 
@@ -28,10 +27,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 		CancellationToken cancellationToken
 	)
 	{
-		ILogger<BackupConsoleCommand4ListDrives> logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand4ListDrives>>()
-														?? ServiceProvider.GetService<ILoggerFactory>()
-														?.CreateLogger<BackupConsoleCommand4ListDrives>()
-														  ?? NullLogger<BackupConsoleCommand4ListDrives>.Instance;
+		ILogger<BackupConsoleCommand4ListDrives> logger = ServiceProvider.GetRequiredService<ILogger<BackupConsoleCommand4ListDrives>>();
 
 		IAnsiConsole console = ServiceProvider.GetService<IAnsiConsole>() ?? AnsiConsole.Console;
 

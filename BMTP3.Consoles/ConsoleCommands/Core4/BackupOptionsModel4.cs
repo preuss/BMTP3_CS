@@ -17,6 +17,8 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	};
 
 	public FileInfo? Config { get; set; }
+
+	// Reserved for future option result value validation (e.g., verifying that --config resolves before other options)
 	public OptionResult? ConfigOptionResult { get; set; }
 
 	public static Option<string> NameOption { get; } = new("--name")
@@ -215,6 +217,7 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public List<string> VerificationHash { get; set; } = new();
 
+	// Placeholder for future cross-option validators (e.g., --path-pattern requires --output-structure CustomPathPattern)
 	protected override void DoAddValidators()
 	{
 	}

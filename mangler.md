@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 14 Jun 2026** — Core4 code smells analysed. SidecarRequest super-refactor complete. 353 tests (249 Core4 + 104 Consoles).
+> **Opdateret 15 Jun 2026** — C-V10..C-V14, C-V18, C-V19, C-V24, C-V25 resolved. 447 tests pass (104 Consoles + 139 Core4 + 204 Common).
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -22,7 +22,17 @@
 | C-V04: Dead null checks | ✅ **DONE** | `if (config.Source != null)` etc. fjernet — altid sande. |
 | C-V05: IsNullOrWhiteSpace guards | ✅ **DONE** | Fjernet på enum-strenge. ParseEnum kaster på tomme/ugyldige værdier. |
 | C-V06: Path.GetFullPath double | ✅ **DONE** | Fjernet første kald i CLI block. Global normalization fanger den. |
+| C-V09: `GetRequiredService` for IBackupEngine + ConsolesPrinter | ✅ **DONE** | `GetService` → `GetRequiredService` i `BackupConsoleCommand4.cs`. |
+| C-V10: `BackupResult? result = null` | ✅ **DONE** | `null!` + `ThrowIfNull` removed. |
+| C-V11: DRY result-tælling | ✅ **DONE** | `BackupResultCounts` record shared af Printer + logger. |
+| C-V12: Tre-trins logger | ✅ **DONE** | `GetRequiredService<ILogger<T>>()` i begge commands. |
+| C-V13: Static AnsiConsole.Console | ✅ **DONE** | `ServiceProvider.GetRequiredService<IAnsiConsole>()`. |
+| C-V14: `ExecuteAsyncForTests` public | ✅ **DONE** | `internal` + `InternalsVisibleTo`. |
+| C-V15: Private constructor | ⚠️ **WONTFIX** | Bevidst mønster — `_optionsModels` forbliver `private`. |
 | C-V16: CLI --delay override | ✅ **DONE** | `WasSupplied(DelayOption)` tilføjet i `ApplyCliOverrides()`. |
+| C-V18/C-V19: `ConfigOptionResult` + `DoAddValidators` | ✅ **RETAINED** | Kommentarer tilføjet — plads til fremtidig validering. |
+| C-V24: DRY result-tælling (dup) | ✅ **DONE** | Automatisk fikset af C-V11. |
+| C-V25: `MarkRemainingCompletedTasksAsInactive` | ✅ **DONE** | Dead method slettet. |
 | C-V07: Navn-fallback død kode | ✅ **DONE** | `backupOptions.Name` branch fjernet — kunne aldrig nås. |
 | C-V08: ExecutionConfig tom klasse | ✅ **DONE** | Klasse + property slettet. Test `Load_TomlFile_EmptyExecution_DefaultsToNull` fjernet (16→15 tests). |
 | DryRun not implemented | ✅ **DONE** | `BuildDryRunResult` helper, short-circuit før processing loop. `BackupResult.IsDryRun = true`. |
@@ -431,21 +441,21 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | ~~C-V07~~ | `BackupConsoleCommand4.Helpers.cs` | 200–208 | KISS / DRY | Low | ✅ **FIXED** — Død `backupOptions.Name` branch fjernet fra fallback. |
 | ~~C-V08~~ | `BackupConsoleCommand4.Helpers.cs` | 127 | YAGNI | Low | ✅ **FIXED** — `ExecutionConfig` klasse + `Execution` property slettet. Tom og uden formål. |
 | C-V09 | `BackupConsoleCommand4.cs` | 61–66 | Fail-Fast / YAGNI | **High** | ✅ **FIXED** — `GetService<T>()` → `GetRequiredService<T>()` for `IBackupEngine` og `ConsolesPrinter`. |
-| C-V10 | `BackupConsoleCommand4.cs` | 70–91 | Fail-Fast / KISS | Medium | `BackupResult? result = null` + `ThrowIfNull(result)` er unødigt komplekst. `RunAsync` returnerer aldrig null. |
-| C-V11 | `BackupConsoleCommand4.cs` | 94–98 | SOLID-SRP / DRY | Medium | Tæller `ItemResults` per state for logging — duplikerer samme tælling i `ConsolesPrinter.PrintResult`. |
-| C-V12 | `BackupConsoleCommand4.cs` | 49–52 | KISS / DRY | Medium | Tre-trins logger-resolution kopieret i `BackupConsoleCommand4ListDrives.cs`. Bør erstattes af `GetRequiredService<ILogger<T>>()`. |
-| C-V13 | `BackupConsoleCommand4.cs` | 68 | Clean Architecture / SOLID-D | Medium | `BackupProgressDisplay` instantieres med `AnsiConsole.Console` (static) i stedet for `IAnsiConsole` fra DI. |
-| C-V14 | `BackupConsoleCommand4.cs` | 121–124 | YAGNI | Low | `ExecuteAsyncForTests` er en public production-metode der kun eksisterer som test-seam. Lækker testinfrastruktur i production API. |
-| C-V15 | `BackupConsoleCommand4.cs` | 17–34 | KISS | Low | Public default constructor delegerer til privat 2-parameter constructor udelukkende for at gemme referencer som base class allerede holder. |
+| ~~C-V10~~ | `BackupConsoleCommand4.cs` | 70–91 | Fail-Fast / KISS | Medium | ✅ **FIXED** — `BackupResult? result = null` → `BackupResult result = null!`, `ThrowIfNull(result)` removed. |
+| ~~C-V11~~ | `BackupConsoleCommand4.cs` | 94–98 | SOLID-SRP / DRY | Medium | ✅ **FIXED** — `BackupResultCounts` record i Core4.Api.Models. `result.Counts` shared af `ConsolesPrinter` + logger. |
+| ~~C-V12~~ | `BackupConsoleCommand4.cs` | 49–52 | KISS / DRY | Medium | ✅ **FIXED** — `GetRequiredService<ILogger<T>>()` i både `BackupConsoleCommand4` og `BackupConsoleCommand4ListDrives`. |
+| ~~C-V13~~ | `BackupConsoleCommand4.cs` | 68 | Clean Architecture / SOLID-D | Medium | ✅ **FIXED** — `new BackupProgressDisplay(ServiceProvider.GetRequiredService<IAnsiConsole>())`. |
+| ~~C-V14~~ | `BackupConsoleCommand4.cs` | 121–124 | YAGNI | Low | ✅ **FIXED** — `ExecuteAsyncForTests` → `internal` (via `InternalsVisibleTo`). |
+| C-V15 | `BackupConsoleCommand4.cs` | 17–34 | KISS | Low | ⚠️ WONTFIX — Private constructor/`_optionsModels` pattern er bevidst. |
 | ~~C-V16~~ | `BackupOptionsModel4.cs` | 155–162 | YAGNI | Medium | ✅ **FIXED** — `WasSupplied(DelayOption)` tilføjet i `ApplyCliOverrides()`. |
 | C-V17 | `BackupOptionsModel4.cs` + `BackupConsoleCommand4.Helpers.cs` | 183 / 33 | Fail-Fast | Medium | ~~`PostWriteVerificationOption` default `Hash`, men `BuildPlan` initialiserer til `None`. `WasSupplied` returnerer false for implicit default → plan får `None` selvom option er `Hash`. Silent mismatch.~~ ✅ **FIXED** — Begge defaults ændret til `None` så de matcher. Brugeren vælger eksplicit `--verify hash`. |
-| C-V18 | `BackupOptionsModel4.cs` | 20 | YAGNI | Low | `ConfigOptionResult` property deklareres men læses aldrig i produktion. Overflødigt. |
-| C-V19 | `BackupOptionsModel4.cs` | 192–194 | SOLID-SRP | Low | `DoAddValidators()` er tom hook mens al validering sker i `BackupConsoleCommand4.ValidateBackupOptions()`. Inkonsistent mønster. |
+| ~~C-V18~~ | `BackupOptionsModel4.cs` | 20 | YAGNI | Low | ✅ **RETAINED** — `ConfigOptionResult` beholdt med `// Reserved for future...` comment. |
+| ~~C-V19~~ | `BackupOptionsModel4.cs` | 192–194 | SOLID-SRP | Low | ✅ **RETAINED** — `DoAddValidators()` beholdt med `// Placeholder for future...` comment. |
 | C-V20 | `BackupPlan4Config.cs` | 57–59 | YAGNI | Low | `ExecutionConfig` er en tom sealed class uden properties. Deserialiseres og instantieres uden formål. |
 | C-V21 | `BackupPlan4Config.cs` | 1–59 | Clean Architecture / KISS | Medium | Alle enum-lignende værdier er `string`-typer (`"rename"`, `"binary"` etc.) i stedet for de enums der allerede findes i Core4. Tvinger 9 `ParseXxx`-metoder til at eksistere. |
 | C-V22 | `BackupPlan4Loader.cs` | 9–50 | DRY | Low | Strukturelt identisk med Core2's `BackupPlanLoader.Load` — extension/branch/deserialize/null-check/throw. Bør deles. |
 | C-V23 | `ConsolesPrinter.cs` | 44–54 | SOLID-SRP / Clean Architecture | Medium | Én klasse håndterer output for Core2, Core3 og Core4 — tre uafhængige grunde til at ændre klassen. Core4-printer bør separeres. |
-| C-V24 | `ConsolesPrinter.cs` + `BackupConsoleCommand4.cs` | 87–90 / 95–98 | DRY | Medium | `result.ItemResults.Count(r => r.State == X)` udføres uafhængigt to steder. Bør ligge ét sted. |
+| ~~C-V24~~ | `ConsolesPrinter.cs` + `BackupConsoleCommand4.cs` | 87–90 / 95–98 | DRY | Medium | ✅ **FIXED** — By C-V11: `BackupResultCounts` record + `result.Counts` brugt begge steder. |
 | C-V25 | `BackupProgressDisplay.cs` | 100–112 | YAGNI | **High** | ~~`MarkRemainingCompletedTasksAsInactive` er defineret men aldrig kaldt. Same logik inlineat i `UpdateFileTasks`. Dead method.~~ ✅ **FIXED** — slettet. |
 | C-V26 | `BackupProgressDisplay.cs` | 65–69 | Clean Architecture | Medium | `Console.WriteLine` (System.Console) bruges direkte til debug i stedet for injiceret `IAnsiConsole`. Untestbar og inkonsistent. |
 | C-V27 | `BackupProgressDisplay.cs` | 50–55 | KISS | Low | Triple-variabel polling (`latestReport`/`latestReportVersion`/`processedReportVersion`) er mere kompleks end nødvendigt ved 100ms poll-interval. |

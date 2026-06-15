@@ -1,7 +1,7 @@
 using BMTP3.Consoles.ConsoleCommands;
-using Spectre.Console;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
+using Spectre.Console;
 
 namespace BMTP3.Consoles.Services;
 
@@ -24,12 +24,12 @@ public class ConsolesPrinter
 	/// </summary>
 	public void PrintOptionsModel(params BaseOptionsModel[] optionsModels)
 	{
-		foreach(BaseOptionsModel optionsModel in optionsModels)
+		foreach (BaseOptionsModel optionsModel in optionsModels)
 		{
 			string header = $"{optionsModel.GetType().Name}:";
 			_console.MarkupLine($"[bold]{header.EscapeMarkup()}[/]");
 			_console.WriteLine(new string('=', header.Length));
-			foreach(string line in optionsModel.GetOptionPropertyValues())
+			foreach (string line in optionsModel.GetOptionPropertyValues())
 			{
 				_console.WriteLine("  " + line);
 			}
@@ -64,10 +64,10 @@ public class ConsolesPrinter
 		_console.MarkupLine($"[bold]Job[/] '[green]{result.JobName.EscapeMarkup()}[/]' finished: {result.Status}");
 		_console.WriteLine(
 			$"Scanned: {result.TotalFilesScanned} Copied: {result.FilesCopied} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.TotalBytesCopied}");
-		if(result.GlobalErrors?.Count > 0)
+		if (result.GlobalErrors?.Count > 0)
 		{
 			_console.MarkupLine("[yellow]Global errors:[/]");
-			foreach(string e in result.GlobalErrors)
+			foreach (string e in result.GlobalErrors)
 			{
 				_console.MarkupLine($"  [yellow]- {e.EscapeMarkup()}[/]");
 			}
@@ -84,11 +84,9 @@ public class ConsolesPrinter
 			_ => "white",
 		};
 		_console.MarkupLine($"[bold]Job[/] '[green]{result.Name.EscapeMarkup()}[/]' finished: [{stateColor}]{result.State}[/]");
-		int succeeded = result.ItemResults.Count(r => r.State == BackupResultItemState.Succeeded);
-		int failed = result.ItemResults.Count(r => r.State == BackupResultItemState.Failed);
-		int skipped = result.ItemResults.Count(r => r.State == BackupResultItemState.Skipped);
-		_console.WriteLine($"Total: {result.ItemResults.Count} Succeeded: {succeeded} Failed: {failed} Skipped: {skipped}");
-		if(result.FailureReason is not null)
+		BackupResultCounts counts = result.Counts;
+		_console.WriteLine($"Total: {counts.Total} Succeeded: {counts.Succeeded} Failed: {counts.Failed} Skipped: {counts.Skipped}");
+		if (result.FailureReason is not null)
 		{
 			_console.MarkupLine($"[yellow]Failure reason: {result.FailureReason.ToString().EscapeMarkup()}[/]");
 		}
