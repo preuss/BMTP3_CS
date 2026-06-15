@@ -94,8 +94,7 @@ internal class FileContent : IContent, IFileInfoSource
 	///     Opens a <see cref="Stream"/> configured for asynchronous read operations.
 	/// </summary>
 	/// <param name="ct">
-	///     Cancellation token. Currently not used while opening the stream itself,
-	///     but provided for API symmetry with other <see cref="IContent"/> implementations.
+	///     Cancellation token to cancel the operation.
 	/// </param>
 	/// <returns>
 	///     A <see cref="Task{TResult}"/> that returns an open <see cref="FileStream"/>
@@ -111,6 +110,7 @@ internal class FileContent : IContent, IFileInfoSource
 	public Task<Stream> OpenReadAsync(CancellationToken ct)
 	{
 		ThrowIfInvalidated();
+		ct.ThrowIfCancellationRequested();
 
 		Stream fs = new FileStream(
 			FileInfo.FullName,

@@ -40,7 +40,7 @@ internal class ProgressStatusTask
 	public double Value
 	{
 		get => ProgressTask.Value;
-		set => ProgressTask.Value = Value;
+		set => ProgressTask.Value = value;
 	}
 
 	/// <summary>
