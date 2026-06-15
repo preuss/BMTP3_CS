@@ -51,6 +51,7 @@ public sealed class BackupProgressDisplay
 					ctx,
 					overallTask,
 					fileTasks,
+					_console,
 					_debug);
 
 				try
@@ -150,14 +151,9 @@ public sealed class BackupProgressDisplay
 		fileTasks.Clear();
 	}
 
-	private static void WriteDebugLine(bool debug, ProgressReport report)
+	private static void WriteDebugLine(ProgressReport report, IAnsiConsole console)
 	{
-		if (!debug)
-		{
-			return;
-		}
-
-		Console.WriteLine($"DEBUG: {report.ActiveFileName} {report.ActiveFileBytesRead}/{report.ActiveFileBytesTotal} Files={report.FilesCompleted}/{report.FilesTotal}");
+		console.WriteLine($"DEBUG: {report.ActiveFileName} {report.ActiveFileBytesRead}/{report.ActiveFileBytesTotal} Files={report.FilesCompleted}/{report.FilesTotal}");
 	}
 
 	private sealed class BackupProgressRenderer : IProgress<BackupProgress>
@@ -165,17 +161,20 @@ public sealed class BackupProgressDisplay
 		private readonly ProgressContext _context;
 		private readonly ProgressTask _overallTask;
 		private readonly Dictionary<string, FileTaskState> _fileTasks;
+		private readonly IAnsiConsole _console;
 		private readonly bool _debug;
 
 		public BackupProgressRenderer(
 			ProgressContext context,
 			ProgressTask overallTask,
 			Dictionary<string, FileTaskState> fileTasks,
+			IAnsiConsole console,
 			bool debug)
 		{
 			_context = context ?? throw new ArgumentNullException(nameof(context));
 			_overallTask = overallTask ?? throw new ArgumentNullException(nameof(overallTask));
 			_fileTasks = fileTasks ?? throw new ArgumentNullException(nameof(fileTasks));
+			_console = console ?? throw new ArgumentNullException(nameof(console));
 			_debug = debug;
 		}
 
@@ -187,7 +186,8 @@ public sealed class BackupProgressDisplay
 
 			UpdateOverall(_overallTask, report);
 			UpdateFileTasks(_context, _fileTasks, report);
-			WriteDebugLine(_debug, report);
+
+			if (_debug) WriteDebugLine(report, _console);
 		}
 	}
 

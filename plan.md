@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 15 Jun 2026** — C-V10..C-V25 + C-V21 + BackupConsoleCommand4 + BackupProgressDisplay refactored. 243 tests pass.
+> **Opdateret 15 Jun 2026** — C-V10..C-V25 + C-V21 + C-V26 + BackupConsoleCommand4 + BackupProgressDisplay refactored. 243 tests pass.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 

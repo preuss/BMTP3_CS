@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 15 Jun 2026** — C-V21 ParseEnum forbedret, BackupConsoleCommand4 + BackupProgressDisplay refactored. 243 tests pass (104 Consoles + 139 Core4).
+> **Opdateret 15 Jun 2026** — C-V21 + C-V26 + BackupConsoleCommand4 + BackupProgressDisplay refactored. 243 tests pass (104 Consoles + 139 Core4).
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -42,7 +42,7 @@
 | `ProgressReport` → `internal sealed record` | ✅ **DONE** | Kun displayets view-model. |
 | C-V07: Navn-fallback død kode | ✅ **DONE** | `backupOptions.Name` branch fjernet — kunne aldrig nås. |
 | C-V08: ExecutionConfig tom klasse | ✅ **DONE** | Klasse + property slettet. Test `Load_TomlFile_EmptyExecution_DefaultsToNull` fjernet (16→15 tests). |
-| DryRun not implemented | ✅ **DONE** | `BuildDryRunResult` helper, short-circuit før processing loop. `BackupResult.IsDryRun = true`. |
+| C-V26: WriteDebugLine System.Console → IAnsiConsole | ✅ **DONE** | `WriteDebugLine(ProgressReport, IAnsiConsole)`. `IAnsiConsole` injectet i `BackupProgressRenderer`. Parameterrækkefølge: `console` før `debug`. | `BuildDryRunResult` helper, short-circuit før processing loop. `BackupResult.IsDryRun = true`. |
 | ParallelBackupRunner cleanup | ✅ **DONE** | `ParallelBackupRunner` + `LimitedParallelBackupRunner` slettet. `BackupRunner` beholdt. |
 | N5: Ryd op ubrugte `BackupRunner`-klasser | ✅ **DONE** | `ParallelBackupRunner`/`LimitedParallelBackupRunner` slettet. |
 | Sidecar redesign: Document/Section/Property model | ✅ **DONE** | `SidecarProperty`, `SidecarSection`, `SidecarDocument` (fluent API + weight-sortering). |
@@ -464,7 +464,7 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | C-V23 | `ConsolesPrinter.cs` | 44–54 | SOLID-SRP / Clean Architecture | Medium | Én klasse håndterer output for Core2, Core3 og Core4 — tre uafhængige grunde til at ændre klassen. Core4-printer bør separeres. |
 | ~~C-V24~~ | `ConsolesPrinter.cs` + `BackupConsoleCommand4.cs` | 87–90 / 95–98 | DRY | Medium | ✅ **FIXED** — By C-V11: `BackupResultCounts` record + `result.Counts` brugt begge steder. |
 | C-V25 | `BackupProgressDisplay.cs` | 100–112 | YAGNI | **High** | ~~`MarkRemainingCompletedTasksAsInactive` er defineret men aldrig kaldt. Same logik inlineat i `UpdateFileTasks`. Dead method.~~ ✅ **FIXED** — slettet. |
-| C-V26 | `BackupProgressDisplay.cs` | 65–69 | Clean Architecture | Medium | `Console.WriteLine` (System.Console) bruges direkte til debug i stedet for injiceret `IAnsiConsole`. Untestbar og inkonsistent. |
+| ~~C-V26~~ | `BackupProgressDisplay.cs` | 65–69 | Clean Architecture | Medium | ✅ **FIXED** — `WriteDebugLine` tager `(ProgressReport, IAnsiConsole)`, `if(_debug)` enkeltlinje, `IAnsiConsole` injectet i `BackupProgressRenderer`. Parameterrækkefølge: `console` før `debug`. |
 | C-V27 | `BackupProgressDisplay.cs` | 50–55 | KISS | Low | Triple-variabel polling (`latestReport`/`latestReportVersion`/`processedReportVersion`) er mere kompleks end nødvendigt ved 100ms poll-interval. |
 | C-V28 | `BackupConsoleCommand4ListDrives.cs` | 26–29 | Fail-Fast | Medium | `ServiceProvider` tilgås uden null-guard selv om det er nullable. `BackupConsoleCommand4` har guard; søster-klassen mangler den. |
 | C-V29 | `BackupConsoleCommand4ListDrives.cs` | 62 | KISS / YAGNI | Low | `return await Task.FromResult(0)` i async metode. `return 0` er identisk og allokerer intet. |
