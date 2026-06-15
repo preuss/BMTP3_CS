@@ -1,8 +1,7 @@
+using System.CommandLine;
 using BMTP3.Consoles.Configs;
 using BMTP3.Consoles.ConsoleCommands.Core4;
 using BMTP3.Core4.Api.Models;
-using System.CommandLine;
-using System.CommandLine.Parsing;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 

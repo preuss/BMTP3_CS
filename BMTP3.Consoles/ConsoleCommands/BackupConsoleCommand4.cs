@@ -1,3 +1,4 @@
+using System.CommandLine;
 using BMTP3.Consoles.ConsoleCommands.Core4;
 using BMTP3.Consoles.Progress;
 using BMTP3.Consoles.Services;
@@ -7,7 +8,6 @@ using BMTP3.Core4.Api.Models.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -42,21 +42,21 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 	)
 	{
 		ArgumentNullException.ThrowIfNull(ServiceProvider);
-		ConsolesPrinter consolePrinter = ServiceProvider.GetRequiredService<ConsolesPrinter>();
-		consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
 
+		ConsolesPrinter consolePrinter = ServiceProvider.GetRequiredService<ConsolesPrinter>();
 		ILogger<BackupConsoleCommand4> logger = ServiceProvider.GetRequiredService<ILogger<BackupConsoleCommand4>>();
+		IBackupEngine engine = ServiceProvider.GetRequiredService<IBackupEngine>();
+		IAnsiConsole ansiConsole = ServiceProvider.GetRequiredService<IAnsiConsole>();
+
+		BackupProgressDisplay display = new(ansiConsole);
+
+		consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		ValidateBackupOptions(BackupOptions);
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(BackupOptions, parseResult);
 
-		consolePrinter.PrintStatus($"Starting Core4 backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' Destination='{plan.Destination}'");
-		logger.LogInformation("Starting Core4 backup: Name='{Name}' SourceType={SourceType} SourcePath='{SourcePath}' Destination='{Destination}'", plan.Name, plan.SourceType, plan.SourcePath, plan.Destination);
-
-		IBackupEngine engine = ServiceProvider.GetRequiredService<IBackupEngine>();
-
-		BackupProgressDisplay display = new(ServiceProvider.GetRequiredService<IAnsiConsole>());
+		PrintAndLogStart(consolePrinter, logger, plan);
 
 		try
 		{
@@ -96,15 +96,25 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		ArgumentNullException.ThrowIfNull(engine);
 		ArgumentNullException.ThrowIfNull(plan);
 
-		return display.RunAsync(plan.Name, displayProgress =>
-		{
-			IProgress<BackupProgress> engineProgress = new Progress<BackupProgress>(progress =>
-			{
-				displayProgress.Report(ProgressReportMapper.ToReport(progress));
-			});
+		return display.RunAsync(
+			plan.Name,
+			progress => engine.RunAsync(plan, progress, cancellationToken));
+	}
 
-			return engine.RunAsync(plan, engineProgress, cancellationToken);
-		});
+	private static void PrintAndLogStart(
+		ConsolesPrinter consolePrinter,
+		ILogger<BackupConsoleCommand4> logger,
+		BackupPlan plan)
+	{
+		consolePrinter.PrintStatus(
+			$"Starting Core4 backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' Destination='{plan.Destination}'");
+
+		logger.LogInformation(
+			"Starting Core4 backup: Name='{Name}' SourceType={SourceType} SourcePath='{SourcePath}' Destination='{Destination}'",
+			plan.Name,
+			plan.SourceType,
+			plan.SourcePath,
+			plan.Destination);
 	}
 
 	private static void LogResult(
@@ -135,13 +145,13 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		bool hasConfig = backupOptions.Config?.Exists == true;
 
 		if (backupOptions.OutputStrategy == OutputStructureStrategy.CustomPathPattern
-			&& string.IsNullOrWhiteSpace(backupOptions.CustomOutputFilePath))
+		    && string.IsNullOrWhiteSpace(backupOptions.CustomOutputFilePath))
 		{
 			throw new ArgumentException("--path-pattern is required when --output-structure is CustomPathPattern.");
 		}
 
 		if (backupOptions.RenameStrategy == RenameStrategy.CustomPattern
-			&& string.IsNullOrWhiteSpace(backupOptions.CustomCollisionOutputFilePath))
+		    && string.IsNullOrWhiteSpace(backupOptions.CustomCollisionOutputFilePath))
 		{
 			throw new ArgumentException("--collision-pattern is required when --rename-strategy is CustomPattern.");
 		}

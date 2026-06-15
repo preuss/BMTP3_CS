@@ -1,6 +1,6 @@
 # Core4 — Mangler / Issues
 
-> **Opdateret 15 Jun 2026** — C-V10..C-V14, C-V18, C-V19, C-V24, C-V25 resolved. 447 tests pass (104 Consoles + 139 Core4 + 204 Common).
+> **Opdateret 15 Jun 2026** — C-V21 ParseEnum forbedret, BackupConsoleCommand4 + BackupProgressDisplay refactored. 243 tests pass (104 Consoles + 139 Core4).
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -33,6 +33,13 @@
 | C-V18/C-V19: `ConfigOptionResult` + `DoAddValidators` | ✅ **RETAINED** | Kommentarer tilføjet — plads til fremtidig validering. |
 | C-V24: DRY result-tælling (dup) | ✅ **DONE** | Automatisk fikset af C-V11. |
 | C-V25: `MarkRemainingCompletedTasksAsInactive` | ✅ **DONE** | Dead method slettet. |
+| C-V21: ParseEnum string-strip → KebabCaseToPascalCase | ✅ **DONE** | `ParseEnum<T>()` bruger nu `NamingPolicyHelper.KebabCaseToPascalCase()` + `Enum.TryParse`. Ingen string-strip/loop. |
+| BackupConsoleCommand4 refactor | ✅ **DONE** | `reportAction` capture + null-guard fjernet. `RunBackupWithProgressAsync` = 1-liner. `PrintAndLogStart` + `LogResult` extracted. `ValidateBackupOptions` simplified (hasConfig). DI lookups samlet. |
+| BackupProgressDisplay refactor | ✅ **DONE** | `RunAsync<TResult>` med `Func<IProgress<BackupProgress>, Task<TResult>>`. Internal `BackupProgressRenderer`. `EscapeMarkup()` på filnavne. `CreateColumns` → collection expression. `RemoveExpiredFileTasks` → tuple deconstruction. Null guards. `sealed`. |
+| BackupProgressDisplay concurrency bug | ✅ **FIXED** | Root cause: `Progress<T>` + parallel `Report()` fra engine. Midlertidig `lock + isClosed` → fjernet. Display antager nu serial progress. `IBackupEngine` XML-doc opdateret med kontrakt. |
+| `ActionProgress<T>` slettet | ✅ **DONE** | Erstattet af `Progress<T>` (standard .NET) |
+| `ProgressReportMapper` → `internal` | ✅ **DONE** | Flyttet til `BMTP3.Consoles.Progress` namespace. |
+| `ProgressReport` → `internal sealed record` | ✅ **DONE** | Kun displayets view-model. |
 | C-V07: Navn-fallback død kode | ✅ **DONE** | `backupOptions.Name` branch fjernet — kunne aldrig nås. |
 | C-V08: ExecutionConfig tom klasse | ✅ **DONE** | Klasse + property slettet. Test `Load_TomlFile_EmptyExecution_DefaultsToNull` fjernet (16→15 tests). |
 | DryRun not implemented | ✅ **DONE** | `BuildDryRunResult` helper, short-circuit før processing loop. `BackupResult.IsDryRun = true`. |
@@ -452,7 +459,7 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | ~~C-V18~~ | `BackupOptionsModel4.cs` | 20 | YAGNI | Low | ✅ **RETAINED** — `ConfigOptionResult` beholdt med `// Reserved for future...` comment. |
 | ~~C-V19~~ | `BackupOptionsModel4.cs` | 192–194 | SOLID-SRP | Low | ✅ **RETAINED** — `DoAddValidators()` beholdt med `// Placeholder for future...` comment. |
 | C-V20 | `BackupPlan4Config.cs` | 57–59 | YAGNI | Low | `ExecutionConfig` er en tom sealed class uden properties. Deserialiseres og instantieres uden formål. |
-| C-V21 | `BackupPlan4Config.cs` | 1–59 | Clean Architecture / KISS | Medium | Alle enum-lignende værdier er `string`-typer (`"rename"`, `"binary"` etc.) i stedet for de enums der allerede findes i Core4. Tvinger 9 `ParseXxx`-metoder til at eksistere. |
+| ~~C-V21~~ | `BackupPlan4Config.cs` | 1–59 | Clean Architecture / KISS | Medium | ✅ **IMPROVED** — `ParseEnum<T>()` bruger `NamingPolicyHelper.KebabCaseToPascalCase()` + `Enum.TryParse` i stedet for string-strip/loop. Config-modellen forbliver `string` (KISS — ingen converters på tværs af JSON/TOML). |
 | C-V22 | `BackupPlan4Loader.cs` | 9–50 | DRY | Low | Strukturelt identisk med Core2's `BackupPlanLoader.Load` — extension/branch/deserialize/null-check/throw. Bør deles. |
 | C-V23 | `ConsolesPrinter.cs` | 44–54 | SOLID-SRP / Clean Architecture | Medium | Én klasse håndterer output for Core2, Core3 og Core4 — tre uafhængige grunde til at ændre klassen. Core4-printer bør separeres. |
 | ~~C-V24~~ | `ConsolesPrinter.cs` + `BackupConsoleCommand4.cs` | 87–90 / 95–98 | DRY | Medium | ✅ **FIXED** — By C-V11: `BackupResultCounts` record + `result.Counts` brugt begge steder. |

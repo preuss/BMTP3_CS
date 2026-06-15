@@ -1,11 +1,12 @@
 ﻿using BMTP3.Consoles.IO.Consoles.Progress.Columns;
 using BMTP3.Consoles.IO.Consoles.ProgressStatus;
 using BMTP3.Consoles.IO.Consoles.Spinner;
+using BMTP3.Core4.Api.Models;
 using Spectre.Console;
 
 namespace BMTP3.Consoles.Progress;
 
-public sealed record ProgressReport(
+internal sealed record ProgressReport(
 	int FilesCompleted,
 	int FilesTotal,
 	int DirectoriesTraversed,
@@ -16,7 +17,7 @@ public sealed record ProgressReport(
 	long ActiveFileBytesTotal
 );
 
-public class BackupProgressDisplay
+public sealed class BackupProgressDisplay
 {
 	private static readonly TimeSpan FileTaskExpiration = TimeSpan.FromSeconds(5);
 
@@ -31,7 +32,7 @@ public class BackupProgressDisplay
 
 	public async Task<TResult> RunAsync<TResult>(
 		string jobName,
-		Func<IProgress<ProgressReport>, Task<TResult>> operation)
+		Func<IProgress<BackupProgress>, Task<TResult>> operation)
 	{
 		ArgumentException.ThrowIfNullOrWhiteSpace(jobName);
 		ArgumentNullException.ThrowIfNull(operation);
@@ -46,20 +47,16 @@ public class BackupProgressDisplay
 				ProgressTask overallTask = ctx.AddTask($"[green]{jobName.EscapeMarkup()}[/]");
 				Dictionary<string, FileTaskState> fileTasks = new();
 
-				IProgress<ProgressReport> displayProgress = new Progress<ProgressReport>(report =>
-				{
-					UpdateOverall(overallTask, report);
-					UpdateFileTasks(ctx, fileTasks, report);
-					WriteDebugLine(report);
-				});
+				IProgress<BackupProgress> progress = new BackupProgressRenderer(
+					ctx,
+					overallTask,
+					fileTasks,
+					_debug);
 
 				try
 				{
-					TResult result = await operation(displayProgress);
-
-					// Only show completed when the operation actually completed.
+					TResult result = await operation(progress);
 					overallTask.Value = overallTask.MaxValue;
-
 					return result;
 				}
 				finally
@@ -97,23 +94,18 @@ public class BackupProgressDisplay
 	{
 		DateTime now = DateTime.UtcNow;
 
-		if (HasActiveFile(report))
+		if (!string.IsNullOrWhiteSpace(report.ActiveFileName)
+			&& report.ActiveFileBytesTotal > 0)
 		{
-			FileTaskState state = GetOrCreateFileTask(ctx, fileTasks, report.ActiveFileName!);
+			FileTaskState state = GetOrCreateFileTask(ctx, fileTasks, report.ActiveFileName);
 
 			state.LastUpdateUtc = now;
 			state.Task.MaxValue = Math.Max(1, report.ActiveFileBytesTotal);
 			state.Task.Value = Math.Min(report.ActiveFileBytesRead, state.Task.MaxValue);
-			state.Task.Description = report.ActiveFileName!;
+			state.Task.Description = report.ActiveFileName.EscapeMarkup();
 		}
 
 		RemoveExpiredFileTasks(ctx, fileTasks, now);
-	}
-
-	private static bool HasActiveFile(ProgressReport report)
-	{
-		return !string.IsNullOrWhiteSpace(report.ActiveFileName)
-			&& report.ActiveFileBytesTotal > 0;
 	}
 
 	private static FileTaskState GetOrCreateFileTask(
@@ -126,7 +118,7 @@ public class BackupProgressDisplay
 			return state;
 		}
 
-		FileTaskState created = new(ctx.AddTask(fileName));
+		FileTaskState created = new(ctx.AddTask(fileName.EscapeMarkup()));
 		fileTasks.Add(fileName, created);
 
 		return created;
@@ -137,12 +129,11 @@ public class BackupProgressDisplay
 		Dictionary<string, FileTaskState> fileTasks,
 		DateTime now)
 	{
-		foreach (string key in fileTasks
-			.Where(kvp => now - kvp.Value.LastUpdateUtc >= FileTaskExpiration)
-			.Select(kvp => kvp.Key)
-			.ToArray())
+		foreach ((string key, FileTaskState state) in fileTasks
+					 .Where(kvp => now - kvp.Value.LastUpdateUtc >= FileTaskExpiration)
+					 .ToArray())
 		{
-			ctx.RemoveTask(fileTasks[key].Task);
+			ctx.RemoveTask(state.Task);
 			fileTasks.Remove(key);
 		}
 	}
@@ -159,15 +150,45 @@ public class BackupProgressDisplay
 		fileTasks.Clear();
 	}
 
-	private void WriteDebugLine(ProgressReport report)
+	private static void WriteDebugLine(bool debug, ProgressReport report)
 	{
-		if (!_debug)
+		if (!debug)
 		{
 			return;
 		}
 
-		System.Console.WriteLine(
-			$"DEBUG: {report.ActiveFileName} {report.ActiveFileBytesRead}/{report.ActiveFileBytesTotal} Files={report.FilesCompleted}/{report.FilesTotal}");
+		Console.WriteLine($"DEBUG: {report.ActiveFileName} {report.ActiveFileBytesRead}/{report.ActiveFileBytesTotal} Files={report.FilesCompleted}/{report.FilesTotal}");
+	}
+
+	private sealed class BackupProgressRenderer : IProgress<BackupProgress>
+	{
+		private readonly ProgressContext _context;
+		private readonly ProgressTask _overallTask;
+		private readonly Dictionary<string, FileTaskState> _fileTasks;
+		private readonly bool _debug;
+
+		public BackupProgressRenderer(
+			ProgressContext context,
+			ProgressTask overallTask,
+			Dictionary<string, FileTaskState> fileTasks,
+			bool debug)
+		{
+			_context = context ?? throw new ArgumentNullException(nameof(context));
+			_overallTask = overallTask ?? throw new ArgumentNullException(nameof(overallTask));
+			_fileTasks = fileTasks ?? throw new ArgumentNullException(nameof(fileTasks));
+			_debug = debug;
+		}
+
+		public void Report(BackupProgress value)
+		{
+			ArgumentNullException.ThrowIfNull(value);
+
+			ProgressReport report = ProgressReportMapper.ToReport(value);
+
+			UpdateOverall(_overallTask, report);
+			UpdateFileTasks(_context, _fileTasks, report);
+			WriteDebugLine(_debug, report);
+		}
 	}
 
 	private sealed class FileTaskState

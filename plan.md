@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 15 Jun 2026** — C-V10..C-V25 resolved. 447 tests pass.
+> **Opdateret 15 Jun 2026** — C-V10..C-V25 + C-V21 + BackupConsoleCommand4 + BackupProgressDisplay refactored. 243 tests pass.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -305,6 +305,8 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 | C-V18 | `BackupOptionsModel4.cs:20` | `ConfigOptionResult` — ✅ **RETAINED** med future-kommentar. |
 | C-V19 | `BackupOptionsModel4.cs:192–194` | `DoAddValidators()` — ✅ **RETAINED** med future-kommentar. |
 | C-V24 | `ConsolesPrinter.cs + BackupConsoleCommand4.cs` | ~~DRY result-tælling~~ ✅ **FIXED** — af C-V11. |
+| C-V21 | `BackupPlan4Config.cs` + `BackupPlanBuilder.cs` | `ParseEnum<T>()` forbedret — bruger `KebabCaseToPascalCase()` + `Enum.TryParse` i stedet for string-strip/loop. Config-modellen forbliver `string` (KISS — ingen converters på tværs af JSON/TOML). |
+| Refactor | `BackupConsoleCommand4.cs` + `BackupProgressDisplay.cs` | `reportAction` capture, null-guard, `ActionProgress<T>` slettet. `RunAsync<TResult>` med `IProgress<BackupProgress>`. `PrintAndLogStart`/`LogResult` extracted. ValidateBackupOptions simplified. DI samlet. `EscapeMarkup()`. `sealed`. `internal` records. `BackupProgressRenderer`. |
 
 ### Core4 — nye kritiske fund (High) — 14 Jun 2026
 

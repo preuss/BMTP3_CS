@@ -3,7 +3,7 @@ using BMTP3.Core4.Api.Models.Enums;
 
 namespace BMTP3.Consoles.Progress;
 
-public static class ProgressReportMapper
+internal static class ProgressReportMapper
 {
 	public static ProgressReport ToReport(BackupProgress progress)
 	{

@@ -227,14 +227,10 @@ internal sealed class BackupPlanBuilder
 		if(string.IsNullOrWhiteSpace(value))
 			throw new ArgumentException($"Value cannot be null or empty for {typeof(T).Name}.");
 
-		string normalized = value.Replace("-", "").Replace("_", "").Trim().ToLowerInvariant();
+		string normalized = NamingPolicyHelper.KebabCaseToPascalCase(value.Trim());
 
-		foreach(T enumValue in Enum.GetValues<T>())
-		{
-			string enumName = enumValue.ToString()!.Replace("_", "").ToLowerInvariant();
-			if(normalized == enumName)
-				return enumValue;
-		}
+		if(Enum.TryParse<T>(normalized, ignoreCase: true, out T result))
+			return result;
 
 		throw new ArgumentException($"Invalid value '{value}' for {typeof(T).Name}. Valid values: {string.Join(", ", Enum.GetNames<T>())}");
 	}

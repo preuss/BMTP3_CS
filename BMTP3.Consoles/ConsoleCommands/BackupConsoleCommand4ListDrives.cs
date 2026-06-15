@@ -1,10 +1,10 @@
+using System.CommandLine;
 using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
-using System.CommandLine;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -33,7 +33,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 
 		IDriveCatalogService? catalogService = ServiceProvider.GetService<IDriveCatalogService>();
 
-		if(catalogService == null)
+		if (catalogService == null)
 		{
 			console.WriteLine("Drive catalog service is not available.");
 			logger.LogError("Drive catalog service is not available.");
@@ -42,7 +42,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 
 		IReadOnlyList<DriveCatalogEntry> drives = catalogService.ListDrives();
 
-		if(drives.Count == 0)
+		if (drives.Count == 0)
 		{
 			console.WriteLine("No backup sources found.");
 			logger.LogInformation("No backup sources found.");
@@ -54,14 +54,14 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 
 		bool hasPrintedTable = false;
 
-		if(fileSystemDrives.Count > 0)
+		if (fileSystemDrives.Count > 0)
 		{
 			PrintDriveTable(console, fileSystemDrives, "File system drives", "Local and mounted file system sources.");
 
 			hasPrintedTable = true;
 		}
 
-		if(mediaDrives.Count > 0)
+		if (mediaDrives.Count > 0)
 		{
 			if(hasPrintedTable) console.WriteLine();
 
@@ -92,7 +92,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 			.AddColumn(new TableColumn("Total Size").RightAligned())
 			.AddColumn(new TableColumn("Free Space").RightAligned());
 
-		foreach(DriveCatalogEntry d in drives)
+		foreach (DriveCatalogEntry d in drives)
 		{
 			table.AddRow(
 				new Text(d.Name),
@@ -122,21 +122,21 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 
 		bool useTerabyte = showTerabyte && bytes >= 1024L * 1024 * 1024 * 1024;
 
-		if(useTerabyte)
+		if (useTerabyte)
 			retVal = $"{bytes / (1024.0 * 1024 * 1024 * 1024):F1} TB";
 		else
 			retVal = $"{bytes / (1024.0 * 1024 * 1024):F1} GB";
 
-		if(bytes < 1024L * 1024 * 1024)
+		if (bytes < 1024L * 1024 * 1024)
 			retVal = $"{bytes / (1024.0 * 1024):F1} MB";
 
-		if(bytes < 1024L * 1024)
+		if (bytes < 1024L * 1024)
 			retVal = $"{bytes / 1024.0:F1} KB";
 
-		if(bytes < 1024)
+		if (bytes < 1024)
 			retVal = $"{bytes} B";
 
-		if(bytes < 0)
+		if (bytes < 0)
 			retVal = "Unknown";
 
 		return retVal;
