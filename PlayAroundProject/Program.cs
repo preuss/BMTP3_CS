@@ -74,13 +74,13 @@ internal class Program
 					foreach(MediaDirectoryInfo enumerateDirectory in rootDirectory.EnumerateDirectories())
 					{
 						Console.WriteLine("Directory: " + enumerateDirectory.Name);
-						var di = enumerateDirectory.Name;
+						string di = enumerateDirectory.Name;
 						break;
 					}
 					foreach(MediaFileSystemInfo fileSystemInfo in rootDirectory.EnumerateFileSystemInfos())
 					{
 						Console.WriteLine("FileSystemInfo: " + fileSystemInfo.Name);
-						var fsi = fileSystemInfo.Name;
+						string fsi = fileSystemInfo.Name;
 						break;
 					}
 

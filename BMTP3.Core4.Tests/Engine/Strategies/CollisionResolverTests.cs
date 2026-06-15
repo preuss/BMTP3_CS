@@ -26,7 +26,7 @@ public class CollisionResolverTests
 		var resolver = new CollisionResolver(new FakeRenameCollisionResolver());
 
 		CollisionResult result = await resolver.ResolveAsync(
-			BaseRequest with { Strategy = CollisionStrategy.Overwrite }, null, default);
+			BaseRequest with { Strategy = CollisionStrategy.Overwrite }, new NoOpThrottler(), default);
 
 		Assert.Equal(CollisionResolutionAction.Overwrite, result.Action);
 		Assert.Equal(@"C:\dest\file.txt", result.TargetPath);
@@ -38,7 +38,7 @@ public class CollisionResolverTests
 		var resolver = new CollisionResolver(new FakeRenameCollisionResolver());
 
 		CollisionResult result = await resolver.ResolveAsync(
-			BaseRequest with { Strategy = CollisionStrategy.Skip }, null, default);
+			BaseRequest with { Strategy = CollisionStrategy.Skip }, new NoOpThrottler(), default);
 
 		Assert.Equal(CollisionResolutionAction.Skip, result.Action);
 	}
@@ -49,7 +49,7 @@ public class CollisionResolverTests
 		var resolver = new CollisionResolver(new FakeRenameCollisionResolver());
 
 		IOException ex = await Assert.ThrowsAsync<IOException>(() =>
-			resolver.ResolveAsync(BaseRequest with { Strategy = CollisionStrategy.Error }, null, default));
+			resolver.ResolveAsync(BaseRequest with { Strategy = CollisionStrategy.Error }, new NoOpThrottler(), default));
 
 		Assert.Contains("file.txt", ex.Message);
 	}
@@ -72,7 +72,7 @@ public class CollisionResolverTests
 			{
 				Strategy = CollisionStrategy.Rename,
 				RenameStrategy = RenameStrategy.Timestamp,
-			}, null, default);
+			}, new NoOpThrottler(), default);
 
 		Assert.True(wasCalled);
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
@@ -87,7 +87,7 @@ public class CollisionResolverTests
 		var resolver = new CollisionResolver(fakeRename);
 
 		CollisionResult result = await resolver.ResolveAsync(
-			BaseRequest with { Strategy = CollisionStrategy.Rename }, null, default);
+			BaseRequest with { Strategy = CollisionStrategy.Rename }, new NoOpThrottler(), default);
 
 		Assert.Equal(CollisionResolutionAction.Skip, result.Action);
 	}
@@ -100,6 +100,6 @@ public class CollisionResolverTests
 		var resolver = new CollisionResolver(fakeRename);
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			resolver.ResolveAsync(BaseRequest with { Strategy = CollisionStrategy.Rename }, null, default));
+			resolver.ResolveAsync(BaseRequest with { Strategy = CollisionStrategy.Rename }, new NoOpThrottler(), default));
 	}
 }

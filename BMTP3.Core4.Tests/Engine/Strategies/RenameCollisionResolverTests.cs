@@ -59,7 +59,7 @@ public class RenameCollisionResolverTests
 			RenameStrategy = RenameStrategy.Increment,
 		};
 
-		RenameCollisionResult result = await resolver.ResolveAsync(request, null, default);
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), default);
 
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
 		Assert.Matches(@".+_1\.txt$", result.TargetPath);
@@ -77,7 +77,7 @@ public class RenameCollisionResolverTests
 			RenameStrategy = RenameStrategy.Timestamp,
 		};
 
-		RenameCollisionResult result = await resolver.ResolveAsync(request, null, default);
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), default);
 
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
 		Assert.Contains("20260601_143022", result.TargetPath);
@@ -95,7 +95,7 @@ public class RenameCollisionResolverTests
 			RenameStrategy = RenameStrategy.Hash,
 		};
 
-		RenameCollisionResult result = await resolver.ResolveAsync(request, null, default);
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), default);
 
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
 		Assert.Contains("abcdef", result.TargetPath);
@@ -115,7 +115,7 @@ public class RenameCollisionResolverTests
 		};
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			resolver.ResolveAsync(request, null, default));
+			resolver.ResolveAsync(request, new NoOpThrottler(), default));
 	}
 
 	[Fact]
@@ -135,7 +135,7 @@ public class RenameCollisionResolverTests
 			CustomRenamePattern = "{fileName}_{count}",
 		};
 
-		RenameCollisionResult result = await resolver.ResolveAsync(request, null, default);
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), default);
 
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
 		int endOfDir = dir.Length;
@@ -154,6 +154,6 @@ public class RenameCollisionResolverTests
 		};
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			resolver.ResolveAsync(request, null, default));
+			resolver.ResolveAsync(request, new NoOpThrottler(), default));
 	}
 }
