@@ -12,6 +12,14 @@
 > 
 > ⚠️ **PATH NAMING STANDARD:** Se `plan.md` § Path Naming Standard. Forbudte navne: `path`, `sourcePath`, `targetPath`, `relativePath`, `folderPath`, `targetRelativePath`, `FilePath`, `DirectoryPath` (uden Relative/Absolute prefix).
 
+## Kodekategorisering
+
+> **Ubrugt kode (unused code)** — kode som ikke bruges lige nu, men som kan være korrekt og potentielt nyttig (fx generisk utility skrevet men endnu ikke kaldt). Ikke nødvendigvis forkert — bare ikke aktiveret.
+
+> **Død kode (dead code)** — kode som reelt ikke har nogen funktion i systemet længere. Erstattet, uopnåelig, ubrugelig eller forældet. Skal slettes.
+
+> **Legacy kode** — gammel kode som produktionen stadig afhænger af. Kan være svær at ændre, dårligt dokumenteret/testet, men er stadig i aktiv brug. Skal håndteres forsigtigt.
+
 ## Resolved since last update
 
 | Item | Status | Evidence |
@@ -156,7 +164,23 @@
 |---|-------|----------|--------|--------|
 | 1 | **Redesign `SidecarRequest`** — erstat utypet dictionary med proper typed records | ~~**🔴 HIGHEST**~~ | `SourceDetails` (`IReadOnlyDictionary<string, string>`) → polymorphic `BackupSourceDetails` med `MediaDeviceDriveSourceDetails`/`FileSystemDriveSourceDetails`. `SidecarService.BuildDocument` matcher på type. Population i `BackupEngine` ved connection (linje 166-192). | ✅ **DONE** |
 
-### ✅ Smelly Code #4 — Progress bars — alle beholdes
+### ✅ Smelly Code #4 — Progress — alle beholdes
+
+| Fil | Beslutning | Grund |
+|-----|-----------|-------|
+| `ProgressBar/ProgressBar.cs` | **Beholdes** | Custom `IProgress<double>` ASCII bar i aktiv brug |
+| `Progress/ConsoleProgressBar.cs` + `IProgressBar` | **Beholdes** | Custom `IProgressBar` i aktiv brug |
+| `Progress/FileAndDirectoryCounter.cs` | **Beholdes** | Custom counter i aktiv brug |
+| `Progress/Columns/ElapsedTimeAdvancedColumn.cs` | **Beholdes** | Aktivt brugt af `BackupProgressDisplay.cs:80` |
+| `Progress/Columns/CounterColumn.cs` | **Beholdes** | Aktivt brugt af `BackupProgressDisplay.cs:75` |
+
+### ✅ Smelly Code #5 — ProgressStatus — alle beholdes
+
+| Fil | Beslutning | Grund |
+|-----|-----------|-------|
+| `ProgressStatus/ProgressStatusContext.cs` | **Beholdes** | Custom progress status context i aktiv brug |
+| `ProgressStatus/ProgressStatusTask.cs` | **Beholdes** | Custom progress status task i aktiv brug |
+| `ProgressStatus/ProgressStatus.cs` | **Beholdes** | Custom progress status i aktiv brug |
 
 | Fil | Beslutning | Grund |
 |-----|-----------|-------|
@@ -641,9 +665,9 @@ Consoles indeholder kode der manuelt reimplementerer hvad Core4 allerede tilbyde
 | 4 | `IO/Consoles/Progress/ConsoleProgressBar.cs` | `AnsiConsole.Progress()` |
 | 5 | `IO/Consoles/ProgressBar/ProgressBar.cs` + `FileAndDirectoryCounter.cs` | `AnsiConsole.Progress()` |
 | 6 | `IO/Consoles/ProgressStatus/ProgressStatusContext.cs` + `ProgressStatusTask.cs` | Brug `ProgressContext`/`ProgressTask` direkte |
-| 7 | `ConsoleCommands/OptionsBuilder.cs` | `parseResult.GetValue(option)` |
-| 8 | `ConsoleCommands/AbstractCommandBase.cs` | `BaseConsoleCommand` daekker samme formaal |
-| 9 | `ConsoleCommands/ConsoleOptions/BackupOptions.cs` + `GlobalOptions.cs` | Slet — tomme classes |
+| 7 | `ConsoleCommands/OptionsBuilder.cs` | `parseResult.GetValue(option)` | ✅ Slettet |
+| 8 | `ConsoleCommands/AbstractCommandBase.cs` | `BaseConsoleCommand` daekker samme formaal | ✅ Slettet |
+| 9 | `ConsoleCommands/ConsoleOptions/BackupOptions.cs` + `GlobalOptions.cs` + `RootOptions.cs` + `VerifyOptions.cs` | Slet — tomme classes | ✅ Slettet (hele mappen) |
 | 10 | `Configs/BackupPlan4Config.cs` (DTO) | Serialiser direkte til `BackupPlan` |
 
 Se `plan.md (plan.md Smelly Code Cleanup)` for task-management.

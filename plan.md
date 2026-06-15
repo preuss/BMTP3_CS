@@ -12,6 +12,14 @@
 > 
 > ⚠️ **PATH NAMING STANDARD:** Se `## Path Naming Standard` nedenfor.
 
+## Kodekategorisering
+
+> **Ubrugt kode (unused code)** — kode som ikke bruges lige nu, men som kan være korrekt og potentielt nyttig (fx generisk utility skrevet men endnu ikke kaldt). Ikke nødvendigvis forkert — bare ikke aktiveret.
+
+> **Død kode (dead code)** — kode som reelt ikke har nogen funktion i systemet længere. Erstattet, uopnåelig, ubrugelig eller forældet. Skal slettes.
+
+> **Legacy kode** — gammel kode som produktionen stadig afhænger af. Kan være svær at ændre, dårligt dokumenteret/testet, men er stadig i aktiv brug. Skal håndteres forsigtigt.
+
 ## Path Naming Standard
 
 ### Format
@@ -186,10 +194,10 @@ Se `mangler.md § Smelly Code` for fuld analyse og fix-plan. Kort:
 | 2 | `MetadataDirectoryExtensions.cs` | Brug Core4's version | Høj |
 | 3 | `exifreader/` mappe | Core4's `ExifTimestampReader` + `DateTimeParser` | Høj |
 | 4 | `ProgressBar.cs`, `ConsoleProgressBar.cs`, `FileAndDirectoryCounter.cs` | **Alle beholdes** — custom progress-komponenter i aktiv brug | Lav |
-| 5 | `ProgressStatusContext.cs` + `ProgressStatusTask.cs` | Brug `ProgressContext`/`ProgressTask` direkte | Medium |
+| 5 | `ProgressStatusContext.cs`, `ProgressStatusTask.cs`, `ProgressStatus.cs` | **Alle beholdes** — custom progress status i aktiv brug | Lav |
 | 6 | `OptionsBuilder.cs` | `parseResult.GetValue(option)` | Medium |
-| 7 | `AbstractCommandBase.cs` | `BaseConsoleCommand` | Medium |
-| 8 | `BackupOptions.cs` + `GlobalOptions.cs` | Slet — tomme classes | Lav |
+| 7 | `AbstractCommandBase.cs` | `BaseConsoleCommand` | Medium | ✅ Slettet |
+| 8 | `BackupOptions.cs` + `GlobalOptions.cs` + `RootOptions.cs` + `VerifyOptions.cs` (hele `ConsoleOptions/` mappen) | Slet — tomme classes | Lav | ✅ Slettet |
 | 9 | `BackupPlan4Config.cs` (DTO) | Serialiser direkte til `BackupPlan` | Lav |
 
 ### 1. 🥇 Consoles CLI cleanup + BackupPlan Delay
