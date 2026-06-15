@@ -156,6 +156,16 @@
 |---|-------|----------|--------|--------|
 | 1 | **Redesign `SidecarRequest`** — erstat utypet dictionary med proper typed records | ~~**🔴 HIGHEST**~~ | `SourceDetails` (`IReadOnlyDictionary<string, string>`) → polymorphic `BackupSourceDetails` med `MediaDeviceDriveSourceDetails`/`FileSystemDriveSourceDetails`. `SidecarService.BuildDocument` matcher på type. Population i `BackupEngine` ved connection (linje 166-192). | ✅ **DONE** |
 
+### ✅ Smelly Code #4 — Progress bars — alle beholdes
+
+| Fil | Beslutning | Grund |
+|-----|-----------|-------|
+| `ProgressBar/ProgressBar.cs` | **Beholdes** | Custom `IProgress<double>` ASCII bar i aktiv brug |
+| `Progress/ConsoleProgressBar.cs` + `IProgressBar` | **Beholdes** | Custom `IProgressBar` i aktiv brug |
+| `Progress/FileAndDirectoryCounter.cs` | **Beholdes** | Custom counter i aktiv brug |
+| `Progress/Columns/ElapsedTimeAdvancedColumn.cs` | **Beholdes** | Aktivt brugt af `BackupProgressDisplay.cs:80` |
+| `Progress/Columns/CounterColumn.cs` | **Beholdes** | Aktivt brugt af `BackupProgressDisplay.cs:75` |
+
 ### ❌ MTP Cross-Connection Resume — GenerateAlmostUniqueId ikke koblet ind
 
 | # | Issue | Severity | Detail |

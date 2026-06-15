@@ -185,7 +185,7 @@ Se `mangler.md § Smelly Code` for fuld analyse og fix-plan. Kort:
 | 1 | `Utilities/GlobConverter.cs` | `Core4.Utilities.GlobMatcher` | Høj |
 | 2 | `MetadataDirectoryExtensions.cs` | Brug Core4's version | Høj |
 | 3 | `exifreader/` mappe | Core4's `ExifTimestampReader` + `DateTimeParser` | Høj |
-| 4 | `ConsoleProgressBar.cs`, `ProgressBar.cs`, `FileAndDirectoryCounter.cs` | `AnsiConsole.Progress()` | Medium |
+| 4 | `ProgressBar.cs`, `ConsoleProgressBar.cs`, `FileAndDirectoryCounter.cs` | **Alle beholdes** — custom progress-komponenter i aktiv brug | Lav |
 | 5 | `ProgressStatusContext.cs` + `ProgressStatusTask.cs` | Brug `ProgressContext`/`ProgressTask` direkte | Medium |
 | 6 | `OptionsBuilder.cs` | `parseResult.GetValue(option)` | Medium |
 | 7 | `AbstractCommandBase.cs` | `BaseConsoleCommand` | Medium |
