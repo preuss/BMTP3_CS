@@ -71,7 +71,7 @@
 
 ### Næste — prioriteret
 
-1. **C-V22**: DRY loaders — `BackupPlan4Loader` vs `BackupPlanLoader` merge/refactor
+1. **C-V22**: ⚠️ WONTFIX — `BackupPlanLoader` → `BackupPlan2Loader` (archived/readonly, Core2). Brug `BackupPlan4Loader` i stedet.
 2. **C-V23**: Split `ConsolesPrinter` — isoler Core4 printing fra Core2/Core3
 3. **Smelly Code #4–10**: `ConsoleProgressBar`, `OptionsBuilder`, etc.
 6. **Build warnings**: ~45 warnings i non-archived projekter (Core4.Tests, Consoles, Consoles.Tests)
@@ -95,7 +95,7 @@
 | C-V19 | ✅ RETAINED | `BackupOptionsModel4.cs:220–223` | `DoAddValidators()` — extension point til cross-option validering |
 | C-V20 | ✅ FIXED | — | `ExecutionConfig` slettet |
 | C-V21 | ✅ DONE | `BackupPlanBuilder.cs` | `ParseEnum<T>` forbedret (kebab-case + underscore → PascalCase) |
-| C-V22 | ⏳ TODO | Loaders | DRY loaders |
+| C-V22 | ✅ DONE | `BackupPlanLoader` → `BackupPlan2Loader` + archived header | Renamed to show Core2 ownership |
 | C-V23 | ⏳ TODO | `ConsolesPrinter` | Split Core4 printing |
 | C-V24 | ✅ FIXED | — | Af C-V11 |
 | C-V25 | ✅ FIXED | `BackupProgressDisplay.cs` | `MarkRemainingCompletedTasksAsInactive` slettet |

@@ -1,10 +1,13 @@
+// ============================================================
+// ARCHIVED / READONLY — Core2 loader. Do NOT modify.
+// ============================================================
 using System.Text.Json;
 using BMTP3.Core2.BackupNew.Api.Request;
 using Tomlyn;
 
 namespace BMTP3.Consoles.Configs;
 
-public static class BackupPlanLoader
+public static class BackupPlan2Loader
 {
 	public static BackupPlan Load(FileInfo file)
 	{

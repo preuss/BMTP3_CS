@@ -494,7 +494,7 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | ~~C-V19~~ | `BackupOptionsModel4.cs` | 192–194 | SOLID-SRP | Low | ✅ **RETAINED** — `DoAddValidators()` beholdt med `// Placeholder for future...` comment. |
 | C-V20 | `BackupPlan4Config.cs` | 57–59 | YAGNI | Low | `ExecutionConfig` er en tom sealed class uden properties. Deserialiseres og instantieres uden formål. |
 | ~~C-V21~~ | `BackupPlan4Config.cs` | 1–59 | Clean Architecture / KISS | Medium | ✅ **IMPROVED** — `ParseEnum<T>()` bruger `NamingPolicyHelper.KebabCaseToPascalCase()` + `Enum.TryParse` i stedet for string-strip/loop. Config-modellen forbliver `string` (KISS — ingen converters på tværs af JSON/TOML). |
-| C-V22 | `BackupPlan4Loader.cs` | 9–50 | DRY | Low | Strukturelt identisk med Core2's `BackupPlanLoader.Load` — extension/branch/deserialize/null-check/throw. Bør deles. |
+| ~~C-V22~~ | `BackupPlan4Loader.cs` | 9–50 | DRY | Low | ✅ **DONE** — `BackupPlanLoader` → `BackupPlan2Loader`. Archived/readonly, Core2-ejet. Brug `BackupPlan4Loader` i stedet. |
 | C-V23 | `ConsolesPrinter.cs` | 44–54 | SOLID-SRP / Clean Architecture | Medium | Én klasse håndterer output for Core2, Core3 og Core4 — tre uafhængige grunde til at ændre klassen. Core4-printer bør separeres. |
 | ~~C-V24~~ | `ConsolesPrinter.cs` + `BackupConsoleCommand4.cs` | 87–90 / 95–98 | DRY | Medium | ✅ **FIXED** — By C-V11: `BackupResultCounts` record + `result.Counts` brugt begge steder. |
 | C-V25 | `BackupProgressDisplay.cs` | 100–112 | YAGNI | **High** | ~~`MarkRemainingCompletedTasksAsInactive` er defineret men aldrig kaldt. Same logik inlineat i `UpdateFileTasks`. Dead method.~~ ✅ **FIXED** — slettet. |

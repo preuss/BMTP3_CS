@@ -15,7 +15,7 @@ namespace BMTP3.Consoles.ConsoleCommands
 			BackupPlan plan;
 			if (backupOptions.Config != null && backupOptions.Config.Exists)
 			{
-				plan = BackupPlanLoader.Load(backupOptions.Config);
+				plan = BackupPlan2Loader.Load(backupOptions.Config);
 			}
 			else
 			{
