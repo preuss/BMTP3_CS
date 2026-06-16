@@ -22,11 +22,16 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 
 	public required IServiceProvider ServiceProvider { get; init; }
 
-	protected override Task<int> DoExecuteAsync(
+	protected override async Task<int> DoExecuteAsync(
 		ParseResult parseResult,
 		CancellationToken cancellationToken
 	)
 	{
+		if (ServiceProvider == null)
+		{
+			return 1;
+		}
+
 		ILogger<BackupConsoleCommand4ListDrives> logger = ServiceProvider.GetRequiredService<ILogger<BackupConsoleCommand4ListDrives>>();
 
 		IAnsiConsole console = ServiceProvider.GetService<IAnsiConsole>() ?? AnsiConsole.Console;
@@ -37,7 +42,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 		{
 			console.WriteLine("Drive catalog service is not available.");
 			logger.LogError("Drive catalog service is not available.");
-			return Task.FromResult(1);
+			return 1;
 		}
 
 		IReadOnlyList<DriveCatalogEntry> drives = catalogService.ListDrives();
@@ -46,7 +51,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 		{
 			console.WriteLine("No backup sources found.");
 			logger.LogInformation("No backup sources found.");
-			return Task.FromResult(0);
+			return 0;
 		}
 
 		List<DriveCatalogEntry> fileSystemDrives = drives.Where(d => d.SourceType == BackupSourceType.FileSystem).ToList();
@@ -68,7 +73,7 @@ public class BackupConsoleCommand4ListDrives : BaseConsoleCommand
 			PrintDriveTable(console, mediaDrives, "Media devices", "Connected MTP/media device sources.");
 		}
 
-		return Task.FromResult(0);
+		return 0;
 	}
 
 	private static void PrintDriveTable(
