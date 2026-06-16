@@ -43,7 +43,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	CancellationToken cancellationToken
 	)
 	{
-		ConsolesPrinter? consolePrinter = ServiceProvider.GetService<ConsolesPrinter>();
+		ConsolesPrinter2? consolePrinter = ServiceProvider.GetService<ConsolesPrinter2>();
 		consolePrinter?.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		// Resolve logger from DI when available; fall back to a no-op logger so callers
@@ -142,7 +142,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	public async Task<BackupJobResult> TryRunAsync(BackupPlan plan, IProgress<IBackupProgress>? progress,
 	CancellationToken ct)
 	{
-		ConsolesPrinter? consolePrinter = ServiceProvider.GetService<ConsolesPrinter>();
+		ConsolesPrinter2? consolePrinter = ServiceProvider.GetService<ConsolesPrinter2>();
 		ILogger<BackupConsoleCommand2>? logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand2>>()
 												 ?? ServiceProvider.GetService<ILoggerFactory>()
 												 ?.CreateLogger<BackupConsoleCommand2>();
@@ -209,7 +209,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	/// </summary>
 	private void PrintResult()
 	{
-		ConsolesPrinter? printer = ServiceProvider.GetService<ConsolesPrinter>();
+		ConsolesPrinter2? printer = ServiceProvider.GetService<ConsolesPrinter2>();
 		printer?.PrintStatus("Backup completed!");
 	}
 

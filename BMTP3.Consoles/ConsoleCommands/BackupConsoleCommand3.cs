@@ -42,7 +42,7 @@ public class BackupConsoleCommand3 : BaseConsoleCommand
 		CancellationToken cancellationToken
 	)
 	{
-		ConsolesPrinter? consolePrinter = ServiceProvider.GetService<ConsolesPrinter>();
+		ConsolesPrinter3? consolePrinter = ServiceProvider.GetService<ConsolesPrinter3>();
 		consolePrinter?.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		ILogger<BackupConsoleCommand3> logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand3>>()

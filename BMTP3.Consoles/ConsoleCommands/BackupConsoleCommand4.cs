@@ -43,10 +43,11 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 	{
 		ArgumentNullException.ThrowIfNull(ServiceProvider);
 
-		ConsolesPrinter consolePrinter = ServiceProvider.GetRequiredService<ConsolesPrinter>();
+		IAnsiConsole ansiConsole = ServiceProvider.GetRequiredService<IAnsiConsole>();
+
+		ConsolesPrinter4 consolePrinter = new(ansiConsole);
 		ILogger<BackupConsoleCommand4> logger = ServiceProvider.GetRequiredService<ILogger<BackupConsoleCommand4>>();
 		IBackupEngine engine = ServiceProvider.GetRequiredService<IBackupEngine>();
-		IAnsiConsole ansiConsole = ServiceProvider.GetRequiredService<IAnsiConsole>();
 
 		BackupProgressDisplay display = new(ansiConsole);
 
@@ -102,7 +103,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 	}
 
 	private static void PrintAndLogStart(
-		ConsolesPrinter consolePrinter,
+		ConsolesPrinter4 consolePrinter,
 		ILogger<BackupConsoleCommand4> logger,
 		BackupPlan plan)
 	{

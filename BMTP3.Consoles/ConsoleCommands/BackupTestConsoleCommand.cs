@@ -34,7 +34,7 @@ public class BackupTestConsoleCommand : BaseConsoleCommand
 
 	protected override void OnCommandError(Exception ex)
 	{
-		ConsolesPrinter? printer = ServiceProvider.GetService<ConsolesPrinter>();
+		ConsolesPrinter2? printer = ServiceProvider.GetService<ConsolesPrinter2>();
 		if (printer != null)
 		{
 			printer.PrintError($"Error executing command: {ex.Message}");
@@ -47,7 +47,7 @@ public class BackupTestConsoleCommand : BaseConsoleCommand
 
 	protected override async Task<int> DoExecuteAsync(ParseResult parseResult, CancellationToken cancellationToken)
 	{
-		ConsolesPrinter printer = ServiceProvider.GetRequiredService<ConsolesPrinter>();
+		ConsolesPrinter2 printer = ServiceProvider.GetRequiredService<ConsolesPrinter2>();
 		printer.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		IBackupEngine engine = ServiceProvider.GetRequiredService<IBackupEngine>();

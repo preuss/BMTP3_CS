@@ -8,11 +8,11 @@ namespace BMTP3.Consoles.Services;
 ///     All output goes through IAnsiConsole (Spectre) so colors and formatting
 ///     are consistent and testable. This class must NOT use Console.WriteLine directly.
 /// </summary>
-public class ConsolesPrinter
+public class ConsolesPrinter3
 {
-	protected readonly IAnsiConsole _console;
+	private readonly IAnsiConsole _console;
 
-	public ConsolesPrinter(IAnsiConsole console)
+	public ConsolesPrinter3(IAnsiConsole console)
 	{
 		_console = console;
 	}
@@ -37,6 +37,12 @@ public class ConsolesPrinter
 	public void PrintStatus(string message)
 	{
 		_console.WriteLine(message);
+	}
+
+	public void PrintProgress(BMTP3.Core3.IBackupProgress progress)
+	{
+		_console.WriteLine(
+			$"{progress.Phase}: file={progress.CurrentFile} processed={progress.FilesProcessed}/{progress.FilesTotal} bytes={progress.BytesTransferred}");
 	}
 
 	public void PrintError(string message)

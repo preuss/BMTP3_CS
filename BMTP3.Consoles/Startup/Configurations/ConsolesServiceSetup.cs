@@ -11,6 +11,9 @@ public class ConsolesServiceSetup : IServiceSetup
 	public void Configure(IServiceCollection services, IConfiguration configuration)
 	{
 		services.AddSingleton<ConsolesPrinter>();
+		services.AddSingleton<ConsolesPrinter4>();
+		services.AddSingleton<ConsolesPrinter2>();
+		services.AddSingleton<ConsolesPrinter3>();
 		// UI bindings for Core2 user-facing notifications and prompts
 		services.AddSingleton<IUserNotifier, SpectreConsoleNotifier>();
 		services.AddSingleton<IUserPrompter, SpectreConsolePrompter>();

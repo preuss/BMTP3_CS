@@ -222,6 +222,7 @@ public abstract class BaseOptionsModel
 					$"Static option property '{optionProperty.Name}' must be of type Option<T>.");
 			}
 
+			ArgumentNullException.ThrowIfNull(valueType);
 			OptionBinding binding = CreateBinding(optionProperty, valueType, instanceProperties);
 			bindings.Add(binding);
 		}

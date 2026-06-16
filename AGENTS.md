@@ -2,15 +2,16 @@
 
 > **Sidst opdateret:** 16 Jun 2026
 > **Tests:** 104 Consoles + 139 Core4 = **243 passed**
-> **Build:** 0 errors, 5 warnings (Consoles), 0 warnings (Core4)
+> **Build:** 0 errors, 4 warnings (Consoles — all archived Core2/Core3), 0 warnings (Core4)
 
 ---
 
 ## Arkitektur (Core4 + Consoles)
 
 - **Core4** (`BMTP3.Core4/`): Backup engine — traversal, download, hash, collision, sidecar, metadata. 0 warnings.
-- **Consoles** (`BMTP3.Consoles/`): CLI commands, progress display, config loading, DI setup. 5 warnings (CS8604 i Core2-archived kode + CS8604 i `BaseOptionsModel.cs:225`).
-- **Core/Core2/Core3**: Archived/readonly — må ikke redigeres.
+- **Consoles** (`BMTP3.Consoles/`): CLI commands, progress display, config loading, DI setup. 4 warnings (CS8604 i Core2-archived kode, alle ignoreret).
+- **Core/Core2/Core3**: Archived/readonly — må ikke redigeres. Dette gælder ALLE filer i Core2/Core3-flowet, uanset hvilket projekt de ligger i. Det inkluderer `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs`, `ConsolesPrinter` (Core2/Core3-metoder), og alle filer i `BMTP3.Core2/`, `BMTP3.Core3/`, `BMTP3.Core/`.
+- **Consoles** (`BMTP3.Consoles/`): Core4-specifikke CLI commands, progress display, config loading, DI setup.
 - **Config**: TOML (kebab-case), JSON (camelCase case-insensitive), JSON5 (unquoted keys, kommentarer, trailing commas). Config loads først; `WasSupplied()` overrider.
 
 ### Progress Display Design
@@ -47,7 +48,7 @@
 | Parameterorden: vigtige params først, infrastructure (`IAnsiConsole`) før config (`bool debug`) | ✅ Regel |
 | Fail-first i CLI — returner error code + message, kast aldrig i command handler | ✅ Regel |
 | Fail-first i traversal/engine — kast exception ved fejl (aldrig `yield break`, `return`, `continue`) | ✅ Regel |
-| Core/Core2/Core3 archived — kun Core4 + Consoles må redigeres | ✅ Regel |
+| Core/Core2/Core3 archived — ALLE filer i Core2/Core3-flowet (uanset projekt) er readonly | ✅ Regel |
 | `private` constructor/`_optionsModels` i `BaseConsoleCommand` | ⚠️ WONTFIX |
 
 ---
@@ -63,6 +64,8 @@
 | K-V47 | `FileContent.OpenReadAsync`: `CancellationToken` tjekket før `FileStream` | `FileContent.cs` |
 | Smelly #5 | `ProgressStatusTask.cs:43`: `Value = Value` → `Value = value` | `ProgressStatusTask.cs` |
 | Fix | `KebabCaseToPascalCase` understøtter nu `_` (underscore) — fixture `preserve_hierarchy` | `JsonNamingPolicies.cs` |
+| C-V23 | `ConsolesPrinter` split: `ConsolesPrinter4.cs`, `ConsolesPrinter2.cs`, `ConsolesPrinter3.cs` oprettet, DI registreret, `BackupConsoleCommand4.cs` updated | `ConsolesServiceSetup.cs`, `BackupConsoleCommand4.cs` |
+| Fix | `BaseOptionsModel.cs:225` CS8604 — `ArgumentNullException.ThrowIfNull(valueType)` | `BaseOptionsModel.cs` |
 | Tests | 243/243 passed efter alle ændringer | — |
 
 ### In Progress
@@ -72,16 +75,14 @@
 ### Næste — prioriteret
 
 1. **C-V22**: ⚠️ WONTFIX — `BackupPlanLoader` → `BackupPlan2Loader` (archived/readonly, Core2). Brug `BackupPlan4Loader` i stedet.
-2. **C-V23**: Split `ConsolesPrinter` — isoler Core4 printing fra Core2/Core3
+2. **C-V23**: ✅ DONE — Split `ConsolesPrinter`: `ConsolesPrinter4.cs`, `ConsolesPrinter2.cs`, `ConsolesPrinter3.cs` oprettet. DI registreret.
 3. **Smelly Code #4–10**: `ConsoleProgressBar`, `OptionsBuilder`, etc.
-6. **Build warnings**: ~45 warnings i non-archived projekter (Core4.Tests, Consoles, Consoles.Tests)
-7. **Feature gates**: `StopOnError=false`, `EnableMetadata`, `MaxDegreeOfParallelism`, `BackupIndexType.Database`
-8. **Integration tests**: MTP pipeline, BackupEngine E2E
-9. **Retry/Resilience**: Exponential backoff, MTP resilience
+4. **Build warnings**: ~~4~~ 4 warnings (alle archived Core2/Core3 — `BaseOptionsModel.cs:225` fixed)
+5. **Feature gates**: `StopOnError=false`, `EnableMetadata`, `MaxDegreeOfParallelism`, `BackupIndexType.Database`
+6. **Integration tests**: MTP pipeline, BackupEngine E2E
+7. **Retry/Resilience**: Exponential backoff, MTP resilience
 
----
-
-## Code Quality Audit — Status
+### Næste — prioriteret## Code Quality Audit — Status
 
 ### Consoles — High
 
@@ -96,7 +97,7 @@
 | C-V20 | ✅ FIXED | — | `ExecutionConfig` slettet |
 | C-V21 | ✅ DONE | `BackupPlanBuilder.cs` | `ParseEnum<T>` forbedret (kebab-case + underscore → PascalCase) |
 | C-V22 | ✅ DONE | `BackupPlanLoader` → `BackupPlan2Loader` + archived header | Renamed to show Core2 ownership |
-| C-V23 | ⏳ TODO | `ConsolesPrinter` | Split Core4 printing |
+| C-V23 | ✅ DONE | `ConsolesPrinter4.cs`, `ConsolesPrinter2.cs`, `ConsolesPrinter3.cs`, `ConsolesServiceSetup.cs` | Split Core4 printing |
 | C-V24 | ✅ FIXED | — | Af C-V11 |
 | C-V25 | ✅ FIXED | `BackupProgressDisplay.cs` | `MarkRemainingCompletedTasksAsInactive` slettet |
 | C-V26 | ✅ DONE | `BackupProgressDisplay.cs` | `WriteDebugLine` parameter fix |
@@ -118,13 +119,12 @@
 
 ---
 
-## Warnings (5 Consoles — Core2 archived)
+## Warnings (4 Consoles — Core2 archived)
 
 | Linje | Warning | Scope |
 |---|---|---|
 | `BackupConsoleCommand2.cs:46,145,212` | CS8604 — `ConsolesPrinter` null reference | Archived — ignoreres |
 | `BackupConsoleCommand3.cs:45` | CS8604 — `ConsolesPrinter` null reference | Archived — ignoreres |
-| `BaseOptionsModel.cs:225` | CS8604 — `valueType` kan være null i `CreateBinding` | Skal fixes |
 
 ---
 
@@ -139,3 +139,8 @@
 | `BMTP3.Core4/Models/FileContent.cs` | `CancellationToken` tjek før `FileStream` |
 | `BMTP3.Consoles/IO/Consoles/ProgressStatus/ProgressStatusTask.cs` | `Value = Value` → `Value = value` |
 | `BMTP3.Consoles/Configs/JsonNamingPolicies.cs` | `KebabCaseToPascalCase` understøtter `_` |
+| `BMTP3.Consoles/Services/ConsolesPrinter4.cs` | **Ny** — Core4-specifik printer (kopi af Core4-metoder fra original) |
+| `BMTP3.Consoles/Services/ConsolesPrinter2.cs` | **Ny** — Core2-specifik printer |
+| `BMTP3.Consoles/Services/ConsolesPrinter3.cs` | **Ny** — Core3-specifik printer |
+| `BMTP3.Consoles/Startup/Configurations/ConsolesServiceSetup.cs` | DI-registrering af `ConsolesPrinter4/2/3` |
+| `BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand4.cs` | Bruger `ConsolesPrinter4` i stedet for `ConsolesPrinter` |

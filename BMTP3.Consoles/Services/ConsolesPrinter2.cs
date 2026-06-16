@@ -8,11 +8,11 @@ namespace BMTP3.Consoles.Services;
 ///     All output goes through IAnsiConsole (Spectre) so colors and formatting
 ///     are consistent and testable. This class must NOT use Console.WriteLine directly.
 /// </summary>
-public class ConsolesPrinter
+public class ConsolesPrinter2
 {
-	protected readonly IAnsiConsole _console;
+	private readonly IAnsiConsole _console;
 
-	public ConsolesPrinter(IAnsiConsole console)
+	public ConsolesPrinter2(IAnsiConsole console)
 	{
 		_console = console;
 	}
@@ -37,6 +37,27 @@ public class ConsolesPrinter
 	public void PrintStatus(string message)
 	{
 		_console.WriteLine(message);
+	}
+
+	public void PrintProgress(BMTP3.Core2.BackupNew.Api.Progress.IBackupProgress progress)
+	{
+		_console.WriteLine(
+			$"{progress.Phase}: discovered={progress.FilesDiscovered} succeeded={progress.FilesSucceeded} failed={progress.FilesFailed}");
+	}
+
+	public void PrintResult(BMTP3.Core2.BackupNew.Api.Response.BackupJobResult result)
+	{
+		_console.MarkupLine($"[bold]Job[/] '[green]{result.JobName.EscapeMarkup()}[/]' finished: {result.Status}");
+		_console.WriteLine(
+			$"Scanned: {result.TotalFilesScanned} Copied: {result.FilesCopied} Failed: {result.FilesFailed} Skipped: {result.FilesSkipped} Bytes: {result.TotalBytesCopied}");
+		if (result.GlobalErrors?.Count > 0)
+		{
+			_console.MarkupLine("[yellow]Global errors:[/]");
+			foreach (string e in result.GlobalErrors)
+			{
+				_console.MarkupLine($"  [yellow]- {e.EscapeMarkup()}[/]");
+			}
+		}
 	}
 
 	public void PrintError(string message)
