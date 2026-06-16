@@ -17,6 +17,19 @@ namespace BMTP3.Core4.Traversal;
 /// objects that continue to access the device after traversal has finished.
 /// The caller must therefore keep the device alive until all yielded content and streams
 /// have been fully consumed.
+/// <para>
+/// Traversal acquires exclusive MTP device access (<see cref="IMediaDeviceGatekeeper"/>) for
+/// the entire enumeration. Metadata properties (<c>CreationTime</c>, <c>LastWriteTime</c>,
+/// <c>DateAuthored</c>) are captured during this phase while the gatekeeper is held.
+/// <see cref="MediaDeviceContent"/> does not open streams during traversal; it acquires the
+/// gatekeeper later when consumed (download phase).
+/// </para>
+/// <para>
+/// <b>Deadlock warning:</b> The gatekeeper lease is held for the entire <c>TraverseAsync</c>
+/// enumeration. Callers must not consume <see cref="MediaDeviceContent"/> streams (e.g.,
+/// <c>OpenRead</c>) while actively iterating, because content access also acquires the
+/// gatekeeper. Complete enumeration first, then consume the returned items.
+/// </para>
 /// </remarks>
 [SupportedOSPlatform("windows7.0")]
 
@@ -42,22 +55,42 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 	{
 		ArgumentNullException.ThrowIfNull(request);
 
+		using IDisposable _ = await _gatekeeper.AcquireAsync(TimeSpan.FromSeconds(30), cancellationToken).ConfigureAwait(false);
+
 		IMediaDirectory rootDirectory = _mediaDrive.RootDirectory
 			?? throw new InvalidOperationException("Drive root directory is not available.");
 
-		IMediaDirectory startDirectory = string.IsNullOrEmpty(request.SubPath)
-			? rootDirectory
-			: await NavigateToSubDirectory(rootDirectory, request.SubPath, cancellationToken).ConfigureAwait(false);
+		string normalizedSubPath = NormalizeMtpRelativePath(request.SubPath ?? "");
+		IReadOnlyList<string>? includePatterns = NormalizeMtpGlobPatterns(request.IncludePatterns);
+		IReadOnlyList<string>? excludePatterns = NormalizeMtpGlobPatterns(request.ExcludePatterns);
 
-		int dirCount = 0;
+		IMediaDirectory startDirectory = string.IsNullOrEmpty(normalizedSubPath)
+			? rootDirectory
+			: NavigateToSubDirectory(rootDirectory, normalizedSubPath, cancellationToken);
+
+		int dirCount = 1; // start directory; subdirectories are counted in onSubDirectoryEntered
 		int fileCount = 0;
 
-		await foreach((IMediaFile file, string fileName, string relativeFilePath) in EnumerateRecursiveAsync(
+		progress?.Report(new SourceTraversalProgress
+		{
+			DirectoriesTraversed = dirCount,
+			FilesDiscovered = fileCount,
+		});
+
+		foreach((IMediaFile file, string fileName, string relativeFilePath) in EnumerateRecursive(
 				startDirectory,
 				relativePrefix: "",
 				recursive: request.Recursive,
-				onDirectoryEntered: () => dirCount++, cancellationToken
-			).ConfigureAwait(false)
+				onSubDirectoryEntered: () =>
+				{
+					dirCount++;
+					progress?.Report(new SourceTraversalProgress
+					{
+						DirectoriesTraversed = dirCount,
+						FilesDiscovered = fileCount,
+					});
+				}, cancellationToken
+			)
 		)
 		{
 			cancellationToken.ThrowIfCancellationRequested();
@@ -70,106 +103,90 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				FilesDiscovered = fileCount,
 			});
 
-			if(!GlobMatcher.IsIncluded(relativeFilePath, request.IncludePatterns, request.ExcludePatterns))
+			// Already normalised in EnumerateRecursive, but normalise again for safety
+			// before glob matching and SourcePath construction.
+			string normalizedPath = NormalizeMtpRelativePath(relativeFilePath);
+
+			if(!GlobMatcher.IsIncluded(normalizedPath, includePatterns, excludePatterns))
 				continue;
 
-			SourceTraversalItem item = await _gatekeeper.ExecuteAsync(_ =>
+			SourceTraversalItem item = new()
 			{
-				DateTimeOffset? created = ToUtcOffsetOrNull(file.CreationTime);
-				DateTimeOffset? modified = ToUtcOffsetOrNull(file.LastWriteTime);
-				DateTimeOffset? authored = ToUtcOffsetOrNull(file.DateAuthored);
-
-				SourceTraversalItem result = new()
-				{
-					// WPD object ID — guaranteed unique within a single scan session.
-					// NOT stable across device reconnections (WPD may reassign IDs).
-					// Apple devices does not respect PersistentUniqueId between connections or restarts of device.
-					// But we use PersistentUniqueId for them anyway, because it is the only
-					// option that should provide stability across reconnections and restarts.
-					// For non-Apple devices it actually works as intended.
-					//
-					// For true cross-connection matching, see GenerateAlmostUniqueId() which
-					// combines path + size + timestamps as a future fallback strategy.
-					Id = Guard.RequireNonNull(file.PersistentUniqueId),
-					SourcePath = BuildMtpSourcePath(_mediaDevice.FriendlyName, _mediaDrive.Name, request.SubPath, relativeFilePath),
-					RelativeFilePath = relativeFilePath,
-					FileName = fileName,
-					Content = new MediaDeviceContent(file, _gatekeeper),
-					DateCreated = created,
-					DateModified = modified,
-					DateAuthored = authored,
-					DateAccessed = null,
-				};
-
-				return Task.FromResult(result);
-			}, cancellationToken).ConfigureAwait(false);
+				// WPD object ID — guaranteed unique within a single scan session.
+				// NOT stable across device reconnections (WPD may reassign IDs).
+				// Apple devices does not respect PersistentUniqueId between connections or restarts of device.
+				// But we use PersistentUniqueId for them anyway, because it is the only
+				// option that should provide stability across reconnections and restarts.
+				// For non-Apple devices it actually works as intended.
+				//
+				// For true cross-connection matching, see GenerateAlmostUniqueId() which
+				// combines path + size + timestamps as a future fallback strategy.
+				Id = Guard.RequireNonNull(file.PersistentUniqueId),
+				SourcePath = BuildMtpSourcePath(_mediaDevice.FriendlyName, _mediaDrive.Name, normalizedSubPath, normalizedPath),
+				RelativeFilePath = normalizedPath,
+				FileName = fileName,
+				Content = new MediaDeviceContent(file, _gatekeeper),
+				DateCreated = ToUtcOffsetOrNull(file.CreationTime),
+				DateModified = ToUtcOffsetOrNull(file.LastWriteTime),
+				DateAuthored = ToUtcOffsetOrNull(file.DateAuthored),
+				DateAccessed = null,
+			};
 
 			yield return item;
 		}
 	}
 
-	private async IAsyncEnumerable<(IMediaFile File, string FileName, string RelativeFilePath)> EnumerateRecursiveAsync(
+	private static IEnumerable<(IMediaFile File, string FileName, string RelativeFilePath)> EnumerateRecursive(
 		IMediaDirectory directory,
 		string relativePrefix,
 		bool recursive,
-		Action onDirectoryEntered,
-		[EnumeratorCancellation] CancellationToken cancellationToken
+		Action onSubDirectoryEntered,
+		CancellationToken cancellationToken
 	)
 	{
-		(List<(IMediaFile File, string Name)> files, List<(IMediaDirectory Dir, string Name)> dirs) = await _gatekeeper.ExecuteAsync(_ =>
-		{
-			List<(IMediaFile File, string Name)> files = directory.Files
-				.Select(f => (f, f.Name))
-				.ToList();
-
-			List<(IMediaDirectory Dir, string Name)> dirs = recursive
-				? directory.Directories
-					.Select(d => (d, d.Name))
-					.ToList()
-				: new();
-
-			return Task.FromResult((files, dirs));
-		}, cancellationToken).ConfigureAwait(false);
-
-		foreach((IMediaFile file, string fileName) in files)
+		foreach(IMediaFile file in directory.EnumerateFiles())
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			string rel = string.IsNullOrEmpty(relativePrefix)
-				? fileName
-				: $"{relativePrefix}\\{fileName}";
+			string rel = CombineMtpRelativePath(relativePrefix, file.Name);
+			rel = NormalizeMtpRelativePath(rel);
 
-			yield return (file, fileName, rel);
+			yield return (file, file.Name, rel);
 		}
 
 		if(!recursive)
 			yield break;
 
-		foreach((IMediaDirectory subDir, string subDirName) in dirs)
+		foreach(IMediaDirectory subDir in directory.EnumerateDirectories())
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
-			onDirectoryEntered();
+			onSubDirectoryEntered();
 
-			string subPrefix = string.IsNullOrEmpty(relativePrefix)
-				? subDirName
-				: $"{relativePrefix}\\{subDirName}";
+			string subPrefix = CombineMtpRelativePath(relativePrefix, subDir.Name);
+			subPrefix = NormalizeMtpRelativePath(subPrefix);
 
-			await foreach((IMediaFile file, string fileName, string rel) in EnumerateRecursiveAsync(
-					subDir,
-					subPrefix,
-					recursive,
-					onDirectoryEntered,
-					cancellationToken
-				).ConfigureAwait(false)
-			)
+			foreach((IMediaFile file, string fileName, string rel) in EnumerateRecursive(
+				subDir,
+				subPrefix,
+				recursive,
+				onSubDirectoryEntered,
+				cancellationToken
+			))
 			{
 				yield return (file, fileName, rel);
 			}
 		}
 	}
 
-	private Task<IMediaDirectory> NavigateToSubDirectory(
+	private static string CombineMtpRelativePath(string prefix, string name)
+	{
+		return string.IsNullOrEmpty(prefix)
+			? name
+			: $"{prefix}\\{name}";
+	}
+
+	private static IMediaDirectory NavigateToSubDirectory(
 		IMediaDirectory root,
 		string subPath,
 		CancellationToken cancellationToken
@@ -177,36 +194,52 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 	{
 		string[] segments = subPath.Split('/', '\\');
 
-		return _gatekeeper.ExecuteAsync(_ =>
+		IMediaDirectory current = root;
+
+		foreach(string segment in segments)
 		{
-			IMediaDirectory current = root;
+			cancellationToken.ThrowIfCancellationRequested();
 
-			foreach(string segment in segments)
+			if(string.IsNullOrWhiteSpace(segment))
+				continue;
+
+			IMediaDirectory? next = null;
+
+			foreach(IMediaDirectory dir in current.EnumerateDirectories())
 			{
-				if(string.IsNullOrWhiteSpace(segment))
-					continue;
+				cancellationToken.ThrowIfCancellationRequested();
 
-				IMediaDirectory? next = current.Directories
-					.FirstOrDefault(d => string.Equals(d.Name, segment, StringComparison.OrdinalIgnoreCase));
-
-				if(next == null)
+				if(string.Equals(dir.Name, segment, StringComparison.OrdinalIgnoreCase))
 				{
-					throw new DirectoryNotFoundException(
-						$"Directory '{segment}' not found in '{current.Name}' while navigating to '{subPath}'.");
+					next = dir;
+					break;
 				}
-
-				current = next;
 			}
 
-			return Task.FromResult(current);
-		}, cancellationToken);
+			if(next == null)
+			{
+				throw new DirectoryNotFoundException($"Directory '{segment}' not found in '{current.Name}' while navigating to '{subPath}'.");
+			}
+
+			current = next;
+		}
+
+		return current;
 	}
 
 	private static DateTimeOffset? ToUtcOffsetOrNull(DateTime? value)
 	{
-		return value != null
-			? new DateTimeOffset(value.Value.ToUniversalTime(), TimeSpan.Zero)
-			: null;
+		if(value == null) return null;
+
+		DateTime dateTime = value.Value;
+
+		return dateTime.Kind switch
+		{
+			DateTimeKind.Utc => new DateTimeOffset(dateTime, TimeSpan.Zero),
+			DateTimeKind.Local => dateTime.ToUniversalTime(),
+			DateTimeKind.Unspecified => new DateTimeOffset(DateTime.SpecifyKind(dateTime, DateTimeKind.Local)).ToUniversalTime(),
+			_ => null,
+		};
 	}
 
 	/// <summary>
@@ -228,8 +261,8 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 	/// </para>
 	/// <para><b>Why it is not used as the primary Id:</b></para>
 	/// <para>
-	/// Within a single scan session, <see cref="IMediaItem.PersistentUniqueId"/> (with fallback
-	/// to <see cref="IMediaItem.Id"/>) is guaranteed unique by the WPD driver and is the
+	/// Within a single scan session, <see cref="IMediaItem.PersistentUniqueId"/> is guaranteed
+	/// unique by the WPD driver and is the
 	/// correct identifier for deduplication and record keeping within that session.
 	/// </para>
 	/// <para><b>Future use:</b></para>
@@ -248,20 +281,55 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		DateTimeOffset? dateAuthored
 	)
 	{
-		ArgumentNullException.ThrowIfNullOrWhiteSpace(fullFilePath);
-		ArgumentNullException.ThrowIfNull(size);
+		ArgumentException.ThrowIfNullOrWhiteSpace(fullFilePath);
 
-		return $"{fullFilePath}_{size}_{dateCreated?.Ticks}_{dateModified?.Ticks}_{dateAuthored?.Ticks}";
+		return $"{fullFilePath}_{size}_{dateCreated?.UtcTicks}_{dateModified?.UtcTicks}_{dateAuthored?.UtcTicks}";
 	}
 
+	/// <summary>
+	/// Builds a logical MTP source URL for display and external identification.
+	/// Internal MTP relative paths use <c>\</c>; this URL uses <c>/</c>.
+	/// Not a standards-compliant URI — device, drive, and path segments are not URI-escaped.
+	/// </summary>
 	internal static string BuildMtpSourcePath(string deviceName, string driveName, string? subPath, string relativeFilePath)
 	{
-		string normalizedRel = relativeFilePath.Replace('\\', '/');
-		string normalizedSub = subPath?.Replace('\\', '/') ?? "";
+		string normalizedRel = relativeFilePath.Replace('\\', '/').Trim('/');
+		string normalizedSub = subPath?.Replace('\\', '/').Trim('/') ?? "";
 
-		if (string.IsNullOrEmpty(normalizedSub))
+		if(string.IsNullOrEmpty(normalizedSub))
 			return $"mtp://{deviceName}/{driveName}/{normalizedRel}";
 
 		return $"mtp://{deviceName}/{driveName}/{normalizedSub}/{normalizedRel}";
+	}
+
+	/// <summary>
+	/// Normalizes an MTP relative path to use <c>\</c> consistently.
+	/// </summary>
+	private static string NormalizeMtpRelativePath(string path)
+	{
+		ArgumentNullException.ThrowIfNull(path);
+
+		return path.Replace('/', '\\').Trim('\\');
+	}
+
+	/// <summary>
+	/// Normalizes glob patterns to use <c>\</c> consistently with MTP relative paths.
+	/// </summary>
+	private static IReadOnlyList<string>? NormalizeMtpGlobPatterns(IReadOnlyList<string>? patterns)
+	{
+		if(patterns == null)
+			return null;
+
+		if(patterns.Count == 0)
+			return Array.Empty<string>();
+
+		string[] result = new string[patterns.Count];
+
+		for(int i = 0; i < patterns.Count; i++)
+		{
+			result[i] = NormalizeMtpRelativePath(patterns[i]);
+		}
+
+		return result;
 	}
 }

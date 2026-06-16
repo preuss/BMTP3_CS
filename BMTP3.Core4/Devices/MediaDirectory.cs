@@ -35,4 +35,10 @@ internal sealed class MediaDirectory : IMediaDirectory
 			.EnumerateFiles()
 			.Select(f => (IMediaFile)new MediaFile(f))
 			.ToArray();
+
+	public IEnumerable<IMediaFile> EnumerateFiles() =>
+		_directory.EnumerateFiles().Select(f => (IMediaFile)new MediaFile(f));
+
+	public IEnumerable<IMediaDirectory> EnumerateDirectories() =>
+		_directory.EnumerateDirectories().Select(d => (IMediaDirectory)new MediaDirectory(d));
 }

@@ -229,4 +229,57 @@ public class GlobMatcherTests
 
 		Assert.False(GlobMatcher.IsIncluded("docs/readme.txt", include, null));
 	}
+
+	// -----------------------------------------------------------------------
+	// Separator equivalence: / and \ produce identical match results
+	// MTP traversal may normalise glob patterns to backslash internally.
+	// These tests confirm GlobMatcher treats forward-slash and backslash
+	// patterns identically for both Matches and IsIncluded.
+	// -----------------------------------------------------------------------
+
+	public static IEnumerable<object[]> ForwardBackslashGlobData()
+	{
+		// (path, patternWithForwardSlash, patternWithBackslash)
+		// Each pair must produce identical match results.
+
+		// Double-star at root
+		yield return Wrap("a/b/c.jpg", "**/*.jpg", @"**\*.jpg");
+		yield return Wrap("a\\b\\c.jpg", "**/*.jpg", @"**\*.jpg");
+		yield return Wrap("file.jpg", "**/*.jpg", @"**\*.jpg");
+
+		// Single-star with directory prefix
+		yield return Wrap("DCIM/IMG001.jpg", "DCIM/*.jpg", @"DCIM\*.jpg");
+		yield return Wrap("DCIM\\IMG001.jpg", "DCIM/*.jpg", @"DCIM\*.jpg");
+		yield return Wrap("DCIM/2024/IMG001.jpg", "DCIM/**/*.jpg", @"DCIM\**\*.jpg");
+		yield return Wrap("DCIM\\2024\\IMG001.jpg", "DCIM/**/*.jpg", @"DCIM\**\*.jpg");
+
+		// Just filename — no separator in pattern
+		yield return Wrap("photo.jpg", "*.jpg", "*.jpg");
+		yield return Wrap("sub/photo.jpg", "*.jpg", "*.jpg"); // * doesn't cross separator
+
+		// Multiple directory levels with double-star
+		yield return Wrap("a/b/c/d/e/file.txt", "a/**/*.txt", @"a\**\*.txt");
+
+		static object[] Wrap(string path, string fs, string bs) => new object[] { path, fs, bs };
+	}
+
+	[Theory]
+	[MemberData(nameof(ForwardBackslashGlobData))]
+	public void ForwardAndBackslashPatterns_ProduceIdenticalMatch(string path, string forwardSlashPattern, string backslashPattern)
+	{
+		bool forwardResult = GlobMatcher.Matches(path, forwardSlashPattern);
+		bool backslashResult = GlobMatcher.Matches(path, backslashPattern);
+
+		Assert.Equal(forwardResult, backslashResult);
+	}
+
+	[Theory]
+	[MemberData(nameof(ForwardBackslashGlobData))]
+	public void ForwardAndBackslashPatterns_ProduceIdenticalIsIncluded(string path, string forwardSlashPattern, string backslashPattern)
+	{
+		bool forwardResult = GlobMatcher.IsIncluded(path, new[] { forwardSlashPattern }, null);
+		bool backslashResult = GlobMatcher.IsIncluded(path, new[] { backslashPattern }, null);
+
+		Assert.Equal(forwardResult, backslashResult);
+	}
 }
