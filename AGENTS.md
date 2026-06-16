@@ -108,7 +108,7 @@
 | ID | Status | Fil | Problem |
 |---|---|---|---|
 | K-V38 | ✅ RETAINED | `SidecarRequest.cs:12` | `SourceType` bruges til at skelne `mtp://` vs `C:\` parsing af `SourceFullPath` og i `SidecarService` til conditional kommentarer. Ikke redundant. |
-| K-V39 | ⏳ TODO | `BackupEngine.cs:287–288,369–370,492–493` | Null-tjek på `required string` |
+| K-V39 | ✅ DONE | `BackupEngine.cs` | Null-tjek ryddet: uprofessionel kommentar fjernet, 2 guards beholdt (1 i try-scope, 1 i nested if-block). Ingen `!` operator. |
 | K-V40 | ⏳ TODO | `BackupEngine.cs:82–627` | `RunAsync` for lang (~545 linjer) |
 | K-V41 | ✅ DONE | `SidecarDocument.cs`, `SidecarSection.cs`, `SidecarProperty.cs` | `public` → `internal` |
 | K-V42 | ⏳ TODO | `BackupEngine.cs:34,51` | `public sealed` + `internal` constructor |
