@@ -320,7 +320,7 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 
 | ID | Fil | Problem | Severity |
 |----|-----|---------|----------|
-| K-V38 | `SidecarRequest.cs:12` | `SourceType` er redundant — `SourceDetails` er polymorfisk, typen kan udledes via pattern match | **High** |
+| K-V38 | `SidecarRequest.cs:12` | `SourceType` bruges til at skelne `mtp://` vs `C:\` parsing af `SourceFullPath` og i `SidecarService` til conditional kommentarer. Ikke redundant. | ✅ **RETAINED** |
 | K-V39 | `BackupEngine.cs:287-288,369-370,492-493` | 3 identiske null-tjek på `required string` — compiler garanterer non-null. Uprofessionel kommentar ("Stupid Visual Studio...") | **High** |
 | K-V40 | `BackupEngine.cs:82-627` | `RunAsync` er ~545 linjer. `foreach` over `pendingRecords` (280-538) bør ekstraheres | **High** |
 | K-V41 | `SidecarDocument.cs:3`, `SidecarSection.cs:3`, `SidecarProperty.cs:3` | `public` men er interne implementeringsdetaljer — skal være `internal` | **High** |

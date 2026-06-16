@@ -542,7 +542,7 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | K-V29 | `Engine/BackupEngine.cs` | 761–763 | KISS | Low | Sti-normalisering i `MatchDrive` udføres inde i `foreach`-løkken. Afhænger ikke af loop-variablen — bør hejses ud. |
 | K-V30 | `DependencyInjection/ServiceCollectionExtensions.cs` | 102–131 | KISS / SOLID-D | Medium | `IBackupEngine` registreres via håndskrevet factory-lambda der manuelt resolver alle afhængigheder. Tilføjelse/fjernelse af constructor-parameter kræver opdatering tre steder. |
 | K-V31 | `Engine/TimeStamp/Readers/QuickTimeTimestampReader.cs` | 7–8 | SOLID-D | Low | `QuickTimeMetadataHeaderTimestampReader` og `QuickTimeMovieHeaderTimestampReader` instantieres som private felter — ikke injicerbare. |
-| K-V38 | `Engine/Sidecar/SidecarRequest.cs` | 12 | DRY | **High** | `SourceType` er redundant — `SourceDetails` er polymorfisk, typen kan udledes via pattern match. |
+| ~~K-V38~~ | `Engine/Sidecar/SidecarRequest.cs` | 12 | DRY | **High** | ✅ **RETAINED** — `SourceType` bruges til at skelne `mtp://` vs `C:\` parsing af `SourceFullPath` og i `SidecarService` til conditional kommentarer. Ikke redundant. |
 | K-V39 | `Engine/BackupEngine.cs` | 287–288, 369–370, 492–493 | YAGNI / KISS | **High** | 3 identiske null-tjek på `required string`. Kommentaren "Stupid Visual Studio thinks that..." er uprofessionel. |
 | K-V40 | `Engine/BackupEngine.cs` | 82–627 | SOLID-SRP | **High** | `RunAsync` er ~545 linjer. `foreach` over `pendingRecords` (280–538) bør ekstraheres. |
 | K-V41 | `Engine/Sidecar/Document/SidecarDocument.cs`, `SidecarSection.cs`, `SidecarProperty.cs` | 3 (alle) | Encapsulation | **High** | `public` men er interne implementeringsdetaljer i `Engine.Sidecar.Document` — skal være `internal`. |
