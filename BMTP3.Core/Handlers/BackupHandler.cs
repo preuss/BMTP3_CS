@@ -328,11 +328,11 @@ namespace BMTP3.Core.Handlers {
 					.HideCompleted(true)
 					.Columns(new ProgressColumn[] {
 				new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence7)),         // Spinner
-                new TaskDescriptionColumn(), // Beskrivelse af opgaven
-                new ProgressBarColumn() {Width=10},     // Fremdriftsbjælke
-                new PercentageColumn(),      // Procentdel
-                new RemainingTimeColumn(),   // Resterende tid
-                new ValueOfMaxColumn(),
+				new TaskDescriptionColumn(), // Beskrivelse af opgaven
+				new ProgressBarColumn() {Width=10},     // Fremdriftsbjælke
+				new PercentageColumn(),      // Procentdel
+				new RemainingTimeColumn(),   // Resterende tid
+				new ValueOfMaxColumn(),
 					})
 					.Start(ctx => {
 						var overallTask = ctx.AddTask("[green]Total Progress[/]", new ProgressTaskSettings { AutoStart = true, MaxValue = backupProgressTracker.Records.Count });
@@ -680,7 +680,7 @@ namespace BMTP3.Core.Handlers {
 
 					string testNextCountPath = template.Replace(filePatternIfExistTargetFilePath);
 					/*
- 					string testNextCountFileName = template.Replace(filePatternIfExist);
+					string testNextCountFileName = template.Replace(filePatternIfExist);
 					string testNextCountPath = Path.Combine(filePatternTargetDirectoryPath, testNextCountFileName);
 					*/
 

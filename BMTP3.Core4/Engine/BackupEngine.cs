@@ -31,7 +31,7 @@ namespace BMTP3.Core4.Engine;
 /// Each step is initially expressed as a comment and will later
 /// be replaced with concrete implementation calls.
 /// </summary>
-public sealed class BackupEngine : IBackupEngine
+internal sealed class BackupEngine : IBackupEngine
 {
 	private readonly IBackupScanner _scanner;
 	private readonly ISourceTraversalFactory _sourceTraversalFactory;

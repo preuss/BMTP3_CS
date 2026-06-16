@@ -546,7 +546,7 @@ Fuld gennemgang af `BMTP3.Consoles` og `BMTP3.Core4` mod SOLID, Clean Architectu
 | ~~K-V39~~ | `Engine/BackupEngine.cs` | 287–288, 369–370, 492–493 | YAGNI / KISS | **High** | ✅ **FIXED** — "Stupid" kommentar fjernet. 2 concise null-guards beholdt (1 i try-scope, 1 i nested if). Ingen `!`. |
 | K-V40 | `Engine/BackupEngine.cs` | 82–627 | SOLID-SRP | **High** | `RunAsync` er ~545 linjer. `foreach` over `pendingRecords` (280–538) bør ekstraheres. |
 | K-V41 | `Engine/Sidecar/Document/SidecarDocument.cs`, `SidecarSection.cs`, `SidecarProperty.cs` | 3 (alle) | Encapsulation | **High** | `public` men er interne implementeringsdetaljer i `Engine.Sidecar.Document` — skal være `internal`. |
-| K-V42 | `Engine/BackupEngine.cs` | 34, 51 | Consistency | **High** | `public sealed` med `internal` constructor — modsigelse. Bør være `internal sealed`. |
+| ~~K-V42~~ | `Engine/BackupEngine.cs` | 34, 51 | Consistency | **High** | ✅ **DONE** — `public sealed` → `internal sealed`. `IBackupEngine` forbliver `public`. |
 | K-V43 | `InternalsVisibleTo.cs` | 1–5 | Dead code | **High** | 4 ubrugte `using` directives: `System.Collections.Generic`, `System.Linq`, `System.Text`, `System.Threading.Tasks`. |
 | K-V44 | `Models/IContent.cs` | 2–4 | Dead code | **High** | 3 ubrugte `using` directives: `System.Collections.Generic`, `System.Linq`, `System.Text`. |
 | K-V45 | `Storage/BackupMediaDriveInfo.cs` | 37–38, 101, 111 | DRY | Medium | `DeviceName` == `FriendlyName` altid — redundant property. |
