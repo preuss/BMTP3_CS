@@ -110,7 +110,7 @@
 | K-V38 | ⏳ TODO | `SidecarRequest.cs:12` | `SourceType` redundant |
 | K-V39 | ⏳ TODO | `BackupEngine.cs:287–288,369–370,492–493` | Null-tjek på `required string` |
 | K-V40 | ⏳ TODO | `BackupEngine.cs:82–627` | `RunAsync` for lang (~545 linjer) |
-| K-V41 | ⏳ TODO | `SidecarDocument.cs:3` m.fl. | `public` men bør være `internal` |
+| K-V41 | ✅ DONE | `SidecarDocument.cs`, `SidecarSection.cs`, `SidecarProperty.cs` | `public` → `internal` |
 | K-V42 | ⏳ TODO | `BackupEngine.cs:34,51` | `public sealed` + `internal` constructor |
 | K-V43 | ✅ DONE | `InternalsVisibleTo.cs` | 4 ubrugte `using` fjernet |
 | K-V44 | ✅ DONE | `Models/IContent.cs` | 3 ubrugte `using` fjernet |

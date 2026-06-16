@@ -1,6 +1,6 @@
 namespace BMTP3.Core4.Engine.Sidecar.Document;
 
-public sealed class SidecarDocument
+internal sealed class SidecarDocument
 {
 	public List<string>? HeaderComment { get; set; }
 	public IEnumerable<SidecarSection> Sections => _sections.Values;

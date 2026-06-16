@@ -1,6 +1,6 @@
 namespace BMTP3.Core4.Engine.Sidecar.Document;
 
-public sealed class SidecarSection
+internal sealed class SidecarSection
 {
 	public string Name { get; }
 	public int Weight { get; }

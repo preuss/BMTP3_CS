@@ -1,6 +1,6 @@
 namespace BMTP3.Core4.Engine.Sidecar.Document;
 
-public sealed record SidecarProperty(string Key, string? Value, int Weight = 100)
+internal sealed record SidecarProperty(string Key, string? Value, int Weight = 100)
 {
 	public string Key { get; } = Key ?? throw new ArgumentNullException(nameof(Key));
 	public string? Comment { get; init; }
