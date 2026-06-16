@@ -142,7 +142,7 @@ public static class NamingPolicyHelper
 
 		foreach (char c in name)
 		{
-			if (c == '-')
+			if (c is '-' or '_')
 			{
 				capitalizeNext = true;
 			}
