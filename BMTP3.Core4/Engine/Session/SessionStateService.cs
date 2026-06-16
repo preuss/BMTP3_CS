@@ -43,7 +43,7 @@ internal sealed class SessionStateService : ISessionStateService
 			switch(resumeBehavior)
 			{
 				case SessionResumeStrategy.Abort:
-					throw new SessionResumeMismatchException(added, removed);
+					throw new SessionResumeMismatchException(added, removed, _store.StoreFile);
 
 				case SessionResumeStrategy.Restart:
 					await _store.DeleteAsync();

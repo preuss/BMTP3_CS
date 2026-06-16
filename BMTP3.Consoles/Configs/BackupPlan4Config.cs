@@ -50,5 +50,5 @@ public sealed class BehaviorConfig
 	public bool DryRun { get; set; }
 	public bool StopOnError { get; set; } = true;
 	public int Delay { get; set; }
-	public string ResumeBehavior { get; set; } = "continue";
+	public string ResumeBehavior { get; set; } = "abort";
 }

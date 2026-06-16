@@ -184,6 +184,15 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public bool StopOnError { get; set; } = true;
 
+	public static Option<SessionResumeStrategy> ResumeBehaviorOption { get; } = new("--resume-behavior")
+	{
+		Description = "How to handle a session mismatch (file list changed since last run): Abort (default), Restart (delete old session and start over), or Continue (reconcile and resume anyway).",
+		Arity = ArgumentArity.ZeroOrOne,
+		DefaultValueFactory = _ => SessionResumeStrategy.Abort
+	};
+
+	public SessionResumeStrategy ResumeBehavior { get; set; } = SessionResumeStrategy.Abort;
+
 	// --------------------------------------------------
 	// VERIFICATION
 	// --------------------------------------------------

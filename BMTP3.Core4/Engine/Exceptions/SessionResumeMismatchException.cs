@@ -4,11 +4,16 @@ public sealed class SessionResumeMismatchException : Exception
 {
 	public int AddedFiles { get; }
 	public int RemovedFiles { get; }
+	public FileInfo? SessionFile { get; }
 
-	public SessionResumeMismatchException(int addedFiles, int removedFiles)
-		: base($"Resume failed: current source file list does not match persisted session state (added: {addedFiles}, removed: {removedFiles}).")
+	public SessionResumeMismatchException(int addedFiles, int removedFiles, FileInfo? sessionFile)
+		: base($"Resume mismatch: the source file list has changed since the last session " +
+			   $"({addedFiles} new, {removedFiles} removed). " +
+			   $"This can happen if the device was reconnected and WPD assigned new file IDs. " +
+			   $"Delete the session file and run again: {sessionFile?.FullName ?? "unknown"}")
 	{
 		AddedFiles = addedFiles;
 		RemovedFiles = removedFiles;
+		SessionFile = sessionFile;
 	}
 }

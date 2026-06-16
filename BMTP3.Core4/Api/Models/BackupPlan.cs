@@ -189,7 +189,7 @@ public sealed record BackupPlan
 	/// <summary>
 	/// Defines how to handle inconsistencies when resuming from a previous session.
 	/// </summary>
-	public SessionResumeStrategy ResumeBehavior { get; init; } = SessionResumeStrategy.Continue;
+	public SessionResumeStrategy ResumeBehavior { get; init; } = SessionResumeStrategy.Abort;
 
 
 }

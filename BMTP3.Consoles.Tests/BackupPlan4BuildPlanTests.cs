@@ -330,7 +330,7 @@ dry-run = true
 		Assert.Equal(0, plan.Delay);
 		Assert.False(plan.EnableMetadata);
 		Assert.True(plan.EnableTimestampCorrection);
-		Assert.Equal(SessionResumeStrategy.Continue, plan.ResumeBehavior);
+		Assert.Equal(SessionResumeStrategy.Abort, plan.ResumeBehavior);
 	}
 
 	[Fact]

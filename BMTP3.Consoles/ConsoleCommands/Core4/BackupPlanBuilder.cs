@@ -30,7 +30,7 @@ internal sealed class BackupPlanBuilder
 	public bool EnableMetadata;
 	public bool EnableTimestampCorrection = true;
 	public int Delay;
-	public SessionResumeStrategy ResumeBehavior = SessionResumeStrategy.Continue;
+	public SessionResumeStrategy ResumeBehavior = SessionResumeStrategy.Abort;
 
 	public static BackupPlanBuilder CreateDefault() => new();
 
@@ -186,6 +186,9 @@ internal sealed class BackupPlanBuilder
 
 		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.DelayOption))
 			Delay = backupOptions.Delay;
+
+		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.ResumeBehaviorOption))
+			ResumeBehavior = backupOptions.ResumeBehavior;
 
 		if(SourceType == BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(SourcePath))
 			SourcePath = Path.GetFullPath(SourcePath);

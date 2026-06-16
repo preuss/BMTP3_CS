@@ -17,6 +17,8 @@ internal sealed class BackupJsonSummaryStore : ISummaryStore
 
 	private string FilePath => Path.Combine(_storeDirectory, $"{_sessionId}.json");
 
+	public FileInfo? StoreFile => new FileInfo(FilePath);
+
 	private static readonly JsonSerializerOptions JsonOptions = new()
 	{
 		WriteIndented = true,
