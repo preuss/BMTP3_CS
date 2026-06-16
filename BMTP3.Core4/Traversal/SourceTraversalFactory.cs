@@ -55,7 +55,7 @@ internal sealed class SourceTraversalFactory : ISourceTraversalFactory
 
 
 	[SupportedOSPlatform("windows7.0")]
-	private MediaDeviceTraversal CreateMediaDeviceTraversal(IConnectedMediaDriveSource mediaDriveSource)
+	private ISourceTraversal CreateMediaDeviceTraversal(IConnectedMediaDriveSource mediaDriveSource)
 	{
 		return new MediaDeviceTraversal(mediaDriveSource, _gatekeeper);
 
