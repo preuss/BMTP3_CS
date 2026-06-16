@@ -8,8 +8,8 @@
 
 ## Arkitektur (Core4 + Consoles)
 
-- **Core4** (`BMTP3.Core4/`): Backup engine — traversal, download, hash, collision, sidecar, metadata. 0 warnings.
-- **Consoles** (`BMTP3.Consoles/`): CLI commands, progress display, config loading, DI setup. 4 warnings (CS8604 i Core2-archived kode, alle ignoreret).
+- **Core4** (`BMTP3.Core4/`): Backup engine — traversal, download, hash, collision, sidecar, metadata. 0 warnings. **Dette er den kritiske kode.**
+- **Consoles** (`BMTP3.Consoles/`): CLI commands, progress display, config loading, DI setup. 4 warnings (CS8604 i Core2-archived kode, alle ignoreret). **Ikke kritisk — "if it ain't broke don't fix it".**
 - **Core/Core2/Core3**: Archived/readonly — må ikke redigeres. Dette gælder ALLE filer i Core2/Core3-flowet, uanset hvilket projekt de ligger i. Det inkluderer `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs`, `ConsolesPrinter` (Core2/Core3-metoder), og alle filer i `BMTP3.Core2/`, `BMTP3.Core3/`, `BMTP3.Core/`.
 - **Consoles** (`BMTP3.Consoles/`): Core4-specifikke CLI commands, progress display, config loading, DI setup.
 - **Config**: TOML (kebab-case), JSON (camelCase case-insensitive), JSON5 (unquoted keys, kommentarer, trailing commas). Config loads først; `WasSupplied()` overrider.
@@ -48,6 +48,7 @@
 | Parameterorden: vigtige params først, infrastructure (`IAnsiConsole`) før config (`bool debug`) | ✅ Regel |
 | Fail-first i CLI — returner error code + message, kast aldrig i command handler | ✅ Regel |
 | Fail-first i traversal/engine — kast exception ved fejl (aldrig `yield break`, `return`, `continue`) | ✅ Regel |
+| `BackupPlan4Config.cs` (DTO med nested config-klasser) — beholdes, manuel mapping er eksplicit og testbar. Consoles er ikke kritisk. | ✅ RETAINED |
 | Core/Core2/Core3 archived — ALLE filer i Core2/Core3-flowet (uanset projekt) er readonly | ✅ Regel |
 | `private` constructor/`_optionsModels` i `BaseConsoleCommand` | ⚠️ WONTFIX |
 
@@ -66,6 +67,7 @@
 | Fix | `KebabCaseToPascalCase` understøtter nu `_` (underscore) — fixture `preserve_hierarchy` | `JsonNamingPolicies.cs` |
 | C-V23 | `ConsolesPrinter` split: `ConsolesPrinter4.cs`, `ConsolesPrinter2.cs`, `ConsolesPrinter3.cs` oprettet, DI registreret, `BackupConsoleCommand4.cs` updated | `ConsolesServiceSetup.cs`, `BackupConsoleCommand4.cs` |
 | Fix | `BaseOptionsModel.cs:225` CS8604 — `ArgumentNullException.ThrowIfNull(valueType)` | `BaseOptionsModel.cs` |
+| Smelly #10 | `BackupPlan4Config.cs` — ✅ RETAINED. Eksplicit DTO + manuel mapping beholdes. Consoles er ikke kritisk; Core4/BackupEngine er vigtigst. | `BackupPlan4Config.cs` |
 | Tests | 243/243 passed efter alle ændringer | — |
 
 ### In Progress
@@ -74,15 +76,14 @@
 
 ### Næste — prioriteret
 
-1. **C-V22**: ⚠️ WONTFIX — `BackupPlanLoader` → `BackupPlan2Loader` (archived/readonly, Core2). Brug `BackupPlan4Loader` i stedet.
-2. **C-V23**: ✅ DONE — Split `ConsolesPrinter`: `ConsolesPrinter4.cs`, `ConsolesPrinter2.cs`, `ConsolesPrinter3.cs` oprettet. DI registreret.
-3. **Smelly Code #4–10**: `ConsoleProgressBar`, `OptionsBuilder`, etc.
-4. **Build warnings**: ~~4~~ 4 warnings (alle archived Core2/Core3 — `BaseOptionsModel.cs:225` fixed)
-5. **Feature gates**: `StopOnError=false`, `EnableMetadata`, `MaxDegreeOfParallelism`, `BackupIndexType.Database`
-6. **Integration tests**: MTP pipeline, BackupEngine E2E
-7. **Retry/Resilience**: Exponential backoff, MTP resilience
+1. **Smelly Code #4–10**: #4–6 ✅ BEHOLDES, #7–9 ✅ SLETTET, #10 ✅ RETAINED. Alt afsluttet.
+2. **Build warnings**: 4 warnings (alle archived Core2/Core3 — ignoreres)
+3. **Feature gates**: `StopOnError=false`, `EnableMetadata`, `MaxDegreeOfParallelism`, `BackupIndexType.Database`
+4. **Integration tests**: MTP pipeline, BackupEngine E2E
+5. **Retry/Resilience**: Exponential backoff, MTP resilience
+6. **K-V40**: `BackupEngine.RunAsync` for lang (~545 linjer)
 
-### Næste — prioriteret## Code Quality Audit — Status
+## Code Quality Audit — Status
 
 ### Consoles — High
 
