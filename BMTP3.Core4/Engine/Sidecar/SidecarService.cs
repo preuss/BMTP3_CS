@@ -129,6 +129,8 @@ internal sealed class SidecarService : ISidecarService
 		[
 			HashType.SHA3_512_FIPS202,
 			HashType.SHA3_512_KECCAK,
+			HashType.SHA3_256_FIPS202,
+			HashType.SHA3_256_KECCAK,
 			HashType.SHA2_512,
 			HashType.SHA2_256,
 			HashType.MD5_128,

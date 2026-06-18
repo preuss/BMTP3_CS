@@ -261,6 +261,8 @@ internal sealed class BackupPlanBuilder
 			"sha512" or "sha2-512" or "sha2_512" => HashAlgorithmType.SHA2_512,
 			"sha3-256" or "sha3_256" => HashAlgorithmType.SHA3_256_FIPS202,
 			"sha3-512" or "sha3_512" => HashAlgorithmType.SHA3_512_FIPS202,
+			"sha3-256-keccak" or "sha3_256_keccak" or "keccak-256" or "keccak_256" => HashAlgorithmType.SHA3_256_KECCAK,
+			"sha3-512-keccak" or "sha3_512_keccak" or "keccak-512" or "keccak_512" => HashAlgorithmType.SHA3_512_KECCAK,
 			"md5" or "md5-128" or "md5_128" => HashAlgorithmType.MD5_128,
 			"blake3" or "blake3-256" or "blake3_256" => HashAlgorithmType.BLAKE3_256,
 			"blake3-512" or "blake3_512" => HashAlgorithmType.BLAKE3_512,

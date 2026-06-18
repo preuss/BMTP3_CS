@@ -72,6 +72,9 @@
 | Rename | `ItemIdStrategy` → `ItemIdScope` — enum, properties, CLI option, config property, file rename | Alle 14 filer |
 | Remove | `EnableMetadata` removed — property, validator gate, config DTO, builder, CLI template, test data/assertions | 14 filer på tværs af Core4 + Consoles + tests |
 | Gate | `StopOnError=false` Tier 3 gate removed — engine implementation var allerede på plads; validator blokerede unødigt | `BackupPlanValidator.cs:75-77` |
+| Fix | SidecarService bug — manglende `SHA3_256_FIPS202`/`SHA3_256_KECCAK` i `allHashTypes` | `SidecarService.cs:128-137` |
+| Add | CLI aliases for KECCAK hash varianter — `keccak-256`, `keccak-512`, `sha3-256-keccak`, `sha3-512-keccak` | `BackupPlanBuilder.cs:265-266` |
+| Test | Reelle `StreamHashGenerator` tests i Core4 — alle 9 algoritmer med reelle hash-implementationer | `StreamHashGeneratorTests.cs` (7 tests) |
 
 ### In Progress
 
