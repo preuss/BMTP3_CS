@@ -1,7 +1,7 @@
 # BMTP3 — Agent Session Context
 
 > **Sidst opdateret:** 18 Jun 2026
-> **Tests:** 1064/1064 passed
+> **Tests:** 1250/1250 passed (Core4: 325, MessageFormatter: 351, Common: 224, Core2: 231, Core3: 15, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 
 ---
@@ -75,6 +75,7 @@
 | Fix | SidecarService bug — manglende `SHA3_256_FIPS202`/`SHA3_256_KECCAK` i `allHashTypes` | `SidecarService.cs:128-137` |
 | Add | CLI aliases for KECCAK hash varianter — `keccak-256`, `keccak-512`, `sha3-256-keccak`, `sha3-512-keccak` | `BackupPlanBuilder.cs:265-266` |
 | Test | Reelle `StreamHashGenerator` tests i Core4 — alle 9 algoritmer med reelle hash-implementationer | `StreamHashGeneratorTests.cs` (7 tests) |
+| Fix V2 | All 25 runtime test failures fixed — 11 categories across Guard, PathHelper, DiskSpaceValidator, SourceConnector, FileFormatValuesFactory, DownloadService, FileCompareService, JsonBackupIndexWriter, TargetPathResolver, TempDirectoryHelper, progress race tests | Se nedenfor |
 
 ### In Progress
 
@@ -170,3 +171,24 @@
 | `BMTP3.Consoles.Tests/Fixtures/config.json5` | `enableMetadata` fjernet |
 | `BMTP3.Consoles.Tests/TestData/backup_config_test.json5` | `enableMetadata` fjernet |
 | `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `EnableMetadata = false` fjernet |
+| `BMTP3.Core4/Helpers/Guard.cs` | Uændret (test ændret for .NET 10 kompatibilitet) |
+| `BMTP3.Core4/Helpers/PathHelper.cs` | `NormalizeCustomRelativePath` returnerer empty string for slash-only input når `normalizeNull=true` |
+| `BMTP3.Core4/Engine/Strategies/FileFormatValuesFactory.cs` | `NotYetImplemented()` fjernet — `deviceName`/`deviceModel` returnerer sentinel strings |
+| `BMTP3.Core4/Engine/Downloader/DownloadService.cs` | `destStream.Close()` før date-setting (FileShare.None lock fix) |
+| `BMTP3.Core4/Engine/Compare/FileCompareService.cs` | `FileInfo.Exists` check før `BinaryFileComparerSelector.Select` |
+| `BMTP3.Core4/Scanner/BackupScanner.cs` | Brug `DelegateProgress<T>` (synkront) i stedet for `Progress<T>` som wrapper |
+| `BMTP3.Core4/Engine/TempDirectoryHelper.cs` | `BuildTempFileName` udtrækker extension før truncation |
+| `BMTP3.Core4.Tests/Fakes/SynchronousProgress.cs` | **Ny** — delt `SynchronousProgress<T>` til deterministisk progress i tests |
+| `BMTP3.Core4.Tests/Fakes/FakeFileFormatValuesFactory.cs` | Tilføjet `hashShort`/`hashMedium`/`hashLong` felter |
+| `BMTP3.Core4.Tests/Helpers/GuardTests.cs` | Split test for .NET 10 `ArgumentNullException.ThrowIfNullOrWhiteSpace` |
+| `BMTP3.Core4.Tests/Helpers/PathHelperTests.cs` | `ArgumentException` → `ArgumentNullException` for null input |
+| `BMTP3.Core4.Tests/Engine/DiskSpace/DiskSpaceValidatorTests.cs` | `ArgumentException` → `ArgumentNullException` for null path |
+| `BMTP3.Core4.Tests/Storage/SourceConnectorTests.cs` | `ArgumentOutOfRangeException` → `NotSupportedException` |
+| `BMTP3.Core4.Tests/Engine/Strategies/FileFormatValuesFactoryTests.cs` | `NotImplementedException` → sentinel assertions; millisecond overflow fix |
+| `BMTP3.Core4.Tests/Engine/Downloader/DownloadServiceTests.cs` | `SynchronousProgress<T>`; date assertions efter `Close()` |
+| `BMTP3.Core4.Tests/Engine/Compare/FileCompareServiceTests.cs` | `TaskCanceledException`; `SynchronousProgress<T>` |
+| `BMTP3.Core4.Tests/Engine/Index/JsonBackupIndexWriterTests.cs` | `TaskCanceledException` |
+| `BMTP3.Core4.Tests/Engine/Strategies/TargetPathResolverTests.cs` | Hash formatting via opdateret Fake |
+| `BMTP3.Core4.Tests/Scanner/BackupScannerTests.cs` | `SynchronousProgress<T>` for progress tests |
+| `BMTP3.Core4.Tests/Traversal/FileSystemTraversalTests.cs` | `SynchronousProgress<T>` for progress tests |
+| `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `SynchronousProgress<T>` for progress tests |

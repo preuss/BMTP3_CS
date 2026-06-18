@@ -59,7 +59,7 @@ public class GatekeptStreamTests
 		using var sut = new GatekeptStream(inner, new TrackingDisposable());
 
 		byte[] buffer = new byte[3];
-		int read = await sut.ReadAsync(buffer, 0, 3);
+		int read = await sut.ReadAsync(buffer.AsMemory(), TestContext.Current.CancellationToken);
 
 		Assert.Equal(3, read);
 		Assert.Equal(expected, buffer);

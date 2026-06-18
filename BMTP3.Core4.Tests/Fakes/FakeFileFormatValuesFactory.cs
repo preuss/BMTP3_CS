@@ -9,11 +9,25 @@ internal sealed class FakeFileFormatValuesFactory : IFileFormatValuesFactory
 		string fileNameWithoutExtension = Path.GetFileNameWithoutExtension(request.FileName);
 		string extension = Path.GetExtension(request.FileName).TrimStart('.');
 
+		string hashShort = string.Empty;
+		string hashMedium = string.Empty;
+		string hashLong = string.Empty;
+
+		if(!string.IsNullOrEmpty(request.StrongHash))
+		{
+			hashLong = request.StrongHash;
+			hashMedium = request.StrongHash.Length >= 12 ? request.StrongHash[..12] : request.StrongHash;
+			hashShort = request.StrongHash.Length >= 6 ? request.StrongHash[..6] : request.StrongHash;
+		}
+
 		return new Dictionary<string, object>(StringComparer.Ordinal)
 		{
 			["fileName"] = fileNameWithoutExtension,
 			["ext"] = extension,
 			["extension"] = extension,
+			["hashShort"] = hashShort,
+			["hashMedium"] = hashMedium,
+			["hashLong"] = hashLong,
 			["count"] = 1,
 		};
 	}

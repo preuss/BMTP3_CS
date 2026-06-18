@@ -75,7 +75,7 @@ public class JsonSidecarWriterTests
 		JsonSidecarWriter writer = new();
 		await using MemoryStream ms = new();
 		await Assert.ThrowsAsync<ArgumentNullException>(() =>
-			writer.WriteToStreamAsync(null!, ms, default));
+			writer.WriteToStreamAsync(null!, ms, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -84,7 +84,7 @@ public class JsonSidecarWriterTests
 		JsonSidecarWriter writer = new();
 		SidecarDocument doc = new();
 		await Assert.ThrowsAsync<ArgumentNullException>(() =>
-			writer.WriteToStreamAsync(doc, null!, default));
+			writer.WriteToStreamAsync(doc, null!, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -127,7 +127,7 @@ public class JsonSidecarWriterTests
 	{
 		JsonSidecarWriter writer = new();
 		await using MemoryStream ms = new();
-		await writer.WriteToStreamAsync(doc, ms, default);
+		await writer.WriteToStreamAsync(doc, ms, TestContext.Current.CancellationToken);
 		ms.Position = 0;
 		return Encoding.UTF8.GetString(ms.ToArray());
 	}

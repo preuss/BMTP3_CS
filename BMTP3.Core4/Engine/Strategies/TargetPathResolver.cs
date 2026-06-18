@@ -56,8 +56,7 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 			CreateFileDate: request.CreateFileDate,
 			ItemId: request.ItemId,
 			StrongHash: request.StrongHash,
-			DeviceName: null,
-			DeviceModel: null);
+			SourceDetails: request.SourceDetails);
 
 		Dictionary<string, object> values = _formatValuesFactory.Create(valuesRequest);
 

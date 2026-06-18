@@ -17,8 +17,7 @@ public class HashServiceTests
 	{
 		var content = new FakeContent("hello world");
 
-		Dictionary<HashType, string> result = await Service.ComputeHashesAsync(
-			content, "test.txt", new[] { HashAlgorithmType.SHA2_256 }, null, new NoOpThrottler(), default);
+		Dictionary<HashType, string> result = await Service.ComputeHashesAsync(content, "test.txt", new[] { HashAlgorithmType.SHA2_256 }, null, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Single(result);
 		Assert.True(result.ContainsKey(HashType.SHA2_256));
@@ -33,7 +32,7 @@ public class HashServiceTests
 		Dictionary<HashType, string> result = await Service.ComputeHashesAsync(
 			content, "test.txt",
 			new[] { HashAlgorithmType.SHA2_256, HashAlgorithmType.MD5_128, HashAlgorithmType.BLAKE3_256 },
-			null, new NoOpThrottler(), default);
+			null, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Equal(3, result.Count);
 		Assert.True(result.ContainsKey(HashType.SHA2_256));
@@ -47,7 +46,7 @@ public class HashServiceTests
 		var content = new FakeContent("anything");
 
 		Dictionary<HashType, string> result = await Service.ComputeHashesAsync(
-			content, "test.txt", Array.Empty<HashAlgorithmType>(), null, new NoOpThrottler(), default);
+			content, "test.txt", Array.Empty<HashAlgorithmType>(), null, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Empty(result);
 	}
@@ -72,7 +71,7 @@ public class HashServiceTests
 
 		BackupHashException ex = await Assert.ThrowsAsync<BackupHashException>(() =>
 			localService.ComputeHashesAsync(failingContent, "failing.txt",
-				new[] { HashAlgorithmType.SHA2_256 }, null, new NoOpThrottler(), default));
+				new[] { HashAlgorithmType.SHA2_256 }, null, new NoOpThrottler(), TestContext.Current.CancellationToken));
 
 		Assert.Equal("failing.txt", ex.ItemRelativeFilePath);
 	}

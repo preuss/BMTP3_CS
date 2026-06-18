@@ -55,6 +55,8 @@ internal static class PathHelper
 
 		if(normalized.Length == 0)
 		{
+			if(normalizeNull)
+				return string.Empty;
 			throw new ArgumentException("Relative path must contain at least one non-separator segment.", nameof(relativePath));
 		}
 
@@ -62,9 +64,9 @@ internal static class PathHelper
 
 		foreach(string part in parts)
 		{
-			if(part == "..")
+			if(part is "." or "..")
 			{
-				throw new ArgumentException("Relative path must not contain parent directory traversal.", nameof(relativePath));
+				throw new ArgumentException("Relative path must not contain current or parent directory traversal.", nameof(relativePath));
 			}
 		}
 

@@ -141,8 +141,7 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 			CreateFileDate: request.CreateFileDate,
 			ItemId: request.ItemId,
 			StrongHash: request.StrongHash,
-			DeviceName: request.DeviceName,
-			DeviceModel: request.DeviceModel);
+			SourceDetails: request.SourceDetails);
 
 		Dictionary<string, object> baseValues = _formatValuesFactory.Create(valuesRequest);
 

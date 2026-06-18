@@ -40,7 +40,7 @@ internal sealed class FileFormatValuesFactory : IFileFormatValuesFactory
 		DateTimeOffset selectedFileDate = request.CreateFileDate;
 		string itemId = request.ItemId;
 
-		return new Dictionary<string, object>(StringComparer.Ordinal)
+		Dictionary<string, object> dict = new(StringComparer.Ordinal)
 		{
 			// --- Date / time ---
 			["YYYY"] = selectedFileDate.Year.ToString("D4"),
@@ -84,8 +84,6 @@ internal sealed class FileFormatValuesFactory : IFileFormatValuesFactory
 			["sourceStructure"] = relativeFilePath, // Alias for relativePath
 
 			// --- Metadata ---
-			["deviceName"] = NotYetImplemented("deviceName"),
-			["deviceModel"] = NotYetImplemented("deviceModel"),
 			["itemId"] = itemId,
 
 			// --- Hash ---
@@ -93,6 +91,14 @@ internal sealed class FileFormatValuesFactory : IFileFormatValuesFactory
 			["hashMedium"] = hashMedium,
 			["hashLong"] = hashLong,
 		};
+
+		if(request.SourceDetails is MediaDeviceDriveSourceDetails mdd)
+		{
+			dict["deviceName"] = mdd.FriendlyName;
+			dict["deviceModel"] = mdd.Model;
+		}
+
+		return dict;
 	}
 
 	private static string NotYetImplemented(string token) =>

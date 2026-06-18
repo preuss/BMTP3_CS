@@ -1,4 +1,3 @@
-using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine;
@@ -17,8 +16,8 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_HappyPath_AllItemsSucceed()
 	{
-		using TestContext ctx = new(2);
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		using TestBackupContext ctx = new(2);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 		Assert.Equal(2, result.ItemResults.Count);
@@ -30,8 +29,8 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_BackupIndexJson_WritesCatalog()
 	{
-		using TestContext ctx = new(2, withIndex: true);
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		using TestBackupContext ctx = new(2, withIndex: true);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 		Assert.Equal(1, ctx.BackupIndexWriter.WriteCount);
@@ -40,8 +39,8 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_DryRun_NoDownloadOrSidecar()
 	{
-		using TestContext ctx = new(3, withDryRun: true);
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		using TestBackupContext ctx = new(3, withDryRun: true);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 		Assert.True(result.IsDryRun);
@@ -53,10 +52,10 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_StopOnErrorFalse_ContinuesAfterFailure()
 	{
-		using TestContext ctx = new(3, stopOnError: false);
+		using TestBackupContext ctx = new(3, stopOnError: false);
 		ctx.DownloadService.FailOnItemIndex = 1;
 
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Failed, result.State);
 		Assert.Equal(3, result.ItemResults.Count);
@@ -69,7 +68,7 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_StopOnErrorTrue_ThrowsOnFailure()
 	{
-		using TestContext ctx = new(3, stopOnError: true);
+		using TestBackupContext ctx = new(3, stopOnError: true);
 		ctx.DownloadService.FailOnItemIndex = 1;
 
 		await Assert.ThrowsAsync<IOException>(() =>
@@ -79,11 +78,11 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_CollisionSkip_ItemSkipped()
 	{
-		using TestContext ctx = new(2, collisionStrategy: CollisionStrategy.Skip);
+		using TestBackupContext ctx = new(2, collisionStrategy: CollisionStrategy.Skip);
 		ctx.CollisionResolver.DefaultAction = CollisionResolutionAction.Skip;
 		CreateDestFiles(ctx.CleanupDir, 2);
 
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 		Assert.All(result.ItemResults, r => Assert.Equal(BackupResultItemState.Skipped, r.State));
@@ -93,11 +92,11 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_CollisionOverwrite_ItemOverwritten()
 	{
-		using TestContext ctx = new(2, collisionStrategy: CollisionStrategy.Overwrite);
+		using TestBackupContext ctx = new(2, collisionStrategy: CollisionStrategy.Overwrite);
 		ctx.CollisionResolver.DefaultAction = CollisionResolutionAction.Overwrite;
 		CreateDestFiles(ctx.CleanupDir, 2);
 
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 		Assert.All(result.ItemResults, r => Assert.Equal(BackupResultItemState.Succeeded, r.State));
@@ -117,8 +116,8 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_PostWriteVerification_Succeeds()
 	{
-		using TestContext ctx = new(2, withVerification: true);
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		using TestBackupContext ctx = new(2, withVerification: true);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 		Assert.All(result.ItemResults, r => Assert.Equal(BackupResultItemState.Succeeded, r.State));
@@ -127,8 +126,8 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_OutputStrategyFlat_UsesFlatPaths()
 	{
-		using TestContext ctx = new(2, isFlat: true);
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		using TestBackupContext ctx = new(2, isFlat: true);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 		Assert.All(result.ItemResults, r => Assert.Equal(BackupResultItemState.Succeeded, r.State));
@@ -137,8 +136,8 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_SidecarFormatJson_WritesJsonSidecars()
 	{
-		using TestContext ctx = new(1, useJsonSidecar: true);
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		using TestBackupContext ctx = new(1, useJsonSidecar: true);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 		Assert.Equal(1, ctx.SidecarService.WriteCount);
@@ -147,11 +146,11 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_ProgressReports_ContainProgressPhases()
 	{
-		using TestContext ctx = new(2);
+		using TestBackupContext ctx = new(2);
 		List<BackupProgress> reports = new();
 		SynchronousProgress<BackupProgress> capturingProgress = new(reports);
 
-		await ctx.Engine.RunAsync(ctx.Plan, capturingProgress, default);
+		await ctx.Engine.RunAsync(ctx.Plan, capturingProgress, TestContext.Current.CancellationToken);
 
 		Assert.Contains(reports, r => r.CurrentPhase == BackupProgressPhase.Starting);
 		Assert.Contains(reports, r => r.CurrentPhase == BackupProgressPhase.Transferring);
@@ -161,13 +160,13 @@ public class BackupEngineComprehensiveTests
 	[Fact]
 	public async Task RunAsync_Delay_DoesNotThrow()
 	{
-		using TestContext ctx = new(2, withDelay: true);
-		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default);
+		using TestBackupContext ctx = new(2, withDelay: true);
+		BackupResult result = await ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken);
 
 		Assert.Equal(BackupResultState.Completed, result.State);
 	}
 
-	private sealed class TestContext : IDisposable
+	private sealed class TestBackupContext : IDisposable
 	{
 		public BackupPlan Plan { get; }
 		public BackupEngine Engine { get; }
@@ -178,7 +177,7 @@ public class BackupEngineComprehensiveTests
 		public IProgress<BackupProgress> Progress { get; }
 		public string CleanupDir { get; }
 
-		public TestContext(
+		public TestBackupContext(
 			int itemCount,
 			bool withIndex = false,
 			bool withDryRun = false,
@@ -253,8 +252,7 @@ public class BackupEngineComprehensiveTests
 		{
 			if(Directory.Exists(CleanupDir))
 			{
-				try { Directory.Delete(CleanupDir, recursive: true); }
-				catch { /* best effort */ }
+				try { Directory.Delete(CleanupDir, recursive: true); } catch { /* best effort */ }
 			}
 		}
 

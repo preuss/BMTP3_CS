@@ -119,9 +119,12 @@ internal static class TempDirectoryHelper
 		ArgumentNullException.ThrowIfNull(fileName);
 
 		string guidPart = BuildGuidPart();
-		string basePart = BuildBasePart(fileName);
+		string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+		string basePart = BuildBasePart(nameWithoutExt);
 		string separatorPart = ElementSeparator;
-		string extensionPart = TempFileExtension;
+		string extensionPart = string.IsNullOrWhiteSpace(TempFileExtension)
+			? Path.GetExtension(fileName)
+			: Path.GetExtension(fileName) + TempFileExtension;
 
 		string adjustedBasePart = EnforceLength(
 			guidPart,

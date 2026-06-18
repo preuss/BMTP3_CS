@@ -1,9 +1,9 @@
-using System.Security.Cryptography;
-using System.Text;
 using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Hashing.Crypto;
 using BMTP3.Core4.Infrastructure.Throttling;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace BMTP3.Core4.Tests.Engine.Hashing;
 
@@ -44,12 +44,7 @@ public class StreamHashGeneratorTests
 	{
 		await using MemoryStream stream = new(TestData);
 
-		Dictionary<HashType, string> results = await Generator.ComputeHashesAsync(
-			stream,
-			[HashType.BLAKE3_512],
-			null,
-			new NoOpThrottler(),
-			default);
+		Dictionary<HashType, string> results = await Generator.ComputeHashesAsync(stream, [HashType.BLAKE3_512], null, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Single(results);
 		Assert.True(results.ContainsKey(HashType.BLAKE3_512));
@@ -66,7 +61,7 @@ public class StreamHashGeneratorTests
 			[HashType.SHA2_256, HashType.MD5_128],
 			null,
 			new NoOpThrottler(),
-			default);
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(2, results.Count);
 		Assert.Equal(ComputeHex(SHA256.Create(), []), results[HashType.SHA2_256]);
@@ -83,7 +78,7 @@ public class StreamHashGeneratorTests
 			Array.Empty<HashType>(),
 			null,
 			new NoOpThrottler(),
-			default);
+			TestContext.Current.CancellationToken);
 
 		Assert.Empty(results);
 	}
@@ -99,7 +94,7 @@ public class StreamHashGeneratorTests
 			Enum.GetValues<HashType>(),
 			null,
 			new NoOpThrottler(),
-			default);
+			TestContext.Current.CancellationToken);
 
 		Assert.Equal(9, results.Count);
 		Assert.Equal(ComputeHex(SHA256.Create(), largeData), results[HashType.SHA2_256]);
@@ -127,7 +122,7 @@ public class StreamHashGeneratorTests
 			[HashType.SHA2_256, HashType.SHA2_256, HashType.SHA2_256],
 			null,
 			new NoOpThrottler(),
-			default);
+			TestContext.Current.CancellationToken);
 
 		Assert.Single(results);
 	}

@@ -16,12 +16,12 @@ public class SidecarServiceTests
 		using TempDirectory temp = new();
 		string targetPath = Path.Combine(temp.Path, "photo.jpg");
 
-		await Service.WriteAsync(targetPath, SampleRequest(SidecarFormat.Ini), default);
+		await Service.WriteAsync(targetPath, SampleRequest(SidecarFormat.Ini), TestContext.Current.CancellationToken);
 
 		string sidecarPath = targetPath + ".sidecar.ini";
 		Assert.True(File.Exists(sidecarPath));
 
-		string content = await File.ReadAllTextAsync(sidecarPath);
+		string content = await File.ReadAllTextAsync(sidecarPath, TestContext.Current.CancellationToken);
 		Assert.Contains("[Source]", content);
 		Assert.Contains("[Backup]", content);
 		Assert.Contains("[Path]", content);
@@ -38,12 +38,12 @@ public class SidecarServiceTests
 		using TempDirectory temp = new();
 		string targetPath = Path.Combine(temp.Path, "photo.jpg");
 
-		await Service.WriteAsync(targetPath, SampleRequest(SidecarFormat.Json), default);
+		await Service.WriteAsync(targetPath, SampleRequest(SidecarFormat.Json), TestContext.Current.CancellationToken);
 
 		string sidecarPath = targetPath + ".sidecar.json";
 		Assert.True(File.Exists(sidecarPath));
 
-		string content = await File.ReadAllTextAsync(sidecarPath);
+		string content = await File.ReadAllTextAsync(sidecarPath, TestContext.Current.CancellationToken);
 		Assert.Contains("\"Source\"", content);
 		Assert.Contains("\"Backup\"", content);
 		Assert.Contains("\"Path\"", content);
@@ -68,7 +68,7 @@ public class SidecarServiceTests
 	public async Task WriteAsync_NullTargetFilePath_Throws()
 	{
 		await Assert.ThrowsAsync<ArgumentNullException>(() =>
-			Service.WriteAsync(null!, SampleRequest(SidecarFormat.Ini), default));
+			Service.WriteAsync(null!, SampleRequest(SidecarFormat.Ini), TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -84,7 +84,7 @@ public class SidecarServiceTests
 		using TempDirectory temp = new();
 		string targetPath = Path.Combine(temp.Path, "vacation.mp4");
 
-		var request = new SidecarRequest
+		SidecarRequest request = new()
 		{
 			Format = SidecarFormat.Ini,
 			SourceType = BackupSourceType.MediaDevice,
@@ -120,12 +120,12 @@ public class SidecarServiceTests
 			},
 		};
 
-		await Service.WriteAsync(targetPath, request, default);
+		await Service.WriteAsync(targetPath, request, TestContext.Current.CancellationToken);
 
 		string sidecarPath = targetPath + ".sidecar.ini";
 		Assert.True(File.Exists(sidecarPath));
 
-		string content = await File.ReadAllTextAsync(sidecarPath);
+		string content = await File.ReadAllTextAsync(sidecarPath, TestContext.Current.CancellationToken);
 		Assert.Contains("[SourceDevice]", content);
 		Assert.Contains("FriendlyName=MyPhone", content);
 		Assert.Contains("SerialNumber=ABC123", content);

@@ -11,8 +11,8 @@ internal sealed class FileCompareService : IFileCompareService
 
 	public async Task<bool> CompareAsync(string sourcePath, string targetPath, CancellationToken ct)
 	{
-		var sourceInfo = new FileInfo(sourcePath);
-		var targetInfo = new FileInfo(targetPath);
+		FileInfo sourceInfo = new(sourcePath);
+		FileInfo targetInfo = new(targetPath);
 
 		IBinaryFileComparer comparer = _selector.Select(sourceInfo, targetInfo);
 		return await comparer.CompareAsync(sourceInfo, targetInfo, ct);

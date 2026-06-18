@@ -1,4 +1,3 @@
-using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine;
@@ -6,7 +5,6 @@ using BMTP3.Core4.Models;
 using BMTP3.Core4.Storage;
 using BMTP3.Core4.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
-using System.IO;
 
 namespace BMTP3.Core4.Tests.Engine;
 
@@ -65,7 +63,7 @@ public class BackupEngineHappyPathIntegrationTests
 
 			List<BackupProgress> progressReports = new();
 
-			BackupResult result = await engine.RunAsync(plan, new Progress<BackupProgress>(p => progressReports.Add(p)), CancellationToken.None);
+			BackupResult result = await engine.RunAsync(plan, new SynchronousProgress<BackupProgress>(progressReports), CancellationToken.None);
 
 			Assert.Equal(BackupResultState.Completed, result.State);
 			Assert.Equal(2, result.ItemResults.Count);
@@ -80,10 +78,9 @@ public class BackupEngineHappyPathIntegrationTests
 			Assert.Equal(2, progressReports.Last().FilesSucceeded);
 
 			Assert.True(Directory.Exists(Path.Combine(testDir, ".bmtp3")));
-		}
-		finally
+		} finally
 		{
-			if (Directory.Exists(testDir))
+			if(Directory.Exists(testDir))
 				Directory.Delete(testDir, recursive: true);
 		}
 	}

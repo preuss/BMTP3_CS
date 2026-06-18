@@ -39,8 +39,7 @@ internal sealed class CollisionResolver : ICollisionResolver
 			ComparisonType: request.ComparisonType,
 			ComparisonHashAlgorithmTypes: request.ComparisonHashAlgorithmTypes,
 			ComputedHashes: request.ComputedHashes,
-			DeviceName: request.DeviceName,
-			DeviceModel: request.DeviceModel
+			SourceDetails: request.SourceDetails
 		);
 	}
 

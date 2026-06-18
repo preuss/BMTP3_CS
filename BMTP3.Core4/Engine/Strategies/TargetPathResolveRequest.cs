@@ -1,4 +1,5 @@
 ﻿using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Models;
 
 namespace BMTP3.Core4.Engine.Strategies;
 
@@ -10,5 +11,6 @@ internal sealed record TargetPathResolveRequest(
 	string? StrongHash,
 	string ItemId,
 	OutputStructureStrategy OutputStructureStrategy,
-	string? CustomPattern
+	string? CustomPattern,
+	BackupSourceDetails? SourceDetails
 );

@@ -26,8 +26,7 @@ public class RenameCollisionResolverTests
 		ComparisonType: CollisionComparisonType.None,
 		ComparisonHashAlgorithmTypes: Array.Empty<HashAlgorithmType>(),
 		ComputedHashes: null,
-		DeviceName: null,
-		DeviceModel: null
+		SourceDetails: null
 	);
 
 	private static RenameCollisionResolver CreateResolver(
@@ -59,7 +58,7 @@ public class RenameCollisionResolverTests
 			RenameStrategy = RenameStrategy.Increment,
 		};
 
-		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), default);
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
 		Assert.Matches(@".+_1\.txt$", result.TargetPath);
@@ -77,7 +76,7 @@ public class RenameCollisionResolverTests
 			RenameStrategy = RenameStrategy.Timestamp,
 		};
 
-		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), default);
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
 		Assert.Contains("20260601_143022", result.TargetPath);
@@ -95,7 +94,7 @@ public class RenameCollisionResolverTests
 			RenameStrategy = RenameStrategy.Hash,
 		};
 
-		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), default);
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
 		Assert.Contains("abcdef", result.TargetPath);
@@ -115,7 +114,7 @@ public class RenameCollisionResolverTests
 		};
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			resolver.ResolveAsync(request, new NoOpThrottler(), default));
+			resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
@@ -135,7 +134,7 @@ public class RenameCollisionResolverTests
 			CustomRenamePattern = "{fileName}_{count}",
 		};
 
-		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), default);
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Equal(CollisionResolutionAction.Move, result.Action);
 		int endOfDir = dir.Length;
@@ -154,6 +153,6 @@ public class RenameCollisionResolverTests
 		};
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
-			resolver.ResolveAsync(request, new NoOpThrottler(), default));
+			resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken));
 	}
 }

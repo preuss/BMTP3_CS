@@ -395,7 +395,8 @@ internal sealed class BackupEngine : IBackupEngine
 							StrongHash: strongHash,
 							ItemId: record.Item.Id,
 							OutputStructureStrategy: plan.OutputStructureStrategy,
-							CustomPattern: plan.CustomOutputPattern
+							CustomPattern: plan.CustomOutputPattern,
+							SourceDetails: record.SourceDetails
 						);
 						string intendedPath = _targetPathResolver.Resolve(targetPathResolveRequest);
 
@@ -415,8 +416,7 @@ internal sealed class BackupEngine : IBackupEngine
 
 								StrongHash = strongHash,
 								ComputedHashes = record.Metadata.ComputedHashes,
-								DeviceName = null,
-								DeviceModel = null,
+								SourceDetails = record.SourceDetails,
 
 								Strategy = plan.CollisionStrategy,
 

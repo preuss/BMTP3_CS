@@ -29,6 +29,16 @@ internal sealed class BinaryFileComparerSelector
 
 	public IBinaryFileComparer Select(FileInfo sourceInfo, FileInfo targetInfo)
 	{
+		ArgumentNullException.ThrowIfNull(sourceInfo);
+		ArgumentNullException.ThrowIfNull(targetInfo);
+
+		sourceInfo.Refresh();
+		if(!sourceInfo.Exists)
+			throw new ArgumentException($"File does not exist: {sourceInfo.FullName}", nameof(sourceInfo));
+		targetInfo.Refresh();
+		if(!targetInfo.Exists)
+			throw new ArgumentException($"File does not exist: {targetInfo.FullName}", nameof(targetInfo));
+
 		long maxLength = Math.Max(sourceInfo.Length, targetInfo.Length);
 
 		if(maxLength <= WholeFileThreshold)

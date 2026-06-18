@@ -13,6 +13,12 @@ internal sealed class FakeContent : IContent
 		Length = (ulong)_data.Length;
 	}
 
+	public FakeContent(byte[] data)
+	{
+		_data = data;
+		Length = (ulong)_data.Length;
+	}
+
 	public ulong Length { get; }
 
 	public void Dispose() { }
