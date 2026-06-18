@@ -72,10 +72,6 @@ internal static class BackupPlanValidator
 
 		// --- Tier-gating (detect genuinely missing features) ---
 
-		// Tier 3 — Features that exist but are not yet production-tested
-		if(!plan.StopOnError)
-			throw new FeatureNotImplementedException(3, "Continue on error (StopOnError = false)");
-
 		// Tier 4 — Features not implemented at all
 		if(plan.BackupIndexType == BackupIndexType.Database)
 			throw new FeatureNotImplementedException(4, "Backup index: Database");

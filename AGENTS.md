@@ -71,6 +71,7 @@
 | Tests | 1064/1064 passed | — |
 | Rename | `ItemIdStrategy` → `ItemIdScope` — enum, properties, CLI option, config property, file rename | Alle 14 filer |
 | Remove | `EnableMetadata` removed — property, validator gate, config DTO, builder, CLI template, test data/assertions | 14 filer på tværs af Core4 + Consoles + tests |
+| Gate | `StopOnError=false` Tier 3 gate removed — engine implementation var allerede på plads; validator blokerede unødigt | `BackupPlanValidator.cs:75-77` |
 
 ### In Progress
 
@@ -157,7 +158,7 @@
 | `BMTP3.Consoles/ConsoleCommands/Core4/BackupPlanBuilder.cs` | `ItemIdStrategy` → `ItemIdScope` i felt, config, CLI og ToPlan |
 | `BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand4InitConfig.cs` | `enable-metadata/enableMetadata` fjernet fra TOML/JSON/JSON5 templates |
 | `BMTP3.Core4/Api/Models/BackupPlan.cs` | `EnableMetadata` property fjernet |
-| `BMTP3.Core4/Engine/Validation/BackupPlanValidator.cs` | `EnableMetadata` gate (Tier 3) fjernet |
+| `BMTP3.Core4/Engine/Validation/BackupPlanValidator.cs` | `EnableMetadata` gate (Tier 3) + `StopOnError=false` gate (Tier 3) fjernet |
 | `BMTP3.Consoles/Configs/BackupPlan4Config.cs` | `MetadataConfig.EnableMetadata` fjernet |
 | `BMTP3.Consoles.Tests/BackupPlan4ConfigTests.cs` | `EnableMetadata` assertions fjernet (6 stk) |
 | `BMTP3.Consoles.Tests/BackupPlan4BuildPlanTests.cs` | `EnableMetadata` fra templates + assertions fjernet (6 stk) |
