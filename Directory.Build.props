@@ -2,8 +2,8 @@
 	<PropertyGroup>
 		<Major>0</Major>
 		<Minor>4</Minor>
-		<Patch>1</Patch>
-		<BuildNumber>726</BuildNumber>
+		<Patch>2</Patch>
+		<BuildNumber>4</BuildNumber>
 		<ReleaseChannel>beta</ReleaseChannel>
 		<ReleaseChannelNumber>0</ReleaseChannelNumber>
 	<!--

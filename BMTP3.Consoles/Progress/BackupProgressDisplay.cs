@@ -14,7 +14,9 @@ internal sealed record ProgressReport(
 	string Phase,
 	string? ActiveFileName,
 	long ActiveFileBytesRead,
-	long ActiveFileBytesTotal
+	long ActiveFileBytesTotal,
+	long TotalBytesProcessed,
+	long TotalBytesSelected
 );
 
 public sealed class BackupProgressDisplay
@@ -83,9 +85,17 @@ public sealed class BackupProgressDisplay
 
 	private static void UpdateOverall(ProgressTask overallTask, ProgressReport report)
 	{
-		overallTask.MaxValue = Math.Max(1, report.FilesTotal);
-		overallTask.Value = Math.Min(report.FilesCompleted, overallTask.MaxValue);
+		// Use bytes for Value/MaxValue so RemainingTimeColumn calculates time correctly
+		// based on bytes/sec rather than files/sec (files vary wildly in size).
+		// File count is shown in the description text instead.
+		bool hasBytesTotal = report.TotalBytesSelected > 0;
+		overallTask.MaxValue = hasBytesTotal ? report.TotalBytesSelected : Math.Max(1, report.FilesTotal);
+		overallTask.Value = hasBytesTotal
+			? Math.Min(report.TotalBytesProcessed, overallTask.MaxValue)
+			: Math.Min(report.FilesCompleted, overallTask.MaxValue);
 		overallTask.Description = report.Phase;
+		overallTask.State.Update<long>("TotalBytesProcessed", _ => report.TotalBytesProcessed);
+		overallTask.State.Update<long>("TotalBytesSelected", _ => report.TotalBytesSelected);
 	}
 
 	private static void UpdateFileTasks(
@@ -120,6 +130,7 @@ public sealed class BackupProgressDisplay
 		}
 
 		FileTaskState created = new(ctx.AddTask(fileName.EscapeMarkup()));
+		created.Task.State.Update<bool>("IsByteTask", _ => true);
 		fileTasks.Add(fileName, created);
 
 		return created;

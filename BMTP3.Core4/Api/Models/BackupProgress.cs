@@ -83,6 +83,12 @@ public record BackupProgress
 	/// </summary>
 	public long BytesProcessed { get; init; }
 
+	/// <summary>
+	/// Total number of bytes to process across all selected files.
+	/// Set after disk-space validation. Zero until then.
+	/// </summary>
+	public long TotalBytesSelected { get; init; }
+
 
 	// ---------------------------------------------------------------------
 	// Active files

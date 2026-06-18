@@ -35,6 +35,8 @@ internal static class ProgressReportMapper
 			phase,
 			activeFile?.RelativeFilePath,
 			activeFile?.BytesProcessed ?? 0,
-			activeFile?.Length ?? 0);
+			activeFile?.Length ?? 0,
+			progress.BytesProcessed,
+			progress.TotalBytesSelected);
 	}
 }
