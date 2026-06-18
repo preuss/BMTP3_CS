@@ -626,12 +626,23 @@ internal sealed class BackupEngine : IBackupEngine
 			};
 			progress?.Report(_currentProgress);
 
-			return new BackupResult
+			BackupResult result = new()
 			{
 				Name = plan.Name,
 				State = BackupResultState.Cancelled,
 				ItemResults = BuildItemResults(repository.GetAll()),
 			};
+
+			// Write catalog even when cancelled — shows all items with their current status.
+			if (plan.BackupIndexType == BackupIndexType.Json)
+			{
+				await _backupIndexWriter.WriteAsync(
+					plan.Destination, sessionKey.SessionId,
+					repository.GetAll(), plan, result,
+					default);
+			}
+
+			return result;
 		}
 	}
 
