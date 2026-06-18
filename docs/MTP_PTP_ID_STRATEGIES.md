@@ -25,17 +25,17 @@ A new connection (unplug/replug) may cause the device to reassign ObjectIds and,
 
 ## The Three Strategies
 
-| Strategy              | Source                           | In session | Between sessions | Between connections |
-|-----------------------|----------------------------------|:----------:|:----------------:|:-------------------:|
-| `in-session`          | ObjectId (`file.Id`)             | ✅          | ❌                | ❌                  |
-| `between-sessions`    | PUID (`file.PersistentUniqueId`) | ✅          | ✅                | ❓ (Apple: ❌)       |
-| `stable-content-hash` | `GenerateAlmostUniqueId()`       | ✅          | ✅                | ✅                  |
+| Navn         | Scope         | Kilde                           | In session | Between sessions | Between connections |
+|--------------|---------------|---------------------------------|:----------:|:----------------:|:-------------------:|
+| `session`    | Session       | `file.Id`                       | ✅         | ❌              | ❌                  |
+| `connection` | Connection    | `file.PersistentUniqueId`       | ✅         | ✅              | ❓ (Apple: ❌)      |
+| `persistent` | DeviceUnique  | `GenerateDeviceUniqueId()`      | ✅         | ✅              | ✅                  |
 
-`in-session` — session-scoped identity only.
+`session` — session-scoped identity only.
 
-`between-sessions` — default choice; connection stability depends on device.
+`connection` — default choice; connection stability depends on device.
 
-`stable-content-hash` — generated from stable file metadata; independent of WPD ObjectId/PUID behavior.
+`persistent` — generated from stable file metadata; independent of WPD ObjectId/PUID behavior.
 
 ---
 
@@ -45,16 +45,16 @@ A new connection (unplug/replug) may cause the device to reassign ObjectIds and,
 |-----------------------------|:----------------:|:-------------------:|
 | Apple (iPhone, iPad)        | ✅               | ❌                  |
 | Android / other             | ✅               | ❓                  |
-| `GenerateAlmostUniqueId()`  | ✅               | ✅                  |
+| `GenerateDeviceUniqueId()`  | ✅               | ✅                  |
 
 ---
 
-## `GenerateAlmostUniqueId()`
+## `GenerateDeviceUniqueId()`
 
 Generates a deterministic identity from stable file metadata.
 
 ```csharp
-internal static string GenerateAlmostUniqueId(
+internal static string GenerateDeviceUniqueId(
     string fullFilePath,
     ulong size,
     DateTimeOffset? dateCreated,
@@ -84,18 +84,18 @@ Example:
 
 ## Summary
 
-| Identity              | Best for                                              | Limitation                                                    |
-|-----------------------|-------------------------------------------------------|---------------------------------------------------------------|
-| `in-session`          | Current active session                                | Not usable after `Disconnect()`                               |
-| `between-sessions`    | Resume across `Connect()` / `Disconnect()`            | Device-dependent after USB unplug/replug                      |
-| `stable-content-hash` | Resume across sessions and USB reconnects             | Generated from metadata, not provided by WPD                  |
+| Identity      | Best for                                              | Limitation                                                    |
+|---------------|-------------------------------------------------------|---------------------------------------------------------------|
+| `session`     | Current active session                                | Not usable after `Disconnect()`                               |
+| `connection`  | Resume across `Connect()` / `Disconnect()`            | Device-dependent after USB unplug/replug                      |
+| `persistent`  | Resume across sessions and USB reconnects             | Generated from metadata, not provided by WPD                  |
 
 ---
 
 ## When to Use
 
-Use `in-session` for debugging or one-shot backups within a single session.
+Use `session` for debugging or one-shot backups within a single session.
 
-Use `between-sessions` as the default for most devices.
+Use `connection` as the default for most devices.
 
-Use `stable-content-hash` for Apple devices, or any device where PUID cannot be trusted across USB reconnects.
+Use `persistent` for Apple devices, or any device where PUID cannot be trusted across USB reconnects.

@@ -193,6 +193,18 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public SessionResumeStrategy ResumeBehavior { get; set; } = SessionResumeStrategy.Abort;
 
+	public static Option<ItemIdScope> ItemIdScopeOption { get; } = new("--item-id-scope")
+	{
+		Description = "How files are identified during backup: " +
+			"Session (ObjectId, unique within Connect() only), " +
+			"Connection (PUID, stable across Connect/Disconnect — default), " +
+			"or Persistent (generated from file metadata, independent of WPD).",
+		Arity = ArgumentArity.ZeroOrOne,
+		DefaultValueFactory = _ => ItemIdScope.Connection,
+	};
+
+	public ItemIdScope ItemIdScope { get; set; } = ItemIdScope.Connection;
+
 	// --------------------------------------------------
 	// VERIFICATION
 	// --------------------------------------------------

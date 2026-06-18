@@ -51,4 +51,5 @@ public sealed class BehaviorConfig
 	public bool StopOnError { get; set; } = true;
 	public int Delay { get; set; }
 	public string ResumeBehavior { get; set; } = "abort";
+	public string ItemIdScope { get; set; } = "connection";
 }

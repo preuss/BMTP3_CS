@@ -204,6 +204,7 @@ internal sealed class BackupEngine : IBackupEngine
 				Recursive = plan.Recursive,
 				IncludePatterns = plan.IncludePatterns,
 				ExcludePatterns = plan.ExcludePatterns,
+				ItemIdScope = plan.ItemIdScope,
 			};
 
 			Progress<BackupScanProgress> scanProgress = new(sp =>

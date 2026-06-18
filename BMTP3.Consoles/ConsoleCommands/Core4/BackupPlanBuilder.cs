@@ -31,6 +31,7 @@ internal sealed class BackupPlanBuilder
 	public bool EnableTimestampCorrection = true;
 	public int Delay;
 	public SessionResumeStrategy ResumeBehavior = SessionResumeStrategy.Abort;
+	public ItemIdScope ItemIdScope = ItemIdScope.Connection;
 
 	public static BackupPlanBuilder CreateDefault() => new();
 
@@ -60,6 +61,7 @@ internal sealed class BackupPlanBuilder
 		StopOnError = StopOnError,
 		Delay = Delay,
 		ResumeBehavior = ResumeBehavior,
+		ItemIdScope = ItemIdScope,
 	};
 
 	public void ApplyConfig(BackupPlan4Config config)
@@ -115,6 +117,7 @@ internal sealed class BackupPlanBuilder
 		StopOnError = config.Behavior.StopOnError;
 		Delay = config.Behavior.Delay;
 		ResumeBehavior = ParseEnum<SessionResumeStrategy>(config.Behavior.ResumeBehavior);
+		ItemIdScope = ParseEnum<ItemIdScope>(config.Behavior.ItemIdScope);
 
 		if(string.IsNullOrWhiteSpace(Name))
 			Name = BuildNameFallback(Name, SourceType, SourcePath, Destination);
@@ -189,6 +192,9 @@ internal sealed class BackupPlanBuilder
 
 		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.ResumeBehaviorOption))
 			ResumeBehavior = backupOptions.ResumeBehavior;
+
+		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.ItemIdScopeOption))
+			ItemIdScope = backupOptions.ItemIdScope;
 
 		if(SourceType == BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(SourcePath))
 			SourcePath = Path.GetFullPath(SourcePath);

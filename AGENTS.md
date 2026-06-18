@@ -1,8 +1,8 @@
 # BMTP3 — Agent Session Context
 
-> **Sidst opdateret:** 16 Jun 2026
-> **Tests:** 104 Consoles + 139 Core4 = **243 passed**
-> **Build:** 0 errors, 4 warnings (Consoles — all archived Core2/Core3), 0 warnings (Core4)
+> **Sidst opdateret:** 17 Jun 2026
+> **Tests:** 1064/1064 passed
+> **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 
 ---
 
@@ -56,7 +56,7 @@
 
 ## Session State
 
-### Done (seneste session — 16 Jun 2026)
+### Done (seneste session — 17 Jun 2026)
 
 | ID | Hvad | Fil(er) |
 |---|---|---|
@@ -68,7 +68,8 @@
 | C-V23 | `ConsolesPrinter` split: `ConsolesPrinter4.cs`, `ConsolesPrinter2.cs`, `ConsolesPrinter3.cs` oprettet, DI registreret, `BackupConsoleCommand4.cs` updated | `ConsolesServiceSetup.cs`, `BackupConsoleCommand4.cs` |
 | Fix | `BaseOptionsModel.cs:225` CS8604 — `ArgumentNullException.ThrowIfNull(valueType)` | `BaseOptionsModel.cs` |
 | Smelly #10 | `BackupPlan4Config.cs` — ✅ RETAINED. Eksplicit DTO + manuel mapping beholdes. Consoles er ikke kritisk; Core4/BackupEngine er vigtigst. | `BackupPlan4Config.cs` |
-| Tests | 243/243 passed efter alle ændringer | — |
+| Tests | 1064/1064 passed | — |
+| Rename | `ItemIdStrategy` → `ItemIdScope` — enum, properties, CLI option, config property, file rename | Alle 14 filer |
 
 ### In Progress
 
@@ -76,12 +77,10 @@
 
 ### Næste — prioriteret
 
-1. **Smelly Code #4–10**: #4–6 ✅ BEHOLDES, #7–9 ✅ SLETTET, #10 ✅ RETAINED. Alt afsluttet.
-2. **Build warnings**: 4 warnings (alle archived Core2/Core3 — ignoreres)
-3. **Feature gates**: `StopOnError=false`, `EnableMetadata`, `MaxDegreeOfParallelism`, `BackupIndexType.Database`
-4. **Integration tests**: MTP pipeline, BackupEngine E2E
-5. **Retry/Resilience**: Exponential backoff, MTP resilience
-6. **K-V40**: `BackupEngine.RunAsync` for lang (~545 linjer)
+1. **K-V40**: `BackupEngine.RunAsync` for lang (~545 linjer) — extract `SequentialBackupRunner`
+2. **Feature gates**: `StopOnError=false`, `EnableMetadata`, `MaxDegreeOfParallelism`, `BackupIndexType.Database`
+3. **Integration tests**: MTP pipeline, BackupEngine E2E
+4. **Retry/Resilience**: Exponential backoff, MTP resilience
 
 ## Code Quality Audit — Status
 
@@ -145,3 +144,13 @@
 | `BMTP3.Consoles/Services/ConsolesPrinter3.cs` | **Ny** — Core3-specifik printer |
 | `BMTP3.Consoles/Startup/Configurations/ConsolesServiceSetup.cs` | DI-registrering af `ConsolesPrinter4/2/3` |
 | `BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand4.cs` | Bruger `ConsolesPrinter4` i stedet for `ConsolesPrinter` |
+| `BMTP3.Core4/Api/Models/Enums/ItemIdStrategy.cs` | **Omdøbt til/erstattet af** `ItemIdScope.cs` — enum `ItemIdStrategy` → `ItemIdScope` |
+| `BMTP3.Core4/Api/Models/BackupPlan.cs` | `ItemIdStrategy` → `ItemIdScope` |
+| `BMTP3.Core4/Traversal/SourceTraversalRequest.cs` | `ItemIdStrategy` → `ItemIdScope` |
+| `BMTP3.Core4/Traversal/MediaDeviceTraversal.cs` | Switch `ItemIdStrategy` → `ItemIdScope` |
+| `BMTP3.Core4/Scanner/BackupScanRequest.cs` | `ItemIdStrategy` → `ItemIdScope` |
+| `BMTP3.Core4/Scanner/BackupScanner.cs` | `ItemIdStrategy` → `ItemIdScope` |
+| `BMTP3.Core4/Engine/BackupEngine.cs` | `ItemIdStrategy` → `ItemIdScope` |
+| `BMTP3.Consoles/Configs/BackupPlan4Config.cs` | `ItemIdStrategy` → `ItemIdScope` |
+| `BMTP3.Consoles/ConsoleCommands/Core4/BackupOptionsModel4.cs` | `ItemIdStrategy` → `ItemIdScope`, `--item-id-strategy` → `--item-id-scope` |
+| `BMTP3.Consoles/ConsoleCommands/Core4/BackupPlanBuilder.cs` | `ItemIdStrategy` → `ItemIdScope` i felt, config, CLI og ToPlan |

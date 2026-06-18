@@ -116,7 +116,9 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		       # Delay in milliseconds between items (-1=disabled, 0=fastest, >0=N ms)
 		       delay = 0
 		       # Resume behavior: abort, continue, restart
-		       resume-behavior = "continue"
+		       resume-behavior = "abort"
+		       # Item ID scope: session, connection, persistent
+		       item-id-scope = "connection"
 		       """;
 	}
 
@@ -155,7 +157,8 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		           "dryRun": false,
 		           "stopOnError": true,
 		           "delay": 0,
-		           "resumeBehavior": "continue"
+		           "resumeBehavior": "abort",
+		           "itemIdScope": "connection"
 		         }
 		       }
 		       """;
@@ -226,7 +229,9 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		           // Delay in milliseconds between items (-1=disabled, 0=fastest, >0=N ms)
 		           delay: 0
 		           // Resume behavior: abort, continue, restart
-		           resumeBehavior: 'continue'
+		           resumeBehavior: 'abort'
+		           // Item ID scope: session, connection, persistent
+		           itemIdScope: 'connection'
 		         }
 		       }
 		       """;

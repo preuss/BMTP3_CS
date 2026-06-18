@@ -1,3 +1,5 @@
+using BMTP3.Core4.Api.Models.Enums;
+
 namespace BMTP3.Core4.Scanner;
 
 /// <summary>
@@ -31,4 +33,9 @@ internal sealed record BackupScanRequest
 	/// Exclusion takes precedence over inclusion.
 	/// </summary>
 	public IReadOnlyList<string>? ExcludePatterns { get; init; }
+
+	/// <summary>
+	/// Controls how items are identified during scanning.
+	/// </summary>
+	public ItemIdScope ItemIdScope { get; init; } = ItemIdScope.Connection;
 }

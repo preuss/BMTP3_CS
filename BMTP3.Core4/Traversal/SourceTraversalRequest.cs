@@ -1,3 +1,5 @@
+using BMTP3.Core4.Api.Models.Enums;
+
 namespace BMTP3.Core4.Traversal;
 
 /// <summary>
@@ -32,4 +34,9 @@ internal sealed record SourceTraversalRequest
 	/// Exclusion takes precedence over inclusion.
 	/// </summary>
 	public IReadOnlyList<string>? ExcludePatterns { get; init; }
+
+	/// <summary>
+	/// Controls how items are identified during traversal.
+	/// </summary>
+	public ItemIdScope ItemIdScope { get; init; } = ItemIdScope.Connection;
 }

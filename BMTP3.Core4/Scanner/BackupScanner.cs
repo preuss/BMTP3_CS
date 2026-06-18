@@ -23,6 +23,7 @@ internal sealed class BackupScanner : IBackupScanner
 			Recursive = request.Recursive,
 			IncludePatterns = request.IncludePatterns,
 			ExcludePatterns = request.ExcludePatterns,
+			ItemIdScope = request.ItemIdScope,
 		};
 
 		IProgress<SourceTraversalProgress>? traversalProgress = progress is not null
