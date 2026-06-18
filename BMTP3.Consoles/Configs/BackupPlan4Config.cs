@@ -40,7 +40,6 @@ public sealed class MetadataConfig
 	public string IndexType { get; set; } = "none";
 	public List<string> ComparisonHashAlgorithms { get; set; } = new();
 	public List<string> VerificationHashAlgorithms { get; set; } = new();
-	public bool EnableMetadata { get; set; }
 	public string PostWriteVerification { get; set; } = "none";
 	public bool EnableTimestampCorrection { get; set; } = true;
 }

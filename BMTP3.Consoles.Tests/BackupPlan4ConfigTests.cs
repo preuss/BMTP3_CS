@@ -45,7 +45,6 @@ public class BackupPlan4ConfigTests
 		Assert.Equal("none", config.Metadata.IndexType);
 		Assert.Equal(["sha256"], config.Metadata.ComparisonHashAlgorithms);
 		Assert.Equal(["sha256"], config.Metadata.VerificationHashAlgorithms);
-		Assert.True(config.Metadata.EnableMetadata);
 		Assert.Equal("hash", config.Metadata.PostWriteVerification);
 		Assert.True(config.Metadata.EnableTimestampCorrection);
 
@@ -90,7 +89,6 @@ public class BackupPlan4ConfigTests
 		Assert.Equal("none", config.Metadata.IndexType);
 		Assert.Equal(["sha256"], config.Metadata.ComparisonHashAlgorithms);
 		Assert.Equal(["sha256"], config.Metadata.VerificationHashAlgorithms);
-		Assert.True(config.Metadata.EnableMetadata);
 		Assert.Equal("hash", config.Metadata.PostWriteVerification);
 		Assert.True(config.Metadata.EnableTimestampCorrection);
 
@@ -135,7 +133,6 @@ public class BackupPlan4ConfigTests
 		Assert.Equal("none", config.Metadata.IndexType);
 		Assert.Equal(["sha256"], config.Metadata.ComparisonHashAlgorithms);
 		Assert.Equal(["sha256"], config.Metadata.VerificationHashAlgorithms);
-		Assert.True(config.Metadata.EnableMetadata);
 		Assert.Equal("hash", config.Metadata.PostWriteVerification);
 		Assert.True(config.Metadata.EnableTimestampCorrection);
 
@@ -235,7 +232,6 @@ strategy = ""unknown""
 			Assert.Equal("timestamp", config.Collision.RenameStrategy);
 
 			Assert.Equal("json", config.Metadata.SidecarFormat);
-			Assert.True(config.Metadata.EnableMetadata);
 
 			Assert.True(config.Behavior.DryRun);
 			Assert.False(config.Behavior.StopOnError);
@@ -401,7 +397,6 @@ strategy = ""unknown""
 			Assert.Equal("timestamp", config.Collision.RenameStrategy);
 
 			Assert.Equal("json", config.Metadata.SidecarFormat);
-			Assert.True(config.Metadata.EnableMetadata);
 
 			Assert.True(config.Behavior.DryRun);
 			Assert.False(config.Behavior.StopOnError);

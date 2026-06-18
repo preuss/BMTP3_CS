@@ -49,7 +49,6 @@ rename-strategy = ""timestamp""
 [metadata]
 sidecar-format = ""json""
 index-type = ""none""
-enable-metadata = false
 post-write-verification = ""hash""
 enable-timestamp-correction = false
 comparison-hash-algorithms = [""sha256""]
@@ -81,7 +80,6 @@ max-degree-of-parallelism = 8
 			Assert.Equal(CollisionComparisonType.Hash, plan.CollisionComparisonType);
 			Assert.Equal(RenameStrategy.Timestamp, plan.RenameStrategy);
 			Assert.Equal(SidecarFormat.Json, plan.SidecarFormat);
-			Assert.False(plan.EnableMetadata);
 			Assert.Equal(PostWriteVerificationType.Hash, plan.PostWriteVerification);
 			Assert.False(plan.EnableTimestampCorrection);
 			Assert.True(plan.DryRun);
@@ -113,8 +111,7 @@ max-degree-of-parallelism = 8
     ""comparison"": ""binary""
   },
   ""metadata"": {
-    ""sidecarFormat"": ""ini"",
-    ""enableMetadata"": true
+    ""sidecarFormat"": ""ini""
   },
   ""behavior"": {
     ""dryRun"": false
@@ -139,7 +136,6 @@ max-degree-of-parallelism = 8
 			Assert.Equal(CollisionStrategy.Overwrite, plan.CollisionStrategy);
 			Assert.Equal(CollisionComparisonType.Binary, plan.CollisionComparisonType);
 			Assert.Equal(SidecarFormat.Ini, plan.SidecarFormat);
-			Assert.True(plan.EnableMetadata);
 			Assert.False(plan.DryRun);
 		}
 		finally
@@ -170,7 +166,6 @@ max-degree-of-parallelism = 8
   metadata: {
     sidecarFormat: 'json',
     indexType: 'none',
-    enableMetadata: false,
     enableTimestampCorrection: true,
   },
   behavior: {
@@ -197,7 +192,6 @@ max-degree-of-parallelism = 8
 			Assert.Equal(CollisionComparisonType.SizeAndModifiedTime, plan.CollisionComparisonType);
 			Assert.Equal(RenameStrategy.Increment, plan.RenameStrategy);
 			Assert.Equal(SidecarFormat.Json, plan.SidecarFormat);
-			Assert.False(plan.EnableMetadata);
 			Assert.True(plan.EnableTimestampCorrection);
 			Assert.Equal(250, plan.Delay);
 		}
@@ -328,7 +322,6 @@ dry-run = true
 		Assert.False(plan.DryRun);
 		Assert.True(plan.StopOnError);
 		Assert.Equal(0, plan.Delay);
-		Assert.False(plan.EnableMetadata);
 		Assert.True(plan.EnableTimestampCorrection);
 		Assert.Equal(SessionResumeStrategy.Abort, plan.ResumeBehavior);
 	}

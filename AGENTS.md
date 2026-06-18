@@ -1,6 +1,6 @@
 # BMTP3 — Agent Session Context
 
-> **Sidst opdateret:** 17 Jun 2026
+> **Sidst opdateret:** 18 Jun 2026
 > **Tests:** 1064/1064 passed
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 
@@ -56,7 +56,7 @@
 
 ## Session State
 
-### Done (seneste session — 17 Jun 2026)
+### Done (seneste session — 18 Jun 2026)
 
 | ID | Hvad | Fil(er) |
 |---|---|---|
@@ -70,6 +70,7 @@
 | Smelly #10 | `BackupPlan4Config.cs` — ✅ RETAINED. Eksplicit DTO + manuel mapping beholdes. Consoles er ikke kritisk; Core4/BackupEngine er vigtigst. | `BackupPlan4Config.cs` |
 | Tests | 1064/1064 passed | — |
 | Rename | `ItemIdStrategy` → `ItemIdScope` — enum, properties, CLI option, config property, file rename | Alle 14 filer |
+| Remove | `EnableMetadata` removed — property, validator gate, config DTO, builder, CLI template, test data/assertions | 14 filer på tværs af Core4 + Consoles + tests |
 
 ### In Progress
 
@@ -78,7 +79,7 @@
 ### Næste — prioriteret
 
 1. **K-V40**: `BackupEngine.RunAsync` for lang (~545 linjer) — extract `SequentialBackupRunner`
-2. **Feature gates**: `StopOnError=false`, `EnableMetadata`, `MaxDegreeOfParallelism`, `BackupIndexType.Database`
+2. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
 3. **Integration tests**: MTP pipeline, BackupEngine E2E
 4. **Retry/Resilience**: Exponential backoff, MTP resilience
 
@@ -154,3 +155,14 @@
 | `BMTP3.Consoles/Configs/BackupPlan4Config.cs` | `ItemIdStrategy` → `ItemIdScope` |
 | `BMTP3.Consoles/ConsoleCommands/Core4/BackupOptionsModel4.cs` | `ItemIdStrategy` → `ItemIdScope`, `--item-id-strategy` → `--item-id-scope` |
 | `BMTP3.Consoles/ConsoleCommands/Core4/BackupPlanBuilder.cs` | `ItemIdStrategy` → `ItemIdScope` i felt, config, CLI og ToPlan |
+| `BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand4InitConfig.cs` | `enable-metadata/enableMetadata` fjernet fra TOML/JSON/JSON5 templates |
+| `BMTP3.Core4/Api/Models/BackupPlan.cs` | `EnableMetadata` property fjernet |
+| `BMTP3.Core4/Engine/Validation/BackupPlanValidator.cs` | `EnableMetadata` gate (Tier 3) fjernet |
+| `BMTP3.Consoles/Configs/BackupPlan4Config.cs` | `MetadataConfig.EnableMetadata` fjernet |
+| `BMTP3.Consoles.Tests/BackupPlan4ConfigTests.cs` | `EnableMetadata` assertions fjernet (6 stk) |
+| `BMTP3.Consoles.Tests/BackupPlan4BuildPlanTests.cs` | `EnableMetadata` fra templates + assertions fjernet (6 stk) |
+| `BMTP3.Consoles.Tests/Fixtures/config.json` | `enableMetadata` fjernet |
+| `BMTP3.Consoles.Tests/TestData/backup_config_test.json` | `enableMetadata` fjernet |
+| `BMTP3.Consoles.Tests/Fixtures/config.json5` | `enableMetadata` fjernet |
+| `BMTP3.Consoles.Tests/TestData/backup_config_test.json5` | `enableMetadata` fjernet |
+| `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `EnableMetadata = false` fjernet |

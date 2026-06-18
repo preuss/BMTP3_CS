@@ -99,7 +99,6 @@ public class BackupEngineHappyPathIntegrationTests
 			Recursive = true,
 			DryRun = false,
 			StopOnError = true,
-			EnableMetadata = false,
 			BackupIndexType = BackupIndexType.None,
 			PostWriteVerification = PostWriteVerificationType.None,
 			SidecarFormat = SidecarFormat.Ini,

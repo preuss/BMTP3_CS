@@ -27,7 +27,6 @@ internal sealed class BackupPlanBuilder
 	public PostWriteVerificationType PostWriteVerification;
 	public List<HashAlgorithmType> ComparisonHashAlgorithmTypes = new(Enum.GetValues<HashAlgorithmType>());
 	public List<HashAlgorithmType> VerificationHashAlgorithmTypes = new(Enum.GetValues<HashAlgorithmType>());
-	public bool EnableMetadata;
 	public bool EnableTimestampCorrection = true;
 	public int Delay;
 	public SessionResumeStrategy ResumeBehavior = SessionResumeStrategy.Abort;
@@ -54,7 +53,6 @@ internal sealed class BackupPlanBuilder
 		BackupIndexType = BackupIndexType,
 		ComparisonHashAlgorithmTypes = ComparisonHashAlgorithmTypes,
 		VerificationHashAlgorithmTypes = VerificationHashAlgorithmTypes,
-		EnableMetadata = EnableMetadata,
 		PostWriteVerification = PostWriteVerification,
 		EnableTimestampCorrection = EnableTimestampCorrection,
 		DryRun = DryRun,
@@ -109,7 +107,6 @@ internal sealed class BackupPlanBuilder
 		if(config.Metadata.VerificationHashAlgorithms?.Count > 0)
 			VerificationHashAlgorithmTypes = ParseHashAlgorithms(config.Metadata.VerificationHashAlgorithms);
 
-		EnableMetadata = config.Metadata.EnableMetadata;
 		PostWriteVerification = ParseEnum<PostWriteVerificationType>(config.Metadata.PostWriteVerification);
 		EnableTimestampCorrection = config.Metadata.EnableTimestampCorrection;
 

@@ -23,7 +23,6 @@
     "indexType": "none",
     "comparisonHashAlgorithms": ["sha256"],
     "verificationHashAlgorithms": ["sha256"],
-    "enableMetadata": true,
     "postWriteVerification": "hash",
     "enableTimestampCorrection": true
   },

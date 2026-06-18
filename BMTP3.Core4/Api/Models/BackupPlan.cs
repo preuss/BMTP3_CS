@@ -144,11 +144,6 @@ public sealed record BackupPlan
 	public IReadOnlyList<HashAlgorithmType>? VerificationHashAlgorithmTypes { get; init; }
 
 	/// <summary>
-	/// Indicates whether metadata extraction is enabled.
-	/// </summary>
-	public bool EnableMetadata { get; init; }
-
-	/// <summary>
 	/// Specifies how files are verified after being written to the destination.
 	/// </summary>
 	public PostWriteVerificationType PostWriteVerification { get; init; }

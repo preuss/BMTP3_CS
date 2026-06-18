@@ -97,8 +97,6 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		       sidecar-format = "ini"
 		       # Backup index type: none, json, database
 		       index-type = "none"
-		       # Enable metadata extraction (EXIF, timestamps)
-		       enable-metadata = false
 		       # Enable original timestamp restoration
 		       enable-timestamp-correction = true
 		       # Post-write verification: none, hash
@@ -147,7 +145,6 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		         "metadata": {
 		           "sidecarFormat": "ini",
 		           "indexType": "none",
-		           "enableMetadata": false,
 		           "enableTimestampCorrection": true,
 		           "postWriteVerification": "none",
 		           "comparisonHashAlgorithms": ["sha256"],
@@ -209,8 +206,6 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		           sidecarFormat: 'ini'
 		           // Backup index type: none, json, database
 		           indexType: 'none'
-		           // Enable metadata extraction (EXIF, timestamps)
-		           enableMetadata: false
 		           // Enable original timestamp restoration
 		           enableTimestampCorrection: true
 		           // Post-write verification: none, hash

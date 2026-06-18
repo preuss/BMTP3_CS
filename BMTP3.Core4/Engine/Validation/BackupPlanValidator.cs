@@ -73,9 +73,6 @@ internal static class BackupPlanValidator
 		// --- Tier-gating (detect genuinely missing features) ---
 
 		// Tier 3 — Features that exist but are not yet production-tested
-		if(plan.EnableMetadata)
-			throw new FeatureNotImplementedException(3, "Metadata extraction");
-
 		if(!plan.StopOnError)
 			throw new FeatureNotImplementedException(3, "Continue on error (StopOnError = false)");
 
