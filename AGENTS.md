@@ -82,10 +82,10 @@
 
 ### Næste — prioriteret
 
-1. **K-V40**: `BackupEngine.RunAsync` for lang (~545 linjer) — extract `SequentialBackupRunner`
-2. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
-3. **Integration tests**: MTP pipeline, BackupEngine E2E
-4. **Retry/Resilience**: Exponential backoff, MTP resilience
+1. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
+2. **Integration tests**: MTP pipeline, BackupEngine E2E
+3. **Retry/Resilience**: Exponential backoff, MTP resilience
+4. **K-V40**: `BackupEngine.RunAsync` for lang (~545 linjer) — extract `SequentialBackupRunner`
 
 ## Code Quality Audit — Status
 

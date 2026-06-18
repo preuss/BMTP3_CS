@@ -75,8 +75,14 @@ internal sealed class FakeSourceConnector : ISourceConnector
 
 internal sealed class FakeDownloadService : IDownloadService
 {
+	public int FailOnItemIndex { get; set; } = -1;
+	private int _callCount;
+
 	public Task DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken)
 	{
+		int index = Interlocked.Increment(ref _callCount) - 1;
+		if(index == FailOnItemIndex)
+			throw new IOException($"Simulated download failure for item {index}.");
 		progress?.Report(request.Item.Content.Length);
 		return Task.CompletedTask;
 	}
@@ -113,19 +119,24 @@ internal sealed class FakeDiskSpaceValidator : IDiskSpaceValidator
 
 internal sealed class FakeTargetPathResolver : ITargetPathResolver
 {
+	public string? ResolveResult { get; set; }
+
 	public string Resolve(TargetPathResolveRequest request)
 	{
-		return Path.Combine(request.DestinationRoot, request.RelativeDirectoryPath, request.FileName);
+		return ResolveResult ?? Path.Combine(request.DestinationRoot, request.RelativeDirectoryPath, request.FileName);
 	}
 }
 
 internal sealed class FakeCollisionResolver : ICollisionResolver
 {
+	public CollisionResolutionAction DefaultAction { get; set; } = CollisionResolutionAction.Move;
+	public string? DefaultTargetPath { get; set; }
+
 	public Task<CollisionResult> ResolveAsync(CollisionResolveRequest request, IThrottler throttler, CancellationToken cancellationToken)
 	{
 		return Task.FromResult(new CollisionResult(
-			CollisionResolutionAction.Move,
-			request.IntendedTargetPath
+			DefaultAction,
+			DefaultTargetPath ?? request.IntendedTargetPath
 		));
 	}
 }
