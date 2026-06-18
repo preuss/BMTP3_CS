@@ -4,6 +4,7 @@ using BMTP3.Core4.Engine.Compare;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Strategies;
 using BMTP3.Core4.Infrastructure.Throttling;
+using BMTP3.Core4.Models;
 using BMTP3.Core4.Tests.Fakes;
 
 namespace BMTP3.Core4.Tests.Engine.Strategies;
@@ -154,5 +155,70 @@ public class RenameCollisionResolverTests
 
 		await Assert.ThrowsAsync<InvalidOperationException>(() =>
 			resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task Custom_WithDeviceName()
+	{
+		MediaDeviceDriveSourceDetails deviceSource = new()
+		{
+			DeviceId = "test-device",
+			Description = "Test Device",
+			FriendlyName = "MyPhone",
+			Manufacturer = "TestCorp",
+			Model = "X100",
+			SerialNumber = "SN123",
+			FirmwareVersion = "1.0",
+			DriveName = "Phone",
+			VolumeLabel = "Internal Storage",
+			DriveFormat = "FAT32",
+		};
+		RenameCollisionResolver resolver = CreateResolver(formatValuesFactory: new FileFormatValuesFactory());
+		string dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+		string intendedPath = Path.Combine(dir, "photo.jpg");
+
+		RenameCollisionRequest request = BaseRequest with
+		{
+			SourcePath = intendedPath,
+			IntendedTargetPath = intendedPath,
+			FileName = "photo.jpg",
+			RelativeFilePath = "photo.jpg",
+			RenameStrategy = RenameStrategy.CustomPattern,
+			CustomRenamePattern = "{deviceName}_{fileName}_{count}",
+			SourceDetails = deviceSource,
+		};
+
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken);
+
+		Assert.Equal(CollisionResolutionAction.Move, result.Action);
+		int endOfDir = dir.Length;
+		string relativeResult = result.TargetPath.Substring(endOfDir).TrimStart('\\', '/');
+		Assert.Equal("MyPhone_photo_1", relativeResult);
+	}
+
+	[Fact]
+	public async Task Custom_WithoutDeviceData_LeavesTokenUnformatted()
+	{
+		RenameCollisionResolver resolver = CreateResolver(formatValuesFactory: new FileFormatValuesFactory());
+		string dir = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+		string intendedPath = Path.Combine(dir, "photo.jpg");
+
+		RenameCollisionRequest request = BaseRequest with
+		{
+			SourcePath = intendedPath,
+			IntendedTargetPath = intendedPath,
+			FileName = "photo.jpg",
+			RelativeFilePath = "photo.jpg",
+			RenameStrategy = RenameStrategy.CustomPattern,
+			CustomRenamePattern = "{deviceName}_{fileName}_{count}",
+			SourceDetails = null,
+		};
+
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken);
+
+		Assert.Equal(CollisionResolutionAction.Move, result.Action);
+		int endOfDir = dir.Length;
+		string relativeResult = result.TargetPath.Substring(endOfDir).TrimStart('\\', '/');
+		Assert.Equal("{deviceName}_photo_1", relativeResult);
 	}
 }

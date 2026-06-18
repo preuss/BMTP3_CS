@@ -1,7 +1,7 @@
 # BMTP3 — Agent Session Context
 
 > **Sidst opdateret:** 18 Jun 2026
-> **Tests:** 1250/1250 passed (Core4: 325, MessageFormatter: 351, Common: 224, Core2: 231, Core3: 15, Consoles: 104)
+> **Tests:** 1258/1258 passed (Core4: 333, MessageFormatter: 351, Common: 224, Core2: 231, Core3: 15, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 
 ---

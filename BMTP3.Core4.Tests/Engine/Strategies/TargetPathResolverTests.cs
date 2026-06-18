@@ -1,5 +1,6 @@
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Strategies;
+using BMTP3.Core4.Models;
 using BMTP3.Core4.Tests.Fakes;
 
 namespace BMTP3.Core4.Tests.Engine.Strategies;
@@ -11,6 +12,20 @@ public class TargetPathResolverTests
 		new FakeMessageFormatter(),
 		new FakeFileFormatValuesFactory()
 	);
+
+	private static readonly MediaDeviceDriveSourceDetails TestDevice = new()
+	{
+		DeviceId = "test-device",
+		Description = "Test Device",
+		FriendlyName = "MyPhone",
+		Manufacturer = "TestCorp",
+		Model = "X100",
+		SerialNumber = "SN123",
+		FirmwareVersion = "1.0",
+		DriveName = "Phone",
+		VolumeLabel = "Internal Storage",
+		DriveFormat = "FAT32",
+	};
 
 	[Fact]
 	public void Resolve_PreserveHierarchy_WithRelativeDir()
@@ -164,5 +179,51 @@ public class TargetPathResolverTests
 		);
 
 		Assert.Throws<ArgumentOutOfRangeException>(() => _resolver.Resolve(request));
+	}
+
+	[Fact]
+	public void Resolve_CustomPathPattern_WithDeviceName()
+	{
+		TargetPathResolver realResolver = new(
+			new FakeMessageFormatter(),
+			new FileFormatValuesFactory());
+		TargetPathResolveRequest request = new(
+			DestinationRoot: "D:\\Backup",
+			RelativeDirectoryPath: null,
+			FileName: "photo.jpg",
+			OutputStructureStrategy: OutputStructureStrategy.CustomPathPattern,
+			CreateFileDate: TestDate,
+			ItemId: "abc",
+			StrongHash: null,
+			CustomPattern: "{deviceName}/{fileName}.{ext}",
+			SourceDetails: TestDevice
+		);
+
+		string result = realResolver.Resolve(request);
+
+		Assert.Equal("D:\\Backup\\MyPhone\\photo.jpg", result);
+	}
+
+	[Fact]
+	public void Resolve_CustomPathPattern_WithoutDeviceData_LeavesTokenUnformatted()
+	{
+		TargetPathResolver realResolver = new(
+			new FakeMessageFormatter(),
+			new FileFormatValuesFactory());
+		TargetPathResolveRequest request = new(
+			DestinationRoot: "D:\\Backup",
+			RelativeDirectoryPath: null,
+			FileName: "photo.jpg",
+			OutputStructureStrategy: OutputStructureStrategy.CustomPathPattern,
+			CreateFileDate: TestDate,
+			ItemId: "abc",
+			StrongHash: null,
+			CustomPattern: "{deviceName}/{fileName}.{ext}",
+			SourceDetails: null
+		);
+
+		string result = realResolver.Resolve(request);
+
+		Assert.Equal("D:\\Backup\\{deviceName}\\photo.jpg", result);
 	}
 }

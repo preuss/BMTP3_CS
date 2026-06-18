@@ -150,6 +150,29 @@ public class FileFormatValuesFactoryTests
 	}
 
 	[Fact]
+	public void Create_DeviceFields_NotAddedForFileSystemSource()
+	{
+		FileFormatValuesRequest request = new(
+			FileName: "f.txt",
+			RelativeFilePath: null,
+			CreateFileDate: TestDate,
+			ItemId: "id",
+			StrongHash: null,
+			SourceDetails: new FileSystemDriveSourceDetails
+			{
+				DriveName = "C:",
+				VolumeLabel = "OS",
+				DriveFormat = "NTFS",
+			}
+		);
+
+		Dictionary<string, object> result = _factory.Create(request);
+
+		Assert.False(result.ContainsKey("deviceName"));
+		Assert.False(result.ContainsKey("deviceModel"));
+	}
+
+	[Fact]
 	public void Create_RelativePath_Normalized()
 	{
 		FileFormatValuesRequest request = new(
