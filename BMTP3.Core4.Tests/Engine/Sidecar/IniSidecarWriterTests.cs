@@ -238,8 +238,9 @@ public class IniSidecarWriterTests
 	}
 
 	[Fact]
-	public async Task WriteToStreamAsync_DefaultWriteCommentsFalse_OmitsHeaderComment()
+	public async Task WriteToStreamAsync_ExplicitWriteCommentsFalse_OmitsHeaderComment()
 	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = false });
 		SidecarDocument doc = new()
 		{
 			HeaderComment = ["Should not appear"],
@@ -247,7 +248,7 @@ public class IniSidecarWriterTests
 		doc.WithSection("Section", weight: 10)
 			.WithProperty("Key", "Value");
 
-		string result = await WriteToStreamAsync(doc);
+		string result = await WriteToStreamAsync(doc, writer);
 
 		Assert.Contains("[Section]", result);
 		Assert.Contains("Key=Value", result);
@@ -256,13 +257,14 @@ public class IniSidecarWriterTests
 	}
 
 	[Fact]
-	public async Task WriteToStreamAsync_DefaultWriteCommentsFalse_OmitsSectionComment()
+	public async Task WriteToStreamAsync_ExplicitWriteCommentsFalse_OmitsSectionComment()
 	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = false });
 		SidecarDocument doc = new();
 		doc.WithSection("Section", weight: 10, comment: "Section comment")
 			.WithProperty("Key", "Value");
 
-		string result = await WriteToStreamAsync(doc);
+		string result = await WriteToStreamAsync(doc, writer);
 
 		Assert.Contains("[Section]", result);
 		Assert.Contains("Key=Value", result);
@@ -271,13 +273,14 @@ public class IniSidecarWriterTests
 	}
 
 	[Fact]
-	public async Task WriteToStreamAsync_DefaultWriteCommentsFalse_OmitsPropertyComment()
+	public async Task WriteToStreamAsync_ExplicitWriteCommentsFalse_OmitsPropertyComment()
 	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = false });
 		SidecarDocument doc = new();
 		doc.WithSection("Section", weight: 10)
 			.WithProperty("Key", "Value", comment: "Property comment");
 
-		string result = await WriteToStreamAsync(doc);
+		string result = await WriteToStreamAsync(doc, writer);
 
 		Assert.Contains("[Section]", result);
 		Assert.Contains("Key=Value", result);
@@ -308,9 +311,13 @@ public class IniSidecarWriterTests
 		Assert.DoesNotContain("#", result);
 	}
 
-	private static async Task<string> WriteToStreamAsync(SidecarDocument doc, IniSidecarWriter? writer = null)
+	private static Task<string> WriteToStreamAsync(SidecarDocument doc)
 	{
-		writer ??= new IniSidecarWriter();
+		return WriteToStreamAsync(doc, new IniSidecarWriter());
+	}
+
+	private static async Task<string> WriteToStreamAsync(SidecarDocument doc, IniSidecarWriter writer)
+	{
 		await using MemoryStream ms = new();
 		await writer.WriteToStreamAsync(doc, ms, TestContext.Current.CancellationToken);
 		ms.Position = 0;

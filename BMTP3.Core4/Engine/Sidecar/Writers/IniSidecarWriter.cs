@@ -12,12 +12,13 @@ internal sealed class IniSidecarWriter : ISidecarWriter
 
 	private readonly IniSidecarWriterOptions options;
 
-	public IniSidecarWriter() : this(options: null)
+	public IniSidecarWriter() : this(new IniSidecarWriterOptions())
 	{
 	}
-	public IniSidecarWriter(IniSidecarWriterOptions? options)
+	public IniSidecarWriter(IniSidecarWriterOptions options)
 	{
-		this.options = options ?? new IniSidecarWriterOptions();
+		ArgumentNullException.ThrowIfNull(options);
+		this.options = options;
 	}
 
 	public async Task WriteToStreamAsync(SidecarDocument document, Stream stream, CancellationToken cancellationToken)

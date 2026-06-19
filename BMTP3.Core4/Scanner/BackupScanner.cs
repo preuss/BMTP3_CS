@@ -53,4 +53,5 @@ internal sealed class BackupScanner : IBackupScanner
 			yield return item;
 		}
 	}
+
 }

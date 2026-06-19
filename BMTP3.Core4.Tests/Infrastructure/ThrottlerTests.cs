@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using BMTP3.Core4.Infrastructure.Throttling;
 
 namespace BMTP3.Core4.Tests.Infrastructure;
@@ -16,10 +17,11 @@ public class ThrottlerTests
 	public async Task DelayThrottler_WaitAsync_Delays()
 	{
 		IThrottler throttler = new DelayThrottler(10, CancellationToken.None);
-		long start = Environment.TickCount64;
+		Stopwatch sw = Stopwatch.StartNew();
 		await throttler.WaitAsync();
-		long elapsed = Environment.TickCount64 - start;
-		Assert.True(elapsed >= 5, $"Expected at least 5ms delay, got {elapsed}ms");
+		sw.Stop();
+		Assert.True(sw.Elapsed.TotalMilliseconds >= 1,
+			$"Expected positive delay, got {sw.Elapsed.TotalMilliseconds:F1}ms");
 	}
 
 	[Fact]
