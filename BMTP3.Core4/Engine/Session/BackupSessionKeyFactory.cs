@@ -16,17 +16,19 @@ internal static class BackupSessionKeyFactory
 
 		string sourceIdentity = CreateSourceIdentity(plan);
 
-		// SessionId is a stable, deterministic hash of the source identity so the same
-		// summary file is found on every run for the same source — enabling resume.
+		// SessionId is a stable, deterministic hash of the plan identity
+		// (source type + source path + destination) so the same plan always
+		// finds the same summary file — enabling resume across runs.
+		// Different plans (different source or destination) get different IDs,
+		// preventing cross-plan summary corruption.
 		string sessionId = CreateStableSessionId(sourceIdentity);
-		//string sessionId = Guid.NewGuid().ToString("N"); // Alternative: use a random session ID if you want to disable resume and always start fresh.
 
 		return new BackupSessionKey(sessionId, sourceIdentity);
 	}
 
 	private static string CreateSourceIdentity(BackupPlan plan)
 	{
-		return $"{plan.SourceType}:{plan.SourcePath.Trim()}";
+		return $"{plan.SourceType}:{plan.SourcePath.Trim()}:{plan.Destination.Trim()}";
 	}
 
 	private static string CreateStableSessionId(string sourceIdentity)

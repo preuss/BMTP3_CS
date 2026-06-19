@@ -1,7 +1,7 @@
 # BMTP3 — Agent Session Context
 
-> **Sidst opdateret:** 18 Jun 2026
-> **Tests:** 1258/1258 passed (Core4: 333, MessageFormatter: 351, Common: 224, Core2: 231, Core3: 15, Consoles: 104)
+> **Sidst opdateret:** 19 Jun 2026
+> **Tests:** 1146/1146 passed (Core4: 410, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 
 ---
@@ -56,7 +56,7 @@
 
 ## Session State
 
-### Done (seneste session — 18 Jun 2026)
+### Done (seneste session — 19 Jun 2026)
 
 | ID | Hvad | Fil(er) |
 |---|---|---|
@@ -78,6 +78,7 @@
 | Fix V2 | All 25 runtime test failures fixed — 11 categories across Guard, PathHelper, DiskSpaceValidator, SourceConnector, FileFormatValuesFactory, DownloadService, FileCompareService, JsonBackupIndexWriter, TargetPathResolver, TempDirectoryHelper, progress race tests | Se nedenfor |
 | Doc | `NormalizePath` XML-doc advarsel: "pure separator normalizer — validerer ikke `:`, `..`, tomme stier" | `PathHelper.cs` |
 | Feat | `IniSidecarWriterOptions.WriteComments` (default `false`), class-level `<remarks>` på `PathHelper` | `IniSidecarWriterOptions.cs`, `IniSidecarWriter.cs`, `PathHelper.cs` |
+| Fix | Session ID kollision på tværs af plans — inkluderer `Destination` i source identity | `BackupSessionKeyFactory.cs:27-30`, `BackupSessionKeyFactoryTests.cs` |
 
 ### In Progress
 

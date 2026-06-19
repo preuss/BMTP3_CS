@@ -21,11 +21,11 @@ public class BackupSessionKeyFactoryTests
 
 		Assert.NotNull(key.SessionId);
 		Assert.NotNull(key.SourceIdentity);
-		Assert.Equal("FileSystem:C:\\MyPhotos", key.SourceIdentity);
+		Assert.Equal("FileSystem:C:\\MyPhotos:D:\\Backup", key.SourceIdentity);
 	}
 
 	[Fact]
-	public void Create_SamePlan_ReturnsSameSessionId()
+	public void Create_SameSourceAndDestination_ReturnsSameSessionId()
 	{
 		BackupPlan planA = new()
 		{
@@ -39,7 +39,7 @@ public class BackupSessionKeyFactoryTests
 		{
 			SourceType = BackupSourceType.FileSystem,
 			SourcePath = "C:\\MyPhotos",
-			Destination = "E:\\Other",
+			Destination = "D:\\Backup",
 			Name = "Different",
 		};
 
@@ -48,6 +48,30 @@ public class BackupSessionKeyFactoryTests
 
 		Assert.Equal(keyA.SessionId, keyB.SessionId);
 		Assert.Equal(keyA.SourceIdentity, keyB.SourceIdentity);
+	}
+
+	[Fact]
+	public void Create_DifferentDestination_DifferentSessionId()
+	{
+		BackupPlan planA = new()
+		{
+			SourceType = BackupSourceType.FileSystem,
+			SourcePath = "C:\\MyPhotos",
+			Destination = "D:\\Backup",
+		};
+
+		BackupPlan planB = new()
+		{
+			SourceType = BackupSourceType.FileSystem,
+			SourcePath = "C:\\MyPhotos",
+			Destination = "E:\\Other",
+		};
+
+		BackupSessionKey keyA = BackupSessionKeyFactory.Create(planA);
+		BackupSessionKey keyB = BackupSessionKeyFactory.Create(planB);
+
+		Assert.NotEqual(keyA.SessionId, keyB.SessionId);
+		Assert.NotEqual(keyA.SourceIdentity, keyB.SourceIdentity);
 	}
 
 	[Fact]
