@@ -29,11 +29,6 @@ internal sealed class SourceConnector : ISourceConnector
 
 		DriveInfo drive = new(fileSystemDriveInfo.RootPath);
 
-		if (!drive.IsReady)
-		{
-			throw new InvalidOperationException($"File system drive '{fileSystemDriveInfo.RootPath}' is not ready.");
-		}
-
 		return new ConnectedFileSystemSource(drive);
 	}
 

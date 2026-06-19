@@ -76,6 +76,8 @@
 | Add | CLI aliases for KECCAK hash varianter — `keccak-256`, `keccak-512`, `sha3-256-keccak`, `sha3-512-keccak` | `BackupPlanBuilder.cs:265-266` |
 | Test | Reelle `StreamHashGenerator` tests i Core4 — alle 9 algoritmer med reelle hash-implementationer | `StreamHashGeneratorTests.cs` (7 tests) |
 | Fix V2 | All 25 runtime test failures fixed — 11 categories across Guard, PathHelper, DiskSpaceValidator, SourceConnector, FileFormatValuesFactory, DownloadService, FileCompareService, JsonBackupIndexWriter, TargetPathResolver, TempDirectoryHelper, progress race tests | Se nedenfor |
+| Doc | `NormalizePath` XML-doc advarsel: "pure separator normalizer — validerer ikke `:`, `..`, tomme stier" | `PathHelper.cs` |
+| Feat | `IniSidecarWriterOptions.WriteComments` (default `false`), class-level `<remarks>` på `PathHelper` | `IniSidecarWriterOptions.cs`, `IniSidecarWriter.cs`, `PathHelper.cs` |
 
 ### In Progress
 
@@ -192,3 +194,21 @@
 | `BMTP3.Core4.Tests/Scanner/BackupScannerTests.cs` | `SynchronousProgress<T>` for progress tests |
 | `BMTP3.Core4.Tests/Traversal/FileSystemTraversalTests.cs` | `SynchronousProgress<T>` for progress tests |
 | `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `SynchronousProgress<T>` for progress tests |
+
+---
+
+## Test-kørsel — vigtig regel
+
+**Kør ALDRIG Core2- eller Core3-tests med mindre vi aktivt ændrer i disse projekter.** De er archived/readonly. Brug `dotnet test` med filter:
+
+```
+dotnet test --no-restore --filter "FullyQualifiedName!~Core2&FullyQualifiedName!~Core3"
+```
+
+Eller kør specifikke projekter:
+
+```
+dotnet test BMTP3.Common.Tests/BMTP3.Common.Tests.csproj --no-restore
+dotnet test BMTP3.Core4.Tests/BMTP3.Core4.Tests.csproj --no-restore
+dotnet test BMTP3.Consoles.Tests/BMTP3.Consoles.Tests.csproj --no-restore
+```

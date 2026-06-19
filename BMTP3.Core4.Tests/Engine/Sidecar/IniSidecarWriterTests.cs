@@ -24,6 +24,7 @@ public class IniSidecarWriterTests
 	[Fact]
 	public async Task WriteToStreamAsync_WithHeaderComment_WritesHeader()
 	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = true });
 		SidecarDocument doc = new()
 		{
 			HeaderComment = ["This is a header", "line two"],
@@ -31,7 +32,7 @@ public class IniSidecarWriterTests
 		doc.WithSection("Section", weight: 10)
 			.WithProperty("Key", "Value");
 
-		string result = await WriteToStreamAsync(doc);
+		string result = await WriteToStreamAsync(doc, writer);
 
 		Assert.Contains("# This is a header", result);
 		Assert.Contains("# line two", result);
@@ -40,11 +41,12 @@ public class IniSidecarWriterTests
 	[Fact]
 	public async Task WriteToStreamAsync_WithSectionComment_WritesComment()
 	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = true });
 		SidecarDocument doc = new();
 		doc.WithSection("Meta", weight: 10, comment: "Section comment here")
 			.WithProperty("Key", "Value");
 
-		string result = await WriteToStreamAsync(doc);
+		string result = await WriteToStreamAsync(doc, writer);
 
 		Assert.Contains("# Section comment here", result);
 		Assert.Contains("[Meta]", result);
@@ -53,12 +55,13 @@ public class IniSidecarWriterTests
 	[Fact]
 	public async Task WriteToStreamAsync_WithPropertyComment_WritesComment()
 	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = true });
 		SidecarDocument doc = new();
 		doc.WithSection("Data", weight: 10);
 		doc.GetSection("Data")!
 			.WithProperty("Key", "Value", comment: "This is a property comment");
 
-		string result = await WriteToStreamAsync(doc);
+		string result = await WriteToStreamAsync(doc, writer);
 
 		Assert.Contains("# This is a property comment", result);
 		Assert.Contains("Key=Value", result);
@@ -165,12 +168,13 @@ public class IniSidecarWriterTests
 	[Fact]
 	public async Task WriteToStreamAsync_EmptyCommentLines_PreservedByDefault()
 	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = true });
 		SidecarDocument doc = new();
 		doc.WithSection("Section", weight: 10,
 			comment: "first\n\nthird")
 			.WithProperty("Key", "Value");
 
-		string result = await WriteToStreamAsync(doc);
+		string result = await WriteToStreamAsync(doc, writer);
 
 		Assert.Contains("# first", result);
 		Assert.Contains("#", result);
@@ -180,7 +184,7 @@ public class IniSidecarWriterTests
 	[Fact]
 	public async Task WriteToStreamAsync_EmptyCommentLines_SkippedWhenDisabled()
 	{
-		var options = new IniSidecarWriterOptions { PreserveEmptyCommentLines = false };
+		var options = new IniSidecarWriterOptions { WriteComments = true, PreserveEmptyCommentLines = false };
 		IniSidecarWriter writer = new(options);
 		SidecarDocument doc = new();
 		doc.WithSection("Section", weight: 10,
@@ -203,6 +207,7 @@ public class IniSidecarWriterTests
 	[Fact]
 	public async Task WriteToStreamAsync_HeaderCommentMultiline_WritesEachLine()
 	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = true });
 		SidecarDocument doc = new()
 		{
 			HeaderComment = ["line one\nline two"],
@@ -210,7 +215,7 @@ public class IniSidecarWriterTests
 		doc.WithSection("Section", weight: 10)
 			.WithProperty("Key", "Value");
 
-		string result = await WriteToStreamAsync(doc);
+		string result = await WriteToStreamAsync(doc, writer);
 
 		Assert.Contains("# line one", result);
 		Assert.Contains("# line two", result);
@@ -230,6 +235,77 @@ public class IniSidecarWriterTests
 		Assert.Contains("A=1", result);
 		Assert.Contains("B=2", result);
 		Assert.Contains("C=3", result);
+	}
+
+	[Fact]
+	public async Task WriteToStreamAsync_DefaultWriteCommentsFalse_OmitsHeaderComment()
+	{
+		SidecarDocument doc = new()
+		{
+			HeaderComment = ["Should not appear"],
+		};
+		doc.WithSection("Section", weight: 10)
+			.WithProperty("Key", "Value");
+
+		string result = await WriteToStreamAsync(doc);
+
+		Assert.Contains("[Section]", result);
+		Assert.Contains("Key=Value", result);
+		Assert.DoesNotContain("Should not appear", result);
+		Assert.DoesNotContain("# Should", result);
+	}
+
+	[Fact]
+	public async Task WriteToStreamAsync_DefaultWriteCommentsFalse_OmitsSectionComment()
+	{
+		SidecarDocument doc = new();
+		doc.WithSection("Section", weight: 10, comment: "Section comment")
+			.WithProperty("Key", "Value");
+
+		string result = await WriteToStreamAsync(doc);
+
+		Assert.Contains("[Section]", result);
+		Assert.Contains("Key=Value", result);
+		Assert.DoesNotContain("Section comment", result);
+		Assert.DoesNotContain("# Section comment", result);
+	}
+
+	[Fact]
+	public async Task WriteToStreamAsync_DefaultWriteCommentsFalse_OmitsPropertyComment()
+	{
+		SidecarDocument doc = new();
+		doc.WithSection("Section", weight: 10)
+			.WithProperty("Key", "Value", comment: "Property comment");
+
+		string result = await WriteToStreamAsync(doc);
+
+		Assert.Contains("[Section]", result);
+		Assert.Contains("Key=Value", result);
+		Assert.DoesNotContain("Property comment", result);
+		Assert.DoesNotContain("# Property comment", result);
+	}
+
+	[Fact]
+	public async Task WriteToStreamAsync_ExplicitWriteCommentsFalse_OmitsAllComments()
+	{
+		IniSidecarWriter writer = new(new IniSidecarWriterOptions { WriteComments = false });
+		SidecarDocument doc = new()
+		{
+			HeaderComment = ["Header comment"],
+		};
+		doc.WithSection("Source", weight: 10, comment: "Section comment")
+			.WithProperty("SourceType", "Drive", comment: "Property comment")
+			.WithProperty("FileName", "photo.jpg");
+
+		string result = await WriteToStreamAsync(doc, writer);
+
+		Assert.Contains("[Source]", result);
+		Assert.Contains("SourceType=Drive", result);
+		Assert.Contains("FileName=photo.jpg", result);
+		Assert.DoesNotContain("Header", result);
+		Assert.DoesNotContain("Section comment", result);
+		Assert.DoesNotContain("Property comment", result);
+		Assert.DoesNotContain("#", result);
 	}
 
 	private static async Task<string> WriteToStreamAsync(SidecarDocument doc, IniSidecarWriter? writer = null)

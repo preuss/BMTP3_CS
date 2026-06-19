@@ -41,11 +41,11 @@ public class SourceConnectorTests
 	public void ConnectedFileSystemSource_Name_ReturnsDriveName()
 	{
 		SourceConnector connector = new();
-		FakeFileSystemDriveInfo drive = new("D:\\");
+		FakeFileSystemDriveInfo drive = new("C:\\");
 
 		IConnectedFileSystemSource source = (IConnectedFileSystemSource)connector.Connect(drive);
 
-		Assert.Equal("D:\\", source.Name);
+		Assert.Equal("C:\\", source.Name);
 	}
 
 	private sealed class FakeFileSystemDriveInfo : IBackupFileSystemDriveInfo

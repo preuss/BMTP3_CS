@@ -59,7 +59,7 @@ internal sealed class IniSidecarWriter : ISidecarWriter
 		ArgumentNullException.ThrowIfNull(writer);
 		ArgumentNullException.ThrowIfNull(options);
 
-		if (document.HeaderComment is { Count: > 0 })
+		if (options.WriteComments && document.HeaderComment is { Count: > 0 })
 		{
 			foreach (string headerLine in document.HeaderComment)
 			{
@@ -71,7 +71,7 @@ internal sealed class IniSidecarWriter : ISidecarWriter
 
 		foreach (SidecarSection section in document.GetSortedSections())
 		{
-			if (section.Comment is not null)
+			if (options.WriteComments && section.Comment is not null)
 			{
 				WriteCommentBlock(writer, section.Comment, options.PreserveEmptyCommentLines);
 			}
@@ -80,7 +80,7 @@ internal sealed class IniSidecarWriter : ISidecarWriter
 
 			foreach (SidecarProperty property in section.GetSortedProperties())
 			{
-				if (property.Comment is not null)
+				if (options.WriteComments && property.Comment is not null)
 				{
 					WriteCommentBlock(writer, property.Comment, options.PreserveEmptyCommentLines);
 				}

@@ -23,11 +23,11 @@ public class GlobMatcherTests
 	}
 
 	[Fact]
-	public void SeparatorFlexibility()
+	public void BothSlashesAreSeparatorsByDefault()
 	{
 		string re = GlobMatcher.GlobToRegex("sub/*.txt");
-		Assert.True(Regex.IsMatch(@"sub\\file.txt", re));
 		Assert.True(Regex.IsMatch("sub/file.txt", re));
+		Assert.True(Regex.IsMatch(@"sub\file.txt", re));
 	}
 
 	[Fact]
