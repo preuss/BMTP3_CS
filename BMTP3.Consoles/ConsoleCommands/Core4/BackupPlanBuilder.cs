@@ -1,4 +1,5 @@
 using BMTP3.Consoles.Configs;
+using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using System.CommandLine;
@@ -7,6 +8,15 @@ namespace BMTP3.Consoles.ConsoleCommands.Core4;
 
 internal sealed class BackupPlanBuilder
 {
+	private readonly IFileSystemPathResolver _pathResolver;
+
+	public BackupPlanBuilder() : this(new FileSystemPathResolver()) { }
+
+	public BackupPlanBuilder(IFileSystemPathResolver pathResolver)
+	{
+		_pathResolver = pathResolver ?? throw new ArgumentNullException(nameof(pathResolver));
+	}
+
 	public string Name = string.Empty;
 	public string SourcePath = string.Empty;
 	public string Destination = string.Empty;
@@ -32,7 +42,7 @@ internal sealed class BackupPlanBuilder
 	public SessionResumeStrategy ResumeBehavior = SessionResumeStrategy.Abort;
 	public ItemIdScope ItemIdScope = ItemIdScope.Connection;
 
-	public static BackupPlanBuilder CreateDefault() => new();
+	public static BackupPlanBuilder CreateDefault() => new(new FileSystemPathResolver());
 
 	public BackupPlan ToBackupPlan() => new()
 	{
@@ -194,7 +204,7 @@ internal sealed class BackupPlanBuilder
 			ItemIdScope = backupOptions.ItemIdScope;
 
 		if(SourceType == BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(SourcePath))
-			SourcePath = Path.GetFullPath(SourcePath);
+			SourcePath = _pathResolver.ResolveExistingPathDisplayCasing(SourcePath);
 
 		if(string.IsNullOrWhiteSpace(Name))
 			Name = BuildNameFallback(Name, SourceType, SourcePath, Destination);

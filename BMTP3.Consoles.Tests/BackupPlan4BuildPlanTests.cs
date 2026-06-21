@@ -3,6 +3,7 @@ using System.CommandLine.Parsing;
 using System.Reflection;
 using BMTP3.Consoles.ConsoleCommands;
 using BMTP3.Consoles.ConsoleCommands.Core4;
+using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 
@@ -11,6 +12,7 @@ namespace BMTP3.Consoles.Tests;
 public class BackupPlan4BuildPlanTests
 {
 	private static readonly BackupConsoleCommand4 TestCommand = CreateTestCommand();
+	private static readonly IFileSystemPathResolver Resolver = new StubFileSystemPathResolver();
 
 	private static BackupConsoleCommand4 CreateTestCommand()
 	{
@@ -67,7 +69,7 @@ max-degree-of-parallelism = 8
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal("MyTest", plan.Name);
 			Assert.Equal(@"C:\ConfigSource", plan.SourcePath);
@@ -127,7 +129,7 @@ max-degree-of-parallelism = 8
 			File.WriteAllText(configPath, json);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal("JsonTest", plan.Name);
 			Assert.Equal(@"C:\JsonSource", plan.SourcePath);
@@ -182,7 +184,7 @@ max-degree-of-parallelism = 8
 			File.WriteAllText(configPath, json5);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal("Json5Test", plan.Name);
 			Assert.Equal(@"C:\Json5Source", plan.SourcePath);
@@ -221,7 +223,7 @@ path = ""D:\\FromConfig""
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\" --source-path \"C:\\FromCli\" --output \"D:\\FromCli\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal(@"C:\FromCli", plan.SourcePath);
 			Assert.Equal(@"D:\FromCli", plan.Destination);
@@ -250,7 +252,7 @@ strategy = ""skip""
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\" --collision-strategy Overwrite");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal(CollisionStrategy.Overwrite, plan.CollisionStrategy);
 		}
@@ -284,7 +286,7 @@ dry-run = true
 				$"--sidecar-format Json " +
 				$"--dry-run false");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal("Overridden", plan.Name);
 			Assert.Equal(SidecarFormat.Json, plan.SidecarFormat);
@@ -309,7 +311,7 @@ dry-run = true
 		string destPath = @"D:\CliDest";
 		var (options, parseResult) = Parse($"--source-path \"{sourcePath}\" --output \"{destPath}\"");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(sourcePath, plan.SourcePath);
 		Assert.Equal(destPath, plan.Destination);
@@ -340,7 +342,7 @@ dry-run = true
 			$"--delay 0 " +
 			$"--verify Hash");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.False(plan.Recursive);
 		Assert.Equal(CollisionStrategy.Skip, plan.CollisionStrategy);
@@ -364,7 +366,7 @@ dry-run = true
 			$"--source-path \"C:\\Fallback\" " +
 			$"--output \"D:\\Fallback\"");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(@"C:\Fallback", plan.SourcePath);
 		Assert.Equal(@"D:\Fallback", plan.Destination);
@@ -390,7 +392,7 @@ path = ""D:\\DefaultDst""
 ");
 			var (options, parseResult) = Parse("--config");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal("DefaultTest", plan.Name);
 			Assert.Equal(@"C:\DefaultSrc", plan.SourcePath);
@@ -423,7 +425,7 @@ path = ""D:\\DefaultDst""
 ");
 			var (options, parseResult) = Parse("--config");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal("DefaultJsonTest", plan.Name);
 			Assert.Equal(@"C:\JsonSrc", plan.SourcePath);
@@ -454,7 +456,7 @@ path = ""D:\\DefaultDst""
 
 			var (options, parseResult) = Parse("--config --source-path \"C:\\NoDefault\" --output \"D:\\NoDefault\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal(@"C:\NoDefault", plan.SourcePath);
 			Assert.Equal(@"D:\NoDefault", plan.Destination);
@@ -486,7 +488,7 @@ path = ""D:\\MinDst""
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal("Minimal", plan.Name);
 			Assert.Equal(@"C:\MinSrc", plan.SourcePath);
@@ -528,7 +530,7 @@ verification-hash-algorithms = [""md5"", ""md5-128"", ""md5_128""]
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Single(plan.ComparisonHashAlgorithmTypes);
 			Assert.Equal(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes[0]);
@@ -558,7 +560,7 @@ comparison-hash-algorithms = [""sha256"", ""sha512"", ""md5"", ""blake3-256"", "
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal(7, plan.ComparisonHashAlgorithmTypes.Count);
 			Assert.Contains(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes);
@@ -593,7 +595,7 @@ comparison-hash-algorithms = [""not-a-real-algorithm""]
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
 			Assert.Throws<ArgumentException>(() =>
-				BackupConsoleCommand4Helpers.BuildPlan(options, parseResult));
+				BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver));
 		}
 		finally
 		{
@@ -623,7 +625,7 @@ strategy = ""garbage-value""
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
 			Assert.Throws<ArgumentException>(() =>
-				BackupConsoleCommand4Helpers.BuildPlan(options, parseResult));
+				BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver));
 		}
 		finally
 		{
@@ -649,7 +651,7 @@ output-structure = ""bogus""
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
 			Assert.Throws<ArgumentException>(() =>
-				BackupConsoleCommand4Helpers.BuildPlan(options, parseResult));
+				BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver));
 		}
 		finally
 		{
@@ -674,7 +676,7 @@ output-structure = ""bogus""
 			$"--sidecar-format Json " +
 			$"--verify Hash");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(OutputStructureStrategy.Flat, plan.OutputStructureStrategy);
 		Assert.Equal(CollisionStrategy.Overwrite, plan.CollisionStrategy);
@@ -692,7 +694,7 @@ output-structure = ""bogus""
 			$"--output \"D:\\Dst\" " +
 			$"--collision-compare None");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(CollisionComparisonType.None, plan.CollisionComparisonType);
 	}
@@ -705,7 +707,7 @@ output-structure = ""bogus""
 			$"--output \"D:\\Dst\" " +
 			$"--rename-strategy Timestamp");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(RenameStrategy.Timestamp, plan.RenameStrategy);
 	}
@@ -719,7 +721,7 @@ output-structure = ""bogus""
 	{
 		var (options, parseResult) = Parse("--source-path \"mtp://Apple iPad/Internal Storage/DCIM\"");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(BackupSourceType.MediaDevice, plan.SourceType);
 		Assert.Equal("mtp://Apple iPad/Internal Storage/DCIM", plan.SourcePath);
@@ -730,7 +732,7 @@ output-structure = ""bogus""
 	{
 		var (options, parseResult) = Parse("--source-path \"C:\\MyPictures\"");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(BackupSourceType.FileSystem, plan.SourceType);
 	}
@@ -762,7 +764,7 @@ rename-strategy = ""{strategies[i]}""
 				File.WriteAllText(configPath, toml);
 				var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-				BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+				BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 				Assert.Equal(expected[i], plan.RenameStrategy);
 			}
@@ -802,7 +804,7 @@ resume-behavior = ""RESTART""
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal(OutputStructureStrategy.PreserveHierarchy, plan.OutputStructureStrategy);
 			Assert.Equal(CollisionStrategy.Skip, plan.CollisionStrategy);
@@ -839,7 +841,7 @@ sidecar-format = ""none""
 			File.WriteAllText(configPath, toml);
 			var (options, parseResult) = Parse($"--config \"{configPath}\"");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Equal(OutputStructureStrategy.PreserveHierarchy, plan.OutputStructureStrategy);
 			Assert.Equal(CollisionComparisonType.SizeAndModifiedTime, plan.CollisionComparisonType);
@@ -859,7 +861,7 @@ sidecar-format = ""none""
 	{
 		var (options, parseResult) = Parse("--source-path \"C:\\Src\" --output \"D:\\Dst\"");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(Enum.GetValues<HashAlgorithmType>().Length, plan.ComparisonHashAlgorithmTypes.Count);
 		Assert.Contains(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes);
@@ -876,7 +878,7 @@ sidecar-format = ""none""
 		var (options, parseResult) = Parse(
 			$"--source-path \"C:\\Src\" --output \"D:\\Dst\" --comparison-hash sha256");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Single(plan.ComparisonHashAlgorithmTypes);
 		Assert.Equal(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes[0]);
@@ -888,7 +890,7 @@ sidecar-format = ""none""
 		var (options, parseResult) = Parse(
 			$"--source-path \"C:\\Src\" --output \"D:\\Dst\" --comparison-hash sha256 --comparison-hash blake3-256");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(2, plan.ComparisonHashAlgorithmTypes.Count);
 		Assert.Contains(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes);
@@ -901,7 +903,7 @@ sidecar-format = ""none""
 		var (options, parseResult) = Parse(
 			$"--source-path \"C:\\Src\" --output \"D:\\Dst\" --verification-hash sha512");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Single(plan.VerificationHashAlgorithmTypes);
 		Assert.Equal(HashAlgorithmType.SHA2_512, plan.VerificationHashAlgorithmTypes[0]);
@@ -913,7 +915,7 @@ sidecar-format = ""none""
 		var (options, parseResult) = Parse(
 			$"--source-path \"C:\\Src\" --output \"D:\\Dst\" --verification-hash md5 --verification-hash sha3-256");
 
-		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 		Assert.Equal(2, plan.VerificationHashAlgorithmTypes.Count);
 		Assert.Contains(HashAlgorithmType.MD5_128, plan.VerificationHashAlgorithmTypes);
@@ -927,7 +929,7 @@ sidecar-format = ""none""
 			$"--source-path \"C:\\Src\" --output \"D:\\Dst\" --comparison-hash garbage");
 
 		Assert.Throws<ArgumentException>(() =>
-			BackupConsoleCommand4Helpers.BuildPlan(options, parseResult));
+			BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver));
 	}
 
 	[Fact]
@@ -937,7 +939,7 @@ sidecar-format = ""none""
 			$"--source-path \"C:\\Src\" --output \"D:\\Dst\" --verification-hash garbage");
 
 		Assert.Throws<ArgumentException>(() =>
-			BackupConsoleCommand4Helpers.BuildPlan(options, parseResult));
+			BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver));
 	}
 
 	[Fact]
@@ -959,7 +961,7 @@ verification-hash-algorithms = [""sha512""]
 			var (options, parseResult) = Parse(
 				$"--config \"{configPath}\" --comparison-hash sha256 --verification-hash blake3-512");
 
-			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult);
+			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
 			Assert.Single(plan.ComparisonHashAlgorithmTypes);
 			Assert.Equal(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes[0]);

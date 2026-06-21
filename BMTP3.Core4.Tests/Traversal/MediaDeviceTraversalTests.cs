@@ -83,7 +83,7 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public void GenerateDeviceUniqueId_ProducesDeterministicOutput()
 	{
-		var ts = new DateTimeOffset(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
+		DateTimeOffset ts = new(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
 
 		string id1 = MediaDeviceTraversal_Accessor.GenerateDeviceUniqueId("/A.jpg", 100, ts, ts, ts);
 		string id2 = MediaDeviceTraversal_Accessor.GenerateDeviceUniqueId("/A.jpg", 100, ts, ts, ts);
@@ -94,7 +94,7 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public void GenerateDeviceUniqueId_DifferentSize_ProducesDifferentId()
 	{
-		var ts = new DateTimeOffset(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
+		DateTimeOffset ts = new(2024, 6, 1, 12, 0, 0, TimeSpan.Zero);
 		string id1 = MediaDeviceTraversal_Accessor.GenerateDeviceUniqueId("/A.jpg", 100, ts, ts, ts);
 		string id2 = MediaDeviceTraversal_Accessor.GenerateDeviceUniqueId("/A.jpg", 200, ts, ts, ts);
 		Assert.NotEqual(id1, id2);
@@ -261,7 +261,7 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public void NormalizePatterns_Empty_ReturnsSame()
 	{
-		var empty = Array.Empty<string>();
+		string[] empty = Array.Empty<string>();
 		IReadOnlyList<string>? result = PathHelper.NormalizePatterns(empty);
 		Assert.Same(empty, result);
 	}
@@ -269,7 +269,7 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public void NormalizePatterns_NormalizesSlashes()
 	{
-		var patterns = new[] { "DCIM/Camera/*.jpg", "*.txt" };
+		string[] patterns = new[] { "DCIM/Camera/*.jpg", "*.txt" };
 		IReadOnlyList<string>? result = PathHelper.NormalizePatterns(patterns);
 		Assert.Equal("DCIM/Camera/*.jpg", result![0]);
 		Assert.Equal("*.txt", result[1]);
@@ -278,9 +278,9 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public void NormalizePatterns_SinglePattern()
 	{
-		var patterns = new[] { "*.jpg" };
+		string[] patterns = new[] { "*.jpg" };
 		IReadOnlyList<string>? result = PathHelper.NormalizePatterns(patterns);
-		Assert.Equal(["*.jpg"], result);
+		Assert.Equal(new[] { "*.jpg" }, result);
 	}
 
 	// ==============================================
@@ -290,8 +290,8 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_ItemIdScope_Session_UsesFileId()
 	{
-		var (traversal, dir) = CreateSimpleTraversal();
-		var file = new FakeMediaFile(
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal();
+		FakeMediaFile file = new(
 			id: "session-obj-123",
 			persistentUniqueId: "puid-456",
 			name: "test.jpg",
@@ -299,14 +299,14 @@ public class MediaDeviceTraversalTests
 			length: 100);
 		dir.AddFile(file);
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			ItemIdScope = ItemIdScope.Session,
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
 		Assert.Equal("session-obj-123", items[0].Id);
 	}
@@ -314,8 +314,8 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_ItemIdScope_Connection_UsesPuid()
 	{
-		var (traversal, dir) = CreateSimpleTraversal();
-		var file = new FakeMediaFile(
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal();
+		FakeMediaFile file = new(
 			id: "session-obj-123",
 			persistentUniqueId: "puid-456",
 			name: "test.jpg",
@@ -323,14 +323,14 @@ public class MediaDeviceTraversalTests
 			length: 100);
 		dir.AddFile(file);
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			ItemIdScope = ItemIdScope.Connection,
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
 		Assert.Equal("puid-456", items[0].Id);
 	}
@@ -338,8 +338,8 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_ItemIdScope_Persistent_UsesGeneratedId()
 	{
-		var (traversal, dir) = CreateSimpleTraversal();
-		var file = new FakeMediaFile(
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal();
+		FakeMediaFile file = new(
 			id: "obj-1", persistentUniqueId: "puid-1",
 			name: "test.jpg", fullName: "/test.jpg",
 			length: 100,
@@ -348,14 +348,14 @@ public class MediaDeviceTraversalTests
 			authored: new DateTime(2024, 1, 1, 12, 0, 0, DateTimeKind.Utc));
 		dir.AddFile(file);
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			ItemIdScope = ItemIdScope.Persistent,
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
 		Assert.StartsWith("mtp-stable-v1_", items[0].Id);
 		Assert.Contains("/test.jpg", items[0].Id);
@@ -364,19 +364,19 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_ItemIdScope_Default_FallbackToPuid()
 	{
-		var (traversal, dir) = CreateSimpleTraversal();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal();
 		dir.AddFile(new FakeMediaFile(
 			id: "obj-1", persistentUniqueId: "puid-default",
 			name: "f.jpg", fullName: "/f.jpg", length: 1));
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			ItemIdScope = (ItemIdScope)999, // unknown value → default branch
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
 		Assert.Equal("puid-default", items[0].Id);
 	}
@@ -384,37 +384,37 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_ItemIdScope_Session_NullId_Throws()
 	{
-		var (traversal, dir) = CreateSimpleTraversal();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal();
 		dir.AddFile(new FakeMediaFile(
 			id: null!, persistentUniqueId: "puid",
 			name: "f.jpg", fullName: "/f.jpg", length: 1));
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			ItemIdScope = ItemIdScope.Session,
 			Recursive = false,
 		};
 
-		await Assert.ThrowsAsync<ArgumentNullException>(() => CollectItems(traversal, request));
+		await Assert.ThrowsAsync<ArgumentNullException>(() => CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken));
 	}
 
 	[Fact]
 	public async Task TraverseAsync_ItemIdScope_Connection_NullPuid_Throws()
 	{
-		var (traversal, dir) = CreateSimpleTraversal();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal();
 		dir.AddFile(new FakeMediaFile(
 			id: "obj-1", persistentUniqueId: null!,
 			name: "f.jpg", fullName: "/f.jpg", length: 1));
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			ItemIdScope = ItemIdScope.Connection,
 			Recursive = false,
 		};
 
-		await Assert.ThrowsAsync<ArgumentNullException>(() => CollectItems(traversal, request));
+		await Assert.ThrowsAsync<ArgumentNullException>(() => CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken));
 	}
 
 	// ==============================================
@@ -424,15 +424,15 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_NonRecursive_OnlyRootFiles()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Equal(2, items.Count);
 		Assert.Contains(items, i => i.RelativeFilePath == @"root.jpg");
 		Assert.Contains(items, i => i.RelativeFilePath == @"notes.txt");
@@ -441,15 +441,15 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_Recursive_FindsAllFiles()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = true,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		// root.jpg, notes.txt, sub1.jpg, readme.txt, nested.txt = 5 files
 		Assert.Equal(5, items.Count);
 	}
@@ -461,30 +461,30 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_SubPath_NavigatesToSubDirectory()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive/SubDir1",
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Equal(2, items.Count);
 	}
 
 	[Fact]
 	public async Task TraverseAsync_SubPath_Nested()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive/SubDir1/NestedDir",
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Equal(1, items.Count);
 		Assert.Equal("nested.txt", items[0].FileName);
 	}
@@ -492,15 +492,15 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_SubPath_NotFound_Throws()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive/NonExistent",
 			Recursive = false,
 		};
 
-		await Assert.ThrowsAsync<DirectoryNotFoundException>(() => CollectItems(traversal, request));
+		await Assert.ThrowsAsync<DirectoryNotFoundException>(() => CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken));
 	}
 
 	// ==============================================
@@ -510,16 +510,16 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_IncludePattern_Filters()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = false,
 			IncludePatterns = new[] { "*.jpg" },
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
 		Assert.Equal("root.jpg", items[0].FileName);
 	}
@@ -527,16 +527,16 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_ExcludePattern_Filters()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = false,
 			ExcludePatterns = new[] { "*.jpg" },
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
 		Assert.Equal("notes.txt", items[0].FileName);
 	}
@@ -544,16 +544,16 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_IncludePatternWithForwardSlash()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = true,
 			IncludePatterns = new[] { "SubDir1/*" },
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Equal(2, items.Count);
 		Assert.All(items, i => Assert.StartsWith("SubDir1/", i.RelativeFilePath));
 	}
@@ -565,18 +565,18 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_ReportsProgress()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
 
-		var reported = new List<SourceTraversalProgress>();
+		List<SourceTraversalProgress> reported = new();
 		IProgress<SourceTraversalProgress> progress = new TestProgress<SourceTraversalProgress>(reported);
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = true,
 		};
 
-		await CollectItems(traversal, request, progress);
+		await CollectItems(traversal, request, progress, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.NotEmpty(reported);
 		Assert.True(reported.Last().FilesDiscovered >= 4);
 	}
@@ -588,11 +588,11 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_Cancellation_StopsEnumeration()
 	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
-		using var cts = new CancellationTokenSource();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory root) = CreateTraversalWithSubDirs();
+		using CancellationTokenSource cts = new();
 		cts.Cancel(); // pre-cancelled
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = true,
@@ -609,23 +609,23 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_PopulatesTimestamps()
 	{
-		var (traversal, dir) = CreateSimpleTraversal();
-		var created = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-		var modified = new DateTime(2024, 6, 15, 10, 30, 0, DateTimeKind.Utc);
-		var authored = new DateTime(2024, 3, 20, 8, 0, 0, DateTimeKind.Utc);
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal();
+		DateTime created = new(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+		DateTime modified = new(2024, 6, 15, 10, 30, 0, DateTimeKind.Utc);
+		DateTime authored = new(2024, 3, 20, 8, 0, 0, DateTimeKind.Utc);
 
 		dir.AddFile(new FakeMediaFile(
 			id: "o1", persistentUniqueId: "p1",
 			name: "f.jpg", fullName: "/f.jpg", length: 1,
 			created: created, modified: modified, authored: authored));
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
 		Assert.NotNull(items[0].DateCreated);
 		Assert.NotNull(items[0].DateModified);
@@ -640,18 +640,18 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_FileName_PreservesOriginalName()
 	{
-		var (traversal, dir) = CreateSimpleTraversal();
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal();
 		dir.AddFile(new FakeMediaFile(
 			id: "o1", persistentUniqueId: "p1",
 			name: "IMAG0034.jpg", fullName: "/DCIM/IMAG0034.jpg", length: 99));
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
 		Assert.Equal("IMAG0034.jpg", items[0].FileName);
 	}
@@ -663,20 +663,20 @@ public class MediaDeviceTraversalTests
 	[Fact]
 	public async Task TraverseAsync_SourcePath_UsesMtpScheme()
 	{
-		var (traversal, dir) = CreateSimpleTraversal("MyPhone", "SD Card");
+		(MediaDeviceTraversal traversal, FakeMediaDirectory dir) = CreateSimpleTraversal("MyPhone", "SD Card");
 		dir.AddFile(new FakeMediaFile(
 			id: "o1", persistentUniqueId: "p1",
 			name: "doc.pdf", fullName: "/DCIM/doc.pdf", length: 50));
 
-		var request = new SourceTraversalRequest
+		SourceTraversalRequest request = new()
 		{
 			SourcePath = "mtp://Device/Drive",
 			Recursive = false,
 		};
 
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
+		List<SourceTraversalItem> items = await CollectItems(traversal, request, cancellationToken: TestContext.Current.CancellationToken);
 		Assert.Single(items);
-			Assert.StartsWith("mtp://Device/Drive/", items[0].SourcePath);
+		Assert.StartsWith("mtp://Device/Drive/", items[0].SourcePath);
 	}
 
 	// ==============================================
@@ -689,8 +689,8 @@ public class MediaDeviceTraversalTests
 		IProgress<SourceTraversalProgress>? progress = null,
 		CancellationToken cancellationToken = default)
 	{
-		var items = new List<SourceTraversalItem>();
-		await foreach (SourceTraversalItem item in traversal.TraverseAsync(request, progress, cancellationToken))
+		List<SourceTraversalItem> items = new();
+		await foreach(SourceTraversalItem item in traversal.TraverseAsync(request, progress, cancellationToken))
 			items.Add(item);
 		return items;
 	}
@@ -698,36 +698,36 @@ public class MediaDeviceTraversalTests
 	private static (MediaDeviceTraversal, FakeMediaDirectory) CreateSimpleTraversal(
 		string deviceName = "Device", string driveName = "Drive")
 	{
-		var rootDir = new FakeMediaDirectory("");
-		var drive = new FakeMediaDrive(driveName, rootDir);
-		var device = new FakeMediaDevice(deviceName);
-		var source = new FakeConnectedMediaDriveSource(device, drive);
+		FakeMediaDirectory rootDir = new("");
+		FakeMediaDrive drive = new(driveName, rootDir);
+		FakeMediaDevice device = new(deviceName);
+		FakeConnectedMediaDriveSource source = new(device, drive);
 		return (new MediaDeviceTraversal(source, new FakeGatekeeper()), rootDir);
 	}
 
 	private static (MediaDeviceTraversal, FakeMediaDirectory) CreateTraversalWithSubDirs()
 	{
-		var rootDir = new FakeMediaDirectory("");
+		FakeMediaDirectory rootDir = new("");
 
 		rootDir.AddFile(new FakeMediaFile("r1", "puid-r1", "root.jpg", "/root.jpg", 100));
 		rootDir.AddFile(new FakeMediaFile("r2", "puid-r2", "notes.txt", "/notes.txt", 50));
 
-		var subDir1 = new FakeMediaDirectory("SubDir1");
+		FakeMediaDirectory subDir1 = new("SubDir1");
 		subDir1.AddFile(new FakeMediaFile("s1", "puid-s1", "sub1.jpg", "/SubDir1/sub1.jpg", 200));
 		subDir1.AddFile(new FakeMediaFile("s2", "puid-s2", "readme.txt", "/SubDir1/readme.txt", 30));
 
-		var nestedDir = new FakeMediaDirectory("NestedDir");
+		FakeMediaDirectory nestedDir = new("NestedDir");
 		nestedDir.AddFile(new FakeMediaFile("n1", "puid-n1", "nested.txt", "/SubDir1/NestedDir/nested.txt", 10));
 		subDir1.AddDirectory(nestedDir);
 
 		rootDir.AddDirectory(subDir1);
 
-		var emptyDir = new FakeMediaDirectory("EmptyDir");
+		FakeMediaDirectory emptyDir = new("EmptyDir");
 		rootDir.AddDirectory(emptyDir);
 
-		var drive = new FakeMediaDrive("Drive", rootDir);
-		var device = new FakeMediaDevice("Device");
-		var source = new FakeConnectedMediaDriveSource(device, drive);
+		FakeMediaDrive drive = new("Drive", rootDir);
+		FakeMediaDevice device = new("Device");
+		FakeConnectedMediaDriveSource source = new(device, drive);
 
 		return (new MediaDeviceTraversal(source, new FakeGatekeeper()), rootDir);
 	}
@@ -895,8 +895,7 @@ internal static class MediaDeviceTraversal_Accessor
 		try
 		{
 			return (T)method.Invoke(null, args)!;
-		}
-		catch (TargetInvocationException ex)
+		} catch(TargetInvocationException ex)
 		{
 			throw ex.InnerException ?? ex;
 		}

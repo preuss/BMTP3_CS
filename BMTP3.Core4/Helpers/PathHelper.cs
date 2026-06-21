@@ -261,7 +261,7 @@ internal static class PathHelper
 
 	/// <summary>
 	/// Create a relative path from one path to another. Paths will be resolved before calculating the difference.
-	/// Default path comparison for the active platform will be used (OrdinalIgnoreCase for Windows or Mac, Ordinal for Unix).
+	/// Comparison is ordinal case-insensitive (<see cref="StringComparison.OrdinalIgnoreCase"/>).
 	/// </summary>
 	/// <param name="rootDirectory">The source path the output should be relative to. This path is always considered to be a directory.</param>
 	/// <param name="sourcePath">The destination path.</param>
@@ -275,7 +275,7 @@ internal static class PathHelper
 		if(string.Equals(rootDirectory, sourcePath, StringComparison.OrdinalIgnoreCase))
 			return string.Empty;
 
-		if(!sourcePath.StartsWith(rootDirectory, StringComparison.Ordinal))
+		if(!sourcePath.StartsWith(rootDirectory, StringComparison.OrdinalIgnoreCase))
 			throw new ArgumentException($"Path '{sourcePath}' is not relative to '{rootDirectory}'.");
 
 		return sourcePath
