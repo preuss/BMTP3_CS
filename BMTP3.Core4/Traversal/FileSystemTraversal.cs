@@ -1,6 +1,7 @@
 using BMTP3.Common.Utilities;
 using BMTP3.Core4.Helpers;
 using System.Runtime.CompilerServices;
+using BMTP3.Core4.Api.Models.Enums;
 
 namespace BMTP3.Core4.Traversal;
 
@@ -14,18 +15,19 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 	{
 		ArgumentNullException.ThrowIfNull(request);
 
-		IReadOnlyList<string>? includePatterns = PathHelper.NormalizePatterns(request.IncludePatterns);
-		IReadOnlyList<string>? excludePatterns = PathHelper.NormalizePatterns(request.ExcludePatterns);
+		IReadOnlyList<string>? includePatterns = request.IncludePatterns;
+		IReadOnlyList<string>? excludePatterns = request.ExcludePatterns;
 
-		DirectoryInfo rootDir = new(request.SourcePath);
+		string externalSourcePath = PathHelper.FromCanonicalFileUri(request.SourcePath);
+		DirectoryInfo sourceDirectory = new(externalSourcePath);
 
-		if(!rootDir.Exists)
+		if(!sourceDirectory.Exists)
 			throw new DirectoryNotFoundException($"Source path does not exist: {request.SourcePath}");
 
 		int dirCount = 0;
 		int fileCount = 0;
 
-		await foreach(FileInfo file in EnumerateFilesRecursiveAsync(rootDir, request.Recursive, () => dirCount++, cancellationToken))
+		await foreach(FileInfo file in EnumerateFilesRecursiveAsync(sourceDirectory, request.Recursive, () => dirCount++, cancellationToken))
 		{
 			fileCount++;
 			progress?.Report(new SourceTraversalProgress
@@ -34,12 +36,9 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 				FilesDiscovered = fileCount,
 			});
 
-			string relativeFilePath = PathHelper.NormalizePath(
-				Path.GetRelativePath(rootDir.FullName, file.FullName));
-
-			string relativePathForGlobMatching = relativeFilePath.Replace('\\', '/');
-
-			if(!GlobMatcher.IsIncluded(relativePathForGlobMatching, includePatterns, excludePatterns, GlobSeparatorMode.ForwardSlash))
+			string internalFullFileName = PathHelper.ToInternalCanonicalUri(file.FullName, BackupSourceType.FileSystem);
+			string internalRelativeFilePath = PathHelper.GetRelativePath(request.SourcePath, internalFullFileName);
+			if(!GlobMatcher.IsIncluded(internalRelativeFilePath, includePatterns, excludePatterns))
 				continue;
 
 			DateTimeOffset? created = SafeGetDate(file, f => f.CreationTimeUtc);
@@ -48,9 +47,9 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 
 			yield return new SourceTraversalItem
 			{
-				Id = file.FullName,
-				SourcePath = file.FullName,
-				RelativeFilePath = relativeFilePath,
+				Id = internalFullFileName,
+				SourcePath = internalFullFileName,
+				RelativeFilePath = internalRelativeFilePath,
 				FileName = file.Name,
 				Content = new Models.FileContent(file),
 				DateCreated = created,

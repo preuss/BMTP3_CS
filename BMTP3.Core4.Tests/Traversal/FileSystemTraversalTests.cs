@@ -1,3 +1,5 @@
+using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Helpers;
 using BMTP3.Core4.Tests.Fakes;
 using BMTP3.Core4.Traversal;
 
@@ -19,7 +21,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = false,
 		};
 
@@ -40,7 +42,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = true,
 		};
 
@@ -49,7 +51,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		Assert.Equal(2, items.Count);
 		Assert.Contains(items, i => i.RelativeFilePath == "root.txt");
-		Assert.Contains(items, i => i.RelativeFilePath == Path.Combine("sub", "sub.txt"));
+		Assert.Contains(items, i => i.RelativeFilePath == "sub/sub.txt");
 	}
 
 	[Fact]
@@ -61,7 +63,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = false,
 		};
 
@@ -82,7 +84,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = false,
 		};
 
@@ -97,7 +99,7 @@ public class FileSystemTraversalTests : IDisposable
 	{
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = "Z:\\nonexistent_path_12345",
+			SourcePath = "file:///Z:/nonexistent_path_12345",
 			Recursive = false,
 		};
 
@@ -124,7 +126,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = false,
 		};
 
@@ -138,7 +140,7 @@ public class FileSystemTraversalTests : IDisposable
 	{
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = true,
 		};
 
@@ -155,7 +157,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = false,
 		};
 
@@ -164,7 +166,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		Assert.Single(items);
 		Assert.EndsWith("test.jpg", items[0].Id);
-		Assert.Equal(Path.Combine(_rootDir, "test.jpg"), items[0].SourcePath);
+		Assert.Equal(PathHelper.ToInternalCanonicalUri(Path.Combine(_rootDir, "test.jpg"), BackupSourceType.FileSystem), items[0].SourcePath);
 	}
 
 	[Fact]
@@ -176,7 +178,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = false,
 		};
 
@@ -195,7 +197,7 @@ public class FileSystemTraversalTests : IDisposable
 
 		SourceTraversalRequest request = new()
 		{
-			SourcePath = _rootDir,
+			SourcePath = PathHelper.ToInternalCanonicalUri(_rootDir, BackupSourceType.FileSystem),
 			Recursive = true,
 		};
 
@@ -203,7 +205,7 @@ public class FileSystemTraversalTests : IDisposable
 		List<SourceTraversalItem> items = await CollectAsync(traversal.TraverseAsync(request, null, TestContext.Current.CancellationToken));
 
 		Assert.Single(items);
-		Assert.Equal(Path.Combine("subdir", "nested", "deep.txt"), items[0].RelativeFilePath);
+		Assert.Equal("subdir/nested/deep.txt", items[0].RelativeFilePath);
 	}
 
 	private static async Task<List<T>> CollectAsync<T>(IAsyncEnumerable<T> source)

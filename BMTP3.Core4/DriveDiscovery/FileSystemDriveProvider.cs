@@ -8,7 +8,7 @@ internal sealed class FileSystemDriveProvider : IDriveProvider
 	{
 		return DriveInfo.GetDrives()
 			.Where(static d => d.IsReady)
-			.Select(static d => new BackupFileSystemDriveInfo(d))
+			.Select(static d => BackupFileSystemDriveInfo.FromDriveInfo(d))
 			.ToList();
 	}
 }

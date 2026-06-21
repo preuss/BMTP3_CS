@@ -70,6 +70,36 @@ internal static class BackupPlanValidator
 		// Delay is always valid (-1 = disabled, 0 = 0ms, >0 = N ms).
 		// No validation needed — any int is acceptable.
 
+		// --- Glob patterns must use '/' separator ---
+		//
+		// GlobMatcher uses '/' as its path separator. Backslash ('\') is
+		// treated as a literal character, not a separator. Patterns
+		// containing '\' will never match any file path.
+		//
+		// Users coming from Windows conventions may write patterns like
+		// "DCIM\100APPLE\*.jpg" out of habit. Reject early with a clear
+		// message.
+
+		if (plan.IncludePatterns is { Count: > 0 })
+		{
+			foreach (string pattern in plan.IncludePatterns)
+			{
+				if (pattern.Contains('\\'))
+					throw new BackupPlanArgumentException(
+						$"Include pattern '{pattern}' must use '/', not '\\'.");
+			}
+		}
+
+		if (plan.ExcludePatterns is { Count: > 0 })
+		{
+			foreach (string pattern in plan.ExcludePatterns)
+			{
+				if (pattern.Contains('\\'))
+					throw new BackupPlanArgumentException(
+						$"Exclude pattern '{pattern}' must use '/', not '\\'.");
+			}
+		}
+
 		// --- Tier-gating (detect genuinely missing features) ---
 
 		// Tier 4 — Features not implemented at all

@@ -1,31 +1,51 @@
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Helpers;
 
 namespace BMTP3.Core4.Storage;
 
 internal sealed class BackupFileSystemDriveInfo : IBackupFileSystemDriveInfo
 {
-	private readonly DriveInfo _drive;
-
-	public BackupFileSystemDriveInfo(DriveInfo drive)
+	private BackupFileSystemDriveInfo(
+		string driveName,
+		string displayName,
+		string rootPath,
+		long totalSize,
+		long availableFreeSpace,
+		string volumeLabel,
+		string driveFormat,
+		DriveType driveType
+	)
 	{
-		_drive = drive ?? throw new ArgumentNullException(nameof(drive));
+		DriveName = driveName;
+		DisplayName = displayName;
+		RootPath = rootPath;
+		TotalSize = totalSize;
+		AvailableFreeSpace = availableFreeSpace;
+		VolumeLabel = volumeLabel;
+		DriveFormat = driveFormat;
+		DriveType = driveType;
+	}
+
+	public static BackupFileSystemDriveInfo FromDriveInfo(DriveInfo drive)
+	{
+		ArgumentNullException.ThrowIfNull(drive);
 
 		if(!drive.IsReady)
 		{
-			throw new InvalidOperationException($"Drive '{drive.Name}' is not ready and cannot be used to create {nameof(BackupFileSystemDriveInfo)}.");
+			throw new InvalidOperationException($"Drive '{drive.Name}' is not ready.");
 		}
 
-		DriveName = BuildDriveName(drive);
-		DisplayName = BuildDisplayName(drive);
-		RootPath = BuildRootPath(drive);
-		TotalSize = drive.TotalSize;
-		AvailableFreeSpace = drive.AvailableFreeSpace;
-		VolumeLabel = drive.VolumeLabel;
-		DriveFormat = drive.DriveFormat;
-		DriveType = drive.DriveType;
+		return new BackupFileSystemDriveInfo(
+			driveName: BuildDriveName(drive.Name),
+			displayName: BuildDisplayName(drive.Name, drive.VolumeLabel),
+			rootPath: BuildRootPath(drive.RootDirectory.FullName),
+			totalSize: drive.TotalSize,
+			availableFreeSpace: drive.AvailableFreeSpace,
+			volumeLabel: drive.VolumeLabel,
+			driveFormat: drive.DriveFormat,
+			driveType: drive.DriveType
+		);
 	}
-
-	internal DriveInfo DriveInfo => _drive;
 
 	public string Id => DriveName;
 
@@ -47,25 +67,25 @@ internal sealed class BackupFileSystemDriveInfo : IBackupFileSystemDriveInfo
 
 	public DriveType DriveType { get; }
 
-	private static string BuildDriveName(DriveInfo drive)
+	private static string BuildDriveName(string sourceDriveName)
 	{
-		return drive.Name.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+		return sourceDriveName.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
 	}
 
-	private static string BuildDisplayName(DriveInfo drive)
+	private static string BuildDisplayName(string sourceDriveName, string sourceVolumeLabel)
 	{
-		string driveName = BuildDriveName(drive);
+		string driveName = BuildDriveName(sourceDriveName);
 
-		if(!string.IsNullOrWhiteSpace(drive.VolumeLabel))
+		if(!string.IsNullOrWhiteSpace(sourceVolumeLabel))
 		{
-			return $"{drive.VolumeLabel} ({driveName})";
+			return $"{sourceVolumeLabel} ({driveName})";
 		}
 
 		return driveName;
 	}
 
-	private static string BuildRootPath(DriveInfo drive)
+	private static string BuildRootPath(string sourceRootDirectoryFullName)
 	{
-		return drive.RootDirectory.FullName;
+		return PathHelper.ToInternalCanonicalUri(sourceRootDirectoryFullName, BackupSourceType.FileSystem);
 	}
 }

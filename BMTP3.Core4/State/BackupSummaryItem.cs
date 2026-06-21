@@ -7,9 +7,10 @@ public sealed record BackupSummaryItem
 	public required string RelativeFilePath { get; init; }
 	public required string FileName { get; init; }
 	public long Length { get; init; }
-	public DateTimeOffset? LastModified { get; init; }
 	public DateTimeOffset? DateCreated { get; init; }
+	public DateTimeOffset? LastModified { get; init; }
 	public DateTimeOffset? DateAuthored { get; init; }
+	public DateTimeOffset? DateAccessed { get; init; }
 	public string? DestinationPath { get; init; }
 
 	/// <summary>

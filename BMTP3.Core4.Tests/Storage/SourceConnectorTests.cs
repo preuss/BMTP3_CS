@@ -11,7 +11,7 @@ public class SourceConnectorTests
 	public void Connect_FileSystemDrive_ReturnsConnectedFileSystemSource()
 	{
 		SourceConnector connector = new();
-		FakeFileSystemDriveInfo drive = new("C:\\");
+		FakeFileSystemDriveInfo drive = new("file:///C:/");
 
 		IConnectedSource source = connector.Connect(drive);
 
@@ -41,7 +41,7 @@ public class SourceConnectorTests
 	public void ConnectedFileSystemSource_Name_ReturnsDriveName()
 	{
 		SourceConnector connector = new();
-		FakeFileSystemDriveInfo drive = new("C:\\");
+		FakeFileSystemDriveInfo drive = new("file:///C:/");
 
 		IConnectedFileSystemSource source = (IConnectedFileSystemSource)connector.Connect(drive);
 

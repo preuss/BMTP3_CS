@@ -175,120 +175,6 @@ public class MediaDeviceTraversalTests
 	}
 
 	// ==============================================
-	// SplitMtpRelativePath
-	// ==============================================
-
-	[Fact]
-	public void SplitMtpRelativePath_Normal()
-	{
-		List<string> segments = MediaDeviceTraversal_Accessor.SplitMtpRelativePath(@"DCIM\100MSDCF").ToList();
-		Assert.Equal(["DCIM", "100MSDCF"], segments);
-	}
-
-	[Fact]
-	public void SplitMtpRelativePath_SingleSegment()
-	{
-		List<string> segments = MediaDeviceTraversal_Accessor.SplitMtpRelativePath("DCIM").ToList();
-		Assert.Equal(["DCIM"], segments);
-	}
-
-	[Fact]
-	public void SplitMtpRelativePath_Empty_ReturnsEmpty()
-	{
-		List<string> segments = MediaDeviceTraversal_Accessor.SplitMtpRelativePath("").ToList();
-		Assert.Empty(segments);
-	}
-
-	[Fact]
-	public void SplitMtpRelativePath_TrailingBackslash()
-	{
-		List<string> segments = MediaDeviceTraversal_Accessor.SplitMtpRelativePath(@"DCIM\").ToList();
-		Assert.Equal(["DCIM"], segments);
-	}
-
-	[Fact]
-	public void SplitMtpRelativePath_LeadingBackslash()
-	{
-		List<string> segments = MediaDeviceTraversal_Accessor.SplitMtpRelativePath(@"\DCIM").ToList();
-		Assert.Equal(["DCIM"], segments);
-	}
-
-	[Fact]
-	public void SplitMtpRelativePath_DoubleBackslash()
-	{
-		List<string> segments = MediaDeviceTraversal_Accessor.SplitMtpRelativePath(@"DCIM\\100MSDCF").ToList();
-		Assert.Equal(["DCIM", "100MSDCF"], segments);
-	}
-
-	[Fact]
-	public void SplitMtpRelativePath_Null_Throws()
-	{
-		Assert.Throws<ArgumentNullException>(() =>
-			MediaDeviceTraversal_Accessor.SplitMtpRelativePath(null!).ToList());
-	}
-
-	[Fact]
-	public void SplitMtpRelativePath_DeepNesting()
-	{
-		List<string> segments = MediaDeviceTraversal_Accessor.SplitMtpRelativePath(@"A\B\C\D\E").ToList();
-		Assert.Equal(["A", "B", "C", "D", "E"], segments);
-	}
-
-	[Fact]
-	public void SplitMtpRelativePath_Unicode()
-	{
-		List<string> segments = MediaDeviceTraversal_Accessor.SplitMtpRelativePath(@"fotos\øebleskiver").ToList();
-		Assert.Equal(["fotos", "øebleskiver"], segments);
-	}
-
-	// ==============================================
-	// CombineMtpRelativePath
-	// ==============================================
-
-	[Fact]
-	public void CombineMtpRelativePath_Normal()
-	{
-		string result = MediaDeviceTraversal_Accessor.CombineMtpRelativePath(@"DCIM", "100MSDCF");
-		Assert.Equal(@"DCIM\100MSDCF", result);
-	}
-
-	[Fact]
-	public void CombineMtpRelativePath_EmptyPrefix()
-	{
-		string result = MediaDeviceTraversal_Accessor.CombineMtpRelativePath("", "file.jpg");
-		Assert.Equal("file.jpg", result);
-	}
-
-	[Fact]
-	public void CombineMtpRelativePath_EmptyName()
-	{
-		string result = MediaDeviceTraversal_Accessor.CombineMtpRelativePath(@"DCIM", "");
-		Assert.Equal(@"DCIM", result);
-	}
-
-	[Fact]
-	public void CombineMtpRelativePath_BothEmpty()
-	{
-		string result = MediaDeviceTraversal_Accessor.CombineMtpRelativePath("", "");
-		Assert.Equal("", result);
-	}
-
-	[Fact]
-	public void CombineMtpRelativePath_NameWithSlash()
-	{
-		string result = MediaDeviceTraversal_Accessor.CombineMtpRelativePath(@"DCIM", "CAM/ERA");
-		Assert.Equal(@"DCIM\CAM/ERA", result);
-	}
-
-	[Fact]
-	public void CombineMtpRelativePath_LongPrefix()
-	{
-		string prefix = @"A\B\C\D\E\F";
-		string result = MediaDeviceTraversal_Accessor.CombineMtpRelativePath(prefix, "file.txt");
-		Assert.Equal($@"{prefix}\file.txt", result);
-	}
-
-	// ==============================================
 	// PathHelper.NormalizePath
 	// ==============================================
 
@@ -395,64 +281,6 @@ public class MediaDeviceTraversalTests
 		var patterns = new[] { "*.jpg" };
 		IReadOnlyList<string>? result = PathHelper.NormalizePatterns(patterns);
 		Assert.Equal(["*.jpg"], result);
-	}
-
-	// ==============================================
-	// BuildMtpSourcePath
-	// ==============================================
-
-	[Fact]
-	public void BuildMtpSourcePath_WithoutSubPath()
-	{
-		string result = MediaDeviceTraversal_Accessor.BuildMtpSourcePath(
-			"MyPhone", "Internal Storage", "", @"DCIM\IMG_001.jpg");
-
-		Assert.Equal("mtp://MyPhone/Internal Storage/DCIM/IMG_001.jpg", result);
-	}
-
-	[Fact]
-	public void BuildMtpSourcePath_WithSubPath()
-	{
-		string result = MediaDeviceTraversal_Accessor.BuildMtpSourcePath(
-			"MyPhone", "Internal Storage", "DCIM/Camera", "IMG_001.jpg");
-
-		Assert.Equal("mtp://MyPhone/Internal Storage/DCIM/Camera/IMG_001.jpg", result);
-	}
-
-	[Fact]
-	public void BuildMtpSourcePath_SubPathWithBackslashes()
-	{
-		string result = MediaDeviceTraversal_Accessor.BuildMtpSourcePath(
-			"MyPhone", "Internal Storage", @"DCIM\Camera\2024", "IMG_001.jpg");
-
-		Assert.Equal("mtp://MyPhone/Internal Storage/DCIM/Camera/2024/IMG_001.jpg", result);
-	}
-
-	[Fact]
-	public void BuildMtpSourcePath_DeviceNameWithSpaces()
-	{
-		string result = MediaDeviceTraversal_Accessor.BuildMtpSourcePath(
-			"My Phone", "SD Card", "", "file.txt");
-
-		Assert.Equal("mtp://My Phone/SD Card/file.txt", result);
-	}
-
-	[Fact]
-	public void BuildMtpSourcePath_EmptyRelativePath()
-	{
-		string result = MediaDeviceTraversal_Accessor.BuildMtpSourcePath(
-			"Device", "Drive", "", "");
-
-		Assert.Equal("mtp://Device/Drive/", result);
-	}
-
-	[Fact]
-	public void BuildMtpSourcePath_SubPathWithLeadingSlash()
-	{
-		string result = MediaDeviceTraversal_Accessor.BuildMtpSourcePath(
-			"D", "D", "/DCIM/", "img.jpg");
-
-		Assert.Equal("mtp://D/D/DCIM/img.jpg", result);
 	}
 
 	// ==============================================
@@ -637,8 +465,7 @@ public class MediaDeviceTraversalTests
 
 		var request = new SourceTraversalRequest
 		{
-			SourcePath = "mtp://Device/Drive",
-			SubPath = "SubDir1",
+			SourcePath = "mtp://Device/Drive/SubDir1",
 			Recursive = false,
 		};
 
@@ -653,25 +480,7 @@ public class MediaDeviceTraversalTests
 
 		var request = new SourceTraversalRequest
 		{
-			SourcePath = "mtp://Device/Drive",
-			SubPath = "SubDir1/NestedDir",
-			Recursive = false,
-		};
-
-		List<SourceTraversalItem> items = await CollectItems(traversal, request);
-		Assert.Equal(1, items.Count);
-		Assert.Equal("nested.txt", items[0].FileName);
-	}
-
-	[Fact]
-	public async Task TraverseAsync_SubPath_WithForwardSlash()
-	{
-		var (traversal, root) = CreateTraversalWithSubDirs();
-
-		var request = new SourceTraversalRequest
-		{
-			SourcePath = "mtp://Device/Drive",
-			SubPath = "SubDir1/NestedDir",
+			SourcePath = "mtp://Device/Drive/SubDir1/NestedDir",
 			Recursive = false,
 		};
 
@@ -687,8 +496,7 @@ public class MediaDeviceTraversalTests
 
 		var request = new SourceTraversalRequest
 		{
-			SourcePath = "mtp://Device/Drive",
-			SubPath = "NonExistent",
+			SourcePath = "mtp://Device/Drive/NonExistent",
 			Recursive = false,
 		};
 
@@ -747,7 +555,7 @@ public class MediaDeviceTraversalTests
 
 		List<SourceTraversalItem> items = await CollectItems(traversal, request);
 		Assert.Equal(2, items.Count);
-		Assert.All(items, i => Assert.StartsWith(@"SubDir1\", i.RelativeFilePath));
+		Assert.All(items, i => Assert.StartsWith("SubDir1/", i.RelativeFilePath));
 	}
 
 	// ==============================================
@@ -868,7 +676,7 @@ public class MediaDeviceTraversalTests
 
 		List<SourceTraversalItem> items = await CollectItems(traversal, request);
 		Assert.Single(items);
-		Assert.StartsWith("mtp://MyPhone/SD Card/", items[0].SourcePath);
+			Assert.StartsWith("mtp://Device/Drive/", items[0].SourcePath);
 	}
 
 	// ==============================================
@@ -1079,15 +887,6 @@ internal static class MediaDeviceTraversal_Accessor
 
 	public static DateTimeOffset? ToUtcOffsetOrNull(DateTime? value)
 		=> InvokeStatic<DateTimeOffset?>(nameof(ToUtcOffsetOrNull), value);
-
-	public static IEnumerable<string> SplitMtpRelativePath(string path)
-		=> InvokeStatic<IEnumerable<string>>(nameof(SplitMtpRelativePath), path);
-
-	public static string CombineMtpRelativePath(string prefix, string name)
-		=> InvokeStatic<string>(nameof(CombineMtpRelativePath), prefix, name);
-
-	public static string BuildMtpSourcePath(string deviceName, string driveName, string? subPath, string relativeFilePath)
-		=> MediaDeviceTraversal.BuildMtpSourcePath(deviceName, driveName, subPath, relativeFilePath);
 
 	private static T InvokeStatic<T>(string name, params object?[] args)
 	{

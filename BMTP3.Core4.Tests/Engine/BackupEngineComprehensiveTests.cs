@@ -217,7 +217,7 @@ public class BackupEngineComprehensiveTests
 				.Select(i => CreateItem($"file{i:D3}.jpg", i % 2 == 0 ? "" : "SubDir"))
 				.ToArray();
 
-			var drive = new FakeBackupDriveInfo("C:\\");
+			var drive = new FakeBackupDriveInfo("file:///C:/");
 			var traversal = new FakeSourceTraversal();
 			var connectedSource = new FakeConnectedSource();
 			var scanner = new FakeBackupScanner(items);

@@ -155,10 +155,10 @@ internal sealed class BackupEngine : IBackupEngine
 			//    - Fail if source is not accessible
 			// ------------------------------------------------------------
 			IReadOnlyList<IBackupDriveInfo> drives = _driveProvider.ListDrives();
-			IBackupDriveInfo matchedDrive = MatchDrive(drives, plan.SourcePath)
-				?? throw new InvalidOperationException($"No drive found matching source path '{plan.SourcePath}'.");
 
-			string relativeDirectoryPath = GetRelativeDirectoryPath(matchedDrive.RootPath, plan.SourcePath);
+			string internalSourcePath = PathHelper.ToInternalCanonicalUri(plan.SourcePath, plan.SourceType);
+			IBackupDriveInfo matchedDrive = MatchDrive(drives, internalSourcePath)
+				?? throw new InvalidOperationException($"No drive found matching source path '{plan.SourcePath}'.");
 
 			using IConnectedSource connectedSource = _sourceConnector.Connect(matchedDrive);
 			ISourceTraversal traversal = _sourceTraversalFactory.Create(connectedSource);
@@ -199,8 +199,7 @@ internal sealed class BackupEngine : IBackupEngine
 
 			BackupScanRequest scanRequest = new()
 			{
-				SourcePath = plan.SourcePath,
-				SubPath = relativeDirectoryPath,
+				SourcePath = internalSourcePath,
 				Recursive = plan.Recursive,
 				IncludePatterns = plan.IncludePatterns,
 				ExcludePatterns = plan.ExcludePatterns,
@@ -433,7 +432,7 @@ internal sealed class BackupEngine : IBackupEngine
 							switch(collisionResult.Action)
 							{
 								case CollisionResolutionAction.Skip:
-								record.Status = BackupItemStatus.Skipped;
+									record.Status = BackupItemStatus.Skipped;
 									TempDirectoryHelper.CleanupTempFiles(tempFile?.FullName, null);
 									_currentProgress = _currentProgress with
 									{
@@ -634,7 +633,7 @@ internal sealed class BackupEngine : IBackupEngine
 			};
 
 			// Write catalog even when cancelled — shows all items with their current status.
-			if (plan.BackupIndexType == BackupIndexType.Json)
+			if(plan.BackupIndexType == BackupIndexType.Json)
 			{
 				await _backupIndexWriter.WriteAsync(
 					plan.Destination, sessionKey.SessionId,
@@ -764,35 +763,18 @@ internal sealed class BackupEngine : IBackupEngine
 		return computedHashes.Values.FirstOrDefault();
 	}
 
-	private static IBackupDriveInfo? MatchDrive(IReadOnlyList<IBackupDriveInfo> drives, string sourcePath)
+	private static IBackupDriveInfo? MatchDrive(IReadOnlyList<IBackupDriveInfo> drives, string internalUri)
 	{
 		foreach(IBackupDriveInfo drive in drives)
 		{
 			Guard.RequireNonNull(drive);
 
-			string normalizedPath = sourcePath.StartsWith("mtp://", StringComparison.Ordinal)
-				? sourcePath
-				: sourcePath.Replace("/", "\\");
-
-			if(string.Equals(drive.RootPath, normalizedPath, StringComparison.OrdinalIgnoreCase))
-				return drive;
-
-			if(normalizedPath.StartsWith(drive.RootPath, StringComparison.OrdinalIgnoreCase) &&
-				(drive.RootPath.EndsWith('\\') || drive.RootPath.EndsWith('/') ||
-				 normalizedPath[drive.RootPath.Length] == '\\' || normalizedPath[drive.RootPath.Length] == '/'))
+			if(internalUri.StartsWith(drive.RootPath, StringComparison.OrdinalIgnoreCase))
 			{
 				return drive;
 			}
 		}
 
 		return null;
-	}
-
-	private static string GetRelativeDirectoryPath(string rootPath, string sourcePath)
-	{
-		if(string.Equals(rootPath, sourcePath, StringComparison.OrdinalIgnoreCase))
-			return string.Empty;
-
-		return sourcePath.Substring(rootPath.Length).TrimStart('\\', '/');
 	}
 }

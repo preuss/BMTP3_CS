@@ -16,7 +16,6 @@ public class BackupScannerTests
 		BackupScanRequest request = new()
 		{
 			SourcePath = "C:\\Photos",
-			SubPath = null,
 			Recursive = true,
 			ItemIdScope = ItemIdScope.Session,
 		};
@@ -40,7 +39,6 @@ public class BackupScannerTests
 		BackupScanRequest request = new()
 		{
 			SourcePath = "C:\\Photos",
-			SubPath = null,
 			Recursive = true,
 		};
 
@@ -62,7 +60,6 @@ public class BackupScannerTests
 		BackupScanRequest request = new()
 		{
 			SourcePath = "C:\\Photos",
-			SubPath = null,
 			Recursive = true,
 		};
 
@@ -110,7 +107,6 @@ public class BackupScannerTests
 		BackupScanRequest request = new()
 		{
 			SourcePath = "C:\\Photos",
-			SubPath = "vacation",
 			Recursive = true,
 		};
 
@@ -118,7 +114,6 @@ public class BackupScannerTests
 		await CollectAsync(scanner.ScanAsync(traversal, request, null, TestContext.Current.CancellationToken));
 
 		Assert.Equal("C:\\Photos", traversal.LastRequest?.SourcePath);
-		Assert.Equal("vacation", traversal.LastRequest?.SubPath);
 		Assert.True(traversal.LastRequest?.Recursive);
 	}
 

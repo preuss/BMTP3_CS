@@ -1,6 +1,7 @@
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine;
+using BMTP3.Core4.Helpers;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Storage;
 using BMTP3.Core4.Tests.Fakes;
@@ -22,7 +23,7 @@ public class BackupEngineHappyPathIntegrationTests
 
 			BackupPlan plan = CreateTestPlan(sourceRoot, testDir);
 
-			FakeBackupDriveInfo drive = new(driveRoot, driveRoot.TrimEnd('\\'));
+			FakeBackupDriveInfo drive = new(PathHelper.ToInternalCanonicalUri(driveRoot, BackupSourceType.FileSystem), driveRoot.TrimEnd('\\'));
 			FakeSourceTraversal traversal = new();
 			FakeConnectedSource connectedSource = new();
 

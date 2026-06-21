@@ -1,5 +1,6 @@
-using BMTP3.Core4.Api.Models.Enums;
+﻿using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Devices;
+using BMTP3.Core4.Helpers;
 using System.Runtime.Versioning;
 
 namespace BMTP3.Core4.Storage;
@@ -22,19 +23,20 @@ internal sealed class SourceConnector : ISourceConnector
 
 	private static IConnectedSource ConnectFileSystemSource(IBackupFileSystemDriveInfo fileSystemDriveInfo)
 	{
-		if (fileSystemDriveInfo.SourceType != BackupSourceType.FileSystem)
+		if(fileSystemDriveInfo.SourceType != BackupSourceType.FileSystem)
 		{
 			throw new InvalidOperationException($"Expected source type '{BackupSourceType.FileSystem}', but got '{fileSystemDriveInfo.SourceType}'.");
 		}
 
-		DriveInfo drive = new(fileSystemDriveInfo.RootPath);
+		string drivePath = PathHelper.FromCanonicalFileUri(fileSystemDriveInfo.RootPath);
+		DriveInfo drive = new(drivePath);
 
 		return new ConnectedFileSystemSource(drive);
 	}
 
 	private static IConnectedSource ConnectMediaDeviceSource(IBackupMediaDriveInfo backupMediaDriveInfo)
 	{
-		if (backupMediaDriveInfo.SourceType != BackupSourceType.MediaDevice)
+		if(backupMediaDriveInfo.SourceType != BackupSourceType.MediaDevice)
 		{
 			throw new MediaDeviceException($"Expected source type '{BackupSourceType.MediaDevice}', but got '{backupMediaDriveInfo.SourceType}'.");
 		}
@@ -50,15 +52,15 @@ internal sealed class SourceConnector : ISourceConnector
 		IMediaDevice mediaDevice = deviceInfo.Connect();
 		IMediaDrive? foundMediaDrive = null;
 
-		foreach (IMediaDrive drive in mediaDevice.Drives)
+		foreach(IMediaDrive drive in mediaDevice.Drives)
 		{
-			if (BuildDriveName(drive.Name) == BuildDriveName(backupMediaDriveInfo.DriveName))
+			if(BuildDriveName(drive.Name) == BuildDriveName(backupMediaDriveInfo.DriveName))
 			{
 				foundMediaDrive = drive;
 				break;
 			}
 		}
-		if (foundMediaDrive == null)
+		if(foundMediaDrive == null)
 		{
 			throw new MediaDeviceException($"Media drive with Name '{backupMediaDriveInfo.DriveName}' not found.");
 		}
@@ -69,7 +71,7 @@ internal sealed class SourceConnector : ISourceConnector
 	private static string BuildDriveName(string driveName)
 	{
 		string name = driveName.TrimStart('\\');
-		if (string.IsNullOrWhiteSpace(name))
+		if(string.IsNullOrWhiteSpace(name))
 		{
 			throw new InvalidOperationException("Media drive Name is missing. Cannot create a stable MTP drive identity.");
 		}
