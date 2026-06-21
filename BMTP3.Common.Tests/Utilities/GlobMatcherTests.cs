@@ -227,28 +227,28 @@ public class GlobMatcherTests
     }
 
     [Fact]
-    public void IsIncluded_InvalidIncludePatternIsSkipped()
-    {
-        List<string> include = new() { "[", "**/*.txt" };
+	public void IsIncluded_InvalidIncludePattern_Throws()
+	{
+		List<string> include = new() { "[", "**/*.txt" };
 
-        Assert.True(GlobMatcher.IsIncluded("docs/readme.txt", include, null));
-    }
+		Assert.Throws<ArgumentException>(() => GlobMatcher.IsIncluded("docs/readme.txt", include, null));
+	}
 
-    [Fact]
-    public void IsIncluded_InvalidExcludePatternRejectsPath()
-    {
-        List<string> exclude = new() { "[" };
+	[Fact]
+	public void IsIncluded_InvalidExcludePattern_Throws()
+	{
+		List<string> exclude = new() { "[" };
 
-        Assert.False(GlobMatcher.IsIncluded("docs/readme.txt", null, exclude));
-    }
+		Assert.Throws<ArgumentException>(() => GlobMatcher.IsIncluded("docs/readme.txt", null, exclude));
+	}
 
-    [Fact]
-    public void IsIncluded_OnlyInvalidIncludePatternsDoNotIncludePath()
-    {
-        List<string> include = new() { "[" };
+	[Fact]
+	public void IsIncluded_OnlyInvalidPatterns_Throws()
+	{
+		List<string> include = new() { "[" };
 
-        Assert.False(GlobMatcher.IsIncluded("docs/readme.txt", include, null));
-    }
+		Assert.Throws<ArgumentException>(() => GlobMatcher.IsIncluded("docs/readme.txt", include, null));
+	}
 
     // -----------------------------------------------------------------------
     // Separator equivalence (Both mode): / and \ produce identical match results.
@@ -279,18 +279,18 @@ public class GlobMatcherTests
     [MemberData(nameof(ForwardBackslashGlobData))]
     public void ForwardAndBackslashPatterns_ProduceIdenticalMatch(string path, string forwardSlashPattern, string backslashPattern)
     {
-        bool forwardResult = GlobMatcher.Matches(path, forwardSlashPattern);
-        bool backslashResult = GlobMatcher.Matches(path, backslashPattern);
+		bool forwardResult = GlobMatcher.Matches(path, forwardSlashPattern, GlobSeparatorMode.Both);
+		bool backslashResult = GlobMatcher.Matches(path, backslashPattern, GlobSeparatorMode.Both);
 
-        Assert.Equal(forwardResult, backslashResult);
-    }
+		Assert.Equal(forwardResult, backslashResult);
+	}
 
-    [Theory]
-    [MemberData(nameof(ForwardBackslashGlobData))]
-    public void ForwardAndBackslashPatterns_ProduceIdenticalIsIncluded(string path, string forwardSlashPattern, string backslashPattern)
-    {
-        bool forwardResult = GlobMatcher.IsIncluded(path, new[] { forwardSlashPattern }, null);
-        bool backslashResult = GlobMatcher.IsIncluded(path, new[] { backslashPattern }, null);
+	[Theory]
+	[MemberData(nameof(ForwardBackslashGlobData))]
+	public void ForwardAndBackslashPatterns_ProduceIdenticalIsIncluded(string path, string forwardSlashPattern, string backslashPattern)
+	{
+		bool forwardResult = GlobMatcher.IsIncluded(path, new[] { forwardSlashPattern }, null, GlobSeparatorMode.Both);
+		bool backslashResult = GlobMatcher.IsIncluded(path, new[] { backslashPattern }, null, GlobSeparatorMode.Both);
 
         Assert.Equal(forwardResult, backslashResult);
     }
@@ -303,13 +303,13 @@ public class GlobMatcherTests
     // -----------------------------------------------------------------------
 
     [Fact]
-    public void BothMode_TreatsBothSlashesAsSeparators()
-    {
-        Assert.True(GlobMatcher.Matches(@"sub\file.txt", "sub/*.txt"));
-        Assert.True(GlobMatcher.Matches("sub/file.txt", "sub/*.txt"));
-        Assert.True(GlobMatcher.Matches(@"sub\file.txt", @"sub\*.txt"));
-        Assert.True(GlobMatcher.Matches("sub/file.txt", @"sub\*.txt"));
-    }
+	public void BothMode_TreatsBothSlashesAsSeparators()
+	{
+		Assert.True(GlobMatcher.Matches(@"sub\file.txt", "sub/*.txt", GlobSeparatorMode.Both));
+		Assert.True(GlobMatcher.Matches("sub/file.txt", "sub/*.txt", GlobSeparatorMode.Both));
+		Assert.True(GlobMatcher.Matches(@"sub\file.txt", @"sub\*.txt", GlobSeparatorMode.Both));
+		Assert.True(GlobMatcher.Matches("sub/file.txt", @"sub\*.txt", GlobSeparatorMode.Both));
+	}
 
     [Fact]
     public void ForwardSlashMode_TreatsOnlyForwardSlashAsSeparator()

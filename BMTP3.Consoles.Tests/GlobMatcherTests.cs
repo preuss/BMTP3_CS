@@ -1,5 +1,4 @@
 using BMTP3.Common.Utilities;
-using System.Text.RegularExpressions;
 
 namespace BMTP3.Consoles.Tests;
 
@@ -9,49 +8,49 @@ public class GlobMatcherTests
 	public void StarMatchesFilename()
 	{
 		string re = GlobMatcher.GlobToRegex("*.txt");
-		Assert.True(Regex.IsMatch("file.txt", re));
-		Assert.False(Regex.IsMatch("file.jpg", re));
-		Assert.False(Regex.IsMatch("sub/file.txt", re));
+		Assert.Matches(re, "file.txt");
+		Assert.DoesNotMatch(re, "file.jpg");
+		Assert.DoesNotMatch(re, "sub/file.txt");
 	}
 
 	[Fact]
 	public void RecursiveMatches()
 	{
 		string re = GlobMatcher.GlobToRegex("**/*.txt");
-		Assert.True(Regex.IsMatch("a/b/c.txt", re));
-		Assert.True(Regex.IsMatch("file.txt", re));
+		Assert.Matches(re, "a/b/c.txt");
+		Assert.Matches(re, "file.txt");
 	}
 
 	[Fact]
-	public void BothSlashesAreSeparatorsByDefault()
+	public void BothSlashesAreSeparators()
 	{
-		string re = GlobMatcher.GlobToRegex("sub/*.txt");
-		Assert.True(Regex.IsMatch("sub/file.txt", re));
-		Assert.True(Regex.IsMatch(@"sub\file.txt", re));
+		string re = GlobMatcher.GlobToRegex("sub/*.txt", GlobSeparatorMode.Both);
+		Assert.Matches(re, "sub/file.txt");
+		Assert.Matches(re, @"sub\file.txt");
 	}
 
 	[Fact]
 	public void ExtglobAlternation()
 	{
 		string re = GlobMatcher.GlobToRegex("@(foo|bar).txt");
-		Assert.True(Regex.IsMatch("foo.txt", re));
-		Assert.True(Regex.IsMatch("bar.txt", re));
-		Assert.False(Regex.IsMatch("baz.txt", re));
+		Assert.Matches(re, "foo.txt");
+		Assert.Matches(re, "bar.txt");
+		Assert.DoesNotMatch(re, "baz.txt");
 	}
 
 	[Fact]
 	public void SuffixNegation()
 	{
 		string re = GlobMatcher.GlobToRegex("*.!(jpg)");
-		Assert.True(Regex.IsMatch("file.png", re));
-		Assert.False(Regex.IsMatch("file.jpg", re));
+		Assert.Matches(re, "file.png");
+		Assert.DoesNotMatch(re, "file.jpg");
 	}
 
 	[Fact]
 	public void GlobalNegation()
 	{
 		string re = GlobMatcher.GlobToRegex("!(foo)");
-		Assert.True(Regex.IsMatch("bar", re));
-		Assert.False(Regex.IsMatch("foo", re));
+		Assert.Matches(re, "bar");
+		Assert.DoesNotMatch(re, "foo");
 	}
 }
