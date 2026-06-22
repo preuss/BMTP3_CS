@@ -96,7 +96,13 @@ internal sealed class FileSystemTraversal : ISourceTraversal
         return dir.EnumerateDirectories();
     }
 
-    private static DateTimeOffset? SafeGetDate(FileInfo file, Func<FileInfo, DateTime> selector)
+	/// <summary>
+	/// Only supports getting UTC dates, and returns null if any exception occurs (e.g. due to permissions).
+	/// </summary>
+	/// <param name="file"></param>
+	/// <param name="selector"></param>
+	/// <returns></returns>
+	private static DateTimeOffset? SafeGetDate(FileInfo file, Func<FileInfo, DateTime> selector)
     {
         try
         {
