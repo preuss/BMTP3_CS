@@ -301,7 +301,7 @@ internal sealed class BackupEngine : IBackupEngine
 						_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
 						progress?.Report(_currentProgress);
 
-						IProgress<ulong> downloadProgress = new Progress<ulong>(bytesRead =>
+						IProgress<ulong> downloadProgress = new ActionProgress<ulong>(bytesRead =>
 						{
 							currentProgressItem = currentProgressItem with { BytesProcessed = (long)bytesRead };
 							_currentProgress = _currentProgress with { ActiveFiles = new[] { currentProgressItem } };
@@ -353,7 +353,7 @@ internal sealed class BackupEngine : IBackupEngine
 						DateTimeOffset createFileDate = earliest.Timestamp.Value;
 
 						// Compute hashes.
-						IProgress<ulong> computeHashProgress = new Progress<ulong>(bytesComputed =>
+						IProgress<ulong> computeHashProgress = new ActionProgress<ulong>(bytesComputed =>
 						{
 							currentProgressItem = currentProgressItem with
 							{

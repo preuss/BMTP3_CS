@@ -1,7 +1,7 @@
 # BMTP3 — Agent Session Context
 
-> **Sidst opdateret:** 19 Jun 2026
-> **Tests:** 1146/1146 passed (Core4: 410, MessageFormatter: 351, Common: 281, Consoles: 104)
+> **Sidst opdateret:** 21 Jun 2026
+> **Tests:** 1179/1179 passed (Core4: 443, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 
 ---
@@ -56,10 +56,14 @@
 
 ## Session State
 
-### Done (seneste session — 19 Jun 2026)
+### Done (seneste session — 21 Jun 2026)
 
 | ID | Hvad | Fil(er) |
 |---|---|---|
+| Test | `BackupPlanValidatorTests` — 45 tests: null/empty paths, invalid enums, hash+algorithms, backslash patterns, feature gate, happy paths | `BackupPlanValidatorTests.cs` |
+| Test | `BinaryFileComparerSelectorTests` — 10 tests: constructor null guards, Select guards, small files → WholeFile, large files → chunked | `BinaryFileComparerSelectorTests.cs` |
+| Test | `BackupEngineErrorPathTests` — 10 tests: Download, TargetPathResolver, Sidecar, HashService, TS resolution failures (StopOnError true/false); mixed success; empty/no-matching drive | `BackupEngineErrorPathTests.cs` |
+| Fix | `BackupScanner` progress test race — `Progress<T>` dispatcher async via ThreadPool; `SynchronousProgress<T>` utilstrækkelig | `BackupScannerTests.cs` — `TaskCompletionSource` + `await tcs.Task` |
 | C-V26 | `WriteDebugLine` fixed: `(ProgressReport, IAnsiConsole)`, caller tjekker `_debug` | `BackupProgressDisplay.cs` |
 | C-V30/V31 | `BaseOptionsModel.cs` omskrevet: `ModelDefinition`+`OptionBinding`, Lazy cache, ingen `this`-capture | `BaseOptionsModel.cs` |
 | K-V47 | `FileContent.OpenReadAsync`: `CancellationToken` tjekket før `FileStream` | `FileContent.cs` |
@@ -90,6 +94,7 @@
 2. **Integration tests**: MTP pipeline, BackupEngine E2E
 3. **Retry/Resilience**: Exponential backoff, MTP resilience
 4. **K-V40**: `BackupEngine.RunAsync` for lang (~545 linjer) — extract `SequentialBackupRunner`
+5. **2B error paths**: DownloadService cancellation/locks, HashService null stream, TempDirectoryHelper concurrent cleanup, BackupScanner null Content
 
 ## Code Quality Audit — Status
 
@@ -195,6 +200,10 @@
 | `BMTP3.Core4.Tests/Scanner/BackupScannerTests.cs` | `SynchronousProgress<T>` for progress tests |
 | `BMTP3.Core4.Tests/Traversal/FileSystemTraversalTests.cs` | `SynchronousProgress<T>` for progress tests |
 | `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `SynchronousProgress<T>` for progress tests |
+| `BMTP3.Core4/Scanner/DelegateProgress.cs` | **Ny** — synkron `IProgress<T>` implementering, erstatning for `Progress<T>` |
+| `BMTP3.Core4/Scanner/BackupScanner.cs` | Progress race fix: `Progress<T>` → `DelegateProgress<T>` |
+| `BMTP3.Core4.Tests/Engine/Validation/BackupPlanValidatorTests.cs` | **Ny** — 45 tests for BackupPlanValidator |
+| `BMTP3.Core4.Tests/Engine/Compare/BinaryFileComparerSelectorTests.cs` | **Ny** — 10 tests for BinaryFileComparerSelector |
 
 ---
 

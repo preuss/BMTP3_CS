@@ -1,7 +1,7 @@
 # Mangler / Issues
 
 > **Seneste opdatering:** 21 Jun 2026
-> **Tests:** 773/773 passing (Common: 281, Core4: 388, Consoles: 104)
+> **Tests:** 1179/1179 passing (Common: 281, MessageFormatter: 351, Core4: 443, Consoles: 104)
 
 ---
 
@@ -17,6 +17,10 @@
 | 6 | GlobMatcher: 3 invalid-pattern tests forventede tolerant adfærd | Ændret til `Assert.Throws<ArgumentException>` (fail-fast er korrekt). Testnavne opdateret. |
 | 7 | Consoles GlobMatcher: `BothSlashesAreSeparatorsByDefault` brugte `ForwardSlash` | Tilføjet `GlobSeparatorMode.Both`. Navn → `BothSlashesAreSeparators`. |
 | 8 | Consoles GlobMatcher: 7 xUnit2008 warnings (`Assert.True(Regex.IsMatch)`) | `Assert.Matches` / `Assert.DoesNotMatch`. |
+| 9 | `BackupPlanValidator` — 0 tests (høj prioritet i MANGLER.md 1A) | `BackupPlanValidatorTests.cs` — 45 tests: null/empty paths, invalid enums, hash+algorithms, backslash patterns, feature gate, happy paths |
+| 10 | `BinaryFileComparerSelector` — chunked algoritmer aldrig testet (1B) | `BinaryFileComparerSelectorTests.cs` — 10 tests: constructor null guards, Select null/argument guards, small files → WholeFile, large files → chunked comparers |
+| 11 | `BackupScanner` progress race — `Progress<T>` wrapper dispatcher async via ThreadPool, `SynchronousProgress<T>` utilstrækkelig | `TaskCompletionSource` i test — `await tcs.Task` efter enumeration venter på async dispatch |
+| 12 | `BackupEngine` error paths — 0 tests (1C) | `BackupEngineErrorPathTests.cs` — 10 tests: Download, TargetPathResolver, SidecarService, HashService, TS resolution failures (StopOnError true/false); mixed success; empty/no-matching drive |
 
 ---
 
@@ -24,36 +28,29 @@
 
 ### Prioritet 1 — Bør testes nu
 
-#### 1A. BackupPlanValidator — 0 tests
+#### ~~1A. BackupPlanValidator — 0 tests~~ ✅ FIXET
 **Fil:** `BMTP3.Core4/Engine/Validation/BackupPlanValidator.cs`
 
-Tier 1-3 validering af `BackupPlan`. For nylig ændret (validator gates fjernet). Utestet — kan lade ugyldige plans igennem.
+**45 tests** i `BackupPlanValidatorTests.cs`: null/empty/whitespace Name, SourcePath, Destination; invalid path characters; 9 invalid enum values; CollisionComparisonType.Hash uden algorithms; PostWriteVerification.Hash uden algorithms; backslash i include/exclude patterns; BackupIndexType.Database → FeatureNotImplementedException; valid minimal/full plan.
 
-**Hvad mangler:**
-- Tier 1: null/empty `SourcePath`, `Destination`, invalid `SourceType`, missing required fields
-- Tier 2: cross-field validering (f.eks. source path eksisterer, destination gyldig)
-- Tier 3: business rules (f.eks. `CustomOutputPattern` kræver `OutputStructureStrategy.Custom`)
+**Mangler stadig:**
+- Cross-field validering (f.eks. `CustomOutputPattern` kræver `OutputStructureStrategy.Custom` — endnu ikke implementeret i produktionskode)
 - Kombinationer af valideringsfejl
 
 ---
 
-#### 1B. BinaryFileComparerSelector — chunked algoritmer aldrig testet
+#### ~~1B. BinaryFileComparerSelector — chunked algoritmer aldrig testet~~ ✅ FIXET
 **Filer:** `Engine/Compare/Algorithms/` (4 chunked comparers) + `BinaryFileComparerSelector.cs`
 
-Eksisterende `FileCompareServiceTests` laver altid små filer (< 1 MB) → `WholeFileSequenceEqualBinaryComparer` vælges altid. De 4 chunked algoritmer er **aldrig blevet eksekveret** i en test:
-- `ChunkedVectorBinaryComparer`
-- `ChunkedSequenceEqualBinaryComparer`
-- `ChunkedEightByteBinaryComparer`
-- `ChunkedAvx2BinaryComparer`
+**10 tests** i `BinaryFileComparerSelectorTests.cs`: constructor null guards (5), Select null/argument guards (4), small files ≤ 10 MB → `WholeFileSequenceEqualBinaryComparer` (2), large files > 10 MB → chunked comparer (2, via sparse files — instant allocation).
 
-**Hvad mangler:**
-- Test der tvinger selection til hver chunked algoritme (f.eks. via filstørrelse)
-- Test af selection logic i `BinaryFileComparerSelector` direkte
-- Edge cases: filstørrelse præcis på grænsen mellem algoritmer
+**Mangler stadig:**
+- Chunked-algoritmerne selv (de 4 `IBinaryFileComparer` implementeringer) har kun indirekte dækning via `FileCompareServiceTests` (som kun bruger små filer)
+- `FileCompareService` med store filer der aktiverer chunked algorithms
 
 ---
 
-#### 1C. Error paths i BackupEngine — recovery utestet
+#### ~~1C. Error paths i BackupEngine — recovery utestet~~ ✅ FIXET
 **Fil:** `BMTP3.Core4/Engine/BackupEngine.cs`
 
 Eksisterende tests dækker kun happy path + cancellation. Ingen test verificerer hvad der sker når engine-komponenter fejler midt i en backup:
@@ -148,8 +145,8 @@ Ikke en runtime-fejl, men inkonsistent.
 ## Resume
 
 | Prioritet | Antal | Område |
-|---|---|---|
-| 🔴 Bør testes nu | 3 | BackupPlanValidator, BinaryFileComparerSelector, Error paths i engine |
+|---|---|---|---|
+| 🔴 Bør testes nu | 0 | ~~BackupPlanValidator, BinaryFileComparerSelector, Error paths i engine~~ ✅ ALLE FIXET |
 | 🟡 Bør testes (større) | ~60 filer | TimeStamp (~45), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
 | 🟢 Nice-to-have | ~15 items | MediaDeviceContent, model defaults, edge cases |
 | 🔶 Kosmetisk | 1 | Sidecar separator style |

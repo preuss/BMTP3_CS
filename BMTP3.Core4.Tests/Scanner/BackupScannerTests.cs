@@ -34,7 +34,6 @@ public class BackupScannerTests
 	public async Task ScanAsync_WithProgress_ReportsProgress()
 	{
 		FakeSourceTraversal traversal = new(CreateTraversalItems(3));
-		List<BackupScanProgress> progress = new();
 
 		BackupScanRequest request = new()
 		{
@@ -42,12 +41,27 @@ public class BackupScannerTests
 			Recursive = true,
 		};
 
-		BackupScanner scanner = new();
-		await CollectAsync(scanner.ScanAsync(traversal, request,
-			new SynchronousProgress<BackupScanProgress>(progress), TestContext.Current.CancellationToken));
+		CountingProgress<BackupScanProgress> progress = new();
 
-		Assert.NotEmpty(progress);
+		BackupScanner scanner = new();
+
+		await CollectAsync(scanner.ScanAsync(
+			traversal,
+			request,
+			progress,
+			TestContext.Current.CancellationToken));
+
 		Assert.Equal(3, progress.Count);
+	}
+
+	private sealed class CountingProgress<T> : IProgress<T>
+	{
+		public int Count { get; private set; }
+
+		public void Report(T value)
+		{
+			Count++;
+		}
 	}
 
 	[Fact]

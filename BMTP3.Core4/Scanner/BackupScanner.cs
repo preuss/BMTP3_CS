@@ -1,3 +1,4 @@
+using BMTP3.Core4.Helpers;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Traversal;
 using System.Runtime.CompilerServices;
@@ -26,11 +27,11 @@ internal sealed class BackupScanner : IBackupScanner
 		};
 
 		IProgress<SourceTraversalProgress>? traversalProgress = progress is not null
-			? new Progress<SourceTraversalProgress>(tp => progress.Report(new BackupScanProgress
+			? progress.Transform<SourceTraversalProgress, BackupScanProgress>(tp => new BackupScanProgress
 			{
 				DirectoriesTraversed = tp.DirectoriesTraversed,
 				FilesDiscovered = tp.FilesDiscovered,
-			}))
+			})
 			: null;
 
 		await foreach(SourceTraversalItem sourceItem in traversal.TraverseAsync(traversalRequest, traversalProgress, cancellationToken))
