@@ -1,7 +1,7 @@
 # BMTP3 — Agent Session Context
 
-> **Sidst opdateret:** 22 Jun 2026
-> **Tests:** 1179/1179 passed (Core4: 443, MessageFormatter: 351, Common: 281, Consoles: 104)
+> **Sidst opdateret:** 23 Jun 2026
+> **Tests:** 1661/1661 passed (Core4: 925, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
 
@@ -149,6 +149,10 @@ Normaliseringsregler:
 | Feat | `IniSidecarWriterOptions.WriteComments` (default `false`), class-level `<remarks>` på `PathHelper` | `IniSidecarWriterOptions.cs`, `IniSidecarWriter.cs`, `PathHelper.cs` |
 | Fix | Session ID kollision på tværs af plans — inkluderer `Destination` i source identity | `BackupSessionKeyFactory.cs:27-30`, `BackupSessionKeyFactoryTests.cs` |
 | Docs | 24 forældede docs slettet. Værdi ekstraheret: ItemIdScope spec, DryRun table, MTP lifecycle, definition of done, context records, hash perf, error taxonomy, doc conflict resolution, architekturregler, design principles | `plan.md`, `AGENTS.md`, `mangler.md` opdateret |
+| Test | TimeStamp candidate tests — 198 tests (7 filer): TimestampSources (14), TimestampFormatStyleParser (8), TimestampFormatDescriptor (18), TimestampFormatter (22), TimestampCandidate (14), TimestampCandidateFactory (34), Parsed (2) | `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/` |
+| Test | TimeStamp parser tests — 284 tests (10 filer) for alle 14 parser-klasser | `BMTP3.Core4.Tests/Engine/TimeStamp/Parsers/` |
+| Fix | 15 failing timestamp tests: IsAllNull (empty/whitespace ≠ null), Normalize (returnerer ny instans med `with`), Full clock offset inkluderer sekunder, Formatter vs candidate.ToString, Factory.FromUtcDateAndTime bug (FullDate når date er null) | Se testfiler |
+| Fix | 2 remaining failing tests: Format_InvalidCandidate → subSeconds uden Time, ToDebugString da-DK kulturformat | `TimestampCandidateTests.cs`, `TimestampFormatterTests.cs` |
 
 ### In Progress
 
@@ -160,6 +164,7 @@ Normaliseringsregler:
 2. **Integration tests**: MTP pipeline, BackupEngine E2E
 3. **Retry/Resilience**: Exponential backoff, MTP resilience
 4. **2B error paths**: DownloadService cancellation/locks, HashService null stream, TempDirectoryHelper concurrent cleanup, BackupScanner null Content
+5. **2A TimeStamp**: Readers (13 files) + `EarliestTimestampResolutionService` — kræver reelle filer med EXIF/XMP metadata
 
 ## Code Quality Audit — Status
 
@@ -211,65 +216,15 @@ Normaliseringsregler:
 
 | Fil | Ændring |
 |---|---|
-| `BMTP3.Consoles/ConsoleCommands/BaseOptionsModel.cs` | **Omskrevet** — `ModelDefinition`+`OptionBinding`, Lazy cache, `DoAddValidators()` i factory, nullable value type support |
-| `BMTP3.Consoles/ConsoleCommands/Core4/BackupOptionsModel4.cs` | Uændret i denne session — C-V18/C-V19 intakt |
-| `BMTP3.Consoles/Progress/BackupProgressDisplay.cs` | `WriteDebugLine` parameter fix + `IAnsiConsole` injection |
-| `BMTP3.Consoles/Progress/ProgressReportMapper.cs` | `internal` |
-| `BMTP3.Core4/Models/FileContent.cs` | `CancellationToken` tjek før `FileStream` |
-| `BMTP3.Consoles/IO/Consoles/ProgressStatus/ProgressStatusTask.cs` | `Value = Value` → `Value = value` |
-| `BMTP3.Consoles/Configs/JsonNamingPolicies.cs` | `KebabCaseToPascalCase` understøtter `_` |
-| `BMTP3.Consoles/Services/ConsolesPrinter4.cs` | **Ny** — Core4-specifik printer (kopi af Core4-metoder fra original) |
-| `BMTP3.Consoles/Services/ConsolesPrinter2.cs` | **Ny** — Core2-specifik printer |
-| `BMTP3.Consoles/Services/ConsolesPrinter3.cs` | **Ny** — Core3-specifik printer |
-| `BMTP3.Consoles/Startup/Configurations/ConsolesServiceSetup.cs` | DI-registrering af `ConsolesPrinter4/2/3` |
-| `BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand4.cs` | Bruger `ConsolesPrinter4` i stedet for `ConsolesPrinter` |
-| `BMTP3.Core4/Api/Models/Enums/ItemIdStrategy.cs` | **Omdøbt til/erstattet af** `ItemIdScope.cs` — enum `ItemIdStrategy` → `ItemIdScope` |
-| `BMTP3.Core4/Api/Models/BackupPlan.cs` | `ItemIdStrategy` → `ItemIdScope` |
-| `BMTP3.Core4/Traversal/SourceTraversalRequest.cs` | `ItemIdStrategy` → `ItemIdScope` |
-| `BMTP3.Core4/Traversal/MediaDeviceTraversal.cs` | Switch `ItemIdStrategy` → `ItemIdScope` |
-| `BMTP3.Core4/Scanner/BackupScanRequest.cs` | `ItemIdStrategy` → `ItemIdScope` |
-| `BMTP3.Core4/Scanner/BackupScanner.cs` | `ItemIdStrategy` → `ItemIdScope` |
-| `BMTP3.Core4/Engine/BackupEngine.cs` | `ItemIdStrategy` → `ItemIdScope` |
-| `BMTP3.Consoles/Configs/BackupPlan4Config.cs` | `ItemIdStrategy` → `ItemIdScope` |
-| `BMTP3.Consoles/ConsoleCommands/Core4/BackupOptionsModel4.cs` | `ItemIdStrategy` → `ItemIdScope`, `--item-id-strategy` → `--item-id-scope` |
-| `BMTP3.Consoles/ConsoleCommands/Core4/BackupPlanBuilder.cs` | `ItemIdStrategy` → `ItemIdScope` i felt, config, CLI og ToPlan |
-| `BMTP3.Consoles/ConsoleCommands/BackupConsoleCommand4InitConfig.cs` | `enable-metadata/enableMetadata` fjernet fra TOML/JSON/JSON5 templates |
-| `BMTP3.Core4/Api/Models/BackupPlan.cs` | `EnableMetadata` property fjernet |
-| `BMTP3.Core4/Engine/Validation/BackupPlanValidator.cs` | `EnableMetadata` gate (Tier 3) + `StopOnError=false` gate (Tier 3) fjernet |
-| `BMTP3.Consoles/Configs/BackupPlan4Config.cs` | `MetadataConfig.EnableMetadata` fjernet |
-| `BMTP3.Consoles.Tests/BackupPlan4ConfigTests.cs` | `EnableMetadata` assertions fjernet (6 stk) |
-| `BMTP3.Consoles.Tests/BackupPlan4BuildPlanTests.cs` | `EnableMetadata` fra templates + assertions fjernet (6 stk) |
-| `BMTP3.Consoles.Tests/Fixtures/config.json` | `enableMetadata` fjernet |
-| `BMTP3.Consoles.Tests/TestData/backup_config_test.json` | `enableMetadata` fjernet |
-| `BMTP3.Consoles.Tests/Fixtures/config.json5` | `enableMetadata` fjernet |
-| `BMTP3.Consoles.Tests/TestData/backup_config_test.json5` | `enableMetadata` fjernet |
-| `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `EnableMetadata = false` fjernet |
-| `BMTP3.Core4/Helpers/Guard.cs` | Uændret (test ændret for .NET 10 kompatibilitet) |
-| `BMTP3.Core4/Helpers/ActionProgress.cs` | **Ny** — `ActionProgress<T>` + `ActionProgressExtensions.ToProgress()` |
-| `BMTP3.Core4/Helpers/PathHelper.cs` | `NormalizeCustomRelativePath` returnerer empty string for slash-only input når `normalizeNull=true` |
-| `BMTP3.Core4/Engine/Strategies/FileFormatValuesFactory.cs` | `NotYetImplemented()` fjernet — `deviceName`/`deviceModel` returnerer sentinel strings |
-| `BMTP3.Core4/Engine/Downloader/DownloadService.cs` | `destStream.Close()` før date-setting (FileShare.None lock fix) |
-| `BMTP3.Core4/Engine/Compare/FileCompareService.cs` | `FileInfo.Exists` check før `BinaryFileComparerSelector.Select` |
-| `BMTP3.Core4/Scanner/BackupScanner.cs` | `Progress<T>` → `TransformProgress<TInner,TOuter>` |
-| `BMTP3.Core4/Engine/TempDirectoryHelper.cs` | `BuildTempFileName` udtrækker extension før truncation |
-| `BMTP3.Core4.Tests/Fakes/SynchronousProgress.cs` | **Ny** — delt `SynchronousProgress<T>` til deterministisk progress i tests |
-| `BMTP3.Core4.Tests/Fakes/FakeFileFormatValuesFactory.cs` | Tilføjet `hashShort`/`hashMedium`/`hashLong` felter |
-| `BMTP3.Core4.Tests/Helpers/GuardTests.cs` | Split test for .NET 10 `ArgumentNullException.ThrowIfNullOrWhiteSpace` |
-| `BMTP3.Core4.Tests/Helpers/PathHelperTests.cs` | `ArgumentException` → `ArgumentNullException` for null input |
-| `BMTP3.Core4.Tests/Engine/DiskSpace/DiskSpaceValidatorTests.cs` | `ArgumentException` → `ArgumentNullException` for null path |
-| `BMTP3.Core4.Tests/Storage/SourceConnectorTests.cs` | `ArgumentOutOfRangeException` → `NotSupportedException` |
-| `BMTP3.Core4.Tests/Engine/Strategies/FileFormatValuesFactoryTests.cs` | `NotImplementedException` → sentinel assertions; millisecond overflow fix |
-| `BMTP3.Core4.Tests/Engine/Downloader/DownloadServiceTests.cs` | `SynchronousProgress<T>`; date assertions efter `Close()` |
-| `BMTP3.Core4.Tests/Engine/Compare/FileCompareServiceTests.cs` | `TaskCanceledException`; `SynchronousProgress<T>` |
-| `BMTP3.Core4.Tests/Engine/Index/JsonBackupIndexWriterTests.cs` | `TaskCanceledException` |
-| `BMTP3.Core4.Tests/Engine/Strategies/TargetPathResolverTests.cs` | Hash formatting via opdateret Fake |
-| `BMTP3.Core4.Tests/Scanner/BackupScannerTests.cs` | `CountingProgress<T>` (deterministisk, ingen race) |
-| `BMTP3.Core4.Tests/Traversal/FileSystemTraversalTests.cs` | `SynchronousProgress<T>` for progress tests |
-| `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `SynchronousProgress<T>` for progress tests |
-| `BMTP3.Core4/Helpers/TransformProgress.cs` | **Ny** — `TransformProgress<TInner,TOuter>` + `ProgressExtensions.Transform()` |
-| `BMTP3.Core4/Engine/BackupEngine.cs` | `Progress<T>` → `ActionProgress<T>` (linje 304, 356) |
-| `BMTP3.Core4.Tests/Engine/Validation/BackupPlanValidatorTests.cs` | **Ny** — 45 tests for BackupPlanValidator |
-| `BMTP3.Core4.Tests/Engine/Compare/BinaryFileComparerSelectorTests.cs` | **Ny** — 10 tests for BinaryFileComparerSelector |
+| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampSourcesTests.cs` | **Ny** — 14 tests |
+| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampFormatStyleParserTests.cs` | **Ny** — 8 tests |
+| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampFormatDescriptorTests.cs` | **Ny** — 18 tests |
+| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampFormatterTests.cs` | **Ny** — 22 tests |
+| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampCandidateTests.cs` | **Ny** — 14 tests |
+| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampCandidateFactoryTests.cs` | **Ny** — 34 tests |
+| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/ParsedTests.cs` | **Ny** — 2 tests |
+| `AGENTS.md` | Opdateret testcount (1661), session context, næste priorities |
+| `mangler.md` | Opdateret testcount (1661), 2A TimeStamp delvist testet, nye session-fixes |
 
 ---
 

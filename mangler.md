@@ -1,7 +1,7 @@
 # Mangler / Issues
 
-> **Seneste opdatering:** 22 Jun 2026
-> **Tests:** 1179/1179 passing (Common: 281, MessageFormatter: 351, Core4: 443, Consoles: 104)
+> **Seneste opdatering:** 23 Jun 2026
+> **Tests:** 1661/1661 passing (Common: 281, MessageFormatter: 351, Core4: 925, Consoles: 104)
 > **Docs cleanup:** 24 forældede docs slettet — værdifuld viden ekstraheret til plan.md, AGENTS.md, mangler.md
 
 ---
@@ -23,6 +23,9 @@
 | 11 | `BackupScanner` progress race — `Progress<T>` wrapper dispatcher async via ThreadPool, `SynchronousProgress<T>` utilstrækkelig | `TaskCompletionSource` i test — `await tcs.Task` efter enumeration venter på async dispatch |
 | 12 | `BackupEngine` error paths — 0 tests (1C) | `BackupEngineErrorPathTests.cs` — 10 tests: Download, TargetPathResolver, SidecarService, HashService, TS resolution failures (StopOnError true/false); mixed success; empty/no-matching drive |
 | 13 | `Progress<T>` i Core4 — dispatcher async via ThreadPool, giver race conditions i tests og uforudsigelig adfærd | `TransformProgress<TInner,TOuter>` (transform) + `ActionProgress<T>` (action) — synkrone erstatninger. `BackupScanner` + `BackupEngine` opdateret. `CountingProgress<T>` i test. |
+| 14 | TimeStamp parsers (14 klasser) — 0 tests | 284 tests i `Parsers/` — alle 14 parser-klasser med edge cases, kebab-case aliases, null/empty, garbage input |
+| 15 | TimeStamp candidates — 0 tests | 198 tests i `Candidates/` — 7 klasser med factory-metoder, formatering, validering, debug output |
+| 16 | TimeStamp parser/candidate tests — 17 failing assertions | IsAllNull (empty != null), Normalize (`with` returnerer ny instans), Full clock offset format (altid sekunder), Formatter vs candidate.ToString semantik, Factory.FromUtcDateAndTime bug (FullDate uden date), ToDebugString da-DK kulturformat |
 
 ---
 
@@ -69,12 +72,18 @@ Eksisterende tests dækker kun happy path + cancellation. Ingen test verificerer
 
 ### Prioritet 2 — Større indsats
 
-#### 2A. TimeStamp subsystem — ~45 filer, 0 tests
+#### 2A. TimeStamp subsystem — ~45 filer, delvist testet
 **Namespace:** `BMTP3.Core4/Engine/TimeStamp/`
 
 Komplet metadata extraction pipeline (Exif, XMP, GPS, IPTC, QuickTime, filesystem timestamps; parsere; candidate resolution; `EarliestTimestampResolutionService`).
 
-**Helt utestet:** alle readers, parsers, candidates, resolution service.
+**Testet (482 tests, alle passer):**
+- **Parsers** (14 klasser) — 284 tests i `BMTP3.Core4.Tests/Engine/TimeStamp/Parsers/`
+- **Candidates** (7 klasser: TimestampSources, TimestampFormatStyleParser, TimestampFormatDescriptor, TimestampFormatter, TimestampCandidate, TimestampCandidateFactory, Parsed) — 198 tests
+
+**Mangler:**
+- **Readers** (13 filer) — kræver reelle filer med EXIF/XMP metadata, ikke testbare med pure logic
+- **`EarliestTimestampResolutionService`** — kræver reelle filer
 
 ---
 
@@ -156,6 +165,6 @@ Ikke en runtime-fejl, men inkonsistent.
 | Prioritet | Antal | Område |
 |---|---|---|---|
 | 🔴 Bør testes nu | 0 | ~~BackupPlanValidator, BinaryFileComparerSelector, Error paths i engine~~ ✅ ALLE FIXET |
-| 🟡 Bør testes (større) | ~60 filer | TimeStamp (~45), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
+| 🟡 Bør testes (større) | ~60 filer | TimeStamp (~18 filer: 13 readers + EarliestTimestampResolutionService), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
 | 🟢 Nice-to-have | ~15 items | MediaDeviceContent, model defaults, edge cases |
 | 🔶 Kosmetisk | 2 | Sidecar separator style, CollisionStreategy filename |
