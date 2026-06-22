@@ -6,6 +6,37 @@
 
 ---
 
+## 🔴 Bugs (latente fejl)
+
+| # | Fil | Linje | Problem |
+|---|---|---|---|
+| **1** | `FileSystemTraversal.cs` | 89-120 | `SafeGetFiles`, `SafeGetDirectories`, `SafeGetDate` — **alle exceptions swallows** (`catch` → return null/tom). Hvis en mappe giver `UnauthorizedAccessException` eller `PathTooLongException`, får brugeren bare færre filer. Intet log, intet fail. **Bryder fail-first princippet.** |
+| **2** | `BackupEngine.cs` | 693-708 | `FilterPendingRecords` switch på `BackupItemStatus` — håndterer **kun** `Succeeded`, `Skipped`, `Pending`. `Active` og `Failed` **falder stille igennem** — items ignoreres uden warning. |
+| **3** | `BinaryFileComparerBase.cs` | 13-14 | Hvis **begge** filer mangler → `return true` (de er ens!). Betyder `CollisionResolutionAction.Skip` — filer der slet ikke findes, behandles som identiske. |
+| **4** | `BackupEngine.cs` | 461 | **Uforsikret cast** til `IMoveableContent` — `(IMoveableContent)record.Item.Content`. Hvis `DownloadService` ikke har kørt (eller fejlede), crasher det med `InvalidCastException`. |
+| **5** | `BackupPlan4Config.cs` | 15 | `Source.Type` property **læses aldrig i production**. Config-feltet `source.type = "MediaDevice"` ignoreres — typen udledes altid fra path prefix. |
+| **6** | `MediaDeviceTraversal.cs` | 224 | `DateTimeKind.Unspecified` fra MTP antages at være **maskinens lokale tidszone**. Hvis kameraet var i UTC+8 og PC'en i UTC-5, forskydes datoer med 13 timer. |
+| **7** | `BackupPlanBuilder.cs` | 38-39 | Default til ALLE 9 hash-algoritmer. Hver fil hashes 9 gange som standard, selv når `CollisionComparisonType = Binary`. **Voldsom performance-omkostning** for store backups. |
+| **8** | `BackupPlan.cs` vs `BackupPlanBuilder.cs` | flere | **Default mismatch** — `EnableTimestampCorrection` (model=false, builder=true) og `StopOnError` (model=false, builder=true). Hvis nogen bruger `BackupPlan` direkte (uden builder), får de modsatte defaults. |
+| **9** | `BackupEngine.cs` | 348-351 | Timestamp resolution fejl **altid fatal** — `throw InvalidOperationException` selv når `EnableTimestampCorrection = false`. En fil uden metadata-datoer (ingen EXIF, korrupt) stopper hele backup'en. |
+
+---
+
+## ⚠️ Mistænkelige (værd at kigge på)
+
+| # | Fil | Linje | Problem |
+|---|---|---|---|
+| **10** | `DownloadService.cs` | 27-30 | `.LocalDateTime` på UTC-datoer — korrekt rountrip, men wall clock i Windows Explorer viser PC-tidszone, ikke kildens tidszone. |
+| **11** | `EarliestTimestampResolutionService.cs` | 112-147 | `PickBetter` — 1 dags tolerance. Hvis EXIF siger 23 Jun, FS siger 22 Jun, vinder EXIF (den mest præcise). Men hvis EXIF-datoen er forkert, overrider den en korrekt FS-dato. |
+| **12** | `TimestampCandidateFactory.cs` | 92, 224, 596 | `dto.DateTime` (lokal dato) bruges i stedet for `dto.UtcDateTime`. 1-dags tolerancen absorberer normalt forskellen, men det er skrøbeligt. |
+| **13** | `MediaDeviceContent.cs` | 33-43 | Resource leak — hvis `GatekeptStream` constructor fejler, lækkes `rawStream`. |
+| **14** | `SidecarSection.cs` | 23 | Case-sensitive key match (`Ordinal`) — virker nu, men hvis nogen senere tilføjer key med anden casing, duplikeres entries. |
+| **15** | `BackupEngine.cs` | 442, 548 | Asymmetrisk throttling — skipped filer får 1x throttle kald, normale filer 3x. |
+| **16** | `SessionStateService.cs` | 140-143 | Gemmer **korrigerede** datoer i session summary. Resume med `EnableTimestampCorrection=false` får de korrigerede datoer tilbage, ikke originalerne. |
+| **17** | `BackupSummaryItem.cs` | 11 | `LastModified` i stedet for `DateModified` — bryder `DateXxx` konventionen. |
+
+---
+
 ## ✅ Fikset i denne session
 
 | # | Problem | Fix |

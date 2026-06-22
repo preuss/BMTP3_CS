@@ -164,6 +164,7 @@ Normaliseringsregler:
 
 ### Næste — prioriteret
 
+0. **🔴 Latente bugs** — 9 bugs + 8 mistænkelige fund. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige`
 1. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
 2. **Integration tests**: MTP pipeline, BackupEngine E2E
 3. **Retry/Resilience**: Exponential backoff, MTP resilience

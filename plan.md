@@ -184,7 +184,18 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 
 ## Næste opgaver (prioriteret)
 
-### 🔴 P0 — Field mapping gaps (audit 23 Jun 2026)
+### 🔴 P0 — Latente bugs (audit 23 Jun 2026)
+
+**9 bugs + 8 mistænkelige fund** opdaget under systematisk kodegennemgang. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige` for detaljer.
+
+Højeste prioritet:
+- **#1** `FileSystemTraversal.SafeGetFiles/SafeGetDirectories` swallows alle exceptions — bryder fail-first
+- **#4** `BackupEngine.cs:461` uforsikret cast til `IMoveableContent` — `InvalidCastException` ved fejl
+- **#9** Timestamp resolution fejl altid fatal, selv når `EnableTimestampCorrection=false` — stopper hele backup'en
+
+---
+
+### 🔴 P1 — Field mapping gaps (audit 23 Jun 2026)
 
 **Problem:** Systematisk gennemgang af alle field mappings afslørede 3 huller. Disse tages af brugeren direkte.
 
