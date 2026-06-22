@@ -3,6 +3,7 @@
 > **Sidst opdateret:** 22 Jun 2026
 > **Tests:** 1179/1179 passed (Core4: 443, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
+> **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
 
 ---
 
@@ -24,6 +25,19 @@
 - **Sequential progress contract** — `IBackupEngine.RunAsync` XML-doc kræver serial progress (display er ikke thread-safe)
 - `Progress<T>` bruges KUN i Consoles (UI-lag) — Core4 bruger `TransformProgress<TInner,TOuter>` og `ActionProgress<T>`
 
+### Folder Layering (Api → Models → Engine → Scanner → Helpers)
+
+```
+Api/         → Public interfaces (IBackupEngine, IFileSystemPathResolver)
+Models/      → Domain records (BackupPlan, BackupItem, BackupResult)
+Engine/      → Orchestration (BackupEngine, Sidecar, Download, Compare, Session)
+Scanner/     → Scanning (BackupScanner)
+Helpers/     → Utilities (PathHelper, Guard, TransformProgress)
+```
+
+- `BackupItem` er en **class** (ikke record) — properties populeres inkrementelt gennem pipelinen (nogle af Scanner, andre af Engine). En record ville kræve builder pattern.
+- `CollisionStreategy.cs` — stavefejl i filnavn. **Do not fix.** Eksisterer i både docs og kode; rename ville give kaskaderende ændringer.
+
 ### BaseOptionsModel (omskrevet 16 Jun 2026)
 
 - Ingen delegates der fanger `this` i cache
@@ -36,6 +50,50 @@
 - `_getValueOpenMethod` cached som static
 - `TryGetOptionValueType`, `FormatTypeName`, `FormatValue` som rene helpers
 - `ValidateNoDuplicateOptionInstances` + `ValidateNoDuplicateNamesOrAliases`
+
+---
+
+## Arkitekturregler (må aldrig brydes)
+
+1. **BackupItem.Content må aldrig være null under traversal** — Scanner sætter altid Content.
+2. **Session state skal persisteres atomisk** — `SessionStateService.SaveAsync` i `finally` block.
+3. **Progress må aldrig dispatche async** — brug `TransformProgress<TInner,TOuter>` og `ActionProgress<T>`, aldrig `Progress<T>` i Core4.
+
+## Error Taxonomy
+
+| Type | Eksempel | Håndtering |
+|------|----------|-----------|
+| **Transient** | IOException (disk full), COMException (MTP disconnect) | Retry med backoff |
+| **Persistent** | FileNotFoundException, UnauthorizedAccessException | Fail item, log, stop hvis `StopOnError` |
+| **Fatal** | OutOfMemoryException, engine invariant broken | Kast straks, stop engine |
+| **Optional** | Sidecar write fejl, index update fejl | Log warning, fortsæt |
+
+## Doc Conflict Resolution
+
+Hierarki (fra `CORE4_IMPLEMENTATION_GUIDE_DA.md`):
+1. **Koden vinder** — hvis kode og doc siger forskelligt, gælder koden
+2. **plan.md** — aktiv plan, næste opgaver, beslutninger
+3. **mangler.md** — issues, test huller, kosmetiske fund
+4. **AGENTS.md** — session context, arkitektur, regler
+5. **Slettede docs** — historisk reference i git history
+
+Normaliseringsregler:
+- Hvis spec og guide siger forskelligt → spec vinder
+- Hvis engelsk og dansk doc siger forskelligt → dansk vinder (primært sprog)
+- Hvis gammel og ny doc siger forskelligt → ny vinder
+- Hvis abstrakt og konkret siger forskelligt → konkret vinder (kode tæller som konkret)
+- Hvis kode og doc siger forskelligt → koden vinder altid
+
+## Core4 Design Principles
+
+| Princip | Anvendelse |
+|---------|-----------|
+| **Fail-first** | Traversal/engine kaster exception — aldrig `yield break`, `return`, `continue` |
+| **KISS** | Sequential pipeline, ingen kanaler/state machines. `BackupPlan4Config.cs` DTO beholdes (manuel mapping er eksplicit) |
+| **YAGNI** | `MaxDegreeOfParallelism` postponed, custom output pattern postponed, `EnableMetadata` fjernet |
+| **DRY** | `TransformProgress<T>` genbruges til scanning + download. `ParseEnum<T>` central |
+| **Progress determinisme** | `Progress<T>` forbudt i Core4. Kun synkrone wrappers |
+| **Forensic evidence** | Temp-filer ved fejl bevares (slettes ikke blindt) |
 
 ---
 
@@ -90,6 +148,7 @@
 | Doc | `NormalizePath` XML-doc advarsel: "pure separator normalizer — validerer ikke `:`, `..`, tomme stier" | `PathHelper.cs` |
 | Feat | `IniSidecarWriterOptions.WriteComments` (default `false`), class-level `<remarks>` på `PathHelper` | `IniSidecarWriterOptions.cs`, `IniSidecarWriter.cs`, `PathHelper.cs` |
 | Fix | Session ID kollision på tværs af plans — inkluderer `Destination` i source identity | `BackupSessionKeyFactory.cs:27-30`, `BackupSessionKeyFactoryTests.cs` |
+| Docs | 24 forældede docs slettet. Værdi ekstraheret: ItemIdScope spec, DryRun table, MTP lifecycle, definition of done, context records, hash perf, error taxonomy, doc conflict resolution, architekturregler, design principles | `plan.md`, `AGENTS.md`, `mangler.md` opdateret |
 
 ### In Progress
 

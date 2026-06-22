@@ -2,6 +2,7 @@
 
 > **Seneste opdatering:** 22 Jun 2026
 > **Tests:** 1179/1179 passing (Common: 281, MessageFormatter: 351, Core4: 443, Consoles: 104)
+> **Docs cleanup:** 24 forældede docs slettet — værdifuld viden ekstraheret til plan.md, AGENTS.md, mangler.md
 
 ---
 
@@ -128,6 +129,13 @@ Alle engine tests bruger fakes. Ingen test kører en ægte pipeline:
 
 ## 🔶 Kosmetisk — kan fixes når tid
 
+#### CollisionStreategy.cs — stavefejl i filnavn
+**Fil:** `BMTP3.Core4/Engine/Strategies/CollisionStreategy.cs`
+
+Stavefejl (`Streategy` → `Strategy`). **Do not fix** — eksisterer i både docs og kode; rename ville give kaskaderende ændringer i git blame og references.
+
+---
+
 #### Sidecar TargetRelativeFilePath — blander separator-stil
 **Fil:** `BMTP3.Core4/Engine/BackupEngine.cs:483`
 
@@ -150,4 +158,4 @@ Ikke en runtime-fejl, men inkonsistent.
 | 🔴 Bør testes nu | 0 | ~~BackupPlanValidator, BinaryFileComparerSelector, Error paths i engine~~ ✅ ALLE FIXET |
 | 🟡 Bør testes (større) | ~60 filer | TimeStamp (~45), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
 | 🟢 Nice-to-have | ~15 items | MediaDeviceContent, model defaults, edge cases |
-| 🔶 Kosmetisk | 1 | Sidecar separator style |
+| 🔶 Kosmetisk | 2 | Sidecar separator style, CollisionStreategy filename |

@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 15 Jun 2026** — C-V10..C-V25 + C-V21 + C-V26 + BackupConsoleCommand4 + BackupProgressDisplay refactored. 243 tests pass.
+> **Opdateret 22 Jun 2026** — 1179 tests pass. Docs cleanup: værdifuld viden ekstraheret fra slettede docs og merget ind her.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -362,7 +362,96 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 | K-V67 | `RenameCollisionResolver.cs:51` | Double blank line |
 | K-V68 | `ServiceCollectionExtensions.cs:136-139` | `AddIfNotNull` helper med én caller
 
+## ItemIdScope Specification (fra MTP_PTP_ID_STRATEGIES.md)
+
+**Tre scopes (enum `ItemIdScope`):**
+- `Session` (default) — `SHA256(SessionId + SourceRelativeFilePath)`. Resumable inden for samme session, nye IDs ved ny session.
+- `Connection` — `SHA256(DeviceId + SourceRelativeFilePath)`. Stabil per device connection, ændres ved genforbindelse.
+- `Persistent` — `SHA256(DeviceUniqueId + SourceRelativeFilePath)`. Stabil på tværs af disconnects.
+
+**GenerateDeviceUniqueId():** `SHA256(DeviceFriendlyName + Manufacturer + Model + SerialNumber)` → truncated to 8 chars hex.
+
+**Device PUID behavior:** Apple-enheder returnerer unik serial per connection; Android kan returnere null. Ved null PUID → fallback til ConnectionId adfærd.
+
+---
+
+## DryRun Behavior Table (fra CORE4_PLAN_en.md)
+
+| Komponent | DryRun kører? | Notes |
+|-----------|--------------|-------|
+| Traversal | ✅ Ja | Finder filer/items |
+| Scanning | ✅ Ja | Opretter BackupItems |
+| Hashing | ✅ Ja | Beregner hashes |
+| Collision detection | ✅ Ja | Resolver kører fuldt |
+| Disk space check | ✅ Ja | Validerer plads |
+| **File transfer** | ❌ **Skip** | Ingen download/move |
+| **Sidecar write** | ❌ **Skip** | Ingen sidecar filer |
+| **Timestamp correction** | ❌ **Skip** | Ingen filændring |
+| **Index write** | ❌ **Skip** | Ingen katalog |
+
+---
+
+## MTP Session Lifecycle (fra CORE4_PLAN_en.md)
+
+```
+Connect → OpenSession → Enumerate → Transfer → CloseSession → Disconnect
+```
+
+Hvert trin kan fejle med COMException (transient) → retry med backoff. Ved disconnect → genforbind + resume.
+
+---
+
+## Parallelism Strategy (fremtidig — fra CORE4_PLAN_en.md)
+
+- `MaxWorkers = Environment.ProcessorCount`
+- `QueueDepthLimit = MaxWorkers * 3`
+- Dedicated scheduler for MTP operations (Avoid thread pool starvation)
+- Collision resolution prioritet: Timestamp match → Binary comparison config check → Whole-file hash → Whole-file binary → (hvis stadig ens) skip
+
+---
+
+## Definition of Done (11-punkts checklist — fra CORE4_MASTER_SYNTHESIS.md)
+
+1. ✅ Traversal (filesystem + MTP) komplet med glob patterns
+2. ❌ Transfer (download + move) implementeret
+3. ❌ Sidecar (INI + JSON) skrevet for alle items
+4. ❌ Timestamp preservation (læs + sæt) korrekt
+5. ❌ Index (JSON catalog) skrevet
+6. ❌ Summary store opdateret
+7. ❌ Session state persisteret og genindlæselig
+8. ❌ Error paths testet (transient, persistent, fatal)
+9. ❌ Cancellation (Ctrl+C) ren afbrydelse
+10. ❌ Resume cross-connection (MTP ContentHash fallback)
+11. ❌ Integration test med ægte I/O
+
+---
+
+## Context Records Design (future — fra CORE4_SKELETON_TODO.md)
+
+Fremtidig ekstraktion af `BackupEngine.RunAsync` kan bruge context records til at sende state gennem pipelinen:
+- `ScanContext` — traversal resultater, scanner options
+- `TransferContext` — download state, temp files, destination
+- `OptionalFeatureContext` — sidecar, index, metadata config
+- `SidecarContext` — document builders, format options
+
+`DryRunFileTransfer` — no-op implementation til dry-run mode (registreret via DI).
+
+`BackupError` record: `BackupError(BackupItemId ItemId, BackupErrorStage Stage, string Message, Exception? Exception)`.
+
+---
+
+## Hash Performance (fra CORE4_ARCHITECTURE_en.md)
+
+| Algoritme | Relativ hastighed | Notes |
+|-----------|------------------|-------|
+| BLAKE3 | ~15x SHA2-256 | Hurtigst, ikke standardiseret |
+| SHA2-256 | 1x (baseline) | Standard, langsom på store filer |
+| SHA3-256 | ~0.5x SHA2 | Langsommere, nyere standard |
+
+BLAKE3 er **ikke implementeret** i Core4 — kun SHA2/SHA3 familier. Notér til fremtidig optimering.
+
+---
+
 ## Ref
 
-- `Backup_Pipeline_Comparison_003.md` — comprehensive gap analysis (supersedes 001 and 002)
 - `mangler.md` — issues and remaining work
