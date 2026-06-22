@@ -65,6 +65,7 @@ internal sealed class SessionStateService : ISessionStateService
 				record.DestinationPath = match.DestinationPath;
 				record.Status = ToBackupItemStatus(match.Status);
 				record.StatusChangedAt = match.CompletedAt;
+				// Note: We intentionally do not restore anything else, because source is still Canonical.
 			}
 		}
 

@@ -115,7 +115,7 @@ Normaliseringsregler:
 
 ## Session State
 
-### Done (seneste session — 22 Jun 2026)
+### Done (seneste session — 23 Jun 2026)
 
 | ID | Hvad | Fil(er) |
 |---|---|---|
@@ -153,6 +153,10 @@ Normaliseringsregler:
 | Test | TimeStamp parser tests — 284 tests (10 filer) for alle 14 parser-klasser | `BMTP3.Core4.Tests/Engine/TimeStamp/Parsers/` |
 | Fix | 15 failing timestamp tests: IsAllNull (empty/whitespace ≠ null), Normalize (returnerer ny instans med `with`), Full clock offset inkluderer sekunder, Formatter vs candidate.ToString, Factory.FromUtcDateAndTime bug (FullDate når date er null) | Se testfiler |
 | Fix | 2 remaining failing tests: Format_InvalidCandidate → subSeconds uden Time, ToDebugString da-DK kulturformat | `TimestampCandidateTests.cs`, `TimestampFormatterTests.cs` |
+| Test | DownloadService error paths — Content OpenReadAsync kaster, pre-cancelled token | `DownloadServiceTests.cs` (2 tests) |
+| Test | HashService error path — null stream fra content wrappes i BackupHashException | `HashServiceTests.cs` (1 test) |
+| Audit | **Field mapping audit** — systematisk gennemgang af alle property mappings i Core4/Consoles. Fund: Resume mister ikke datoer (scan-før-resume er korrekt), session state gemmer ikke hashes (designvalg), `EnableTimestampCorrection` mangler på CLI | Se `plan.md § P0` |
+| Feat | `--enable-timestamp-correction` CLI option tilføjet — Option<bool> + WasSupplied check | `BackupOptionsModel4.cs`, `BackupPlanBuilder.cs` |
 
 ### In Progress
 
@@ -163,7 +167,7 @@ Normaliseringsregler:
 1. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
 2. **Integration tests**: MTP pipeline, BackupEngine E2E
 3. **Retry/Resilience**: Exponential backoff, MTP resilience
-4. **2B error paths**: DownloadService cancellation/locks, HashService null stream, TempDirectoryHelper concurrent cleanup, BackupScanner null Content
+4. **2B error paths**: DownloadService cancellation/locks, HashService null stream — ✅ **FIXET**. Resterer: destination locked (kræver I/O), store filer (I/O), TempDirectoryHelper (I/O), SessionStateService (I/O)
 5. **2A TimeStamp**: Readers (13 files) + `EarliestTimestampResolutionService` — kræver reelle filer med EXIF/XMP metadata
 
 ## Code Quality Audit — Status
@@ -223,8 +227,13 @@ Normaliseringsregler:
 | `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampCandidateTests.cs` | **Ny** — 14 tests |
 | `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampCandidateFactoryTests.cs` | **Ny** — 34 tests |
 | `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/ParsedTests.cs` | **Ny** — 2 tests |
+| `BMTP3.Core4.Tests/Engine/Downloader/DownloadServiceTests.cs` | Udvidet — 2 error path tests (Content kaster, pre-cancelled) |
+| `BMTP3.Core4.Tests/Engine/Hashing/HashServiceTests.cs` | Udvidet — 1 error path test (null stream) |
+| `BMTP3.Consoles/ConsoleCommands/Core4/BackupOptionsModel4.cs` | Udvidet — `EnableTimestampCorrectionOption` (+ TIMESTAMP sektion) |
+| `BMTP3.Consoles/ConsoleCommands/Core4/BackupPlanBuilder.cs` | Udvidet — `WasSupplied(EnableTimestampCorrectionOption)` i ApplyCliOverrides |
+| `plan.md` | Opdateret — P0 field mapping gaps, testcount 1661 |
+| `mangler.md` | Opdateret — 2B error paths status, mapping audit, testcount 1661 |
 | `AGENTS.md` | Opdateret testcount (1661), session context, næste priorities |
-| `mangler.md` | Opdateret testcount (1661), 2A TimeStamp delvist testet, nye session-fixes |
 
 ---
 

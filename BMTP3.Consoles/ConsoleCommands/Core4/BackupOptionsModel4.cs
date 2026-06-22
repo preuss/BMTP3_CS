@@ -206,6 +206,18 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	public ItemIdScope ItemIdScope { get; set; } = ItemIdScope.Connection;
 
 	// --------------------------------------------------
+	// TIMESTAMP
+	// --------------------------------------------------
+
+	public static Option<bool> EnableTimestampCorrectionOption { get; } = new("--enable-timestamp-correction")
+	{
+		Description = "Enable correction of file timestamps from metadata (EXIF, XMP, etc.). Set to false to use filesystem timestamps only.",
+		DefaultValueFactory = _ => true
+	};
+
+	public bool EnableTimestampCorrection { get; set; } = true;
+
+	// --------------------------------------------------
 	// VERIFICATION
 	// --------------------------------------------------
 

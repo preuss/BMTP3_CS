@@ -30,7 +30,7 @@ internal sealed class JsonBackupIndexWriter : IBackupIndexWriter
 		CancellationToken cancellationToken
 	)
 	{
-		string catalogDir = Path.Combine(destinationDirectory, ".bmpt", sessionId);
+		string catalogDir = Path.Combine(destinationDirectory, ".bmtp3", sessionId);
 		Directory.CreateDirectory(catalogDir);
 
 		BackupIndexCatalog catalog = BuildCatalog(records, sessionId, plan, result);
@@ -50,14 +50,15 @@ internal sealed class JsonBackupIndexWriter : IBackupIndexWriter
 		IReadOnlyList<BackupRecord> records,
 		string sessionId,
 		BackupPlan plan,
-		BackupResult result)
+		BackupResult result
+	)
 	{
 		long totalBytes = records.Sum(r => (long)r.Item.Content.Length);
 		int completedFiles = records.Count(r => r.Status == BackupItemStatus.Succeeded);
 
 		List<BackupIndexFileEntry> files = new(records.Count);
 
-		foreach(BackupRecord record in records)
+		foreach (BackupRecord record in records)
 		{
 			BackupIndexFileEntry entry = new()
 			{
@@ -92,12 +93,12 @@ internal sealed class JsonBackupIndexWriter : IBackupIndexWriter
 
 	private static Dictionary<string, string>? MapHashes(Dictionary<HashType, string>? computedHashes)
 	{
-		if(computedHashes == null || computedHashes.Count == 0)
+		if (computedHashes == null || computedHashes.Count == 0)
 			return null;
 
 		Dictionary<string, string> result = new(computedHashes.Count);
 
-		foreach(KeyValuePair<HashType, string> kvp in computedHashes)
+		foreach (KeyValuePair<HashType, string> kvp in computedHashes)
 		{
 			result[kvp.Key.ToString()] = kvp.Value;
 		}
@@ -105,11 +106,8 @@ internal sealed class JsonBackupIndexWriter : IBackupIndexWriter
 		return result;
 	}
 
-	private static BackupIndexTimestamps? MapTimestamps(ItemMetadata metadata)
+	private static BackupIndexTimestamps MapTimestamps(ItemMetadata metadata)
 	{
-		if(metadata == null)
-			return null;
-
 		return new BackupIndexTimestamps
 		{
 			MediaTaken = metadata.MediaTakenDateTime,

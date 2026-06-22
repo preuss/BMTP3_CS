@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 22 Jun 2026** — 1179 tests pass. Docs cleanup: værdifuld viden ekstraheret fra slettede docs og merget ind her.
+> **Opdateret 23 Jun 2026** — 1661 tests pass. Docs cleanup: værdifuld viden ekstraheret fra slettede docs og merget ind her.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -183,6 +183,18 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 - [x] — **Progress display rewrite:** `BackupProgressDisplay.cs` omskrevet — event-driven, direkte Spectre task updates, ingen polling/lock/gate. `BackupConsoleCommand4.cs` skaber `Progress<T>` før `StartAsync` (null SyncContext). `BackupScanner` bridger `SourceTraversalProgress` (var `null`). `ProgressReport` har `DirectoriesTraversed` + `FilesDiscovered`. Traversal tæller directories.
 
 ## Næste opgaver (prioriteret)
+
+### 🔴 P0 — Field mapping gaps (audit 23 Jun 2026)
+
+**Problem:** Systematisk gennemgang af alle field mappings afslørede 3 huller. Disse tages af brugeren direkte.
+
+| # | Hvor | Hvad mangler | Alvor |
+|---|---|---|---|
+| **1** | `SessionStateService.cs:63-67` (`ApplyResumeAsync`) | **Resume mister datoer.** `BackupSummaryItem.DateCreated`, `LastModified`, `DateAuthored`, `DateAccessed` skrives **aldrig tilbage** til `BackupItem`. Kun `DestinationPath`, `Status`, `CompletedAt` genskabes. | 🟡 **Fragilt** — virker kun fordi scanning (trin 5) kører før resume (trin 5b), så BackupItem har allerede datoer fra scanning. Hvis flow ændres, tabes datoer lydløst. |
+| **2** | `BackupSummaryItem` (record) | **Session state gemmer ikke hashes/metadata.** `ComputedHashes`, `MediaTakenDateTime`, `AuthoredDateTime`, `CreatedDateTime`, `ModifiedDateTime`, `AccessedDateTime` fra `ItemMetadata` persisteres ikke i summary. Ved resume genberegnes hashes og metadata re-resolves. | 🟢 **Designvalg** (pladshensyn), men værd at vide |
+| **3** | `BackupOptionsModel4.cs` | **`EnableTimestampCorrection` ikke på CLI.** Ingen `--enable-timestamp-correction` option. Kan kun slås til/fra via config-fil. | 🟢 **Feature gap** |
+
+Se `mangler.md § 🔴 Test coverage huller i Core4 → 2B → opdateret 23 Jun 2026` for fuld audit rapport.
 
 ### 0. 🧹 Smelly Code Cleanup — Consoles reimplementerer Core4 (DRY)
 

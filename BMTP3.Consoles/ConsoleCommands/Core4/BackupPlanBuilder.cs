@@ -203,6 +203,9 @@ internal sealed class BackupPlanBuilder
 		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.ItemIdScopeOption))
 			ItemIdScope = backupOptions.ItemIdScope;
 
+		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.EnableTimestampCorrectionOption))
+			EnableTimestampCorrection = backupOptions.EnableTimestampCorrection;
+
 		if(SourceType == BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(SourcePath))
 			SourcePath = _pathResolver.ResolveExistingPathDisplayCasing(SourcePath);
 

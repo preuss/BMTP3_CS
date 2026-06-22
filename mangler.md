@@ -100,6 +100,16 @@ Komplet metadata extraction pipeline (Exif, XMP, GPS, IPTC, QuickTime, filesyste
 | `TempDirectoryHelper` | Concurrent cleanup, locked files, nested `.tmp` |
 | `BackupScanner` | Items med null Content (guarded af BackupItem ctor), null dates (virker), ekstreme paths (virker) — intet at teste |
 
+**Mapping audit 23 Jun 2026 — field gaps opdaget under 2B error path gennemgang:**
+
+| # | Hvor | Hvad mangler | Alvor |
+|---|---|---|---|
+| **F1** | `SessionStateService.cs:63-67` | **Resume mister datoer** — `DateCreated`, `LastModified`, `DateAuthored`, `DateAccessed` skrives ikke tilbage til `BackupItem` | 🟡 Fragilt (afhænger af scan-før-resume flow) |
+| **F2** | `BackupSummaryItem` record | **Hashes/metadata persisteres ikke** — `ComputedHashes`, `MediaTakenDateTime`, 4 metadata-datoer mangler | 🟢 Designvalg |
+| **F3** | `BackupOptionsModel4.cs` | **`EnableTimestampCorrection` ikke på CLI** — kun via config | 🟢 Feature gap |
+
+Se `plan.md § 🔴 P0 — Field mapping gaps` for detaljer.
+
 ---
 
 #### 2C. Integration tests — 0 tests med rigtig I/O
