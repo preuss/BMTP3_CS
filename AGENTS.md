@@ -1,6 +1,6 @@
 # BMTP3 — Agent Session Context
 
-> **Sidst opdateret:** 21 Jun 2026
+> **Sidst opdateret:** 22 Jun 2026
 > **Tests:** 1179/1179 passed (Core4: 443, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 
@@ -9,6 +9,7 @@
 ## Arkitektur (Core4 + Consoles)
 
 - **Core4** (`BMTP3.Core4/`): Backup engine — traversal, download, hash, collision, sidecar, metadata. 0 warnings. **Dette er den kritiske kode.**
+- **Synchronous progress** (Core4): `TransformProgress<TInner,TOuter>` (transform), `ActionProgress<T>` (action/side-effect) — erstatning for `Progress<T>` som aldrig dispatcher via ThreadPool.
 - **Consoles** (`BMTP3.Consoles/`): CLI commands, progress display, config loading, DI setup. 4 warnings (CS8604 i Core2-archived kode, alle ignoreret). **Ikke kritisk — "if it ain't broke don't fix it".**
 - **Core/Core2/Core3**: Archived/readonly — må ikke redigeres. Dette gælder ALLE filer i Core2/Core3-flowet, uanset hvilket projekt de ligger i. Det inkluderer `BackupConsoleCommand2.cs`, `BackupConsoleCommand3.cs`, `ConsolesPrinter` (Core2/Core3-metoder), og alle filer i `BMTP3.Core2/`, `BMTP3.Core3/`, `BMTP3.Core/`.
 - **Consoles** (`BMTP3.Consoles/`): Core4-specifikke CLI commands, progress display, config loading, DI setup.
@@ -17,11 +18,11 @@
 ### Progress Display Design
 
 - `BackupProgressDisplay` med `RunAsync<TResult>(string, Func<IProgress<BackupProgress>, Task<TResult>>)`
-- `Progress<T>` oprettes før `StartAsync` (null SyncContext → ThreadPool dispatch)
+- `BackupProgressDisplay` med `RunAsync<TResult>(string, Func<IProgress<BackupProgress>, Task<TResult>>)`
 - Interne: `BackupProgressRenderer`, `ProgressReport` (`internal sealed record`), `ProgressReportMapper`
 - `WriteDebugLine(ProgressReport, IAnsiConsole)` — caller tjekker `_debug` før kald
 - **Sequential progress contract** — `IBackupEngine.RunAsync` XML-doc kræver serial progress (display er ikke thread-safe)
-- `ActionProgress<T>` slettet — bruger `Progress<T>` (standard .NET)
+- `Progress<T>` bruges KUN i Consoles (UI-lag) — Core4 bruger `TransformProgress<TInner,TOuter>` og `ActionProgress<T>`
 
 ### BaseOptionsModel (omskrevet 16 Jun 2026)
 
@@ -44,7 +45,7 @@
 |---|---|
 | `DoAddValidators()` — beholdt med placeholder-kommentar | ✅ RETAINED |
 | `ConfigOptionResult` — beholdt med future-kommentar | ✅ RETAINED |
-| `ActionProgress<T>` slettet til fordel for `Progress<T>` | ✅ DONE |
+| `Progress<T>` fjernet fra Core4 — `TransformProgress<TInner,TOuter>`/`ActionProgress<T>` i stedet | ✅ DONE |
 | Parameterorden: vigtige params først, infrastructure (`IAnsiConsole`) før config (`bool debug`) | ✅ Regel |
 | Fail-first i CLI — returner error code + message, kast aldrig i command handler | ✅ Regel |
 | Fail-first i traversal/engine — kast exception ved fejl (aldrig `yield break`, `return`, `continue`) | ✅ Regel |
@@ -56,14 +57,20 @@
 
 ## Session State
 
-### Done (seneste session — 21 Jun 2026)
+### Done (seneste session — 22 Jun 2026)
 
 | ID | Hvad | Fil(er) |
 |---|---|---|
 | Test | `BackupPlanValidatorTests` — 45 tests: null/empty paths, invalid enums, hash+algorithms, backslash patterns, feature gate, happy paths | `BackupPlanValidatorTests.cs` |
 | Test | `BinaryFileComparerSelectorTests` — 10 tests: constructor null guards, Select guards, small files → WholeFile, large files → chunked | `BinaryFileComparerSelectorTests.cs` |
 | Test | `BackupEngineErrorPathTests` — 10 tests: Download, TargetPathResolver, Sidecar, HashService, TS resolution failures (StopOnError true/false); mixed success; empty/no-matching drive | `BackupEngineErrorPathTests.cs` |
-| Fix | `BackupScanner` progress test race — `Progress<T>` dispatcher async via ThreadPool; `SynchronousProgress<T>` utilstrækkelig | `BackupScannerTests.cs` — `TaskCompletionSource` + `await tcs.Task` |
+| Feat | `TransformProgress<TInner,TOuter>` — synkron IProgress&lt;T&gt; transform wrapper | `Helpers/TransformProgress.cs` |
+| Feat | `ActionProgress<T>` — synkron IProgress&lt;T&gt; action wrapper | `Helpers/ActionProgress.cs` |
+| Feat | `ProgressExtensions.Transform()` — extension method for TransformProgress | `Helpers/TransformProgress.cs` |
+| Feat | `ActionProgressExtensions.ToProgress()` — extension method for ActionProgress | `Helpers/ActionProgress.cs` |
+| Fix | `BackupScanner.cs` — `new Progress<T>(...)` → `TransformProgress<TInner,TOuter>` | `BackupScanner.cs` |
+| Fix | `BackupEngine.cs:304,356` — `new Progress<ulong>(...)` → `ActionProgress<ulong>` | `BackupEngine.cs` |
+| Fix | `BackupScannerTests` — `CountingProgress<T>` (deterministisk, ingen race) | `BackupScannerTests.cs` |
 | C-V26 | `WriteDebugLine` fixed: `(ProgressReport, IAnsiConsole)`, caller tjekker `_debug` | `BackupProgressDisplay.cs` |
 | C-V30/V31 | `BaseOptionsModel.cs` omskrevet: `ModelDefinition`+`OptionBinding`, Lazy cache, ingen `this`-capture | `BaseOptionsModel.cs` |
 | K-V47 | `FileContent.OpenReadAsync`: `CancellationToken` tjekket før `FileStream` | `FileContent.cs` |
@@ -180,11 +187,12 @@
 | `BMTP3.Consoles.Tests/TestData/backup_config_test.json5` | `enableMetadata` fjernet |
 | `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `EnableMetadata = false` fjernet |
 | `BMTP3.Core4/Helpers/Guard.cs` | Uændret (test ændret for .NET 10 kompatibilitet) |
+| `BMTP3.Core4/Helpers/ActionProgress.cs` | **Ny** — `ActionProgress<T>` + `ActionProgressExtensions.ToProgress()` |
 | `BMTP3.Core4/Helpers/PathHelper.cs` | `NormalizeCustomRelativePath` returnerer empty string for slash-only input når `normalizeNull=true` |
 | `BMTP3.Core4/Engine/Strategies/FileFormatValuesFactory.cs` | `NotYetImplemented()` fjernet — `deviceName`/`deviceModel` returnerer sentinel strings |
 | `BMTP3.Core4/Engine/Downloader/DownloadService.cs` | `destStream.Close()` før date-setting (FileShare.None lock fix) |
 | `BMTP3.Core4/Engine/Compare/FileCompareService.cs` | `FileInfo.Exists` check før `BinaryFileComparerSelector.Select` |
-| `BMTP3.Core4/Scanner/BackupScanner.cs` | Brug `DelegateProgress<T>` (synkront) i stedet for `Progress<T>` som wrapper |
+| `BMTP3.Core4/Scanner/BackupScanner.cs` | `Progress<T>` → `TransformProgress<TInner,TOuter>` |
 | `BMTP3.Core4/Engine/TempDirectoryHelper.cs` | `BuildTempFileName` udtrækker extension før truncation |
 | `BMTP3.Core4.Tests/Fakes/SynchronousProgress.cs` | **Ny** — delt `SynchronousProgress<T>` til deterministisk progress i tests |
 | `BMTP3.Core4.Tests/Fakes/FakeFileFormatValuesFactory.cs` | Tilføjet `hashShort`/`hashMedium`/`hashLong` felter |
@@ -197,11 +205,11 @@
 | `BMTP3.Core4.Tests/Engine/Compare/FileCompareServiceTests.cs` | `TaskCanceledException`; `SynchronousProgress<T>` |
 | `BMTP3.Core4.Tests/Engine/Index/JsonBackupIndexWriterTests.cs` | `TaskCanceledException` |
 | `BMTP3.Core4.Tests/Engine/Strategies/TargetPathResolverTests.cs` | Hash formatting via opdateret Fake |
-| `BMTP3.Core4.Tests/Scanner/BackupScannerTests.cs` | `SynchronousProgress<T>` for progress tests |
+| `BMTP3.Core4.Tests/Scanner/BackupScannerTests.cs` | `CountingProgress<T>` (deterministisk, ingen race) |
 | `BMTP3.Core4.Tests/Traversal/FileSystemTraversalTests.cs` | `SynchronousProgress<T>` for progress tests |
 | `BMTP3.Core4.Tests/Engine/BackupEngineHappyPathIntegrationTests.cs` | `SynchronousProgress<T>` for progress tests |
-| `BMTP3.Core4/Scanner/DelegateProgress.cs` | **Ny** — synkron `IProgress<T>` implementering, erstatning for `Progress<T>` |
-| `BMTP3.Core4/Scanner/BackupScanner.cs` | Progress race fix: `Progress<T>` → `DelegateProgress<T>` |
+| `BMTP3.Core4/Helpers/TransformProgress.cs` | **Ny** — `TransformProgress<TInner,TOuter>` + `ProgressExtensions.Transform()` |
+| `BMTP3.Core4/Engine/BackupEngine.cs` | `Progress<T>` → `ActionProgress<T>` (linje 304, 356) |
 | `BMTP3.Core4.Tests/Engine/Validation/BackupPlanValidatorTests.cs` | **Ny** — 45 tests for BackupPlanValidator |
 | `BMTP3.Core4.Tests/Engine/Compare/BinaryFileComparerSelectorTests.cs` | **Ny** — 10 tests for BinaryFileComparerSelector |
 

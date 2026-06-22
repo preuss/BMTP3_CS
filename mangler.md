@@ -1,6 +1,6 @@
 # Mangler / Issues
 
-> **Seneste opdatering:** 21 Jun 2026
+> **Seneste opdatering:** 22 Jun 2026
 > **Tests:** 1179/1179 passing (Common: 281, MessageFormatter: 351, Core4: 443, Consoles: 104)
 
 ---
@@ -21,6 +21,7 @@
 | 10 | `BinaryFileComparerSelector` — chunked algoritmer aldrig testet (1B) | `BinaryFileComparerSelectorTests.cs` — 10 tests: constructor null guards, Select null/argument guards, small files → WholeFile, large files → chunked comparers |
 | 11 | `BackupScanner` progress race — `Progress<T>` wrapper dispatcher async via ThreadPool, `SynchronousProgress<T>` utilstrækkelig | `TaskCompletionSource` i test — `await tcs.Task` efter enumeration venter på async dispatch |
 | 12 | `BackupEngine` error paths — 0 tests (1C) | `BackupEngineErrorPathTests.cs` — 10 tests: Download, TargetPathResolver, SidecarService, HashService, TS resolution failures (StopOnError true/false); mixed success; empty/no-matching drive |
+| 13 | `Progress<T>` i Core4 — dispatcher async via ThreadPool, giver race conditions i tests og uforudsigelig adfærd | `TransformProgress<TInner,TOuter>` (transform) + `ActionProgress<T>` (action) — synkrone erstatninger. `BackupScanner` + `BackupEngine` opdateret. `CountingProgress<T>` i test. |
 
 ---
 
