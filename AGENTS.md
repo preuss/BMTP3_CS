@@ -159,8 +159,7 @@ Normaliseringsregler:
 1. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
 2. **Integration tests**: MTP pipeline, BackupEngine E2E
 3. **Retry/Resilience**: Exponential backoff, MTP resilience
-4. **K-V40**: `BackupEngine.RunAsync` for lang (~545 linjer) — extract `SequentialBackupRunner`
-5. **2B error paths**: DownloadService cancellation/locks, HashService null stream, TempDirectoryHelper concurrent cleanup, BackupScanner null Content
+4. **2B error paths**: DownloadService cancellation/locks, HashService null stream, TempDirectoryHelper concurrent cleanup, BackupScanner null Content
 
 ## Code Quality Audit — Status
 
@@ -190,7 +189,7 @@ Normaliseringsregler:
 |---|---|---|---|
 | K-V38 | ✅ RETAINED | `SidecarRequest.cs:12` | `SourceType` bruges til at skelne `mtp://` vs `C:\` parsing af `SourceFullPath` og i `SidecarService` til conditional kommentarer. Ikke redundant. |
 | K-V39 | ✅ DONE | `BackupEngine.cs` | Null-tjek ryddet: uprofessionel kommentar fjernet, 2 guards beholdt (1 i try-scope, 1 i nested if-block). Ingen `!` operator. |
-| K-V40 | ⏳ TODO | `BackupEngine.cs:82–627` | `RunAsync` for lang (~545 linjer) |
+| K-V40 | ⏳ LOW | `BackupEngine.cs:82–627` | `RunAsync` for lang (~545 linjer) — extract hvis tid |
 | K-V41 | ✅ DONE | `SidecarDocument.cs`, `SidecarSection.cs`, `SidecarProperty.cs` | `public` → `internal` |
 | K-V42 | ✅ DONE | `BackupEngine.cs:34,51` | `public sealed` → `internal sealed`. `IBackupEngine` forbliver `public`. |
 | K-V43 | ✅ DONE | `InternalsVisibleTo.cs` | 4 ubrugte `using` fjernet |

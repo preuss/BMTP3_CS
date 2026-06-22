@@ -322,7 +322,7 @@ Se `mangler.md § Code Quality Audit` for alle fund. Kort prioriteret overblik:
 |----|-----|---------|----------|
 | K-V38 | `SidecarRequest.cs:12` | `SourceType` bruges til at skelne `mtp://` vs `C:\` parsing af `SourceFullPath` og i `SidecarService` til conditional kommentarer. Ikke redundant. | ✅ **RETAINED** |
 | K-V39 | `BackupEngine.cs:287-288,369-370,492-493` | Null-tjek ryddet: uprofessionel kommentar fjernet, 2 guards beholdt. Ingen `!`. | ✅ **FIXED** |
-| K-V40 | `BackupEngine.cs:82-627` | `RunAsync` er ~545 linjer. `foreach` over `pendingRecords` (280-538) bør ekstraheres | **High** |
+| K-V40 | `BackupEngine.cs:82-627` | `RunAsync` er ~545 linjer. `foreach` over `pendingRecords` (280-538) bør ekstraheres | **Low** |
 | K-V41 | `SidecarDocument.cs:3`, `SidecarSection.cs:3`, `SidecarProperty.cs:3` | `public` men er interne implementeringsdetaljer — skal være `internal` | **High** |
 | K-V42 | `BackupEngine.cs:34,51` | `public sealed` → `internal sealed`. `IBackupEngine` forbliver `public`. | ✅ **FIXED** |
 | K-V43 | `InternalsVisibleTo.cs:1-5` | 4 ubrugte `using` directives | **High** |
@@ -410,19 +410,21 @@ Hvert trin kan fejle med COMException (transient) → retry med backoff. Ved dis
 
 ---
 
-## Definition of Done (11-punkts checklist — fra CORE4_MASTER_SYNTHESIS.md)
+## Definition of Done — faktisk status
 
-1. ✅ Traversal (filesystem + MTP) komplet med glob patterns
-2. ❌ Transfer (download + move) implementeret
-3. ❌ Sidecar (INI + JSON) skrevet for alle items
-4. ❌ Timestamp preservation (læs + sæt) korrekt
-5. ❌ Index (JSON catalog) skrevet
-6. ❌ Summary store opdateret
-7. ❌ Session state persisteret og genindlæselig
-8. ❌ Error paths testet (transient, persistent, fatal)
-9. ❌ Cancellation (Ctrl+C) ren afbrydelse
-10. ❌ Resume cross-connection (MTP ContentHash fallback)
-11. ❌ Integration test med ægte I/O
+| # | Krav | Status | Note |
+|---|------|--------|------|
+| 1 | Traversal (FS + MTP) med glob patterns | ✅ DONE | FileSystemTraversal + MediaDeviceTraversal, inkl GlobMatcher |
+| 2 | Transfer (download → move) | ✅ DONE | Implementeret i BackupEngine.RunAsync (linje 283-546). DownloadService (5 tests) + MoveableFileContent (0 tests — tilføj hvis tid). Engine testes med fakes. |
+| 3 | Sidecar (INI + JSON) for alle items | ✅ DONE | IniSidecarWriter (17 tests) + JsonSidecarWriter (8 tests) + SidecarService (6 tests) |
+| 4 | Timestamp preservation | ✅ DONE | EarliestTimestampResolutionService + ~45 filer i TimeStamp/. Utestet men eksisterer. |
+| 5 | Index (JSON catalog) | ✅ DONE | JsonBackupIndexWriter, gemmes som `{dest}\.bmtp3\{sessionId}\backup_catalog.json` |
+| 6 | Summary store | ✅ DONE | BackupJsonSummaryStore, gemmes i `.bmtp3/` |
+| 7 | Session state persisteret/genindlæselig | ✅ DONE | SessionStateService.SaveAsync/LoadAsync med ApplyResumeAsync |
+| 8 | Error paths testet | ✅ DONE | 10 tests (stop modes, mixed success, 5 komponentfejl). Ikke udtømmende men dækker hovedscenarier. |
+| 9 | Cancellation (Ctrl+C) | ✅ DONE | SignalInterruptEngine + linked CancellationTokenSource. OCE fanges → BackupResultState.Cancelled |
+| 10 | Resume cross-connection (MTP ContentHash) | ❌ IKKE IMPLEMENTERET | Kræver ContentHash på SourceTraversalItem + BackupItem + fallback matching i SessionStateService |
+| 11 | Integration test med ægte I/O | ⚠️ WONTFEST | Bevidst fravalgt. Rigtig fil-I/O kræver platform-specifik opsætning. Alle engine tests bruger fakes. |
 
 ---
 

@@ -7,7 +7,6 @@ using Microsoft.Extensions.Hosting;
 using System.CommandLine;
 using System.CommandLine.Help;
 using System.Text.RegularExpressions;
-using DGlob = DotNet.Globbing;
 
 namespace BMTP3.Consoles;
 
@@ -176,12 +175,6 @@ public class ConsolesProgram
 		}.ToList();
 
 		string globPattern = globPatternInput.Replace('\\', '/');
-		//globPattern = globPatternInput;
-		DGlob.Glob dglob = DGlob.Glob.Parse(globPattern);
-
-		Console.WriteLine("--- Tester DotNet.Glob ---");
-		Console.WriteLine($"Glob Pattern: {globPattern}");
-		Console.WriteLine("--------------------------");
 
 		int padding = testCases.Max(tc => tc.Path.Length) + 3;
 
@@ -190,14 +183,10 @@ public class ConsolesProgram
 
 		foreach(var testCase in testCases)
 		{
-			string pathConverted = testCase.Path; // Use the actual path
-			pathConverted = pathConverted.Replace('\\', '/');
+			string pathConverted = testCase.Path.Replace('\\', '/');
 
-			bool actualMatch = dglob.IsMatch(pathConverted);
 			string regexPattern = GlobMatcher.GlobToRegex(globPattern);
-			Console.WriteLine("Regex Pattern: " + regexPattern);
-			Regex regex = new(regexPattern, RegexOptions.IgnoreCase);
-			actualMatch = regex.Match(pathConverted).Success;
+			bool actualMatch = Regex.Match(pathConverted, regexPattern, RegexOptions.IgnoreCase).Success;
 
 			string status = actualMatch == testCase.Expected ? "✅ OK" : "❌ FEJL";
 
