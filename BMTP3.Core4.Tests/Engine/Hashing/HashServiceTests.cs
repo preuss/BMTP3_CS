@@ -5,6 +5,7 @@ using BMTP3.Core4.Hashing;
 using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Tests.Fakes;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace BMTP3.Core4.Tests.Engine.Hashing;
 
@@ -74,6 +75,30 @@ public class HashServiceTests
 				new[] { HashAlgorithmType.SHA2_256 }, null, new NoOpThrottler(), TestContext.Current.CancellationToken));
 
 		Assert.Equal("failing.txt", ex.ItemRelativeFilePath);
+	}
+
+	[Fact]
+	public async Task ComputeHashesAsync_NullStreamFromContent_WrapsInBackupHashException()
+	{
+		var nullContent = new NullStreamContent();
+		var realGenerator = new StreamHashGenerator(NullLogger<StreamHashGenerator>.Instance);
+		HashService localService = new(realGenerator);
+
+		BackupHashException ex = await Assert.ThrowsAsync<BackupHashException>(() =>
+			localService.ComputeHashesAsync(nullContent, "nullstream.txt",
+				new[] { HashAlgorithmType.SHA2_256 }, null, new NoOpThrottler(), TestContext.Current.CancellationToken));
+
+		Assert.Equal("nullstream.txt", ex.ItemRelativeFilePath);
+		Assert.IsType<ArgumentNullException>(ex.InnerException);
+	}
+
+	private sealed class NullStreamContent : IContent
+	{
+		public ulong Length => 0;
+		public void Dispose() { }
+		public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+		public Stream OpenRead() => null!;
+		public Task<Stream> OpenReadAsync(CancellationToken ct) => Task.FromResult<Stream>(null!);
 	}
 
 	private sealed class FailingContent : IContent

@@ -166,9 +166,66 @@ public class DownloadServiceTests : IDisposable
 		Assert.True(progress[^1] >= (ulong)content.Length);
 	}
 
+	[Fact]
+	public async Task DownloadAsync_ContentOpenReadAsyncThrows_Propagates()
+	{
+		var throwingContent = new ThrowingContent();
+		BackupItem item = new(throwingContent)
+		{
+			Id = "err",
+			SourcePath = "C:\\err.txt",
+			RelativeFilePath = "err.txt",
+			FileName = "err.txt",
+		};
+		FileInfo dest = new(Path.Combine(_tempDir, "dest.txt"));
+		DownloadRequest request = new()
+		{
+			Destination = dest,
+			Item = item,
+			BackupStartTime = DateTimeOffset.UtcNow,
+		};
+
+		await Assert.ThrowsAsync<IOException>(() =>
+			_service.DownloadAsync(request, null, TestContext.Current.CancellationToken));
+	}
+
+	[Fact]
+	public async Task DownloadAsync_PreCancelledToken_Throws()
+	{
+		byte[] content = "cancel"u8.ToArray();
+		BackupItem item = new(new FakeContent(content))
+		{
+			Id = "cancel",
+			SourcePath = "C:\\cancel.txt",
+			RelativeFilePath = "cancel.txt",
+			FileName = "cancel.txt",
+		};
+		FileInfo dest = new(Path.Combine(_tempDir, "dest.txt"));
+		DownloadRequest request = new()
+		{
+			Destination = dest,
+			Item = item,
+			BackupStartTime = DateTimeOffset.UtcNow,
+		};
+		using CancellationTokenSource cts = new();
+		cts.Cancel();
+
+		await Assert.ThrowsAsync<OperationCanceledException>(() =>
+			_service.DownloadAsync(request, null, cts.Token));
+	}
+
 	public void Dispose()
 	{
 		if(Directory.Exists(_tempDir))
 			try { Directory.Delete(_tempDir, recursive: true); } catch { }
+	}
+
+	private sealed class ThrowingContent : IContent
+	{
+		public ulong Length => 10;
+		public void Dispose() { }
+		public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+		public Stream OpenRead() => throw new IOException("source error");
+		public Task<Stream> OpenReadAsync(CancellationToken ct) => throw new IOException("source error");
 	}
 }

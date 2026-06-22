@@ -91,13 +91,14 @@ Komplet metadata extraction pipeline (Exif, XMP, GPS, IPTC, QuickTime, filesyste
 
 | Komponent | Hvad mangler |
 |---|---|
-| `DownloadService` | Content `OpenReadAsync` kaster, destination eksisterer/allerede låst, cancellation midt i write |
+| `DownloadService` | Content `OpenReadAsync` kaster, pre-cancelled token — ✅ **FIXET** |
+| `DownloadService` | Destination allerede låst, cancellation midt i write — kræver I/O (FileInfo.Create) |
 | `FileCompareService` | Store filer (> 100 MB) der aktiverer chunked algoritmer |
-| `DiskSpaceValidator` | Utilstrækkelig plads, ikke-eksisterende drev, negativ capacity |
+| `DiskSpaceValidator` | Utilstrækkelig plads, ikke-eksisterende drev — kræver I/O (DriveInfo) |
 | `SessionStateService` | Concurrent save/delete, meget store resume sets |
-| `HashService` | Blandede hash families, null stream fra content |
+| `HashService` | Blandede hash families — ✅ allerede testet; null stream fra content — ✅ **FIXET** |
 | `TempDirectoryHelper` | Concurrent cleanup, locked files, nested `.tmp` |
-| `BackupScanner` | Items med null Content, null dates, ekstremt dybe paths |
+| `BackupScanner` | Items med null Content (guarded af BackupItem ctor), null dates (virker), ekstreme paths (virker) — intet at teste |
 
 ---
 
