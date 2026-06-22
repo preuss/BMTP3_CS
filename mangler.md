@@ -1,7 +1,7 @@
 # Mangler / Issues
 
 > **Seneste opdatering:** 23 Jun 2026
-> **Tests:** 1661/1661 passing (Common: 281, MessageFormatter: 351, Core4: 925, Consoles: 104)
+> **Tests:** 1666/1666 passing (Common: 281, MessageFormatter: 351, Core4: 930, Consoles: 104)
 > **Docs cleanup:** 24 forældede docs slettet — værdifuld viden ekstraheret til plan.md, AGENTS.md, mangler.md
 
 ---
@@ -10,7 +10,7 @@
 
 | # | Fil | Linje | Problem |
 |---|---|---|---|
-| **1** | `FileSystemTraversal.cs` | 89-120 | `SafeGetFiles`, `SafeGetDirectories`, `SafeGetDate` — **alle exceptions swallows** (`catch` → return null/tom). Hvis en mappe giver `UnauthorizedAccessException` eller `PathTooLongException`, får brugeren bare færre filer. Intet log, intet fail. **Bryder fail-first princippet.** |
+| **1** | `FileSystemTraversal.cs` | 89-120 | `SafeGetFiles`, `SafeGetDirectories`, `SafeGetDate` — **alle exceptions swallows** (`catch` → return null/tom). Hvis en mappe giver `UnauthorizedAccessException` eller `PathTooLongException`, får brugeren bare færre filer. Intet log, intet fail. **Bryder fail-first princippet.** | ✅ **FIXET** — `catch{}` fjernet (fail-first), `SafeGetDate` filtrerer specifikke exceptions |
 | **2** | `BackupEngine.cs` | 693-708 | `FilterPendingRecords` switch på `BackupItemStatus` — håndterer **kun** `Succeeded`, `Skipped`, `Pending`. `Active` og `Failed` **falder stille igennem** — items ignoreres uden warning. |
 | **3** | `BinaryFileComparerBase.cs` | 13-14 | Hvis **begge** filer mangler → `return true` (de er ens!). Betyder `CollisionResolutionAction.Skip` — filer der slet ikke findes, behandles som identiske. |
 | **4** | `BackupEngine.cs` | 461 | **Uforsikret cast** til `IMoveableContent` — `(IMoveableContent)record.Item.Content`. Hvis `DownloadService` ikke har kørt (eller fejlede), crasher det med `InvalidCastException`. |
@@ -57,6 +57,8 @@
 | 14 | TimeStamp parsers (14 klasser) — 0 tests | 284 tests i `Parsers/` — alle 14 parser-klasser med edge cases, kebab-case aliases, null/empty, garbage input |
 | 15 | TimeStamp candidates — 0 tests | 198 tests i `Candidates/` — 7 klasser med factory-metoder, formatering, validering, debug output |
 | 16 | TimeStamp parser/candidate tests — 17 failing assertions | IsAllNull (empty != null), Normalize (`with` returnerer ny instans), Full clock offset format (altid sekunder), Formatter vs candidate.ToString semantik, Factory.FromUtcDateAndTime bug (FullDate uden date), ToDebugString da-DK kulturformat |
+| 17 | **Bug #1:** `SafeGetFiles`/`SafeGetDirectories`/`SafeGetDate` — silent catch{} → fail-first | `FileSystemTraversal.cs`: `catch{}` fjernet i SafeGetFiles/Directories; SafeGetDate filtrerer specifikke exceptions (UnauthorizedAccessException, IOException, NotSupportedException). `BackupEngineErrorPathTests`: +2 tests (TraversalFailure_FailFast, ScanPhaseCancellation_ReturnsCancelledResult). |
+| 18 | `JsonBackupIndexWriterTests` — `.bmpt` → `.bmtp3` stavefejl (5 tests failed) | ` .bmpt` rettet til `.bmtp3` i 5 test-metoder. |
 
 ---
 

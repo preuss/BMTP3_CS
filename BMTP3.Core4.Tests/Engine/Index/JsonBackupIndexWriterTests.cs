@@ -35,7 +35,7 @@ public class JsonBackupIndexWriterTests
 
 			await writer.WriteAsync(tempDir, "session123", records, plan, result, default);
 
-			string catalogDir = Path.Combine(tempDir, ".bmpt", "session123");
+			string catalogDir = Path.Combine(tempDir, ".bmtp3", "session123");
 			string catalogFile = Path.Combine(catalogDir, "backup_catalog.json");
 			Assert.True(File.Exists(catalogFile));
 
@@ -67,7 +67,7 @@ public class JsonBackupIndexWriterTests
 
 			await writer.WriteAsync(tempDir, "session456", records, plan, result, TestContext.Current.CancellationToken);
 
-			string catalogFile = Path.Combine(tempDir, ".bmpt", "session456", "backup_catalog.json");
+			string catalogFile = Path.Combine(tempDir, ".bmtp3", "session456", "backup_catalog.json");
 			string json = File.ReadAllText(catalogFile);
 			BackupIndexCatalog? catalog = JsonSerializer.Deserialize<BackupIndexCatalog>(json);
 
@@ -94,7 +94,7 @@ public class JsonBackupIndexWriterTests
 
 			await writer.WriteAsync(tempDir, "session_atomic", records, plan, result, TestContext.Current.CancellationToken);
 
-			string catalogDir = Path.Combine(tempDir, ".bmpt", "session_atomic");
+			string catalogDir = Path.Combine(tempDir, ".bmtp3", "session_atomic");
 			Assert.False(Directory.EnumerateFiles(catalogDir).Any(f => f.EndsWith(".tmp")), "Temp files should not remain");
 		} finally
 		{
@@ -144,7 +144,7 @@ public class JsonBackupIndexWriterTests
 				new BackupPlan { Name = "H", SourcePath = "C:\\", Destination = tempDir },
 				new BackupResult { State = BackupResultState.Completed }, TestContext.Current.CancellationToken);
 
-			string catalogFile = Path.Combine(tempDir, ".bmpt", "session_hash", "backup_catalog.json");
+			string catalogFile = Path.Combine(tempDir, ".bmtp3", "session_hash", "backup_catalog.json");
 			string json = File.ReadAllText(catalogFile);
 			BackupIndexCatalog? catalog = JsonSerializer.Deserialize<BackupIndexCatalog>(json);
 
@@ -173,7 +173,7 @@ public class JsonBackupIndexWriterTests
 				new BackupPlan { Name = "TS", SourcePath = "C:\\", Destination = tempDir },
 				new BackupResult { State = BackupResultState.Completed }, TestContext.Current.CancellationToken);
 
-			string catalogFile = Path.Combine(tempDir, ".bmpt", "session_ts", "backup_catalog.json");
+			string catalogFile = Path.Combine(tempDir, ".bmtp3", "session_ts", "backup_catalog.json");
 			string json = File.ReadAllText(catalogFile);
 			BackupIndexCatalog? catalog = JsonSerializer.Deserialize<BackupIndexCatalog>(json);
 

@@ -1,6 +1,6 @@
 # BMTP3.Core4 — Plan
 
-> **Opdateret 23 Jun 2026** — 1661 tests pass. Docs cleanup: værdifuld viden ekstraheret fra slettede docs og merget ind her.
+> **Opdateret 23 Jun 2026** — 1666 tests pass. Docs cleanup: værdifuld viden ekstraheret fra slettede docs og merget ind her.
 > 
 > ⚠️ **NO IMPLEMENTATION WITHOUT PERMISSION:** Spørg altid først. Implementér aldrig før brugeren siger "go" / "do it" / "implementér" / "execute" / "kør". Indtil da: research, read, grep, spørg.
 > 
@@ -189,7 +189,7 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 **9 bugs + 8 mistænkelige fund** opdaget under systematisk kodegennemgang. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige` for detaljer.
 
 Højeste prioritet:
-- **#1** `FileSystemTraversal.SafeGetFiles/SafeGetDirectories` swallows alle exceptions — bryder fail-first
+- **#1** `FileSystemTraversal.SafeGetFiles/SafeGetDirectories` swallows alle exceptions — bryder fail-first ✅ **FIXET**
 - **#4** `BackupEngine.cs:461` uforsikret cast til `IMoveableContent` — `InvalidCastException` ved fejl
 - **#9** Timestamp resolution fejl altid fatal, selv når `EnableTimestampCorrection=false` — stopper hele backup'en
 

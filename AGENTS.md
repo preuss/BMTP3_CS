@@ -1,7 +1,7 @@
 # BMTP3 — Agent Session Context
 
 > **Sidst opdateret:** 23 Jun 2026
-> **Tests:** 1661/1661 passed (Core4: 925, MessageFormatter: 351, Common: 281, Consoles: 104)
+> **Tests:** 1666/1666 passed (Core4: 930, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
 
@@ -157,6 +157,10 @@ Normaliseringsregler:
 | Test | HashService error path — null stream fra content wrappes i BackupHashException | `HashServiceTests.cs` (1 test) |
 | Audit | **Field mapping audit** — systematisk gennemgang af alle property mappings i Core4/Consoles. Fund: Resume mister ikke datoer (scan-før-resume er korrekt), session state gemmer ikke hashes (designvalg), `EnableTimestampCorrection` mangler på CLI | Se `plan.md § P0` |
 | Feat | `--enable-timestamp-correction` CLI option tilføjet — Option<bool> + WasSupplied check | `BackupOptionsModel4.cs`, `BackupPlanBuilder.cs` |
+| Fix | **Bug #1**: `SafeGetFiles`/`SafeGetDirectories` — silent catch{} fjernet (fail-first) | `FileSystemTraversal.cs` |
+| Fix | `SafeGetDate` — catch{} → specifikke exception typer (UnauthorizedAccessException, IOException, NotSupportedException) | `FileSystemTraversal.cs` |
+| Test | +2 error path tests: TraversalFailure_FailFast, ScanPhaseCancellation_ReturnsCancelledResult | `BackupEngineErrorPathTests.cs` |
+| Fix | `JsonBackupIndexWriterTests` — `.bmpt` → `.bmtp3` stavefejl (5 tests fixed) | `JsonBackupIndexWriterTests.cs` |
 
 ### In Progress
 

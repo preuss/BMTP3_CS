@@ -12,6 +12,7 @@ using BMTP3.Core4.Helpers;
 using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
+using BMTP3.Core4.Scanner;
 using BMTP3.Core4.Storage;
 using BMTP3.Core4.Traversal;
 using BMTP3.Core4.Tests.Fakes;
@@ -390,9 +391,92 @@ public class BackupEngineErrorPathTests
 		}
 	}
 
+	[Fact]
+	public async Task TraversalFailure_FailFast()
+	{
+		string testDir = Path.Combine(Path.GetTempPath(), "BMTP3_ErrorTest_" + Guid.NewGuid().ToString("N"));
+		try
+		{
+			Directory.CreateDirectory(testDir);
+			string sourceRoot = Path.Combine(testDir, "Source");
+			string driveRoot = Path.GetPathRoot(testDir) ?? "C:\\";
+
+			BackupPlan plan = CreateTestPlan(sourceRoot, testDir, stopOnError: true);
+
+			FakeBackupDriveInfo drive = new(
+				PathHelper.ToInternalCanonicalUri(driveRoot, BackupSourceType.FileSystem), driveRoot.TrimEnd('\\'));
+
+			BackupEngine engine = CreateEngine(
+				items: Array.Empty<BackupItem>(),
+				testDir: testDir,
+				drive: drive,
+				scanner: new ThrowingBackupScanner(new UnauthorizedAccessException("Access denied to directory.")));
+
+			UnauthorizedAccessException ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
+				() => engine.RunAsync(plan, null, CancellationToken.None));
+			Assert.Contains("Access denied", ex.Message);
+		}
+		finally
+		{
+			if(Directory.Exists(testDir))
+				Directory.Delete(testDir, recursive: true);
+		}
+	}
+
+	[Fact]
+	public async Task ScanPhaseCancellation_ReturnsCancelledResult()
+	{
+		string testDir = Path.Combine(Path.GetTempPath(), "BMTP3_ErrorTest_" + Guid.NewGuid().ToString("N"));
+		try
+		{
+			Directory.CreateDirectory(testDir);
+			string sourceRoot = Path.Combine(testDir, "Source");
+			string driveRoot = Path.GetPathRoot(testDir) ?? "C:\\";
+
+			BackupPlan plan = CreateTestPlan(sourceRoot, testDir, stopOnError: true);
+
+			FakeBackupDriveInfo drive = new(
+				PathHelper.ToInternalCanonicalUri(driveRoot, BackupSourceType.FileSystem), driveRoot.TrimEnd('\\'));
+
+			BackupEngine engine = CreateEngine(
+				items: Array.Empty<BackupItem>(),
+				testDir: testDir,
+				drive: drive,
+				scanner: new ThrowingBackupScanner(new OperationCanceledException()));
+
+			BackupResult result = await engine.RunAsync(plan, null, CancellationToken.None);
+
+			Assert.Equal(BackupResultState.Cancelled, result.State);
+		}
+		finally
+		{
+			if(Directory.Exists(testDir))
+				Directory.Delete(testDir, recursive: true);
+		}
+	}
+
 	// ----------------------------------------------------------------
 	// Fakes
 	// ----------------------------------------------------------------
+
+	private sealed class ThrowingBackupScanner : IBackupScanner
+	{
+		private readonly Exception _exception;
+
+		public ThrowingBackupScanner(Exception exception)
+		{
+			_exception = exception;
+		}
+
+		public IAsyncEnumerable<BackupItem> ScanAsync(
+			ISourceTraversal traversal,
+			BackupScanRequest request,
+			IProgress<BackupScanProgress>? progress,
+			CancellationToken cancellationToken)
+		{
+			throw _exception;
+		}
+	}
 
 	private sealed class ThrowingTargetPathResolver : ITargetPathResolver
 	{
@@ -459,6 +543,7 @@ public class BackupEngineErrorPathTests
 		string testDir,
 		FakeBackupDriveInfo? drive = null,
 		FakeDownloadService? downloadService = null,
+		IBackupScanner? scanner = null,
 		ITargetPathResolver? targetPathResolver = null,
 		ICollisionResolver? collisionResolver = null,
 		ISidecarService? sidecarService = null,
@@ -474,7 +559,7 @@ public class BackupEngineErrorPathTests
 			PathHelper.ToInternalCanonicalUri(driveRoot, BackupSourceType.FileSystem), driveRoot.TrimEnd('\\'));
 
 		return new BackupEngine(
-			scanner: new FakeBackupScanner(items),
+			scanner: scanner ?? new FakeBackupScanner(items),
 			sourceTraversalFactory: traversalFactory ?? new FakeSourceTraversalFactory(new FakeSourceTraversal()),
 			driveProvider: driveProvider ?? new FakeDriveProvider(new[] { actualDrive }),
 			sourceConnector: sourceConnector ?? new FakeSourceConnector(new FakeConnectedSource()),

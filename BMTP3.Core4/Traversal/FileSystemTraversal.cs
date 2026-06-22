@@ -88,24 +88,12 @@ internal sealed class FileSystemTraversal : ISourceTraversal
 
     private static IEnumerable<FileInfo> SafeGetFiles(DirectoryInfo dir)
     {
-        try
-        {
-            return dir.EnumerateFiles();
-        } catch
-        {
-            return Array.Empty<FileInfo>();
-        }
+        return dir.EnumerateFiles();
     }
 
     private static IEnumerable<DirectoryInfo> SafeGetDirectories(DirectoryInfo dir)
     {
-        try
-        {
-            return dir.EnumerateDirectories();
-        } catch
-        {
-            return Array.Empty<DirectoryInfo>();
-        }
+        return dir.EnumerateDirectories();
     }
 
     private static DateTimeOffset? SafeGetDate(FileInfo file, Func<FileInfo, DateTime> selector)
@@ -113,7 +101,7 @@ internal sealed class FileSystemTraversal : ISourceTraversal
         try
         {
             return new DateTimeOffset(selector(file), TimeSpan.Zero);
-        } catch
+        } catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or NotSupportedException)
         {
             return null;
         }
