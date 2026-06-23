@@ -51,7 +51,7 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 		BackupProgressDisplay display = new(ansiConsole);
 
-		consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
+		//consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		ValidateBackupOptions(BackupOptions);
 

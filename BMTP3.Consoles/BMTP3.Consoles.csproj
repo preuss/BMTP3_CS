@@ -8,8 +8,16 @@
     <Version>$(VersionPrefix)</Version>
   </PropertyGroup>
 
+	<!-- Release builds becomes automatically self-contained single exe -->
+	<PropertyGroup Condition="'$(PublishProfile)' != ''">
+		<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+		<PublishSingleFile>true</PublishSingleFile>
+		<SelfContained>true</SelfContained>
+		<IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+		<PublishTrimmed>false</PublishTrimmed>
+	</PropertyGroup>
 
-  <ItemGroup>
+	<ItemGroup>
     <PackageReference Include="ExiftoolWrapper" Version="5.2.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.9" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.9" />
@@ -33,12 +41,20 @@
     <ProjectReference Include="..\BMTP3.Common\BMTP3.Common.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
+
+	<ItemGroup>
+		<Content Include="..\libs\MediaDevices.dll">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+			<ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+		</Content>
+	</ItemGroup>
+<!--
+	<ItemGroup>
     <Reference Include="MediaDevices">
       <HintPath>..\libs\MediaDevices.dll</HintPath>
       <Private>True</Private>
     </Reference>
   </ItemGroup>
-
+-->
 
 </Project>

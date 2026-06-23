@@ -18,7 +18,8 @@
 
   <ItemGroup>
     <Reference Include="MediaDevices">
-      <HintPath>..\libs\MediaDevices.dll</HintPath>
+	    <HintPath>..\libs\MediaDevices.dll</HintPath>
+	    <Private>false</Private>
     </Reference>
   </ItemGroup>
 
