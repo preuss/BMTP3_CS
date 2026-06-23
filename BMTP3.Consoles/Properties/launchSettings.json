@@ -14,7 +14,7 @@
     },
     "Backup_Source_Temp": {
       "commandName": "Project",
-      "commandLineArgs": "backup4 -s \"C:\\temp\\source\" -o \"C:\\temp\\target\" --delay 1"
+      "commandLineArgs": "backup4 -s \"C:\\temp\\source\" -o \"C:\\temp\\target\""
     },
     "InitConfig": {
       "commandName": "Project",

@@ -19,13 +19,15 @@ internal static class ProgressReportMapper
 			? 1
 			: Math.Max(1, progress.TotalFilesSelected);
 
-		string phase = isScanning
-			? $"Scanning: {progress.DirectoriesTraversed} dirs, {progress.FilesDiscovered} files"
-			: $"Transferring: {completed}/{total} files";
-
 		BackupProgressItem? activeFile = progress.ActiveFiles.Count > 0
 			? progress.ActiveFiles[0]
 			: null;
+
+		string phase = isScanning
+			? $"Scanning: {progress.DirectoriesTraversed} dirs, {progress.FilesDiscovered} files"
+			: activeFile != null
+				? $"{activeFile.Phase}: {activeFile.RelativeFilePath} ({completed}/{total} files)"
+				: $"Transferring: {completed}/{total} files";
 
 		return new ProgressReport(
 			completed,
@@ -34,6 +36,7 @@ internal static class ProgressReportMapper
 			progress.FilesDiscovered,
 			phase,
 			activeFile?.RelativeFilePath,
+			activeFile?.Phase.ToString(),
 			activeFile?.BytesProcessed ?? 0,
 			activeFile?.Length ?? 0,
 			progress.BytesProcessed,

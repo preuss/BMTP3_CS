@@ -1,9 +1,12 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.14.37314.3 d17.14
+VisualStudioVersion = 17.14.37314.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BMTP3.Core", "BMTP3.Core\BMTP3.Core.csproj", "{E7F79CA5-A205-48D8-A7DE-0610A05D54B8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{D82FEC9A-803E-47F3-852D-45AF7FF920B8} = {D82FEC9A-803E-47F3-852D-45AF7FF920B8}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BMTP3.Common", "BMTP3.Common\BMTP3.Common.csproj", "{749CC314-0DF3-40F2-B2C9-8C6FD1F92775}"
 EndProject

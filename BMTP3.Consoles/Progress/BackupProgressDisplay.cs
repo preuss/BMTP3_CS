@@ -13,6 +13,7 @@ internal sealed record ProgressReport(
 	int FilesDiscovered,
 	string Phase,
 	string? ActiveFileName,
+	string? ActiveFilePhase,
 	long ActiveFileBytesRead,
 	long ActiveFileBytesTotal,
 	long TotalBytesProcessed,
@@ -113,7 +114,7 @@ public sealed class BackupProgressDisplay
 			state.LastUpdateUtc = now;
 			state.Task.MaxValue = Math.Max(1, report.ActiveFileBytesTotal);
 			state.Task.Value = Math.Min(report.ActiveFileBytesRead, state.Task.MaxValue);
-			state.Task.Description = report.ActiveFileName.EscapeMarkup();
+			state.Task.Description = $"{report.ActiveFilePhase}: {report.ActiveFileName.EscapeMarkup()}";
 		}
 
 		RemoveExpiredFileTasks(ctx, fileTasks, now);

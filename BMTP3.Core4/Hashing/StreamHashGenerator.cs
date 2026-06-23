@@ -7,14 +7,15 @@ namespace BMTP3.Core4.Hashing;
 
 public class StreamHashGenerator : IHashGenerator
 {
-	// 80 KB buffer balances I/O and CPU overhead.
+	// 80 KB buffer balances I/O and CPU overhead. Classical .NET buffer size.
 	// Adaptive sizes based on file size (reference):
 	//   < 256 KB → 32 KB    (small files: low overhead)
 	//   <   4 MB → 64 KB
 	//   <  32 MB → 256 KB   (medium: more data per call)
 	//   < 256 MB → 512 KB   (large: fewer ReadAsync calls)
 	//   ≥ 256 MB → 512 KB
-	private const int BufferSize = 81920;
+	//private const int BufferSize = 81920;
+	private const int BufferSize = 4 * 1024 * 1024; // 4 MB buffer size.
 	private readonly ILogger<StreamHashGenerator> _logger;
 
 	private int _bufferSize;
@@ -75,7 +76,7 @@ public class StreamHashGenerator : IHashGenerator
 
 				// Update progress after each read
 				progress?.Report(totalBytesRead);
-				await throttler.WaitAsync();
+				await throttler.WaitAsync().ConfigureAwait(false);
 			}
 
 			// Finalize & Convert to Hex

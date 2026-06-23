@@ -3,7 +3,7 @@
 namespace BMTP3.Core4.Engine.Downloader;
 internal sealed class DownloadService : IDownloadService
 {
-	private const int BufferSize = 80 * 1024;
+	private const int BufferSize = 4 * 1024 * 1024; // 4 MB buffer for efficient stream copying
 
 	public async Task DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken)
 	{

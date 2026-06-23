@@ -26,14 +26,19 @@ public static class ServiceCollectionExtensions
 	public static IServiceCollection AddBMTP3Core4(this IServiceCollection services)
 	{
 		// Hashing
-		services.TryAddSingleton<IHashGenerator, StreamHashGenerator>();
+		//services.TryAddSingleton<IHashGenerator, StreamHashGenerator>();
+		//services.TryAddSingleton<IHashGenerator, PooledStreamHashGenerator>();
+		services.TryAddSingleton<IHashGenerator, ParallelStreamHashGenerator>();
 		services.TryAddSingleton<IHashService, HashService>();
 
 		// Pre-flight validation
 		services.TryAddSingleton<IDiskSpaceValidator, DiskSpaceValidator>();
 
+		// Engine services - Downloader
+		//services.TryAddSingleton<IDownloadService, DownloadService>();
+		services.TryAddSingleton<IDownloadService, PipelinedDownloadService>();
+
 		// Engine services
-		services.TryAddSingleton<IDownloadService, DownloadService>();
 		services.TryAddSingleton<IEarliestTimestampResolutionService, EarliestTimestampResolutionService>();
 		services.TryAddSingleton<ISidecarService, SidecarService>();
 
