@@ -186,7 +186,7 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 
 ### 🔴 P0 — Latente bugs (audit 23 Jun 2026)
 
-**9 bugs + 8 mistænkelige fund** opdaget under systematisk kodegennemgang. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige` for detaljer.
+**8 bugs + 8 mistænkelige fund** opdaget under systematisk kodegennemgang. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige` for detaljer.
 
 Højeste prioritet:
 - **#1** `FileSystemTraversal.SafeGetFiles/SafeGetDirectories` swallows alle exceptions — bryder fail-first ✅ **FIXET**

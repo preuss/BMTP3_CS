@@ -217,7 +217,7 @@ internal sealed class BackupEngine : IBackupEngine
 				progress?.Report(_currentProgress);
 			});
 
-			await foreach (BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
+			await foreach(BackupItem item in _scanner.ScanAsync(traversal, scanRequest, scanProgress, cancellationToken))
 			{
 				BackupRecord record = new()
 				{
@@ -258,7 +258,7 @@ internal sealed class BackupEngine : IBackupEngine
 			// 5d. Dry-run — report discovered items, skip writes
 			// ------------------------------------------------------------
 
-			if (plan.DryRun) return BuildDryRunResult(repository, _currentProgress, progress, plan);
+			if(plan.DryRun) return BuildDryRunResult(repository, _currentProgress, progress, plan);
 
 			// ------------------------------------------------------------
 			// 6. Process pending items
@@ -280,7 +280,7 @@ internal sealed class BackupEngine : IBackupEngine
 				_currentProgress = _currentProgress with { CurrentPhase = BackupProgressPhase.Transferring };
 				progress?.Report(_currentProgress);
 
-				foreach (BackupRecord record in pendingRecords)
+				foreach(BackupRecord record in pendingRecords)
 				{
 					FileInfo? tempFile = null;
 					try
@@ -289,7 +289,7 @@ internal sealed class BackupEngine : IBackupEngine
 						tempFile = TempDirectoryHelper.BuildTempFilePath(sessionTempDir, record.Item.FileName);
 
 						// Guard: RelativeFilePath is guaranteed non-null by the scanner, but flow analysis needs runtime evidence.
-						if (record.Item.RelativeFilePath == null) throw new InvalidOperationException("Item RelativeFilePath is null.");
+						if(record.Item.RelativeFilePath == null) throw new InvalidOperationException("Item RelativeFilePath is null.");
 
 						// Download content to temp file with progress reporting.
 						BackupProgressItem currentProgressItem = new()
@@ -345,7 +345,7 @@ internal sealed class BackupEngine : IBackupEngine
 						);
 
 						// Need a value here to proceed. If timestamp correction is disabled, we still want to use the original metadata timestamps if available.
-						if (!earliest.Timestamp.HasValue)
+						if(!earliest.Timestamp.HasValue)
 						{
 							throw new InvalidOperationException($"Could not resolve valid timestamp for '{record.Item.SourcePath}'.");
 						}
@@ -401,7 +401,7 @@ internal sealed class BackupEngine : IBackupEngine
 
 						CollisionResult? collisionResult = null;
 
-						if (File.Exists(intendedPath))
+						if(File.Exists(intendedPath))
 						{
 							// collision
 							CollisionResolveRequest collisionRequest = new()
@@ -429,7 +429,7 @@ internal sealed class BackupEngine : IBackupEngine
 
 							collisionResult = await _collisionResolver.ResolveAsync(collisionRequest, throttler, cancellationToken);
 
-							switch (collisionResult.Action)
+							switch(collisionResult.Action)
 							{
 								case CollisionResolutionAction.Skip:
 									record.Status = BackupItemStatus.Skipped;
@@ -452,7 +452,7 @@ internal sealed class BackupEngine : IBackupEngine
 						bool overwrite = collisionResult?.Action == CollisionResolutionAction.Overwrite;
 
 						string? targetDir = Path.GetDirectoryName(targetPath);
-						if (!string.IsNullOrEmpty(targetDir))
+						if(!string.IsNullOrEmpty(targetDir))
 						{
 							Directory.CreateDirectory(targetDir);
 						}
@@ -463,7 +463,7 @@ internal sealed class BackupEngine : IBackupEngine
 						record.Item.ReplaceContentProvider(movedContent);
 						record.DestinationPath = targetPath;
 
-						if (plan.SidecarFormat != SidecarFormat.None)
+						if(plan.SidecarFormat != SidecarFormat.None)
 						{
 							SidecarRequest sidecarRequest = new()
 							{
@@ -488,12 +488,12 @@ internal sealed class BackupEngine : IBackupEngine
 							await _sidecarService.WriteAsync(targetPath, sidecarRequest, cancellationToken);
 						}
 
-						if (plan.PostWriteVerification == PostWriteVerificationType.Hash)
+						if(plan.PostWriteVerification == PostWriteVerificationType.Hash)
 						{
 							// Guard repeated because flow analysis does not track null-state across nested if blocks.
-							if (record.Item.RelativeFilePath == null) throw new InvalidOperationException("Item RelativeFilePath is null.");
+							if(record.Item.RelativeFilePath == null) throw new InvalidOperationException("Item RelativeFilePath is null.");
 
-							if (plan.VerificationHashAlgorithmTypes == null || plan.VerificationHashAlgorithmTypes.Count == 0)
+							if(plan.VerificationHashAlgorithmTypes == null || plan.VerificationHashAlgorithmTypes.Count == 0)
 							{
 								throw new InvalidOperationException("VerificationHashAlgorithmTypes must be specified for hash-based post-write verification.");
 							}
@@ -507,9 +507,9 @@ internal sealed class BackupEngine : IBackupEngine
 								cancellationToken
 							);
 
-							foreach (KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
+							foreach(KeyValuePair<HashType, string> kvp in record.Metadata.ComputedHashes)
 							{
-								if (verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
+								if(verifyHashes.TryGetValue(kvp.Key, out string? verifyValue) &&
 									!string.Equals(kvp.Value, verifyValue, StringComparison.OrdinalIgnoreCase))
 								{
 									throw new InvalidOperationException(
@@ -528,43 +528,39 @@ internal sealed class BackupEngine : IBackupEngine
 							BytesProcessed = _currentProgress.BytesProcessed + (long)record.Item.Content.Length,
 						};
 						progress?.Report(_currentProgress);
-					}
-					catch (OperationCanceledException)
+					} catch(OperationCanceledException)
 					{
 						// User cancelled (Ctrl+C). Clean up the in-progress temp file —
 						// this is expected shutdown, not a failure. Leaving orphaned
 						// temp files would clutter the .tmp directory unnecessarily.
 						TempDirectoryHelper.CleanupTempFiles(tempFile?.FullName, null);
 						throw;
-					}
-					catch (Exception ex)
+					} catch(Exception ex)
 					{
 						record.Status = BackupItemStatus.Failed;
 						_logger.LogError(ex, "Item failed: {Path}", record.Item.SourcePath);
-						if (plan.StopOnError) throw;
+						if(plan.StopOnError) throw;
 					}
 
 					await throttler.WaitAsync();
 				}
-			}
-			finally
+			} finally
 			{
 				// We need to force save the session state here to capture any progress made on items in case of cancellation or unhandled exceptions. This ensures that when the user resumes, they won't lose all progress since the last save point.
 				await sessionState.SaveAsync(repository.GetAll(), sessionKey, CancellationToken.None);
 
 				// Do this even when exception or cancel.
 				// Do not let cleanup errors mask original failure.
-				if (sessionTempDir.Exists)
+				if(sessionTempDir.Exists)
 				{
 					try
 					{
 						bool removed = TempDirectoryHelper.CleanupSessionTempDirectory(sessionTempDir);
-						if (!removed)
+						if(!removed)
 						{
 							_logger.LogDebug("Session temp directory not empty, kept: {sessionTempDir}", sessionTempDir.FullName);
 						}
-					}
-					catch (Exception ex)
+					} catch(Exception ex)
 					{
 						_logger.LogWarning(ex, "Could not clean session temp directory: {sessionTempDir}", sessionTempDir.FullName);
 					}
@@ -609,7 +605,7 @@ internal sealed class BackupEngine : IBackupEngine
 			// 8b. Write backup catalog
 			// ------------------------------------------------------------
 
-			if (plan.BackupIndexType == BackupIndexType.Json)
+			if(plan.BackupIndexType == BackupIndexType.Json)
 			{
 				await _backupIndexWriter.WriteAsync(plan.Destination, sessionKey.SessionId, allRecords, plan, result, cancellationToken);
 			}
@@ -619,8 +615,7 @@ internal sealed class BackupEngine : IBackupEngine
 			// ------------------------------------------------------------
 
 			return result;
-		}
-		catch (OperationCanceledException)
+		} catch(OperationCanceledException)
 		{
 			_logger.LogInformation("Backup cancelled by user.");
 
@@ -638,7 +633,7 @@ internal sealed class BackupEngine : IBackupEngine
 			};
 
 			// Write catalog even when cancelled — shows all items with their current status.
-			if (plan.BackupIndexType == BackupIndexType.Json)
+			if(plan.BackupIndexType == BackupIndexType.Json)
 			{
 				await _backupIndexWriter.WriteAsync(
 					plan.Destination,
@@ -658,7 +653,7 @@ internal sealed class BackupEngine : IBackupEngine
 	{
 		List<BackupResultItem> itemResults = new(records.Count);
 
-		foreach (BackupRecord record in records)
+		foreach(BackupRecord record in records)
 		{
 			itemResults.Add(new BackupResultItem
 			{
@@ -684,30 +679,34 @@ internal sealed class BackupEngine : IBackupEngine
 	private static List<BackupRecord> FilterPendingRecords(
 		IReadOnlyList<BackupRecord> records,
 		ref BackupProgress currentProgress,
-		IProgress<BackupProgress>? progress)
+		IProgress<BackupProgress>? progress
+	)
 	{
 		List<BackupRecord> pending = new();
 
-		foreach (BackupRecord record in records)
+		foreach(BackupRecord record in records)
 		{
-			switch (record.Status)
+			switch(record.Status)
 			{
+				case BackupItemStatus.Pending:
+					pending.Add(record);
+					break;
+				case BackupItemStatus.Active:
+					break;
 				case BackupItemStatus.Succeeded:
 					currentProgress = currentProgress with { FilesSucceeded = currentProgress.FilesSucceeded + 1 };
 					progress?.Report(currentProgress);
 					break;
-
 				case BackupItemStatus.Skipped:
 					currentProgress = currentProgress with { FilesSkipped = currentProgress.FilesSkipped + 1 };
 					progress?.Report(currentProgress);
 					break;
-
-				case BackupItemStatus.Pending:
-					pending.Add(record);
+				case BackupItemStatus.Failed:
+					currentProgress = currentProgress with { FilesFailed = currentProgress.FilesFailed + 1 };
+					progress?.Report(currentProgress);
 					break;
 			}
 		}
-
 		return pending;
 	}
 
@@ -743,7 +742,7 @@ internal sealed class BackupEngine : IBackupEngine
 
 	private static string? GetStrongestHash(Dictionary<HashType, string>? computedHashes)
 	{
-		if (computedHashes == null || computedHashes.Count == 0)
+		if(computedHashes == null || computedHashes.Count == 0)
 		{
 			return null;
 		}
@@ -761,9 +760,9 @@ internal sealed class BackupEngine : IBackupEngine
 			HashType.MD5_128,
 		];
 
-		foreach (HashType type in priority)
+		foreach(HashType type in priority)
 		{
-			if (computedHashes.TryGetValue(type, out string? hash))
+			if(computedHashes.TryGetValue(type, out string? hash))
 			{
 				return hash;
 			}
@@ -774,11 +773,11 @@ internal sealed class BackupEngine : IBackupEngine
 
 	private static IBackupDriveInfo? MatchDrive(IReadOnlyList<IBackupDriveInfo> drives, string internalUri)
 	{
-		foreach (IBackupDriveInfo drive in drives)
+		foreach(IBackupDriveInfo drive in drives)
 		{
 			Guard.RequireNonNull(drive);
 
-			if (internalUri.StartsWith(drive.RootPath, StringComparison.OrdinalIgnoreCase))
+			if(internalUri.StartsWith(drive.RootPath, StringComparison.OrdinalIgnoreCase))
 			{
 				return drive;
 			}

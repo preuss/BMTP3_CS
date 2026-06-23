@@ -161,6 +161,7 @@ Normaliseringsregler:
 | Fix | `SafeGetDate` — catch{} → specifikke exception typer (UnauthorizedAccessException, IOException, NotSupportedException) | `FileSystemTraversal.cs` |
 | Test | +2 error path tests: TraversalFailure_FailFast, ScanPhaseCancellation_ReturnsCancelledResult | `BackupEngineErrorPathTests.cs` |
 | Fix | `JsonBackupIndexWriterTests` — `.bmpt` → `.bmtp3` stavefejl (5 tests fixed) | `JsonBackupIndexWriterTests.cs` |
+| Audit | **Bug #3 re-evalueret:** `BinaryFileComparerBase.CompareAsync` - `!Exists && !Exists → true` er **korrekt** for en generisk comparer (begge mangler = samme tilstand). Callers har egne existence guards. Fjernet fra bugs. | `BinaryFileComparerBase.cs` |
 
 ### In Progress
 
