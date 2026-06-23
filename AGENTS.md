@@ -162,6 +162,8 @@ Normaliseringsregler:
 | Test | +2 error path tests: TraversalFailure_FailFast, ScanPhaseCancellation_ReturnsCancelledResult | `BackupEngineErrorPathTests.cs` |
 | Fix | `JsonBackupIndexWriterTests` — `.bmpt` → `.bmtp3` stavefejl (5 tests fixed) | `JsonBackupIndexWriterTests.cs` |
 | Audit | **Bug #3 re-evalueret:** `BinaryFileComparerBase.CompareAsync` - `!Exists && !Exists → true` er **korrekt** for en generisk comparer (begge mangler = samme tilstand). Callers har egne existence guards. Fjernet fra bugs. | `BinaryFileComparerBase.cs` |
+| Fix | **Bug #4**: `(IMoveableContent)` → `is not IMoveableContent` pattern match med `InvalidOperationException` | `BackupEngine.cs:461` |
+| Fix | **Bug #5**: `Source.Type` læses nu via `ParseEnum<BackupSourceType>()`, `--source-type` CLI option tilføjet, path detection fjernet fra config-flow | `BackupPlanBuilder.cs:83-86,138-144`, `BackupOptionsModel4.cs:45-50` |
 
 ### In Progress
 
@@ -169,7 +171,7 @@ Normaliseringsregler:
 
 ### Næste — prioriteret
 
-0. **🔴 Latente bugs** — 9 bugs + 8 mistænkelige fund. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige`
+0. **🔴 Latente bugs** — 5 bugs + 8 mistænkelige fund. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige`
 1. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
 2. **Integration tests**: MTP pipeline, BackupEngine E2E
 3. **Retry/Resilience**: Exponential backoff, MTP resilience

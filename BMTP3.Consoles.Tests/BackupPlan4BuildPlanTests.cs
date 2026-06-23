@@ -717,9 +717,9 @@ output-structure = ""bogus""
 	// ----------------------------------------------------------------
 
 	[Fact]
-	public void BuildPlan_NoConfig_MtpSource_DetectsMediaDevice()
+	public void BuildPlan_NoConfig_MtpSource_RequiresExplicitSourceType()
 	{
-		var (options, parseResult) = Parse("--source-path \"mtp://Apple iPad/Internal Storage/DCIM\"");
+		var (options, parseResult) = Parse("--source-path \"mtp://Apple iPad/Internal Storage/DCIM\" --source-type MediaDevice");
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 

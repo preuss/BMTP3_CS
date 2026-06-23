@@ -458,7 +458,13 @@ internal sealed class BackupEngine : IBackupEngine
 						}
 
 						// We know that record.Item.Content is IMoveableContent because it was created by the BackupScanner which always creates items with moveable content.
-						IMoveableContent moveableContent = (IMoveableContent)record.Item.Content;
+						if(record.Item.Content is not IMoveableContent moveableContent)
+						{
+							throw new InvalidOperationException(
+								$"Unexpected content type: {record.Item.Content?.GetType().Name}. " +
+								"BackupScanner should always produce IMoveableContent."
+							);
+						}
 						IContent movedContent = moveableContent.MoveTo(targetPath, overwrite: overwrite);
 						record.Item.ReplaceContentProvider(movedContent);
 						record.DestinationPath = targetPath;

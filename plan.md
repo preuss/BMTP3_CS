@@ -186,11 +186,11 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 
 ### 🔴 P0 — Latente bugs (audit 23 Jun 2026)
 
-**8 bugs + 8 mistænkelige fund** opdaget under systematisk kodegennemgang. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige` for detaljer.
+**7 bugs + 8 mistænkelige fund** opdaget under systematisk kodegennemgang. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige` for detaljer.
 
 Højeste prioritet:
 - **#1** `FileSystemTraversal.SafeGetFiles/SafeGetDirectories` swallows alle exceptions — bryder fail-first ✅ **FIXET**
-- **#4** `BackupEngine.cs:461` uforsikret cast til `IMoveableContent` — `InvalidCastException` ved fejl
+- **#4** `BackupEngine.cs:461` uforsikret cast til `IMoveableContent` — `InvalidCastException` ved fejl ✅ **FIXET**
 - **#9** Timestamp resolution fejl altid fatal, selv når `EnableTimestampCorrection=false` — stopper hele backup'en
 
 ---

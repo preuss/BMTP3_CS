@@ -80,10 +80,9 @@ internal sealed class BackupPlanBuilder
 		if(!string.IsNullOrWhiteSpace(config.Source.Path))
 		{
 			SourcePath = config.Source.Path;
-			SourceType = config.Source.Path.StartsWith("mtp://", StringComparison.Ordinal)
-				? BackupSourceType.MediaDevice
-				: BackupSourceType.FileSystem;
 		}
+
+		SourceType = ParseEnum<BackupSourceType>(config.Source.Type);
 
 		Recursive = config.Source.Recursive;
 
@@ -136,12 +135,10 @@ internal sealed class BackupPlanBuilder
 			Name = backupOptions.Name!;
 
 		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SourcePathOption) && !string.IsNullOrWhiteSpace(backupOptions.SourcePath))
-		{
 			SourcePath = backupOptions.SourcePath;
-			SourceType = SourcePath.StartsWith("mtp://", StringComparison.Ordinal)
-				? BackupSourceType.MediaDevice
-				: BackupSourceType.FileSystem;
-		}
+
+		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SourceTypeOption))
+			SourceType = backupOptions.SourceType!.Value;
 
 		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.OutputDirectoryOption) && backupOptions.OutputDirectory != null)
 			Destination = backupOptions.OutputDirectory.FullName;

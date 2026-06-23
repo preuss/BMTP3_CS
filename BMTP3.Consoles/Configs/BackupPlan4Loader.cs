@@ -11,25 +11,25 @@ public static class BackupPlan4Loader
 	public static FileInfo? FindDefaultConfig()
 	{
 		string cwd = Directory.GetCurrentDirectory();
-		foreach (string name in DefaultConfigCandidates)
+		foreach(string name in DefaultConfigCandidates)
 		{
 			FileInfo fi = new(Path.Combine(cwd, name));
-			if (fi.Exists) return fi;
+			if(fi.Exists) return fi;
 		}
 		return null;
 	}
 
 	public static BackupPlan4Config Load(FileInfo file)
 	{
-		if (file == null) throw new ArgumentNullException(nameof(file));
-		if (!file.Exists) throw new FileNotFoundException($"Config file not found: {file.FullName}", file.FullName);
+		if(file == null) throw new ArgumentNullException(nameof(file));
+		if(!file.Exists) throw new FileNotFoundException($"Config file not found: {file.FullName}", file.FullName);
 
 		string ext = file.Extension.ToLowerInvariant();
 		string content = File.ReadAllText(file.FullName);
 
-		if (ext == ".json" || ext == ".json5")
+		if(ext == ".json" || ext == ".json5")
 		{
-			if (ext == ".json5")
+			if(ext == ".json5")
 				content = NormalizeJson5(content);
 
 			JsonSerializerOptions options = new()
@@ -38,13 +38,13 @@ public static class BackupPlan4Loader
 			};
 
 			BackupPlan4Config? config = JsonSerializer.Deserialize<BackupPlan4Config>(content, options);
-			if (config == null)
+			if(config == null)
 				throw new InvalidOperationException($"Failed to deserialize config: {file.FullName}");
 
 			return config;
 		}
 
-		if (ext == ".toml")
+		if(ext == ".toml")
 		{
 			TomlSerializerOptions options = new()
 			{
@@ -53,7 +53,7 @@ public static class BackupPlan4Loader
 
 			BackupPlan4Config? config = TomlSerializer.Deserialize<BackupPlan4Config>(content, options);
 
-			if (config == null)
+			if(config == null)
 				throw new InvalidOperationException($"Failed to parse config file: {file.FullName}");
 
 			return config;
@@ -64,7 +64,7 @@ public static class BackupPlan4Loader
 
 	internal static string NormalizeJson5(string raw)
 	{
-		if (string.IsNullOrEmpty(raw)) return raw;
+		if(string.IsNullOrEmpty(raw)) return raw;
 
 		StringBuilder sb = new(raw.Length);
 		bool inString = false;
@@ -72,23 +72,22 @@ public static class BackupPlan4Loader
 		bool inLineComment = false;
 		bool inBlockComment = false;
 
-		for (int i = 0; i < raw.Length; i++)
+		for(int i = 0; i < raw.Length; i++)
 		{
 			char c = raw[i];
 
 			// Inside a string — handle escapes and delimiter matching
-			if (inString)
+			if(inString)
 			{
-				if (c == '\\' && i + 1 < raw.Length)
+				if(c == '\\' && i + 1 < raw.Length)
 				{
 					char next = raw[i + 1];
 					// Unescape \' → ' when converting from single-quoted to double-quoted
-					if (stringDelim == '\'' && next == '\'')
+					if(stringDelim == '\'' && next == '\'')
 					{
 						sb.Append('\'');
 						i++;
-					}
-					else
+					} else
 					{
 						sb.Append(c);
 						sb.Append(next);
@@ -97,7 +96,7 @@ public static class BackupPlan4Loader
 					continue;
 				}
 
-				if (c == stringDelim)
+				if(c == stringDelim)
 				{
 					inString = false;
 					sb.Append('"');
@@ -105,7 +104,7 @@ public static class BackupPlan4Loader
 				}
 
 				// Escape embedded double quotes when converting from single-quoted
-				if (stringDelim == '\'' && c == '"')
+				if(stringDelim == '\'' && c == '"')
 				{
 					sb.Append('\\');
 					sb.Append('"');
@@ -117,16 +116,16 @@ public static class BackupPlan4Loader
 			}
 
 			// Line comment: //
-			if (!inBlockComment && c == '/' && i + 1 < raw.Length && raw[i + 1] == '/')
+			if(!inBlockComment && c == '/' && i + 1 < raw.Length && raw[i + 1] == '/')
 			{
 				inLineComment = true;
 				i++;
 				continue;
 			}
 
-			if (inLineComment)
+			if(inLineComment)
 			{
-				if (c == '\n')
+				if(c == '\n')
 				{
 					inLineComment = false;
 					sb.Append(c);
@@ -135,16 +134,16 @@ public static class BackupPlan4Loader
 			}
 
 			// Block comment: /* ... */
-			if (!inLineComment && c == '/' && i + 1 < raw.Length && raw[i + 1] == '*')
+			if(!inLineComment && c == '/' && i + 1 < raw.Length && raw[i + 1] == '*')
 			{
 				inBlockComment = true;
 				i++;
 				continue;
 			}
 
-			if (inBlockComment)
+			if(inBlockComment)
 			{
-				if (c == '*' && i + 1 < raw.Length && raw[i + 1] == '/')
+				if(c == '*' && i + 1 < raw.Length && raw[i + 1] == '/')
 				{
 					inBlockComment = false;
 					i++;
@@ -153,7 +152,7 @@ public static class BackupPlan4Loader
 			}
 
 			// String start — normalize to double quotes
-			if (c == '"' || c == '\'')
+			if(c == '"' || c == '\'')
 			{
 				inString = true;
 				stringDelim = c;
@@ -162,32 +161,32 @@ public static class BackupPlan4Loader
 			}
 
 			// Trailing comma — skip when followed by } or ]
-			if (c == ',')
+			if(c == ',')
 			{
 				int j = i + 1;
-				while (j < raw.Length && char.IsWhiteSpace(raw[j]))
+				while(j < raw.Length && char.IsWhiteSpace(raw[j]))
 					j++;
-				if (j < raw.Length && (raw[j] == '}' || raw[j] == ']'))
+				if(j < raw.Length && (raw[j] == '}' || raw[j] == ']'))
 					continue;
 				sb.Append(c);
 				continue;
 			}
 
 			// Unquoted key: identifier followed by :
-			if (char.IsLetter(c) || c == '_' || c == '$')
+			if(char.IsLetter(c) || c == '_' || c == '$')
 			{
 				int start = i;
-				while (i < raw.Length && (char.IsLetterOrDigit(raw[i]) || raw[i] == '_' || raw[i] == '$'))
+				while(i < raw.Length && (char.IsLetterOrDigit(raw[i]) || raw[i] == '_' || raw[i] == '$'))
 					i++;
 
 				string ident = raw[start..i];
 				i--;
 
 				int j = i + 1;
-				while (j < raw.Length && char.IsWhiteSpace(raw[j]))
+				while(j < raw.Length && char.IsWhiteSpace(raw[j]))
 					j++;
 
-				if (j < raw.Length && raw[j] == ':')
+				if(j < raw.Length && raw[j] == ':')
 				{
 					sb.Append('"');
 					sb.Append(ident);

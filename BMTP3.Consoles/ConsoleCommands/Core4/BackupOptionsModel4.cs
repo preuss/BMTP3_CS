@@ -36,11 +36,17 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public static Option<string> SourcePathOption { get; } = new("--source-path", "-s")
 	{
-		Description =
-			"Absolute source path. For MTP, format: mtp://{DeviceName}/{DriveName}/{DirectoryPath} (e.g., 'mtp://Apple iPad/Internal Storage/DCIM/100APPLE'). For filesystem, use a local path (e.g., 'C:\\Users\\Bob\\Pictures')."
+		Description = "Absolute source path. For MTP, format: mtp://{DeviceName}/{DriveName}/{DirectoryPath} (e.g., 'mtp://Apple iPad/Internal Storage/DCIM/100APPLE'). For filesystem, use a local path (e.g., 'C:\\Users\\Bob\\Pictures')."
 	};
 
 	public string? SourcePath { get; set; }
+
+	public static Option<BackupSourceType?> SourceTypeOption { get; } = new("--source-type", "-t")
+	{
+		Description = "Source type: FileSystem or MediaDevice."
+	};
+
+	public BackupSourceType? SourceType { get; set; }
 
 	public static Option<DirectoryInfo> OutputDirectoryOption { get; } = new("--output", "-o")
 	{

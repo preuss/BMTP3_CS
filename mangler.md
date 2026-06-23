@@ -1,6 +1,6 @@
 # Mangler / Issues
 
-> **Seneste opdatering:** 23 Jun 2026
+> **Seneste opdatering:** 23 Jun 2026 (docs sync)
 > **Tests:** 1666/1666 passing (Common: 281, MessageFormatter: 351, Core4: 930, Consoles: 104)
 > **Docs cleanup:** 24 forældede docs slettet — værdifuld viden ekstraheret til plan.md, AGENTS.md, mangler.md
 
@@ -12,8 +12,8 @@
 |---|---|---|---|
 | **1** | `FileSystemTraversal.cs` | 89-120 | `SafeGetFiles`, `SafeGetDirectories`, `SafeGetDate` — **alle exceptions swallows** (`catch` → return null/tom). Hvis en mappe giver `UnauthorizedAccessException` eller `PathTooLongException`, får brugeren bare færre filer. Intet log, intet fail. **Bryder fail-first princippet.** | ✅ **FIXET** — `catch{}` fjernet (fail-first), `SafeGetDate` filtrerer specifikke exceptions |
 | **2** | `BackupEngine.cs` | 693-708 | `FilterPendingRecords` switch på `BackupItemStatus` — håndterer **kun** `Succeeded`, `Skipped`, `Pending`. `Active` og `Failed` **falder stille igennem** — items ignoreres uden warning. |
-| **4** | `BackupEngine.cs` | 461 | **Uforsikret cast** til `IMoveableContent` — `(IMoveableContent)record.Item.Content`. Hvis `DownloadService` ikke har kørt (eller fejlede), crasher det med `InvalidCastException`. |
-| **5** | `BackupPlan4Config.cs` | 15 | `Source.Type` property **læses aldrig i production**. Config-feltet `source.type = "MediaDevice"` ignoreres — typen udledes altid fra path prefix. |
+| **4** | `BackupEngine.cs` | 461 | **Uforsikret cast** til `IMoveableContent` — `(IMoveableContent)record.Item.Content`. Hvis `DownloadService` ikke har kørt (eller fejlede), crasher det med `InvalidCastException`. | ✅ **FIXET** — `is not IMoveableContent` pattern match med `InvalidOperationException` |
+| **5** | `BackupPlan4Config.cs`, `BackupPlanBuilder.cs` | 15, 80-86 | `Source.Type` property **læses aldrig i production**. Config-feltet `source.type = "MediaDevice"` ignoreres — typen udledes altid fra path prefix. `ApplyConfig()` brugte path prefix i stedet for config'en. `ApplyCliOverrides()` havde samme pattern — ingen `--source-type` CLI option. | ✅ **FIXET** — `ApplyConfig()` bruger `ParseEnum<BackupSourceType>(config.Source.Type)`, `--source-type` CLI option tilføjet, path detection fjernet fra config-flow og CLI |
 | **6** | `MediaDeviceTraversal.cs` | 224 | `DateTimeKind.Unspecified` fra MTP antages at være **maskinens lokale tidszone**. Hvis kameraet var i UTC+8 og PC'en i UTC-5, forskydes datoer med 13 timer. |
 | **7** | `BackupPlanBuilder.cs` | 38-39 | Default til ALLE 9 hash-algoritmer. Hver fil hashes 9 gange som standard, selv når `CollisionComparisonType = Binary`. **Voldsom performance-omkostning** for store backups. |
 | **8** | `BackupPlan.cs` vs `BackupPlanBuilder.cs` | flere | **Default mismatch** — `EnableTimestampCorrection` (model=false, builder=true) og `StopOnError` (model=false, builder=true). Hvis nogen bruger `BackupPlan` direkte (uden builder), får de modsatte defaults. |
@@ -59,6 +59,7 @@
 | 17 | **Bug #1:** `SafeGetFiles`/`SafeGetDirectories`/`SafeGetDate` — silent catch{} → fail-first | `FileSystemTraversal.cs`: `catch{}` fjernet i SafeGetFiles/Directories; SafeGetDate filtrerer specifikke exceptions (UnauthorizedAccessException, IOException, NotSupportedException). `BackupEngineErrorPathTests`: +2 tests (TraversalFailure_FailFast, ScanPhaseCancellation_ReturnsCancelledResult). |
 | 18 | `JsonBackupIndexWriterTests` — `.bmpt` → `.bmtp3` stavefejl (5 tests failed) | ` .bmpt` rettet til `.bmtp3` i 5 test-metoder. |
 | 19| **Bug #3 (fejlklassificering):** `BinaryFileComparerBase.cs:13-14` — `!Exists && !Exists → true` | **Ikke en bug.** `BinaryFileComparerBase` er en generisk base class. Hvis begge filer mangler, er de i samme tilstand → `true` er logisk korrekt. `BinaryFileComparerSelector.Select()` garanterer allerede existence med `ArgumentException`, og callers (`RenameCollisionResolver`, `BackupEngine`) har egne `File.Exists`-guards. Fjernet fra bugs-listen. |
+| 20| **Bug #5:** `Source.Type` ignoreret i config-flow | `ApplyConfig()` bruger `ParseEnum<BackupSourceType>(config.Source.Type)`, `--source-type` CLI option tilføjet, path detection fjernet. `BaseOptionsModel` urørt — `Option<BackupSourceType?>` binder korrekt til `BackupSourceType?` property. |
 
 ---
 
