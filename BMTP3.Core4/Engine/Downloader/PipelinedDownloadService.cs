@@ -6,8 +6,8 @@ namespace BMTP3.Core4.Engine.Downloader;
 
 internal sealed class PipelinedDownloadService : IDownloadService
 {
-	private const int BufferSize = 1 * 1024 * 1024; // 1 MB buffer for efficient sequential stream copying.
-	private const int QueueCapacity = 2;            // ~2 MB read-ahead; still only one reader (1 reader and 1 writer), suitable for MTP/PTP streams.
+	private const int BufferSize = 2 * 1024 * 1024; // 2 MB buffer for efficient sequential stream copying.
+	private const int QueueCapacity = 2;            // ~4 MB read-ahead; still only one reader (1 reader and 1 writer), suitable for MTP/PTP streams.
 
 	public async Task DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken)
 	{
