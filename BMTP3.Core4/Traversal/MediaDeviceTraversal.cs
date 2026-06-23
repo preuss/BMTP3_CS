@@ -220,7 +220,7 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		return dateTime.Kind switch
 		{
 			DateTimeKind.Utc => new DateTimeOffset(dateTime, TimeSpan.Zero),
-			DateTimeKind.Local => new DateTimeOffset(dateTime.ToUniversalTime(), TimeSpan.Zero),
+			DateTimeKind.Local => new DateTimeOffset(dateTime).ToUniversalTime(),
 			DateTimeKind.Unspecified => new DateTimeOffset(DateTime.SpecifyKind(dateTime, DateTimeKind.Local)).ToUniversalTime(),
 			_ => throw new ArgumentOutOfRangeException(nameof(value), $"Unexpected DateTimeKind: {dateTime.Kind}"),
 		};

@@ -151,7 +151,7 @@ public sealed record BackupPlan
 	/// <summary>
 	/// Indicates whether original timestamps should be restored.
 	/// </summary>
-	public bool EnableTimestampCorrection { get; init; }
+	public bool EnableTimestampCorrection { get; init; } = true;
 
 
 	// ---------------------------------------------------------------------
@@ -167,7 +167,7 @@ public sealed record BackupPlan
 	/// <summary>
 	/// If true, the backup stops immediately on the first fatal error.
 	/// </summary>
-	public bool StopOnError { get; init; }
+	public bool StopOnError { get; init; } = true;
 
 	/// <summary>
 	/// Artificial delay in milliseconds between each processed item.

@@ -11,12 +11,12 @@
 | # | Fil | Linje | Problem |
 |---|---|---|---|
 | **1** | `FileSystemTraversal.cs` | 89-120 | `SafeGetFiles`, `SafeGetDirectories`, `SafeGetDate` — **alle exceptions swallows** (`catch` → return null/tom). Hvis en mappe giver `UnauthorizedAccessException` eller `PathTooLongException`, får brugeren bare færre filer. Intet log, intet fail. **Bryder fail-first princippet.** | ✅ **FIXET** — `catch{}` fjernet (fail-first), `SafeGetDate` filtrerer specifikke exceptions |
-| **2** | `BackupEngine.cs` | 693-708 | `FilterPendingRecords` switch på `BackupItemStatus` — håndterer **kun** `Succeeded`, `Skipped`, `Pending`. `Active` og `Failed` **falder stille igennem** — items ignoreres uden warning. |
+| **2** | `BackupEngine.cs` | 693-708 | `FilterPendingRecords` switch — `Active` falder stille igennem. | 🟢 **Ikke en bug** — `Active` sættes aldrig på nogen record. `SessionStateService.ApplyResumeAsync` kaster hvis `Active` alligevel dukker op. Fjernet fra bugs. |
 | **4** | `BackupEngine.cs` | 461 | **Uforsikret cast** til `IMoveableContent` — `(IMoveableContent)record.Item.Content`. Hvis `DownloadService` ikke har kørt (eller fejlede), crasher det med `InvalidCastException`. | ✅ **FIXET** — `is not IMoveableContent` pattern match med `InvalidOperationException` |
 | **5** | `BackupPlan4Config.cs`, `BackupPlanBuilder.cs` | 15, 80-86 | `Source.Type` property **læses aldrig i production**. Config-feltet `source.type = "MediaDevice"` ignoreres — typen udledes altid fra path prefix. `ApplyConfig()` brugte path prefix i stedet for config'en. `ApplyCliOverrides()` havde samme pattern — ingen `--source-type` CLI option. | ✅ **FIXET** — `ApplyConfig()` bruger `ParseEnum<BackupSourceType>(config.Source.Type)`, `--source-type` CLI option tilføjet, path detection fjernet fra config-flow og CLI |
-| **6** | `MediaDeviceTraversal.cs` | 224 | `DateTimeKind.Unspecified` fra MTP antages at være **maskinens lokale tidszone**. Hvis kameraet var i UTC+8 og PC'en i UTC-5, forskydes datoer med 13 timer. |
-| **7** | `BackupPlanBuilder.cs` | 38-39 | Default til ALLE 9 hash-algoritmer. Hver fil hashes 9 gange som standard, selv når `CollisionComparisonType = Binary`. **Voldsom performance-omkostning** for store backups. |
-| **8** | `BackupPlan.cs` vs `BackupPlanBuilder.cs` | flere | **Default mismatch** — `EnableTimestampCorrection` (model=false, builder=true) og `StopOnError` (model=false, builder=true). Hvis nogen bruger `BackupPlan` direkte (uden builder), får de modsatte defaults. |
+| **6** | `MediaDeviceTraversal.cs` | 224 | `DateTimeKind.Unspecified` fra MTP antages at være **maskinens lokale tidszone**. Hvis kameraet var i UTC+8 og PC'en i UTC-5, forskydes datoer med 13 timer. | 🟢 **Ikke en bug** — når MTP giver `Unspecified` er `Local` det bedste gæt. Rettet `DateTimeKind.Local` til renere form: `new DateTimeOffset(dateTime).ToUniversalTime()` i stedet for `ToUniversalTime()` + manuel offset. Fjernet fra bugs. |
+| **7** | `BackupPlanBuilder.cs` | 38-39 | Default til ALLE 9 hash-algoritmer. | 🟢 **Ikke en bug** — single-pass arkitektur (1× I/O), brugeren vælger selv via CLI. Flere hashes i sidecar = bedre fremtidig verifikation. Fjernet fra bugs. |
+| **8** | `BackupPlan.cs` vs `BackupPlanBuilder.cs` | flere | **Default mismatch** — `EnableTimestampCorrection` (model=false, builder=true) og `StopOnError` (model=false, builder=true). | ✅ **FIXET** — `BackupPlan.cs:154,170` tilføjet `= true` på begge properties. Matcher nu builderens defaults. |
 | **9** | `BackupEngine.cs` | 348-351 | Timestamp resolution fejl **altid fatal** — `throw InvalidOperationException` selv når `EnableTimestampCorrection = false`. | 🟢 **Ikke en bug** — `Content` er altid `FileContent` efter download (temp-fil). Temp-filer har altid gyldige filesystem-timestamps > Unix epoch, så `Timestamp` er aldrig null. Defensivt guard — fjernet fra bugs. |
 
 ---
@@ -61,6 +61,10 @@
 | 19| **Bug #3 (fejlklassificering):** `BinaryFileComparerBase.cs:13-14` — `!Exists && !Exists → true` | **Ikke en bug.** `BinaryFileComparerBase` er en generisk base class. Hvis begge filer mangler, er de i samme tilstand → `true` er logisk korrekt. `BinaryFileComparerSelector.Select()` garanterer allerede existence med `ArgumentException`, og callers (`RenameCollisionResolver`, `BackupEngine`) har egne `File.Exists`-guards. Fjernet fra bugs-listen. |
 | 20| **Bug #5:** `Source.Type` ignoreret i config-flow | `ApplyConfig()` bruger `ParseEnum<BackupSourceType>(config.Source.Type)`, `--source-type` CLI option tilføjet, path detection fjernet. `BaseOptionsModel` urørt — `Option<BackupSourceType?>` binder korrekt til `BackupSourceType?` property. |
 | 21| **Bug #9 (fejlklassificering):** Timestamp resolution fatal — `throw` når `Timestamp` er null | **Ikke en bug.** Efter download er `Content` altid `FileContent` (temp-fil). Temp-filer har altid gyldige filesystem-timestamps > Unix epoch, så `Timestamp` er aldrig null. Defensivt guard — fjernet fra bugs. |
+| 22| **Bug #8:** Default mismatch mellem `BackupPlan` model og `BackupPlanBuilder` | `BackupPlan.cs:154,170` — `= true` på `EnableTimestampCorrection` og `StopOnError`. Matcher nu builder. |
+| 23| **Bug #7 (fejlklassificering):** Default alle 9 hash-algoritmer | **Ikke en bug.** Single-pass arkitektur (1× I/O). Brugeren vælger selv. Fjernet fra bugs. |
+| 24| **Bug #2 (fejlklassificering):** `Active` case i `FilterPendingRecords` switch | **Ikke en bug.** `Active` sættes aldrig på records; `SessionStateService` kaster hvis `Active` dukker op. Fjernet fra bugs. |
+| 25| **Bug #6 (forbedring):** `ToUtcOffsetOrNull` — `DateTimeKind.Local` case | `new DateTimeOffset(dateTime).ToUniversalTime()` i stedet for `new DateTimeOffset(dateTime.ToUniversalTime(), TimeSpan.Zero)`. Funktionsmæssigt identisk, stilmæssigt renere. `Unspecified` → `Local` er korrekt (bedste gæt). |
 
 ---
 
@@ -210,7 +214,7 @@ Ikke en runtime-fejl, men inkonsistent.
 
 | Prioritet | Antal | Område |
 |---|---|---|---|
-| 🔴 Bugs (latente) | 4 | #2 FilterPendingRecords switch, #6 MTP tidszone, #7 Default hash-algoritmer, #8 Default mismatch |
+| 🔴 Bugs (latente) | 0 | ✅ Alle 9 bugs gennemgået — 4 fikset, 5 re-evalueret som ikke-bugs |
 | 🟡 Bør testes (større) | ~60 filer | TimeStamp (~18 filer: 13 readers + EarliestTimestampResolutionService), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
 | 🟢 Nice-to-have | ~15 items | MediaDeviceContent, model defaults, edge cases |
 | 🔶 Kosmetisk | 2 | Sidecar separator style, CollisionStreategy filename |

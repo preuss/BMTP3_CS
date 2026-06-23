@@ -4,6 +4,7 @@
 > **Tests:** 1666/1666 passed (Core4: 930, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
+> **Bugs:** 9 gennemgået (4 fikset, 5 re-evalueret som ikke-bugs) — 0 tilbage
 
 ---
 
@@ -164,6 +165,9 @@ Normaliseringsregler:
 | Audit | **Bug #3 re-evalueret:** `BinaryFileComparerBase.CompareAsync` - `!Exists && !Exists → true` er **korrekt** for en generisk comparer (begge mangler = samme tilstand). Callers har egne existence guards. Fjernet fra bugs. | `BinaryFileComparerBase.cs` |
 | Fix | **Bug #4**: `(IMoveableContent)` → `is not IMoveableContent` pattern match med `InvalidOperationException` | `BackupEngine.cs:461` |
 | Fix | **Bug #5**: `Source.Type` læses nu via `ParseEnum<BackupSourceType>()`, `--source-type` CLI option tilføjet, path detection fjernet fra config-flow | `BackupPlanBuilder.cs:83-86,138-144`, `BackupOptionsModel4.cs:45-50` |
+| Fix | **Bug #6**: `ToUtcOffsetOrNull` — `DateTimeKind.Local` case forenklet til `new DateTimeOffset(dateTime).ToUniversalTime()`. `Unspecified` → `Local` er korrekt (bedste gæt). | `MediaDeviceTraversal.cs:223` |
+| Fix | **Bug #8**: Default mismatch — `EnableTimestampCorrection` og `StopOnError` sat til `= true` i `BackupPlan` som matcher builder | `BackupPlan.cs:154,170` |
+| Audit | **Bug #2/#7/#9 re-evalueret:** Ikke-bugs — alle 9 bugs gennemgået, 0 tilbage | Se mangler.md |
 
 ### In Progress
 
@@ -171,7 +175,7 @@ Normaliseringsregler:
 
 ### Næste — prioriteret
 
-0. **🔴 Latente bugs** — 4 bugs + 8 mistænkelige fund. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige`
+0. **🔴 Latente bugs — ingen tilbage** ✅. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige`
 1. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
 2. **Integration tests**: MTP pipeline, BackupEngine E2E
 3. **Retry/Resilience**: Exponential backoff, MTP resilience
