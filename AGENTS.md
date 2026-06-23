@@ -1,7 +1,7 @@
 # BMTP3 — Agent Session Context
 
 > **Sidst opdateret:** 23 Jun 2026
-> **Tests:** 1667/1667 passed (Core4: 931, MessageFormatter: 351, Common: 281, Consoles: 104)
+> **Tests:** 1668/1668 passed (Core4: 932, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
 > **Bugs:** 9 gennemgået (4 fikset, 5 re-evalueret som ikke-bugs) — 0 tilbage
@@ -25,6 +25,23 @@
 - `WriteDebugLine(ProgressReport, IAnsiConsole)` — caller tjekker `_debug` før kald
 - **Sequential progress contract** — `IBackupEngine.RunAsync` XML-doc kræver serial progress (display er ikke thread-safe)
 - `Progress<T>` bruges KUN i Consoles (UI-lag) — Core4 bruger `TransformProgress<TInner,TOuter>` og `ActionProgress<T>`
+
+### Download Pipeline
+
+- **PipelinedDownloadService** (`IDownloadService`): Producer/consumer Channel pipeline — ReadAsync/WriteAsync overlapper via `Channel<BufferChunk>`.
+  - Buffer: 2MB / Queue: 2 buffers (~4MB read-ahead)
+  - `ArrayPool<byte>.Shared.Rent()` for buffer reuse
+  - `PreallocationSize` seed for NTFS fragmenteringsminimering
+  - `SingleReader=true, SingleWriter=true` — MTP/PTP-safe (kun én reader ad gangen)
+  - File timestamps sættes efter stream Dispose (korrekt rækkefølge)
+
+### Hashing Pipeline
+
+- **ParallelStreamHashGenerator** (`IHashGenerator`): Parallel.ForEach over hash-algoritmer — alle N algoritmer processerer samme chunk på forskellige CPU cores.
+  - Buffer: 8MB via `ArrayPool<byte>.Shared.Rent()`
+  - `MaxDegreeOfParallelism = max(2, ProcessorCount / 4)` — konservativt for hyper-threading
+  - Throttler fjernet fra hot loop (styres af BackupEngine per-item)
+  - `PooledStreamHashGenerator` (4MB, sequential, med throttler) som fallback — kommenteret i DI
 
 ### Folder Layering (Api → Models → Engine → Scanner → Helpers)
 
@@ -90,7 +107,7 @@ Normaliseringsregler:
 | Princip | Anvendelse |
 |---------|-----------|
 | **Fail-first** | Traversal/engine kaster exception — aldrig `yield break`, `return`, `continue` |
-| **KISS** | Sequential pipeline, ingen kanaler/state machines. `BackupPlan4Config.cs` DTO beholdes (manuel mapping er eksplicit) |
+| **KISS** | Sequential pipeline — undtaget PipelinedDownloadService (Channel er nødvendig for MTP-safe I/O overlap). `BackupPlan4Config.cs` DTO beholdes (manuel mapping er eksplicit) |
 | **YAGNI** | `MaxDegreeOfParallelism` postponed, custom output pattern postponed, `EnableMetadata` fjernet |
 | **DRY** | `TransformProgress<T>` genbruges til scanning + download. `ParseEnum<T>` central |
 | **Progress determinisme** | `Progress<T>` forbudt i Core4. Kun synkrone wrappers |
@@ -169,6 +186,13 @@ Normaliseringsregler:
 | Fix | **Bug #8**: Default mismatch — `EnableTimestampCorrection` og `StopOnError` sat til `= true` i `BackupPlan` som matcher builder | `BackupPlan.cs:154,170` |
 | Audit | **Bug #2/#7/#9 re-evalueret:** Ikke-bugs — alle 9 bugs gennemgået, 0 tilbage | Se mangler.md |
 | Fix | **SourceType nullable:** `BackupPlan.SourceType` → `BackupSourceType?`. Validator tjekker null — fanger glemt `--source-type`. | `BackupPlan.cs:29`, `BackupPlanValidator.cs:37-42`, `BackupEngine.cs:159,477`, `BackupSessionKeyFactory.cs:31` |
+| Feat | **PipelinedDownloadService** — Channel producer/consumer, 2MB buffer, ArrayPool, PreallocationSize, timestamps efter Dispose | `Engine/Downloader/PipelinedDownloadService.cs` |
+| Feat | **ParallelStreamHashGenerator** — 8MB buffer, Parallel.ForEach over algoritmer, ArrayPool, konservativ DOP | `Hashing/ParallelStreamHashGenerator.cs` |
+| Feat | **PooledStreamHashGenerator** — 4MB buffer, ArrayPool, sequential (fallback) | `Hashing/PooledStreamHashGenerator.cs` |
+| Fix | **Throttler** fjernet fra StreamHashGenerator hot loop (var kaldt per 80KB buffer) | `Hashing/StreamHashGenerator.cs:78` |
+| Fix | **Throttler** kommenteret ud i ParallelStreamHashGenerator — styres af BackupEngine | `Hashing/ParallelStreamHashGenerator.cs:96` |
+| DI | `IHashGenerator` → `ParallelStreamHashGenerator`, `IDownloadService` → `PipelinedDownloadService` | `DependencyInjection/ServiceCollectionExtensions.cs:31,39` |
+| Test | Download buffer benchmark — 80KB→16MB→128MB, File.Copy reference. Sweet spot: 256KB-16MB | `PlayAroundProject/Program.cs` |
 
 ### In Progress
 
@@ -233,20 +257,13 @@ Normaliseringsregler:
 
 | Fil | Ændring |
 |---|---|
-| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampSourcesTests.cs` | **Ny** — 14 tests |
-| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampFormatStyleParserTests.cs` | **Ny** — 8 tests |
-| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampFormatDescriptorTests.cs` | **Ny** — 18 tests |
-| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampFormatterTests.cs` | **Ny** — 22 tests |
-| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampCandidateTests.cs` | **Ny** — 14 tests |
-| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/TimestampCandidateFactoryTests.cs` | **Ny** — 34 tests |
-| `BMTP3.Core4.Tests/Engine/TimeStamp/Candidates/ParsedTests.cs` | **Ny** — 2 tests |
-| `BMTP3.Core4.Tests/Engine/Downloader/DownloadServiceTests.cs` | Udvidet — 2 error path tests (Content kaster, pre-cancelled) |
-| `BMTP3.Core4.Tests/Engine/Hashing/HashServiceTests.cs` | Udvidet — 1 error path test (null stream) |
-| `BMTP3.Consoles/ConsoleCommands/Core4/BackupOptionsModel4.cs` | Udvidet — `EnableTimestampCorrectionOption` (+ TIMESTAMP sektion) |
-| `BMTP3.Consoles/ConsoleCommands/Core4/BackupPlanBuilder.cs` | Udvidet — `WasSupplied(EnableTimestampCorrectionOption)` i ApplyCliOverrides |
-| `plan.md` | Opdateret — P0 field mapping gaps, testcount 1661 |
-| `mangler.md` | Opdateret — 2B error paths status, mapping audit, testcount 1661 |
-| `AGENTS.md` | Opdateret testcount (1661), session context, næste priorities |
+| `BMTP3.Core4/Engine/Downloader/PipelinedDownloadService.cs` | **Ny** — Channel producer/consumer, 2MB buffer, ArrayPool, PreallocationSize |
+| `BMTP3.Core4/Hashing/ParallelStreamHashGenerator.cs` | **Ny** — 8MB buffer, Parallel.ForEach over algoritmer, ArrayPool |
+| `BMTP3.Core4/Hashing/PooledStreamHashGenerator.cs` | **Ny** — 4MB buffer, ArrayPool, sequential (fallback) |
+| `BMTP3.Core4/DependencyInjection/ServiceCollectionExtensions.cs` | Updated — `IHashGenerator` → `ParallelStreamHashGenerator`, `IDownloadService` → `PipelinedDownloadService` |
+| `BMTP3.Core4/Hashing/StreamHashGenerator.cs` | Throttler fjernet fra hot loop (linje 78 kommenteret ud) |
+| `PlayAroundProject/Program.cs` | Download buffer benchmark — 80KB→16MB→128MB + File.Copy reference |
+| `AGENTS.md` | Opdateret — nye download/hash pipelines, testcount 1668 |
 
 ---
 
