@@ -1,4 +1,3 @@
-using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine.Session;
 
@@ -9,42 +8,21 @@ public class BackupSessionKeyFactoryTests
 	[Fact]
 	public void Create_WithValidPlan_ReturnsKey()
 	{
-		BackupPlan plan = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\MyPhotos",
-			Destination = "D:\\Backup",
-			Name = "Test",
-		};
-
-		BackupSessionKey key = BackupSessionKeyFactory.Create(plan);
+		BackupSessionKey key = BackupSessionKeyFactory.Create(
+			"C:\\MyPhotos", "D:\\Backup", BackupSourceType.FileSystem);
 
 		Assert.NotNull(key.SessionId);
 		Assert.NotNull(key.SourceIdentity);
-		Assert.Equal("FileSystem:C:\\MyPhotos:D:\\Backup", key.SourceIdentity);
+		Assert.Equal("C:\\MyPhotos:D:\\Backup:FileSystem", key.SourceIdentity);
 	}
 
 	[Fact]
 	public void Create_SameSourceAndDestination_ReturnsSameSessionId()
 	{
-		BackupPlan planA = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\MyPhotos",
-			Destination = "D:\\Backup",
-			Name = "Test",
-		};
-
-		BackupPlan planB = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\MyPhotos",
-			Destination = "D:\\Backup",
-			Name = "Different",
-		};
-
-		BackupSessionKey keyA = BackupSessionKeyFactory.Create(planA);
-		BackupSessionKey keyB = BackupSessionKeyFactory.Create(planB);
+		BackupSessionKey keyA = BackupSessionKeyFactory.Create(
+			"C:\\MyPhotos", "D:\\Backup", BackupSourceType.FileSystem);
+		BackupSessionKey keyB = BackupSessionKeyFactory.Create(
+			"C:\\MyPhotos", "D:\\Backup", BackupSourceType.FileSystem);
 
 		Assert.Equal(keyA.SessionId, keyB.SessionId);
 		Assert.Equal(keyA.SourceIdentity, keyB.SourceIdentity);
@@ -53,22 +31,10 @@ public class BackupSessionKeyFactoryTests
 	[Fact]
 	public void Create_DifferentDestination_DifferentSessionId()
 	{
-		BackupPlan planA = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\MyPhotos",
-			Destination = "D:\\Backup",
-		};
-
-		BackupPlan planB = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\MyPhotos",
-			Destination = "E:\\Other",
-		};
-
-		BackupSessionKey keyA = BackupSessionKeyFactory.Create(planA);
-		BackupSessionKey keyB = BackupSessionKeyFactory.Create(planB);
+		BackupSessionKey keyA = BackupSessionKeyFactory.Create(
+			"C:\\MyPhotos", "D:\\Backup", BackupSourceType.FileSystem);
+		BackupSessionKey keyB = BackupSessionKeyFactory.Create(
+			"C:\\MyPhotos", "E:\\Other", BackupSourceType.FileSystem);
 
 		Assert.NotEqual(keyA.SessionId, keyB.SessionId);
 		Assert.NotEqual(keyA.SourceIdentity, keyB.SourceIdentity);
@@ -77,22 +43,10 @@ public class BackupSessionKeyFactoryTests
 	[Fact]
 	public void Create_DifferentSourceType_DifferentSessionId()
 	{
-		BackupPlan planFs = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\MyPhotos",
-			Destination = "D:\\Backup",
-		};
-
-		BackupPlan planMtp = new()
-		{
-			SourceType = BackupSourceType.MediaDevice,
-			SourcePath = "C:\\MyPhotos",
-			Destination = "D:\\Backup",
-		};
-
-		BackupSessionKey keyFs = BackupSessionKeyFactory.Create(planFs);
-		BackupSessionKey keyMtp = BackupSessionKeyFactory.Create(planMtp);
+		BackupSessionKey keyFs = BackupSessionKeyFactory.Create(
+			"C:\\MyPhotos", "D:\\Backup", BackupSourceType.FileSystem);
+		BackupSessionKey keyMtp = BackupSessionKeyFactory.Create(
+			"C:\\MyPhotos", "D:\\Backup", BackupSourceType.MediaDevice);
 
 		Assert.NotEqual(keyFs.SessionId, keyMtp.SessionId);
 	}
@@ -100,37 +54,17 @@ public class BackupSessionKeyFactoryTests
 	[Fact]
 	public void Create_DifferentSourcePath_DifferentSessionId()
 	{
-		BackupPlan planA = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\A",
-			Destination = "D:\\Backup",
-		};
-
-		BackupPlan planB = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\B",
-			Destination = "D:\\Backup",
-		};
-
 		Assert.NotEqual(
-			BackupSessionKeyFactory.Create(planA).SessionId,
-			BackupSessionKeyFactory.Create(planB).SessionId
+			BackupSessionKeyFactory.Create("C:\\A", "D:\\Backup", BackupSourceType.FileSystem).SessionId,
+			BackupSessionKeyFactory.Create("C:\\B", "D:\\Backup", BackupSourceType.FileSystem).SessionId
 		);
 	}
 
 	[Fact]
 	public void Create_SessionId_IsHexString()
 	{
-		BackupPlan plan = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\Test",
-			Destination = "D:\\Backup",
-		};
-
-		string sessionId = BackupSessionKeyFactory.Create(plan).SessionId;
+		string sessionId = BackupSessionKeyFactory.Create(
+			"C:\\Test", "D:\\Backup", BackupSourceType.FileSystem).SessionId;
 
 		Assert.Matches("^[0-9a-f]{64}$", sessionId);
 	}
@@ -138,29 +72,23 @@ public class BackupSessionKeyFactoryTests
 	[Fact]
 	public void Create_SourcePathTrimmed_IgnoresSpaces()
 	{
-		BackupPlan planUntrimmed = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "  C:\\Path  ",
-			Destination = "D:\\Backup",
-		};
-
-		BackupPlan planTrimmed = new()
-		{
-			SourceType = BackupSourceType.FileSystem,
-			SourcePath = "C:\\Path",
-			Destination = "D:\\Backup",
-		};
-
 		Assert.Equal(
-			BackupSessionKeyFactory.Create(planUntrimmed).SessionId,
-			BackupSessionKeyFactory.Create(planTrimmed).SessionId
+			BackupSessionKeyFactory.Create("  C:\\Path  ", "D:\\Backup", BackupSourceType.FileSystem).SessionId,
+			BackupSessionKeyFactory.Create("C:\\Path", "D:\\Backup", BackupSourceType.FileSystem).SessionId
 		);
 	}
 
 	[Fact]
-	public void Create_NullPlan_ThrowsArgumentNullException()
+	public void Create_NullSourcePath_ThrowsArgumentNullException()
 	{
-		Assert.Throws<ArgumentNullException>(() => BackupSessionKeyFactory.Create(null!));
+		Assert.Throws<ArgumentNullException>(() => BackupSessionKeyFactory.Create(
+			null!, "D:\\Backup", BackupSourceType.FileSystem));
+	}
+
+	[Fact]
+	public void Create_NullDestination_ThrowsArgumentNullException()
+	{
+		Assert.Throws<ArgumentNullException>(() => BackupSessionKeyFactory.Create(
+			"C:\\Path", null!, BackupSourceType.FileSystem));
 	}
 }

@@ -34,7 +34,10 @@ internal static class BackupPlanValidator
 		if(plan.Destination.IndexOfAny(Path.GetInvalidPathChars()) >= 0)
 			throw new BackupPlanArgumentException("Destination contains invalid path characters.");
 
-		if(!Enum.IsDefined(plan.SourceType))
+		if(plan.SourceType is null)
+			throw new BackupPlanArgumentException("SourceType must be specified. Use --source-type or set 'source.type' in config.");
+
+		if(!Enum.IsDefined(plan.SourceType.Value))
 			throw new BackupPlanArgumentException($"Invalid SourceType value: {plan.SourceType}.");
 
 		if(!Enum.IsDefined(plan.OutputStructureStrategy))

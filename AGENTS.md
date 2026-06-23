@@ -1,7 +1,7 @@
 # BMTP3 — Agent Session Context
 
 > **Sidst opdateret:** 23 Jun 2026
-> **Tests:** 1666/1666 passed (Core4: 930, MessageFormatter: 351, Common: 281, Consoles: 104)
+> **Tests:** 1667/1667 passed (Core4: 931, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
 > **Bugs:** 9 gennemgået (4 fikset, 5 re-evalueret som ikke-bugs) — 0 tilbage
@@ -168,6 +168,7 @@ Normaliseringsregler:
 | Fix | **Bug #6**: `ToUtcOffsetOrNull` — `DateTimeKind.Local` case forenklet til `new DateTimeOffset(dateTime).ToUniversalTime()`. `Unspecified` → `Local` er korrekt (bedste gæt). | `MediaDeviceTraversal.cs:223` |
 | Fix | **Bug #8**: Default mismatch — `EnableTimestampCorrection` og `StopOnError` sat til `= true` i `BackupPlan` som matcher builder | `BackupPlan.cs:154,170` |
 | Audit | **Bug #2/#7/#9 re-evalueret:** Ikke-bugs — alle 9 bugs gennemgået, 0 tilbage | Se mangler.md |
+| Fix | **SourceType nullable:** `BackupPlan.SourceType` → `BackupSourceType?`. Validator tjekker null — fanger glemt `--source-type`. | `BackupPlan.cs:29`, `BackupPlanValidator.cs:37-42`, `BackupEngine.cs:159,477`, `BackupSessionKeyFactory.cs:31` |
 
 ### In Progress
 

@@ -123,7 +123,7 @@ internal sealed class BackupEngine : IBackupEngine
 
 		IBackupRecordRepository repository = new BackupMemoryRecordRepository();
 
-		BackupSessionKey sessionKey = BackupSessionKeyFactory.Create(plan);
+		BackupSessionKey sessionKey = BackupSessionKeyFactory.Create(plan.SourcePath, plan.Destination, plan.SourceType!.Value);
 
 		// ------------------------------------------------------------
 		// 3. Prepare destination
@@ -156,7 +156,7 @@ internal sealed class BackupEngine : IBackupEngine
 			// ------------------------------------------------------------
 			IReadOnlyList<IBackupDriveInfo> drives = _driveProvider.ListDrives();
 
-			string internalSourcePath = PathHelper.ToInternalCanonicalUri(plan.SourcePath, plan.SourceType);
+			string internalSourcePath = PathHelper.ToInternalCanonicalUri(plan.SourcePath, plan.SourceType!.Value);
 			IBackupDriveInfo matchedDrive = MatchDrive(drives, internalSourcePath)
 				?? throw new InvalidOperationException($"No drive found matching source path '{plan.SourcePath}'.");
 
@@ -474,7 +474,7 @@ internal sealed class BackupEngine : IBackupEngine
 							SidecarRequest sidecarRequest = new()
 							{
 								Format = plan.SidecarFormat,
-								SourceType = plan.SourceType,
+								SourceType = plan.SourceType!.Value,
 								SourceId = record.Item.Id,
 								SourceFileName = record.Item.FileName,
 								SourceFullPath = record.Item.SourcePath,

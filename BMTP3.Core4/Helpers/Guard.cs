@@ -11,6 +11,13 @@ internal static class Guard
 		return argument;
 	}
 
+	public static T RequireNonNull<T>(T? argument, [CallerArgumentExpression(nameof(argument))] string? paramName = null) where T : struct
+	{
+		if(argument is null) throw new ArgumentNullException(paramName);
+
+		return argument.Value;
+	}
+
 	public static string RequireNonNullOrNonWhitespace(string? argument, [CallerArgumentExpression(nameof(argument))] string? paramName = null)
 	{
 		ArgumentNullException.ThrowIfNullOrWhiteSpace(argument, paramName);

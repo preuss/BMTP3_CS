@@ -26,7 +26,7 @@ public sealed record BackupPlan
 	/// <summary>
 	/// The type of source to back up (e.g. filesystem or media device).
 	/// </summary>
-	public BackupSourceType SourceType { get; init; }
+	public BackupSourceType? SourceType { get; init; }
 
 	/// <summary>
 	/// The source path to back up.
@@ -97,17 +97,17 @@ public sealed record BackupPlan
 	/// <summary>
 	/// Defines how name collisions at the destination are handled.
 	/// </summary>
-	public CollisionStrategy CollisionStrategy { get; init; }
+	public CollisionStrategy CollisionStrategy { get; init; } = CollisionStrategy.Rename;
 
 	/// <summary>
 	/// Defines how files are compared to determine if a collision exists.
 	/// </summary>
-	public CollisionComparisonType CollisionComparisonType { get; init; }
+	public CollisionComparisonType CollisionComparisonType { get; init; } = CollisionComparisonType.Binary;
 
 	/// <summary>
 	/// Defines how files are renamed when a collision is resolved by renaming.
 	/// </summary>
-	public RenameStrategy RenameStrategy { get; init; }
+	public RenameStrategy RenameStrategy { get; init; } = RenameStrategy.Increment;
 
 	/// <summary>
 	/// Custom template pattern for renaming when <see cref="RenameStrategy"/> is <c>Custom</c>.
@@ -146,7 +146,7 @@ public sealed record BackupPlan
 	/// <summary>
 	/// Specifies how files are verified after being written to the destination.
 	/// </summary>
-	public PostWriteVerificationType PostWriteVerification { get; init; }
+	public PostWriteVerificationType PostWriteVerification { get; init; } = PostWriteVerificationType.None;
 
 	/// <summary>
 	/// Indicates whether original timestamps should be restored.

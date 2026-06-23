@@ -12,6 +12,7 @@ public class BackupPlanValidatorTests
 		Name = "Test Backup",
 		SourcePath = @"C:\Users\Test\Pictures",
 		Destination = @"D:\Backups",
+		SourceType = BackupSourceType.FileSystem,
 	};
 
 	// -----------------------------------------------------------------------
@@ -145,6 +146,16 @@ public class BackupPlanValidatorTests
 	public void Validate_InvalidSourceType_Throws(BackupSourceType value)
 	{
 		BackupPlan plan = ValidPlan with { SourceType = value };
+
+		BackupPlanArgumentException ex = Assert.Throws<BackupPlanArgumentException>(
+			() => BackupPlanValidator.Validate(plan));
+		Assert.Contains("SourceType", ex.Message);
+	}
+
+	[Fact]
+	public void Validate_NullSourceType_Throws()
+	{
+		BackupPlan plan = ValidPlan with { SourceType = null };
 
 		BackupPlanArgumentException ex = Assert.Throws<BackupPlanArgumentException>(
 			() => BackupPlanValidator.Validate(plan));

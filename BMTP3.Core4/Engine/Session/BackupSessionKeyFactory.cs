@@ -1,20 +1,20 @@
-﻿using BMTP3.Core4.Api.Models;
-using BMTP3.Core4.Helpers;
+﻿using BMTP3.Core4.Api.Models.Enums;
 using System.Security.Cryptography;
 using System.Text;
 
 namespace BMTP3.Core4.Engine.Session;
 
 /// <summary>
-/// Creates backup session state keys from backup plans.
+/// Creates backup session state keys from backup plan parameters.
 /// </summary>
 internal static class BackupSessionKeyFactory
 {
-	public static BackupSessionKey Create(BackupPlan plan)
+	public static BackupSessionKey Create(string sourcePath, string destination, BackupSourceType sourceType)
 	{
-		plan = Guard.RequireNonNull(plan);
+		ArgumentNullException.ThrowIfNull(sourcePath);
+		ArgumentNullException.ThrowIfNull(destination);
 
-		string sourceIdentity = CreateSourceIdentity(plan);
+		string sourceIdentity = CreateSourceIdentity(sourcePath, destination, sourceType);
 
 		// SessionId is a stable, deterministic hash of the plan identity
 		// (source type + source path + destination) so the same plan always
@@ -26,9 +26,9 @@ internal static class BackupSessionKeyFactory
 		return new BackupSessionKey(sessionId, sourceIdentity);
 	}
 
-	private static string CreateSourceIdentity(BackupPlan plan)
+	private static string CreateSourceIdentity(string sourcePath, string destination, BackupSourceType sourceType)
 	{
-		return $"{plan.SourceType}:{plan.SourcePath.Trim()}:{plan.Destination.Trim()}";
+		return $"{sourcePath.Trim()}:{destination.Trim()}:{sourceType}";
 	}
 
 	private static string CreateStableSessionId(string sourceIdentity)

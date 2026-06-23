@@ -1,7 +1,7 @@
 # Mangler / Issues
 
-> **Seneste opdatering:** 23 Jun 2026 (Bug #9 re-evalueret)
-> **Tests:** 1666/1666 passing (Common: 281, MessageFormatter: 351, Core4: 930, Consoles: 104)
+> **Seneste opdatering:** 23 Jun 2026 (SourceType nullable)
+> **Tests:** 1667/1667 passing (Common: 281, MessageFormatter: 351, Core4: 931, Consoles: 104)
 > **Docs cleanup:** 24 forældede docs slettet — værdifuld viden ekstraheret til plan.md, AGENTS.md, mangler.md
 
 ---
@@ -65,6 +65,7 @@
 | 23| **Bug #7 (fejlklassificering):** Default alle 9 hash-algoritmer | **Ikke en bug.** Single-pass arkitektur (1× I/O). Brugeren vælger selv. Fjernet fra bugs. |
 | 24| **Bug #2 (fejlklassificering):** `Active` case i `FilterPendingRecords` switch | **Ikke en bug.** `Active` sættes aldrig på records; `SessionStateService` kaster hvis `Active` dukker op. Fjernet fra bugs. |
 | 25| **Bug #6 (forbedring):** `ToUtcOffsetOrNull` — `DateTimeKind.Local` case | `new DateTimeOffset(dateTime).ToUniversalTime()` i stedet for `new DateTimeOffset(dateTime.ToUniversalTime(), TimeSpan.Zero)`. Funktionsmæssigt identisk, stilmæssigt renere. `Unspecified` → `Local` er korrekt (bedste gæt). |
+| 26| **SourceType nullable:** `BackupPlan.SourceType` → `BackupSourceType?` | Validator tjekker nu `SourceType == null` → kaster med "SourceType must be specified". Fanger glemt `--source-type` eller manglende `source.type` i config. |
 
 ---
 
