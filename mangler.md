@@ -1,6 +1,6 @@
 # Mangler / Issues
 
-> **Seneste opdatering:** 23 Jun 2026 (docs sync)
+> **Seneste opdatering:** 23 Jun 2026 (Bug #9 re-evalueret)
 > **Tests:** 1666/1666 passing (Common: 281, MessageFormatter: 351, Core4: 930, Consoles: 104)
 > **Docs cleanup:** 24 forældede docs slettet — værdifuld viden ekstraheret til plan.md, AGENTS.md, mangler.md
 
@@ -17,7 +17,7 @@
 | **6** | `MediaDeviceTraversal.cs` | 224 | `DateTimeKind.Unspecified` fra MTP antages at være **maskinens lokale tidszone**. Hvis kameraet var i UTC+8 og PC'en i UTC-5, forskydes datoer med 13 timer. |
 | **7** | `BackupPlanBuilder.cs` | 38-39 | Default til ALLE 9 hash-algoritmer. Hver fil hashes 9 gange som standard, selv når `CollisionComparisonType = Binary`. **Voldsom performance-omkostning** for store backups. |
 | **8** | `BackupPlan.cs` vs `BackupPlanBuilder.cs` | flere | **Default mismatch** — `EnableTimestampCorrection` (model=false, builder=true) og `StopOnError` (model=false, builder=true). Hvis nogen bruger `BackupPlan` direkte (uden builder), får de modsatte defaults. |
-| **9** | `BackupEngine.cs` | 348-351 | Timestamp resolution fejl **altid fatal** — `throw InvalidOperationException` selv når `EnableTimestampCorrection = false`. En fil uden metadata-datoer (ingen EXIF, korrupt) stopper hele backup'en. |
+| **9** | `BackupEngine.cs` | 348-351 | Timestamp resolution fejl **altid fatal** — `throw InvalidOperationException` selv når `EnableTimestampCorrection = false`. | 🟢 **Ikke en bug** — `Content` er altid `FileContent` efter download (temp-fil). Temp-filer har altid gyldige filesystem-timestamps > Unix epoch, så `Timestamp` er aldrig null. Defensivt guard — fjernet fra bugs. |
 
 ---
 
@@ -60,6 +60,7 @@
 | 18 | `JsonBackupIndexWriterTests` — `.bmpt` → `.bmtp3` stavefejl (5 tests failed) | ` .bmpt` rettet til `.bmtp3` i 5 test-metoder. |
 | 19| **Bug #3 (fejlklassificering):** `BinaryFileComparerBase.cs:13-14` — `!Exists && !Exists → true` | **Ikke en bug.** `BinaryFileComparerBase` er en generisk base class. Hvis begge filer mangler, er de i samme tilstand → `true` er logisk korrekt. `BinaryFileComparerSelector.Select()` garanterer allerede existence med `ArgumentException`, og callers (`RenameCollisionResolver`, `BackupEngine`) har egne `File.Exists`-guards. Fjernet fra bugs-listen. |
 | 20| **Bug #5:** `Source.Type` ignoreret i config-flow | `ApplyConfig()` bruger `ParseEnum<BackupSourceType>(config.Source.Type)`, `--source-type` CLI option tilføjet, path detection fjernet. `BaseOptionsModel` urørt — `Option<BackupSourceType?>` binder korrekt til `BackupSourceType?` property. |
+| 21| **Bug #9 (fejlklassificering):** Timestamp resolution fatal — `throw` når `Timestamp` er null | **Ikke en bug.** Efter download er `Content` altid `FileContent` (temp-fil). Temp-filer har altid gyldige filesystem-timestamps > Unix epoch, så `Timestamp` er aldrig null. Defensivt guard — fjernet fra bugs. |
 
 ---
 
@@ -209,7 +210,7 @@ Ikke en runtime-fejl, men inkonsistent.
 
 | Prioritet | Antal | Område |
 |---|---|---|---|
-| 🔴 Bør testes nu | 0 | ~~BackupPlanValidator, BinaryFileComparerSelector, Error paths i engine~~ ✅ ALLE FIXET |
+| 🔴 Bugs (latente) | 4 | #2 FilterPendingRecords switch, #6 MTP tidszone, #7 Default hash-algoritmer, #8 Default mismatch |
 | 🟡 Bør testes (større) | ~60 filer | TimeStamp (~18 filer: 13 readers + EarliestTimestampResolutionService), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
 | 🟢 Nice-to-have | ~15 items | MediaDeviceContent, model defaults, edge cases |
 | 🔶 Kosmetisk | 2 | Sidecar separator style, CollisionStreategy filename |
