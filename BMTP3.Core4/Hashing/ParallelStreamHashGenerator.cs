@@ -17,7 +17,7 @@ public sealed class ParallelStreamHashGenerator : IHashGenerator
 	private readonly int _maxDegreeOfParallelism;
 
 	public ParallelStreamHashGenerator(ILogger<ParallelStreamHashGenerator> logger)
-		: this(DefaultBufferSize, Math.Max(2, Environment.ProcessorCount / 4), logger)
+		: this(DefaultBufferSize, Math.Max(2, Environment.ProcessorCount / 3), logger)
 	{
 	}
 

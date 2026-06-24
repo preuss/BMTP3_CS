@@ -2,6 +2,7 @@
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Reflection;
+using Microsoft.Extensions.Options;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -38,17 +39,19 @@ public abstract class BaseOptionsModel
 
 		ModelDefinition definition = GetOrBuildDefinition();
 
-		foreach (OptionBinding binding in definition.Bindings)
+		foreach(OptionBinding binding in definition.Bindings)
 		{
 			object? value = binding.GetValue(parseResult);
 			SetPropertyValue(binding.ValueProperty, value);
 
-			if (binding.OptionResultProperty is { } resultProperty)
+			if(binding.OptionResultProperty is { } resultProperty)
 			{
 				resultProperty.SetValue(this, parseResult.GetResult(binding.Option));
 			}
 		}
 
+		// All parsed option values have now been copied into the model.
+		// Run post-binding validation and apply defaults that require the populated model state.
 		DoValidateAndSetDefaults(parseResult);
 	}
 
@@ -67,26 +70,22 @@ public abstract class BaseOptionsModel
 	{
 		ArgumentNullException.ThrowIfNull(models);
 
-		Dictionary<string, (Option Option, Type ModelType)> seen =
-			new(StringComparer.OrdinalIgnoreCase);
+		Dictionary<string, (Option Option, Type ModelType)> seen = new(StringComparer.OrdinalIgnoreCase);
 
 		List<string> collisions = new();
 
-		foreach (BaseOptionsModel model in models)
+		foreach(BaseOptionsModel model in models)
 		{
 			Type modelType = model.GetType();
 
-			foreach (Option option in model.GetAllOptions())
+			foreach(Option option in model.GetAllOptions())
 			{
-				foreach (string name in GetAllNames(option))
+				foreach(string name in GetAllNames(option))
 				{
-					if (seen.TryGetValue(name, out (Option Option, Type ModelType) existing))
+					if(seen.TryGetValue(name, out (Option Option, Type ModelType) existing))
 					{
-						collisions.Add(
-							$"  '{name}' used by [{existing.Option}] in {existing.ModelType.FullName} " +
-							$"and [{option}] in {modelType.FullName}");
-					}
-					else
+						collisions.Add($"  Name/alias '{name}' is used by option '{existing.Option.Name}' in {existing.ModelType.FullName} " + $"and option '{option.Name}' in {modelType.FullName}.");
+					} else
 					{
 						seen[name] = (option, modelType);
 					}
@@ -94,11 +93,9 @@ public abstract class BaseOptionsModel
 			}
 		}
 
-		if (collisions.Count > 0)
+		if(collisions.Count > 0)
 		{
-			throw new InvalidOperationException(
-				"Duplicate option names or aliases detected:" + Environment.NewLine +
-				string.Join(Environment.NewLine, collisions));
+			throw new InvalidOperationException("Duplicate option names or aliases detected:" + Environment.NewLine + string.Join(Environment.NewLine, collisions));
 		}
 	}
 
@@ -149,7 +146,7 @@ public abstract class BaseOptionsModel
 				new string('-', hValue.Length))
 		};
 
-		foreach (var row in rows)
+		foreach(var row in rows)
 		{
 			result.Add(FormatRow(row.Option, row.Property, row.Type, row.Value));
 		}
@@ -214,12 +211,11 @@ public abstract class BaseOptionsModel
 
 		List<OptionBinding> bindings = new();
 
-		foreach (PropertyInfo optionProperty in optionProperties)
+		foreach(PropertyInfo optionProperty in optionProperties)
 		{
-			if (!TryGetOptionValueType(optionProperty.PropertyType, out Type? valueType))
+			if(!TryGetOptionValueType(optionProperty.PropertyType, out Type? valueType))
 			{
-				throw new InvalidOperationException(
-					$"Static option property '{optionProperty.Name}' must be of type Option<T>.");
+				throw new InvalidOperationException($"Static option property '{optionProperty.Name}' must be of type Option<T>.");
 			}
 
 			ArgumentNullException.ThrowIfNull(valueType);
@@ -239,19 +235,17 @@ public abstract class BaseOptionsModel
 	{
 		string baseName = optionProperty.Name[..^OptionSuffix.Length];
 
-		if (!instanceProperties.TryGetValue(baseName, out PropertyInfo? valueProperty))
+		if(!instanceProperties.TryGetValue(baseName, out PropertyInfo? valueProperty))
 		{
-			throw new InvalidOperationException(
-				$"No instance property '{baseName}' found for static option '{optionProperty.Name}'.");
+			throw new InvalidOperationException($"No instance property '{baseName}' found for static option '{optionProperty.Name}'.");
 		}
 
-		if (!valueProperty.CanWrite)
+		if(!valueProperty.CanWrite)
 		{
-			throw new InvalidOperationException(
-				$"Instance property '{valueProperty.Name}' must have a setter.");
+			throw new InvalidOperationException($"Instance property '{valueProperty.Name}' must have a setter.");
 		}
 
-		if (valueProperty.PropertyType != valueType)
+		if(valueProperty.PropertyType != valueType)
 		{
 			throw new InvalidOperationException(
 				$"Type mismatch: '{optionProperty.Name}' is Option<{valueType.Name}> " +
@@ -263,10 +257,9 @@ public abstract class BaseOptionsModel
 			instanceProperties);
 
 		Option option = optionProperty.GetValue(null) as Option
-			?? throw new InvalidOperationException(
-				$"Option '{optionProperty.Name}' returned null.");
+			?? throw new InvalidOperationException($"Option '{optionProperty.Name}' returned null.");
 
-		if (!optionProperty.PropertyType.IsInstanceOfType(option))
+		if(!optionProperty.PropertyType.IsInstanceOfType(option))
 		{
 			throw new InvalidOperationException(
 				$"Option instance for '{optionProperty.Name}' is not of expected type '{optionProperty.PropertyType.Name}'. " +
@@ -288,21 +281,19 @@ public abstract class BaseOptionsModel
 	{
 		string optionResultPropertyName = baseName + OptionResultSuffix;
 
-		if (!instanceProperties.TryGetValue(optionResultPropertyName, out PropertyInfo? optionResultProperty))
+		if(!instanceProperties.TryGetValue(optionResultPropertyName, out PropertyInfo? optionResultProperty))
 		{
 			return null;
 		}
 
-		if (optionResultProperty.PropertyType != typeof(OptionResult))
+		if(optionResultProperty.PropertyType != typeof(OptionResult))
 		{
-			throw new InvalidOperationException(
-				$"'{optionResultProperty.Name}' must be of type {nameof(OptionResult)}.");
+			throw new InvalidOperationException($"'{optionResultProperty.Name}' must be of type {nameof(OptionResult)}.");
 		}
 
-		if (!optionResultProperty.CanWrite)
+		if(!optionResultProperty.CanWrite)
 		{
-			throw new InvalidOperationException(
-				$"'{optionResultProperty.Name}' must have a setter.");
+			throw new InvalidOperationException($"'{optionResultProperty.Name}' must have a setter.");
 		}
 
 		return optionResultProperty;
@@ -320,7 +311,7 @@ public abstract class BaseOptionsModel
 				string.Join(", ", group.Select(binding => binding.ValueProperty.Name)))
 			.ToList();
 
-		if (duplicates.Count > 0)
+		if(duplicates.Count > 0)
 		{
 			throw new InvalidOperationException(
 				$"Duplicate option instances in {modelType.FullName}:" + Environment.NewLine +
@@ -334,18 +325,18 @@ public abstract class BaseOptionsModel
 
 	private void SetPropertyValue(PropertyInfo property, object? value)
 	{
-		if (value is null &&
+		if(value is null &&
 			property.PropertyType.IsValueType &&
 			Nullable.GetUnderlyingType(property.PropertyType) is null)
 		{
 			return;
 		}
 
-		if (value is not null)
+		if(value is not null)
 		{
 			Type targetType = Nullable.GetUnderlyingType(property.PropertyType) ?? property.PropertyType;
 
-			if (!targetType.IsInstanceOfType(value))
+			if(!targetType.IsInstanceOfType(value))
 			{
 				throw new InvalidOperationException(
 					$"Value of type '{value.GetType().Name}' is not assignable to " +
@@ -360,7 +351,7 @@ public abstract class BaseOptionsModel
 	{
 		yield return option.Name;
 
-		foreach (string alias in option.Aliases)
+		foreach(string alias in option.Aliases)
 		{
 			yield return alias;
 		}
@@ -368,9 +359,9 @@ public abstract class BaseOptionsModel
 
 	private static bool TryGetOptionValueType(Type type, out Type? valueType)
 	{
-		for (Type? current = type; current is not null && current != typeof(object); current = current.BaseType)
+		for(Type? current = type; current is not null && current != typeof(object); current = current.BaseType)
 		{
-			if (current.IsGenericType && current.GetGenericTypeDefinition() == typeof(Option<>))
+			if(current.IsGenericType && current.GetGenericTypeDefinition() == typeof(Option<>))
 			{
 				valueType = current.GetGenericArguments()[0];
 				return true;
@@ -387,19 +378,19 @@ public abstract class BaseOptionsModel
 			.GetMethods(BindingFlags.Public | BindingFlags.Instance)
 			.FirstOrDefault(method =>
 			{
-				if (method.Name != nameof(ParseResult.GetValue))
+				if(method.Name != nameof(ParseResult.GetValue))
 				{
 					return false;
 				}
 
-				if (!method.IsGenericMethodDefinition)
+				if(!method.IsGenericMethodDefinition)
 				{
 					return false;
 				}
 
 				ParameterInfo[] parameters = method.GetParameters();
 
-				if (parameters.Length != 1)
+				if(parameters.Length != 1)
 				{
 					return false;
 				}
@@ -410,10 +401,9 @@ public abstract class BaseOptionsModel
 					   parameterType.GetGenericTypeDefinition() == typeof(Option<>);
 			});
 
-		if (method is null)
+		if(method is null)
 		{
-			throw new InvalidOperationException(
-				$"Could not find generic {nameof(ParseResult.GetValue)}<T>(Option<T>) method on {nameof(ParseResult)}.");
+			throw new InvalidOperationException($"Could not find generic {nameof(ParseResult.GetValue)}<T>(Option<T>) method on {nameof(ParseResult)}.");
 		}
 
 		return method;
@@ -421,12 +411,12 @@ public abstract class BaseOptionsModel
 
 	private static string FormatTypeName(Type type)
 	{
-		if (Nullable.GetUnderlyingType(type) is { } underlyingType)
+		if(Nullable.GetUnderlyingType(type) is { } underlyingType)
 		{
 			return FormatTypeName(underlyingType) + "?";
 		}
 
-		if (!type.IsGenericType)
+		if(!type.IsGenericType)
 		{
 			return type.Name;
 		}
@@ -434,7 +424,7 @@ public abstract class BaseOptionsModel
 		string name = type.Name;
 		int tickIndex = name.IndexOf('`');
 
-		if (tickIndex >= 0)
+		if(tickIndex >= 0)
 		{
 			name = name[..tickIndex];
 		}

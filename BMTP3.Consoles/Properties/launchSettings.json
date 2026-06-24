@@ -14,7 +14,7 @@
     },
     "Backup_Source_Temp": {
       "commandName": "Project",
-      "commandLineArgs": "backup4 -s \"C:\\temp\\source\" -o \"C:\\temp\\target\""
+      "commandLineArgs": "backup4 -s \"C:\\temp\\source\" -o \"C:\\temp\\target\" --source-type FileSystem"
     },
     "InitConfig": {
       "commandName": "Project",

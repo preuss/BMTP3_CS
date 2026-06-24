@@ -1,4 +1,3 @@
-using System.CommandLine;
 using BMTP3.Consoles.ConsoleCommands.Core4;
 using BMTP3.Consoles.Progress;
 using BMTP3.Consoles.Services;
@@ -8,6 +7,8 @@ using BMTP3.Core4.Api.Models.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
+using System.CommandLine;
+using System.CommandLine.Parsing;
 
 namespace BMTP3.Consoles.ConsoleCommands;
 
@@ -52,8 +53,6 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		BackupProgressDisplay display = new(ansiConsole);
 
 		//consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
-
-		ValidateBackupOptions(BackupOptions);
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(BackupOptions, parseResult);
 
@@ -139,32 +138,17 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 		}
 	}
 
-	private static void ValidateBackupOptions(BackupOptionsModel4 backupOptions)
+	protected override void DoValidateCommandOptions(CommandResult result)
 	{
-		ArgumentNullException.ThrowIfNull(backupOptions);
+		OptionResult? configResult = result.GetResult(BackupOptionsModel4.ConfigOption);
+		OptionResult? sourceTypeResult = result.GetResult(BackupOptionsModel4.SourceTypeOption);
 
-		bool hasConfig = backupOptions.Config?.Exists == true;
+		bool hasConfig = configResult is not null && configResult.Tokens.Count > 0;
+		bool hasSourceType = sourceTypeResult is not null && sourceTypeResult.Tokens.Count > 0;
 
-		if (backupOptions.OutputStrategy == OutputStructureStrategy.CustomPathPattern
-		    && string.IsNullOrWhiteSpace(backupOptions.CustomOutputFilePath))
+		if(!hasConfig && !hasSourceType)
 		{
-			throw new ArgumentException("--path-pattern is required when --output-structure is CustomPathPattern.");
-		}
-
-		if (backupOptions.RenameStrategy == RenameStrategy.CustomPattern
-		    && string.IsNullOrWhiteSpace(backupOptions.CustomCollisionOutputFilePath))
-		{
-			throw new ArgumentException("--collision-pattern is required when --rename-strategy is CustomPattern.");
-		}
-
-		if (!hasConfig && backupOptions.OutputDirectory is null)
-		{
-			throw new ArgumentException("--output is required when not using a config file.");
-		}
-
-		if (!hasConfig && string.IsNullOrWhiteSpace(backupOptions.SourcePath))
-		{
-			throw new ArgumentException("--source-path is required when not using a config file.");
+			result.AddError("--source-type is required when --config is not provided.");
 		}
 	}
 }

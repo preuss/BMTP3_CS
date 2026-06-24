@@ -203,8 +203,23 @@ internal sealed class BackupPlanBuilder
 		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.EnableTimestampCorrectionOption))
 			EnableTimestampCorrection = backupOptions.EnableTimestampCorrection;
 
+		if(!OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SourceTypeOption))
+		{
+			throw new InvalidOperationException(
+					$"The source path '{SourcePath}' does not exist as a filesystem path (SourceType={SourceType}). " +
+					"If the source is an MTP device, add --source-type MediaDevice to your command.");
+		}
 		if(SourceType == BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(SourcePath))
-			SourcePath = _pathResolver.ResolveExistingPathDisplayCasing(SourcePath);
+			try
+			{
+				SourcePath = _pathResolver.ResolveExistingPathDisplayCasing(SourcePath);
+			} catch(FileNotFoundException ex)
+			{
+				throw new InvalidOperationException(
+					$"The source path '{SourcePath}' does not exist as a filesystem path (SourceType={SourceType}). " +
+					"If the source is an MTP device, add --source-type MediaDevice to your command.",
+					ex);
+			}
 
 		if(string.IsNullOrWhiteSpace(Name))
 			Name = BuildNameFallback(Name, SourceType, SourcePath, Destination);
