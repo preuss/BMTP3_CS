@@ -1,7 +1,7 @@
 # Mangler / Issues
 
-> **Seneste opdatering:** 23 Jun 2026 (SourceType nullable)
-> **Tests:** 1667/1667 passing (Common: 281, MessageFormatter: 351, Core4: 931, Consoles: 104)
+> **Seneste opdatering:** 24 Jun 2026 (Bug #2, #13, mistænkelige gennemgået)
+> **Tests:** 1668/1668 passing (Core4: 932, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Docs cleanup:** 24 forældede docs slettet — værdifuld viden ekstraheret til plan.md, AGENTS.md, mangler.md
 
 ---
@@ -28,10 +28,9 @@
 | **10** | `DownloadService.cs` | 27-30 | `.LocalDateTime` på UTC-datoer — korrekt rountrip, men wall clock i Windows Explorer viser PC-tidszone, ikke kildens tidszone. |
 | **11** | `EarliestTimestampResolutionService.cs` | 112-147 | `PickBetter` — 1 dags tolerance. Hvis EXIF siger 23 Jun, FS siger 22 Jun, vinder EXIF (den mest præcise). Men hvis EXIF-datoen er forkert, overrider den en korrekt FS-dato. |
 | **12** | `TimestampCandidateFactory.cs` | 92, 224, 596 | `dto.DateTime` (lokal dato) bruges i stedet for `dto.UtcDateTime`. 1-dags tolerancen absorberer normalt forskellen, men det er skrøbeligt. |
-| **13** | `MediaDeviceContent.cs` | 33-43 | Resource leak — hvis `GatekeptStream` constructor fejler, lækkes `rawStream`. |
+| **13** | `GatekeptStream.cs` | 9-22 | Resource leak — hvis `GatekeptStream` constructor fejler, lækkes `rawStream`. | ✅ **FIXET** — try-catch i `GatekeptStream` konstruktør: `inner?.Dispose()` + `lease?.Dispose()` ved fejl |
 | **14** | `SidecarSection.cs` | 23 | Case-sensitive key match (`Ordinal`) — virker nu, men hvis nogen senere tilføjer key med anden casing, duplikeres entries. |
 | **15** | `BackupEngine.cs` | 442, 548 | Asymmetrisk throttling — skipped filer får 1x throttle kald, normale filer 3x. |
-| **16** | `SessionStateService.cs` | 140-143 | Gemmer **korrigerede** datoer i session summary. Resume med `EnableTimestampCorrection=false` får de korrigerede datoer tilbage, ikke originalerne. |
 | **17** | `BackupSummaryItem.cs` | 11 | `LastModified` i stedet for `DateModified` — bryder `DateXxx` konventionen. |
 
 ---
@@ -67,6 +66,7 @@
 | 25| **Bug #6 (forbedring):** `ToUtcOffsetOrNull` — `DateTimeKind.Local` case | `new DateTimeOffset(dateTime).ToUniversalTime()` i stedet for `new DateTimeOffset(dateTime.ToUniversalTime(), TimeSpan.Zero)`. Funktionsmæssigt identisk, stilmæssigt renere. `Unspecified` → `Local` er korrekt (bedste gæt). |
 | 26| **SourceType nullable:** `BackupPlan.SourceType` → `BackupSourceType?` | Validator tjekker nu `SourceType == null` → kaster med "SourceType must be specified". Fanger glemt `--source-type` eller manglende `source.type` i config. |
 | 27| **Bug #2 — `FilterPendingRecords`:** `Active` silent `break` | `break` → `throw new UnreachableException(...)`. `default:` guard tilføjet mod fremtidige enum-værdier. |
+| 28| **#13 — MediaDeviceContent resource leak:** `rawStream` ikke disposed ved constructor-fejl | Allerede fikset af bruger i `GatekeptStream.cs` — try-catch i konstruktør: `inner?.Dispose()` + `lease?.Dispose()`. `MediaDeviceContent.cs` try-catch beholdes (lease cleanup ved `OpenRead()` fejl). |
 
 ---
 

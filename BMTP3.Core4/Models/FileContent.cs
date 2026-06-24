@@ -25,7 +25,7 @@ internal class FileContent : IContent, IFileInfoSource
 	{
 		ArgumentNullException.ThrowIfNull(fileInfo);
 
-		if(!fileInfo.Exists)
+		if (!fileInfo.Exists)
 		{
 			throw new FileNotFoundException($"File not found: {fileInfo.FullName}", fileInfo.FullName);
 		}
@@ -110,7 +110,6 @@ internal class FileContent : IContent, IFileInfoSource
 	public Task<Stream> OpenReadAsync(CancellationToken ct)
 	{
 		ThrowIfInvalidated();
-		ct.ThrowIfCancellationRequested();
 
 		Stream fs = new FileStream(
 			FileInfo.FullName,
@@ -131,7 +130,7 @@ internal class FileContent : IContent, IFileInfoSource
 	/// </remarks>
 	protected void ThrowIfInvalidated()
 	{
-		if(Volatile.Read(ref _invalidated) != 0)
+		if (Volatile.Read(ref _invalidated) != 0)
 		{
 			throw new InvalidOperationException("This content instance is no longer valid.");
 		}

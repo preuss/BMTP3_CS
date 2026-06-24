@@ -9,6 +9,9 @@
 /// </remarks>
 internal class MoveableFileContent : FileContent, IMoveableContent
 {
+	// 0 = valid, 1 = invalidated
+	private int _invalidated;
+
 	/// <summary>
 	///     Creates a <see cref="MoveableFileContent"/> from a file path.
 	/// </summary>
@@ -39,28 +42,31 @@ internal class MoveableFileContent : FileContent, IMoveableContent
 	///     After a successful move, this instance is invalidated and must no longer be used.
 	///     The returned instance becomes the new owner/representation of the file content.
 	/// </remarks>
-	/// <exception cref="InvalidOperationException">This instance has already been invalidated.</exception>
+	/// <exception cref="InvalidOperationException">
+	///     This instance has already been invalidated.
+	/// </exception>
 	public IContent MoveTo(string destinationPath, bool overwrite)
 	{
-		// Fail fast if this content instance is no longer valid.
-		ThrowIfInvalidated();
+		// Atomically invalidate this instance.
+		// If another thread already moved it, we fail fast.
+		if (Interlocked.Exchange(ref _invalidated, 1) != 0)
+		{
+			throw new InvalidOperationException("This instance has already been invalidated.");
+		}
 
-		// Make sure the destination directory exists.
+		// Ensure the destination directory exists.
 		string? destDir = Path.GetDirectoryName(destinationPath);
-		if(!string.IsNullOrEmpty(destDir))
+		if (!string.IsNullOrEmpty(destDir))
 		{
 			Directory.CreateDirectory(destDir);
 		}
 
 		// Perform the move.
-		// On the same volume this is typically atomic and very fast.
-		// Across volumes, the platform may fall back to copy+delete semantics.
+		// - Same volume: typically atomic and very fast (rename)
+		// - Different volume: may fall back to copy + delete
 		FileInfo.MoveTo(destinationPath, overwrite);
 
-		// This instance no longer represents a valid location after the move.
-		Invalidate();
-
-		// Return a fresh content object for the new location.
+		// Return a fresh content instance representing the new location.
 		return new MoveableFileContent(new FileInfo(destinationPath));
 	}
 }

@@ -4,13 +4,23 @@ internal sealed class GatekeptStream : Stream
 {
 	private readonly Stream _inner;
 	private readonly IDisposable _lease;
-	private bool _disposed;
+	private int _disposed;
 
 	public GatekeptStream(Stream inner, IDisposable lease)
 	{
-		_inner = inner ?? throw new ArgumentNullException(nameof(inner));
-		_lease = lease ?? throw new ArgumentNullException(nameof(lease));
+		try
+		{
+			_inner = inner ?? throw new ArgumentNullException(nameof(inner));
+			_lease = lease ?? throw new ArgumentNullException(nameof(lease));
+		}
+		catch
+		{
+			inner?.Dispose();
+			lease?.Dispose();
+			throw;
+		}
 	}
+
 
 	public override bool CanRead => _inner.CanRead;
 	public override bool CanSeek => _inner.CanSeek;
@@ -38,15 +48,15 @@ internal sealed class GatekeptStream : Stream
 
 	protected override void Dispose(bool disposing)
 	{
-		if(!_disposed)
+		if (Interlocked.Exchange(ref _disposed, 1) == 0)
 		{
-			if(disposing)
+			if (disposing)
 			{
 				_inner.Dispose();
 				_lease.Dispose();
 			}
-			_disposed = true;
 		}
+
 		base.Dispose(disposing);
 	}
 }

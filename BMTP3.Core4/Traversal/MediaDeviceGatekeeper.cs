@@ -28,6 +28,13 @@ public sealed class MediaDeviceGatekeeper : IMediaDeviceGatekeeper
 		ThrowIfDisposed();
 
 		await _semaphore.WaitAsync(ct).ConfigureAwait(false);
+
+		if (Volatile.Read(ref _disposed) != 0)
+		{
+			_semaphore.Release();
+			throw new ObjectDisposedException(nameof(MediaDeviceGatekeeper));
+		}
+
 		return new SemaphoreLease(_semaphore);
 	}
 
@@ -36,9 +43,15 @@ public sealed class MediaDeviceGatekeeper : IMediaDeviceGatekeeper
 		ThrowIfDisposed();
 
 		bool entered = await _semaphore.WaitAsync(timeout, ct).ConfigureAwait(false);
-		if(!entered)
+		if (!entered)
 		{
 			throw new TimeoutException("Timed out waiting to acquire the MTP gatekeeper.");
+		}
+
+		if (Volatile.Read(ref _disposed) != 0)
+		{
+			_semaphore.Release();
+			throw new ObjectDisposedException(nameof(MediaDeviceGatekeeper));
 		}
 
 		return new SemaphoreLease(_semaphore);
@@ -49,6 +62,13 @@ public sealed class MediaDeviceGatekeeper : IMediaDeviceGatekeeper
 		ThrowIfDisposed();
 
 		_semaphore.Wait(ct);
+
+		if (Volatile.Read(ref _disposed) != 0)
+		{
+			_semaphore.Release();
+			throw new ObjectDisposedException(nameof(MediaDeviceGatekeeper));
+		}
+
 		return new SemaphoreLease(_semaphore);
 	}
 
@@ -57,9 +77,15 @@ public sealed class MediaDeviceGatekeeper : IMediaDeviceGatekeeper
 		ThrowIfDisposed();
 
 		bool entered = _semaphore.Wait(timeout, ct);
-		if(!entered)
+		if (!entered)
 		{
 			throw new TimeoutException("Timed out waiting to acquire the MTP gatekeeper.");
+		}
+
+		if (Volatile.Read(ref _disposed) != 0)
+		{
+			_semaphore.Release();
+			throw new ObjectDisposedException(nameof(MediaDeviceGatekeeper));
 		}
 
 		return new SemaphoreLease(_semaphore);
@@ -89,7 +115,7 @@ public sealed class MediaDeviceGatekeeper : IMediaDeviceGatekeeper
 
 		public void Dispose()
 		{
-			if(Interlocked.Exchange(ref _disposed, 1) == 0)
+			if (Interlocked.Exchange(ref _disposed, 1) == 0)
 			{
 				_semaphore.Release();
 			}

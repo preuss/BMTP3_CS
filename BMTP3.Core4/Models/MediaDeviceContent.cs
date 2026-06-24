@@ -36,7 +36,8 @@ internal sealed class MediaDeviceContent : IContent
 		{
 			Stream rawStream = _mediaFile.OpenRead();
 			return new GatekeptStream(rawStream, lease);
-		} catch
+		}
+		catch
 		{
 			lease.Dispose();
 			throw;

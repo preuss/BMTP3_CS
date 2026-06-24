@@ -1,10 +1,10 @@
 # BMTP3 — Agent Session Context
 
-> **Sidst opdateret:** 23 Jun 2026
+> **Sidst opdateret:** 24 Jun 2026
 > **Tests:** 1668/1668 passed (Core4: 932, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
-> **Bugs:** 9 gennemgået (5 fikset, 4 re-evalueret som ikke-bugs) — 0 tilbage
+> **Bugs:** 9 gennemgået (5 fikset, 4 ikke-bugs). Mistænkelige: #13 fikset, #16 slettet (forkert) — 0 tilbage
 
 ---
 
@@ -195,6 +195,7 @@ Normaliseringsregler:
 | Test | Download buffer benchmark — 80KB→16MB→128MB, File.Copy reference. Sweet spot: 256KB-16MB | `PlayAroundProject/Program.cs` |
 | Audit | **Bug #9 re-evalueret (dybdeanalyse):** `createFileDate` er nødvendig for path + collision resolution uanset `EnableTimestampCorrection` — throw + per-item catch er korrekt fail-first. ❌ Ikke-bug. | `mangler.md`, `plan.md` |
 | Fix | **Bug #2 — `FilterPendingRecords`:** silent `break` på `Active` → `throw new UnreachableException()`. `default:` guard tilføjet mod fremtidige enum-værdier. | `BackupEngine.cs` |
+| Fix | **#13 — MediaDeviceContent resource leak:** try-catch i `GatekeptStream` konstruktør — `inner?.Dispose()` + `lease?.Dispose()` ved fejl (allerede fikset af bruger) | `GatekeptStream.cs` |
 
 ### In Progress
 
@@ -260,7 +261,8 @@ Normaliseringsregler:
 | Fil | Ændring |
 |---|---|
 | `BMTP3.Core4/Engine/BackupEngine.cs` | Bug #2 — `FilterPendingRecords`: `Active` silent `break` → `throw new UnreachableException()`. `default:` guard tilføjet. `using System.Diagnostics` tilføjet. |
-| `mangler.md` | Bug #2 → ✅ FIXET. Bug #9 → ❌ Ikke-bug med dybdeanalyse. +27 i Fikset-tabel. Resume opdateret (5 fikset, 4 ikke-bugs). |
+| `BMTP3.Core4/Models/GatekeptStream.cs` | #13 — try-catch i konstruktør: `inner?.Dispose()` + `lease?.Dispose()` ved constructor-fejl (allerede fikset af bruger) |
+| `mangler.md` | Bug #2 → ✅ FIXET. Bug #9 → ❌ Ikke-bug med dybdeanalyse. #13 → ✅ FIXET (i GatekeptStream). #16 slettet (forkert). Resume opdateret. |
 | `plan.md` | P0 bugs sektion opdateret: tabel med status for alle 9 bugs. Højeste prioritet → "Alle 9 bugs gennemgået". |
 
 ---
