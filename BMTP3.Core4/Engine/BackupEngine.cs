@@ -22,6 +22,7 @@ using BMTP3.Core4.State;
 using BMTP3.Core4.Storage;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
 namespace BMTP3.Core4.Engine;
 
@@ -698,7 +699,8 @@ internal sealed class BackupEngine : IBackupEngine
 					pending.Add(record);
 					break;
 				case BackupItemStatus.Active:
-					break;
+					// Active is never persisted — SessionStateService.ApplyResumeAsync throws if encountered.
+					throw new UnreachableException($"Unexpected Active status for record '{record.Item.SourcePath}'.");
 				case BackupItemStatus.Succeeded:
 					currentProgress = currentProgress with { FilesSucceeded = currentProgress.FilesSucceeded + 1 };
 					progress?.Report(currentProgress);
@@ -711,6 +713,8 @@ internal sealed class BackupEngine : IBackupEngine
 					currentProgress = currentProgress with { FilesFailed = currentProgress.FilesFailed + 1 };
 					progress?.Report(currentProgress);
 					break;
+				default:
+					throw new UnreachableException($"Unexpected status '{record.Status}' for record '{record.Item.SourcePath}'.");
 			}
 		}
 		return pending;

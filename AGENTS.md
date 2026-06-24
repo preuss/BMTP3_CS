@@ -4,7 +4,7 @@
 > **Tests:** 1668/1668 passed (Core4: 932, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
-> **Bugs:** 9 gennemgået (4 fikset, 5 re-evalueret som ikke-bugs) — 0 tilbage
+> **Bugs:** 9 gennemgået (5 fikset, 4 re-evalueret som ikke-bugs) — 0 tilbage
 
 ---
 
@@ -193,6 +193,8 @@ Normaliseringsregler:
 | Fix | **Throttler** kommenteret ud i ParallelStreamHashGenerator — styres af BackupEngine | `Hashing/ParallelStreamHashGenerator.cs:96` |
 | DI | `IHashGenerator` → `ParallelStreamHashGenerator`, `IDownloadService` → `PipelinedDownloadService` | `DependencyInjection/ServiceCollectionExtensions.cs:31,39` |
 | Test | Download buffer benchmark — 80KB→16MB→128MB, File.Copy reference. Sweet spot: 256KB-16MB | `PlayAroundProject/Program.cs` |
+| Audit | **Bug #9 re-evalueret (dybdeanalyse):** `createFileDate` er nødvendig for path + collision resolution uanset `EnableTimestampCorrection` — throw + per-item catch er korrekt fail-first. ❌ Ikke-bug. | `mangler.md`, `plan.md` |
+| Fix | **Bug #2 — `FilterPendingRecords`:** silent `break` på `Active` → `throw new UnreachableException()`. `default:` guard tilføjet mod fremtidige enum-værdier. | `BackupEngine.cs` |
 
 ### In Progress
 
@@ -257,13 +259,9 @@ Normaliseringsregler:
 
 | Fil | Ændring |
 |---|---|
-| `BMTP3.Core4/Engine/Downloader/PipelinedDownloadService.cs` | **Ny** — Channel producer/consumer, 2MB buffer, ArrayPool, PreallocationSize |
-| `BMTP3.Core4/Hashing/ParallelStreamHashGenerator.cs` | **Ny** — 8MB buffer, Parallel.ForEach over algoritmer, ArrayPool |
-| `BMTP3.Core4/Hashing/PooledStreamHashGenerator.cs` | **Ny** — 4MB buffer, ArrayPool, sequential (fallback) |
-| `BMTP3.Core4/DependencyInjection/ServiceCollectionExtensions.cs` | Updated — `IHashGenerator` → `ParallelStreamHashGenerator`, `IDownloadService` → `PipelinedDownloadService` |
-| `BMTP3.Core4/Hashing/StreamHashGenerator.cs` | Throttler fjernet fra hot loop (linje 78 kommenteret ud) |
-| `PlayAroundProject/Program.cs` | Download buffer benchmark — 80KB→16MB→128MB + File.Copy reference |
-| `AGENTS.md` | Opdateret — nye download/hash pipelines, testcount 1668 |
+| `BMTP3.Core4/Engine/BackupEngine.cs` | Bug #2 — `FilterPendingRecords`: `Active` silent `break` → `throw new UnreachableException()`. `default:` guard tilføjet. `using System.Diagnostics` tilføjet. |
+| `mangler.md` | Bug #2 → ✅ FIXET. Bug #9 → ❌ Ikke-bug med dybdeanalyse. +27 i Fikset-tabel. Resume opdateret (5 fikset, 4 ikke-bugs). |
+| `plan.md` | P0 bugs sektion opdateret: tabel med status for alle 9 bugs. Højeste prioritet → "Alle 9 bugs gennemgået". |
 
 ---
 
