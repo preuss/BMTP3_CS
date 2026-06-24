@@ -140,15 +140,34 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 
 	protected override void DoValidateCommandOptions(CommandResult result)
 	{
-		OptionResult? configResult = result.GetResult(BackupOptionsModel4.ConfigOption);
-		OptionResult? sourceTypeResult = result.GetResult(BackupOptionsModel4.SourceTypeOption);
+		bool hasConfig = result.GetResult(BackupOptionsModel4.ConfigOption) is { Tokens: { Count: > 0 } };
 
-		bool hasConfig = configResult is not null && configResult.Tokens.Count > 0;
-		bool hasSourceType = sourceTypeResult is not null && sourceTypeResult.Tokens.Count > 0;
-
-		if(!hasConfig && !hasSourceType)
+		if(!hasConfig)
 		{
-			result.AddError("--source-type is required when --config is not provided.");
+			if(result.GetResult(BackupOptionsModel4.SourceTypeOption) is not { Tokens: { Count: > 0 } })
+				result.AddError("--source-type is required when --config is not provided.");
+
+			if(result.GetResult(BackupOptionsModel4.SourcePathOption) is not { Tokens: { Count: > 0 } })
+				result.AddError("--source-path is required when --config is not provided.");
+
+			if(result.GetResult(BackupOptionsModel4.OutputDirectoryOption) is not { Tokens: { Count: > 0 } })
+				result.AddError("--output is required when --config is not provided.");
+		}
+
+		if(result.GetResult(BackupOptionsModel4.OutputStrategyOption) is { } strategyResult
+		   && strategyResult.GetValueOrDefault<OutputStructureStrategy>() is OutputStructureStrategy strategy
+		   && strategy == OutputStructureStrategy.CustomPathPattern
+		   && result.GetResult(BackupOptionsModel4.CustomOutputFilePathOption) is not { Tokens: { Count: > 0 } })
+		{
+			result.AddError("--path-pattern is required when --output-structure is CustomPathPattern.");
+		}
+
+		if(result.GetResult(BackupOptionsModel4.RenameStrategyOption) is { } renameResult
+		   && renameResult.GetValueOrDefault<RenameStrategy>() is RenameStrategy renameStrategy
+		   && renameStrategy == RenameStrategy.CustomPattern
+		   && result.GetResult(BackupOptionsModel4.CustomCollisionOutputFilePathOption) is not { Tokens: { Count: > 0 } })
+		{
+			result.AddError("--collision-pattern is required when --rename-strategy is CustomPattern.");
 		}
 	}
 }

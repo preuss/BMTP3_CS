@@ -276,28 +276,5 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	protected override void DoValidateAndSetDefaults(ParseResult parseResult)
 	{
-		bool hasConfig = Config?.Exists == true;
-
-		if(!hasConfig)
-		{
-			if(OutputDirectory is null)
-				throw new ArgumentException("--output is required when not provided by a config file.");
-
-			if(string.IsNullOrWhiteSpace(SourcePath))
-				throw new ArgumentException("--source-path is required when not provided by a config file.");
-
-			if (SourceType == null)
-			{
-				SourceTypeOption.Required = true;
-			}
-		}
-
-		if(OutputStrategy == OutputStructureStrategy.CustomPathPattern
-		   && string.IsNullOrWhiteSpace(CustomOutputFilePath))
-			throw new ArgumentException("--path-pattern is required when --output-structure is CustomPathPattern.");
-
-		if(RenameStrategy == RenameStrategy.CustomPattern
-		   && string.IsNullOrWhiteSpace(CustomCollisionOutputFilePath))
-			throw new ArgumentException("--collision-pattern is required when --rename-strategy is CustomPattern.");
 	}
 }

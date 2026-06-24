@@ -20,7 +20,7 @@ internal sealed class BackupPlanBuilder
 	public string Name = string.Empty;
 	public string SourcePath = string.Empty;
 	public string Destination = string.Empty;
-	public BackupSourceType SourceType = BackupSourceType.FileSystem;
+	public BackupSourceType? SourceType;
 	public bool Recursive = true;
 	public bool DryRun;
 	public bool StopOnError = true;
@@ -203,11 +203,11 @@ internal sealed class BackupPlanBuilder
 		if(OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.EnableTimestampCorrectionOption))
 			EnableTimestampCorrection = backupOptions.EnableTimestampCorrection;
 
-		if(!OptionHelpers.WasSupplied(parseResult, BackupOptionsModel4.SourceTypeOption))
+		if(SourceType is null && SourcePath.StartsWith("mtp://", StringComparison.OrdinalIgnoreCase))
 		{
 			throw new InvalidOperationException(
-					$"The source path '{SourcePath}' does not exist as a filesystem path (SourceType={SourceType}). " +
-					"If the source is an MTP device, add --source-type MediaDevice to your command.");
+				$"The source path '{SourcePath}' appears to be an MTP device path. " +
+				"Add --source-type MediaDevice to your command.");
 		}
 		if(SourceType == BackupSourceType.FileSystem && !string.IsNullOrWhiteSpace(SourcePath))
 			try
@@ -225,7 +225,7 @@ internal sealed class BackupPlanBuilder
 			Name = BuildNameFallback(Name, SourceType, SourcePath, Destination);
 	}
 
-	private static string BuildNameFallback(string name, BackupSourceType sourceType, string sourcePath, string destination)
+	private static string BuildNameFallback(string name, BackupSourceType? sourceType, string sourcePath, string destination)
 	{
 		string resVal = name;
 

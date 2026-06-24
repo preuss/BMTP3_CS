@@ -728,9 +728,9 @@ output-structure = ""bogus""
 	}
 
 	[Fact]
-	public void BuildPlan_NoConfig_FileSystemSource_DefaultsFileSystem()
+	public void BuildPlan_NoConfig_FileSystemSource_WithExplicitSourceType()
 	{
-		var (options, parseResult) = Parse("--source-path \"C:\\MyPictures\"");
+		var (options, parseResult) = Parse("--source-path \"C:\\MyPictures\" --source-type FileSystem --output \"D:\\Temp\"");
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
