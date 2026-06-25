@@ -554,7 +554,14 @@ internal sealed class BackupEngine : IBackupEngine
 			} finally
 			{
 				// We need to force save the session state here to capture any progress made on items in case of cancellation or unhandled exceptions. This ensures that when the user resumes, they won't lose all progress since the last save point.
-				await sessionState.SaveAsync(repository.GetAll(), sessionKey, CancellationToken.None);
+				// Must not let SaveAsync exceptions mask the original exception (OCE or processing error).
+				try
+				{
+					await sessionState.SaveAsync(repository.GetAll(), sessionKey, CancellationToken.None);
+				} catch(Exception ex)
+				{
+					_logger.LogWarning(ex, "Failed to save session state on exit.");
+				}
 
 				// Do this even when exception or cancel.
 				// Do not let cleanup errors mask original failure.

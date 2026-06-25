@@ -190,6 +190,15 @@ Må ikke bruges fremover i `BMTP3.Core4` eller `BMTP3.Consoles`:
 
 Alle 9 bugs gennemgået — 4 fikset, 5 re-evalueret som ikke-bugs. Se `mangler.md § 🔴 Bugs (latente fejl)`.
 
+### 🔴 P0 — Dybdeanalyse 25 Jun 2026 (11 nye bugs)
+
+**4 CRITICAL, 6 HIGH, 5 MEDIUM, 3 LOW.** Se `mangler.md § 🔴 Bugs (dybdeanalyse 25 Jun 2026)` for detaljer.
+
+Top 3 at fikse først:
+1. **B1** — `SaveAsync` i `finally` maskerer originale exceptions (`BackupEngine.cs:557`)
+2. **B2-B4** — PipelinedDownloadService deadlock + buffer leaks
+3. **B5** — `CancellationTokenSource` aldrig disposed (`BackupEngine.cs:114`)
+
 ---
 
 ### 🔴 P1 — Field mapping gaps (audit 23 Jun 2026)

@@ -1,6 +1,6 @@
 # Mangler / Issues
 
-> **Seneste opdatering:** 24 Jun 2026 (Bug #2, #13, mistænkelige gennemgået)
+> **Seneste opdatering:** 25 Jun 2026 (Dybdeanalyse: 11 nye bugs fundet i Core4)
 > **Tests:** 1668/1668 passing (Core4: 932, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Docs cleanup:** 24 forældede docs slettet — værdifuld viden ekstraheret til plan.md, AGENTS.md, mangler.md
 
@@ -18,6 +18,58 @@
 | **7** | `BackupPlanBuilder.cs` | 38-39 | Default til ALLE 9 hash-algoritmer. | 🟢 **Ikke en bug** — single-pass arkitektur (1× I/O), brugeren vælger selv via CLI. Flere hashes i sidecar = bedre fremtidig verifikation. Fjernet fra bugs. |
 | **8** | `BackupPlan.cs` vs `BackupPlanBuilder.cs` | flere | **Default mismatch** — `EnableTimestampCorrection` (model=false, builder=true) og `StopOnError` (model=false, builder=true). | ✅ **FIXET** — `BackupPlan.cs:154,170` tilføjet `= true` på begge properties. Matcher nu builderens defaults. |
 | **9** | `BackupEngine.cs` | 348-351 | Timestamp resolution fejl **altid fatal** — `throw InvalidOperationException` selv når `EnableTimestampCorrection = false`. | 🟢 **Ikke en bug** — `createFileDate` er nødvendig for path resolution (linje 393) og collision resolution (linje 408), uanset `EnableTimestampCorrection`. Et korrekt timestamp kan ikke erstattes (UtcNow ville give forkert mappenavn). Throw + per-item catch håndterer korrekt: Failed item + StopOnError gating. Dette er **identisk fail-first adfærd** med alle andre engine steps. |
+
+---
+
+## 🔴 Bugs (dybdeanalyse 25 Jun 2026 — 11 nye fund)
+
+Systematisk gennemgang af Core4 ud over de 9 oprindelige bugs. Fokuseret på logiske fejl, ressource leaks, race conditions og exception håndtering.
+
+### 🔴 CRITICAL
+
+| # | Fil | Linje | Problem |
+|---|---|---|---|
+| **B1** | `BackupEngine.cs` | 557 | `SaveAsync` i `finally` uden try-catch — hvis `SaveAsync` kaster (I/O fejl, serialisering), **maskeres den originale exception** (OCE eller processing exception). `CleanupSessionTempDirectory` nedenfor er korrekt wrapped, hvilket beviser at pattern var kendt men `SaveAsync` blev misset. |
+| **B2** | `PipelinedDownloadService.cs` | 112-129 | **Deadlock ved consumer-fejl** — hvis `destStream.WriteAsync` kaster (disk fuld), fejler consumer task. Producer fortsætter uvidende og blokerer på `channel.Writer.WriteAsync` når bounded channel (kapacitet 2) er fuld. `Task.WhenAll` venter for evigt. |
+| **B3** | `PipelinedDownloadService.cs` | 102 | **Buffer leak ved WriteAsync-fejl** — når `WriteAsync` kaster, er buffer leaset fra `ArrayPool` men returneres aldrig. Producerens catch har ingen `Return(buffer)`. |
+| **B4** | `PipelinedDownloadService.cs` | 106-108 | **Buffers efterladt i channel ved producer cancellation** — `channel.Writer.Complete(ex)` forlader alle `BufferChunk`-instanser i kanalen. Consumerens `finally` (der returnerer buffers) kører aldrig. Op til 4MB læk per fejlet download. |
+
+### 🟠 HIGH
+
+| # | Fil | Linje | Problem |
+|---|---|---|---|
+| **B5** | `BackupEngine.cs` | 114 | `CancellationTokenSource` aldrig disposed — holder kernel wait handle. Lækker for processens levetid. |
+| **B6** | `BackupEngine.cs` | 545-550 | **Temp file læk på item failure** — `tempFile` ryddes kun på Skip (437) og OCE (543), **ikke** på generel exception (545-549). Med `StopOnError=false` akkumuleres temp-filer. `CleanupSessionTempDirectory` nægter at slette ikke-tomme dirs → permanente orphans. |
+| **B7** | `BackupEngine.cs` | 436,530,547 | `StatusChangedAt` **aldrig sat** i engine — kun læst. Alle summaries skriver `"CompletedAt": null`. Feltet har nul værdi. |
+| **B8** | `BackupJsonSummaryStore.cs` | 40-41 | **Korrupt session JSON crasher hele backup** — `File.ReadAllText` + `JsonSerializer.Deserialize` uden try-catch. Trunkeret/korrupt session file → `JsonException` → ubehandlet crash. |
+| **B9** | `BackupEngine.cs` | 210 | `Progress<T>` i Core4 bryder arkitekturregel — dispatcher via ThreadPool, handler kører konkurrent med main loop. AGENTS.md forbyder eksplicit. |
+| **B10** | `FileContent.cs` | 110-123 | `OpenReadAsync` ignorerer `CancellationToken` — `FileStream` constructor kaldes synkront uanset cancellation state. |
+
+### 🟡 MEDIUM
+
+| # | Fil | Linje | Problem |
+|---|---|---|---|
+| **B11** | `BackupEngine.cs` | 557 | `CancellationToken.None` i finally → Ctrl+C blokerer hvis save er langsom (netværksshare, antivirus) |
+| **B12** | `BackupEngine.cs` | 284-553 | Ingen checkpoint saves. Hard-kill (power loss, StackOverflowException) mister **hele run** |
+| **B13** | `ParallelStreamHashGenerator.cs`, `PooledStreamHashGenerator.cs` | 120, 108 | `ArrayPool.Return` uden `clearArray:true` → fil-data lækker i shared pool |
+| **B14** | `Hashing/Crypto/BouncyCastle*.cs`, `SharpHashMD5.cs` | alle | **4 ubrugte** Crypto-wrappers — dead code. Ingen references i produktion. |
+| **B15** | `BackupJsonSummaryStore.cs` | 36-42 | `LoadAsync` ikke cancellable, sync `File.ReadAllText`. `ApplyResumeAsync` har `CancellationToken` men sender den ikke ned. |
+
+### 🟢 LOW
+
+| # | Fil | Linje | Problem |
+|---|---|---|---|
+| **B16** | `BackupEngine.cs` | 252 | `ulong`→`long` overflow ved cast af `Content.Length` (teoretisk, >9 EB) |
+| **B17** | `SessionStateService.cs` | 52-53 | `Continue` resume strategy → orphan destination files. Items fjernet fra source efterlades på disk uden tracking. |
+| **B18** | `ParallelStreamHashGenerator.cs` vs AGENTS.md | 20 | DOP `/3` i kode vs `/4` i docs (commit 72c6e54 ændrede til `/3`, docs ikke opdateret) |
+
+### ❌ AFKRÆFTET
+
+| # | Hvad | Begrundelse |
+|---|---|---|
+| SharpHash Dispose | SharpHashSHA3_* mangler Dispose override | `IHash` fra SharpHash **arver ikke** `IDisposable` — base `HashAlgorithm.Dispose()` er sufficient ✅ |
+| MediaDeviceTraversal deadlock | Gatekeeper holdes under traversal | Korrekt dokumenteret i XML-doc: traversal skal færdig før content consumption ✅ |
+| GatekeptStream constructor | Resource leak | Allerede fikset i tidligere session — try-catch med cleanup ✅ |
 
 ---
 
@@ -215,8 +267,9 @@ Ikke en runtime-fejl, men inkonsistent.
 ## Resume
 
 | Prioritet | Antal | Område |
-|---|---|---|---|
-| 🔴 Bugs (latente) | 0 | ✅ Alle 9 bugs gennemgået — 5 fikset, 4 re-evalueret som ikke-bugs |
+|---|---|---|
+| 🔴 Bugs (latente — audit 23 Jun) | 0 | ✅ Alle 9 bugs gennemgået — 5 fikset, 4 re-evalueret som ikke-bugs |
+| 🔴 Bugs (dybdeanalyse 25 Jun) | 18 | **4 CRITICAL, 6 HIGH, 5 MEDIUM, 3 LOW** — se § 🔴 Bugs (dybdeanalyse 25 Jun 2026) |
 | 🟡 Bør testes (større) | ~60 filer | TimeStamp (~18 filer: 13 readers + EarliestTimestampResolutionService), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
 | 🟢 Nice-to-have | ~15 items | MediaDeviceContent, model defaults, edge cases |
 | 🔶 Kosmetisk | 2 | Sidecar separator style, CollisionStreategy filename |
