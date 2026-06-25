@@ -32,19 +32,35 @@ internal sealed class BackupJsonSummaryStore : ISummaryStore
 		File.Move(tempPath, FilePath, overwrite: true);
 	}
 
-	public Task<BackupSummary?> LoadAsync()
-	{
-		if(!File.Exists(FilePath))
-			return Task.FromResult<BackupSummary?>(null);
 
-		string json = File.ReadAllText(FilePath);
-		BackupSummary? summary = JsonSerializer.Deserialize<BackupSummary>(json);
-		return Task.FromResult(summary);
+	public async Task<BackupSummary?> LoadAsync()
+	{
+		if (!File.Exists(FilePath))
+		{
+			return null;
+		}
+
+		try
+		{
+			await using FileStream stream = File.OpenRead(FilePath);
+			return await JsonSerializer.DeserializeAsync<BackupSummary>(stream, cancellationToken: CancellationToken.None)
+				   ?? throw new InvalidDataException($"Backup summary file is empty or invalid: {FilePath}");
+		} catch (JsonException ex)
+		{
+			throw new InvalidDataException($"Backup summary file contains invalid JSON: {FilePath}", ex);
+		} catch (IOException ex)
+		{
+			throw new IOException($"Failed to read backup summary file: {FilePath}", ex);
+		} catch (UnauthorizedAccessException ex)
+		{
+			throw new UnauthorizedAccessException($"Access denied while reading backup summary file: {FilePath}", ex);
+		}
 	}
+
 
 	public Task DeleteAsync()
 	{
-		if(File.Exists(FilePath))
+		if (File.Exists(FilePath))
 			File.Delete(FilePath);
 
 		return Task.CompletedTask;
