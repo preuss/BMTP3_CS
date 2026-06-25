@@ -156,6 +156,9 @@ internal sealed class PipelinedDownloadService : IDownloadService
 				// B4: drain remaining buffers from channel.
 				while (channel.Reader.TryRead(out BufferChunk chunk))
 				{
+					// Do not use clearArray: true here. This path returns many large chunks,
+					// and clearing each buffer would add significant memory bandwidth cost.
+					// Ownership ends at Return(); the buffer must not be read again by this code.
 					ArrayPool<byte>.Shared.Return(chunk.Buffer);
 				}
 

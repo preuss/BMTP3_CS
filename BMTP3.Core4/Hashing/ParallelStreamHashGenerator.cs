@@ -1,7 +1,6 @@
 ﻿using BMTP3.Core4.Hashing.Crypto;
 using BMTP3.Core4.Infrastructure.Throttling;
 using Microsoft.Extensions.Logging;
-using System;
 using System.Buffers;
 using System.Security.Cryptography;
 
@@ -37,9 +36,15 @@ public sealed class ParallelStreamHashGenerator : IHashGenerator
 	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(Stream stream, IEnumerable<HashType> hashTypes, IProgress<ulong>? progress, IThrottler throttler, CancellationToken ct)
 	{
 		ArgumentNullException.ThrowIfNull(stream);
+		ArgumentNullException.ThrowIfNull(hashTypes);
+		ArgumentNullException.ThrowIfNull(throttler);
+
+		if(!stream.CanRead)
+			throw new ArgumentException("Stream must be readable.", nameof(stream));
+
 		ct.ThrowIfCancellationRequested();
 
-		List<HashType> requested = hashTypes?.Distinct().ToList() ?? new List<HashType>();
+		List<HashType> requested = hashTypes.Distinct().ToList();
 
 		if(requested.Count == 0)
 		{
@@ -63,6 +68,12 @@ public sealed class ParallelStreamHashGenerator : IHashGenerator
 				CancellationToken = ct,
 				MaxDegreeOfParallelism = Math.Min(_maxDegreeOfParallelism, algorithmEntries.Length)
 			};
+
+			_logger.LogDebug(
+				"Computing {HashCount} hashes with buffer size {BufferSize} and max parallelism {MaxDegreeOfParallelism}.",
+				algorithmEntries.Length,
+				_bufferSize,
+				parallelOptions.MaxDegreeOfParallelism);
 
 			buffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
 
@@ -93,7 +104,7 @@ public sealed class ParallelStreamHashGenerator : IHashGenerator
 				progress?.Report(totalBytesRead);
 
 				// Optional throttling.
-				// await throttler.WaitAsync(ct).ConfigureAwait(false);
+				await throttler.WaitAsync().ConfigureAwait(false);
 			}
 
 			ct.ThrowIfCancellationRequested();
@@ -104,12 +115,10 @@ public sealed class ParallelStreamHashGenerator : IHashGenerator
 			{
 				kvp.Value.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
-				byte[]? hashBytes = kvp.Value.Hash;
+				byte[] hashBytes = kvp.Value.Hash
+					?? throw new CryptographicException($"Hash algorithm did not produce a hash: {kvp.Key}");
 
-				if(hashBytes != null)
-				{
-					results[kvp.Key] = Convert.ToHexString(hashBytes).ToLowerInvariant();
-				}
+				results[kvp.Key] = Convert.ToHexString(hashBytes).ToLowerInvariant();
 			}
 
 			return results;
@@ -117,7 +126,7 @@ public sealed class ParallelStreamHashGenerator : IHashGenerator
 		{
 			if(buffer != null)
 			{
-				ArrayPool<byte>.Shared.Return(buffer);
+				ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
 			}
 
 			foreach(HashAlgorithm algo in algorithms.Values)

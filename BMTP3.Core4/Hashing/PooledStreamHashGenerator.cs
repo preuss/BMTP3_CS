@@ -32,10 +32,15 @@ public sealed class PooledStreamHashGenerator : IHashGenerator
 	public async Task<Dictionary<HashType, string>> ComputeHashesAsync(Stream stream, IEnumerable<HashType> hashTypes, IProgress<ulong>? progress, IThrottler throttler, CancellationToken ct)
 	{
 		ArgumentNullException.ThrowIfNull(stream);
+		ArgumentNullException.ThrowIfNull(hashTypes);
+		ArgumentNullException.ThrowIfNull(throttler);
+
+		if(!stream.CanRead)
+			throw new ArgumentException("Stream must be readable.", nameof(stream));
 
 		ct.ThrowIfCancellationRequested();
 
-		List<HashType> requested = hashTypes?.Distinct().ToList() ?? new List<HashType>();
+		List<HashType> requested = hashTypes.Distinct().ToList();
 
 		if(requested.Count == 0)
 		{
@@ -51,6 +56,11 @@ public sealed class PooledStreamHashGenerator : IHashGenerator
 			{
 				algorithms[type] = CreateAlgorithm(type);
 			}
+
+			_logger.LogDebug(
+				"Computing {HashCount} hashes with buffer size {BufferSize}.",
+				algorithms.Count,
+				_bufferSize);
 
 			buffer = ArrayPool<byte>.Shared.Rent(_bufferSize);
 
@@ -92,12 +102,11 @@ public sealed class PooledStreamHashGenerator : IHashGenerator
 			{
 				kvp.Value.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
 
-				byte[]? hashBytes = kvp.Value.Hash;
+				byte[] hashBytes = kvp.Value.Hash
+								   ?? throw new CryptographicException(
+									   $"Hash algorithm did not produce a hash: {kvp.Key}");
 
-				if(hashBytes != null)
-				{
-					results[kvp.Key] = Convert.ToHexString(hashBytes).ToLowerInvariant();
-				}
+				results[kvp.Key] = Convert.ToHexString(hashBytes).ToLowerInvariant();
 			}
 
 			return results;
@@ -105,7 +114,7 @@ public sealed class PooledStreamHashGenerator : IHashGenerator
 		{
 			if(buffer != null)
 			{
-				ArrayPool<byte>.Shared.Return(buffer);
+				ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
 			}
 
 			foreach(HashAlgorithm algo in algorithms.Values)
@@ -114,7 +123,6 @@ public sealed class PooledStreamHashGenerator : IHashGenerator
 			}
 		}
 	}
-
 	private static HashAlgorithm CreateAlgorithm(HashType type)
 	{
 		return type switch
