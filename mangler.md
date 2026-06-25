@@ -30,19 +30,19 @@ Systematisk gennemgang af Core4 ud over de 9 oprindelige bugs. Fokuseret på log
 | # | Fil | Linje | Problem |
 |---|---|---|---|
 | **B1** | `BackupEngine.cs` | 557 | `SaveAsync` i `finally` uden try-catch — hvis `SaveAsync` kaster (I/O fejl, serialisering), **maskeres den originale exception** (OCE eller processing exception). `CleanupSessionTempDirectory` nedenfor er korrekt wrapped, hvilket beviser at pattern var kendt men `SaveAsync` blev misset. | ✅ **FIXET** (23 Jun) — try-catch med `LogWarning` tilføjet |
-| **B2** | `PipelinedDownloadService.cs` | 112-129 | **Deadlock ved consumer-fejl** — hvis `destStream.WriteAsync` kaster (disk fuld), fejler consumer task. Producer fortsætter uvidende og blokerer på `channel.Writer.WriteAsync` når bounded channel (kapacitet 2) er fuld. `Task.WhenAll` venter for evigt. |
-| **B3** | `PipelinedDownloadService.cs` | 102 | **Buffer leak ved WriteAsync-fejl** — når `WriteAsync` kaster, er buffer leaset fra `ArrayPool` men returneres aldrig. Producerens catch har ingen `Return(buffer)`. |
-| **B4** | `PipelinedDownloadService.cs` | 106-108 | **Buffers efterladt i channel ved producer cancellation** — `channel.Writer.Complete(ex)` forlader alle `BufferChunk`-instanser i kanalen. Consumerens `finally` (der returnerer buffers) kører aldrig. Op til 4MB læk per fejlet download. |
+| **B2** | `PipelinedDownloadService.cs` | 112-129 | **Deadlock ved consumer-fejl** — hvis `destStream.WriteAsync` kaster (disk fuld), fejler consumer task. Producer fortsætter uvidende og blokerer på `channel.Writer.WriteAsync` når bounded channel (kapacitet 2) er fuld. `Task.WhenAll` venter for evigt. | ✅ **FIXET** (23 Jun) — consumer kalder `cts.Cancel()`, producer afbrydes |
+| **B3** | `PipelinedDownloadService.cs` | 102 | **Buffer leak ved WriteAsync-fejl** — når `WriteAsync` kaster, er buffer leaset fra `ArrayPool` men returneres aldrig. Producerens catch har ingen `Return(buffer)`. | ✅ **FIXET** (23 Jun) — `ArrayPool.Return(buffer)` før throw i WriteAsync catch |
+| **B4** | `PipelinedDownloadService.cs` | 106-108 | **Buffers efterladt i channel ved producer cancellation** — `channel.Writer.Complete(ex)` forlader alle `BufferChunk`-instanser i kanalen. Consumerens `finally` (der returnerer buffers) kører aldrig. Op til 4MB læk per fejlet download. | ✅ **FIXET** (23 Jun) — consumer dræner kanal via `while(TryRead(out ...)) { Return(chunk.Buffer) }` |
 
 ### 🟠 HIGH
 
 | # | Fil | Linje | Problem |
 |---|---|---|---|
-| **B5** | `BackupEngine.cs` | 114 | `CancellationTokenSource` aldrig disposed — holder kernel wait handle. Lækker for processens levetid. |
+| **B5** | `BackupEngine.cs` | 114 | `CancellationTokenSource` aldrig disposed — holder kernel wait handle. Lækker for processens levetid. | ✅ **FIXET** (23 Jun) — `using` på CTS-deklarationen |
 | **B6** | `BackupEngine.cs` | 545-550 | **Temp file læk på item failure** — `tempFile` ryddes kun på Skip (437) og OCE (543), **ikke** på generel exception (545-549). Med `StopOnError=false` akkumuleres temp-filer. `CleanupSessionTempDirectory` nægter at slette ikke-tomme dirs → permanente orphans. | ✅ **FIXET** (før session) — generel catch har egen try-catch cleanup |
 | **B7** | `BackupEngine.cs` | 436,530,547 | `StatusChangedAt` **aldrig sat** i engine — kun læst. Alle summaries skriver `"CompletedAt": null`. Feltet har nul værdi. | ✅ **FIXET** — `record.StatusChangedAt = DateTimeOffset.UtcNow` efter alle 3 status-ændringer |
 | **B8** | `BackupJsonSummaryStore.cs` | 40-41 | **Korrupt session JSON crasher hele backup** — `File.ReadAllText` + `JsonSerializer.Deserialize` uden try-catch. Trunkeret/korrupt session file → `JsonException` → ubehandlet crash. | ✅ **FIXET** — wrapped i try-catch med typed exceptions (fail-first med kontekst) |
-| **B9** | `BackupEngine.cs` | 210 | `Progress<T>` i Core4 bryder arkitekturregel — dispatcher via ThreadPool, handler kører konkurrent med main loop. AGENTS.md forbyder eksplicit. |
+| **B9** | `BackupEngine.cs` | 210 | `Progress<T>` i Core4 bryder arkitekturregel — dispatcher via ThreadPool, handler kører konkurrent med main loop. AGENTS.md forbyder eksplicit. | ✅ **FIXED** — `Progress<BackupScanProgress>` → `ActionProgress<BackupScanProgress>` |
 | **B10** | `FileContent.cs` | 110-123 | `OpenReadAsync` ignorerer `CancellationToken` — `FileStream` constructor kaldes synkront uanset cancellation state. | ✅ **FIXET** — `ct.ThrowIfCancellationRequested()` før `FileStream` konstruktor |
 
 ### 🟡 MEDIUM
@@ -130,6 +130,7 @@ Systematisk gennemgang af Core4 ud over de 9 oprindelige bugs. Fokuseret på log
 | B8b | `LoadAsync` synkron (`File.ReadAllText`) | `File.OpenRead` + `JsonSerializer.DeserializeAsync` — fuld async pipeline |
 | B10 | `FileContent.OpenReadAsync` ignorerer `CancellationToken` | `ct.ThrowIfCancellationRequested()` før `FileStream` konstruktor (best-effort, konstruktor er ~1ms på NTFS) |
 | B11 | `CancellationToken.None` i `finally` | ❌ **AFKRÆFTET** — designvalg: session skal altid persisteres, også på Ctrl+C |
+| B9 | `Progress<BackupScanProgress>` i Core4 — dispatcher async via ThreadPool | `ActionProgress<BackupScanProgress>` — synkron wrapper |
 
 ---
 
@@ -280,7 +281,7 @@ Ikke en runtime-fejl, men inkonsistent.
 | Prioritet | Antal | Område |
 |---|---|---|
 | 🔴 Bugs (latente — audit 23 Jun) | 0 | ✅ Alle 9 bugs gennemgået — 5 fikset, 4 re-evalueret som ikke-bugs |
-| 🔴 Bugs (dybdeanalyse 25 Jun) | 12 | **3 CRITICAL, 2 HIGH, 3 MEDIUM, 3 LOW, 1 afkræftet** — B1/B6/B7/B8/B10 fikset, B11 afkræftet |
+| 🔴 Bugs (dybdeanalyse 25 Jun) | 6 | **0 CRITICAL, 0 HIGH, 3 MEDIUM, 3 LOW** — B1–B10 fikset, B11 afkræftet. B12–B18 tilbage |
 | 🟡 Bør testes (større) | ~60 filer | TimeStamp (~18 filer: 13 readers + EarliestTimestampResolutionService), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
 | 🟢 Nice-to-have | ~15 items | MediaDeviceContent, model defaults, edge cases |
 | 🔶 Kosmetisk | 2 | Sidecar separator style, CollisionStreategy filename |

@@ -207,7 +207,7 @@ internal sealed class BackupEngine : IBackupEngine
 				ItemIdScope = plan.ItemIdScope,
 			};
 
-			Progress<BackupScanProgress> scanProgress = new(sp =>
+			ActionProgress<BackupScanProgress> scanProgress = new(sp =>
 			{
 				_currentProgress = _currentProgress with
 				{

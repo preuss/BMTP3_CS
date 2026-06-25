@@ -4,7 +4,7 @@
 > **Tests:** 1668/1668 passed (Core4: 932, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), ~160 warnings (Consoles/archived/third-party)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
-> **Bugs:** 9 gennemgået (5 fikset, 4 ikke-bugs). Dybdeanalyse: B1/B6/B7/B8/B10 fikset, B11 afkræftet — 3 CRITICAL, 2 HIGH, 3 MEDIUM, 3 LOW tilbage
+> **Bugs:** 9 gennemgået (5 fikset, 4 ikke-bugs). Dybdeanalyse: B1–B10 fikset, B11 afkræftet — 3 MEDIUM, 3 LOW tilbage
 
 ---
 
@@ -140,6 +140,7 @@ Normaliseringsregler:
 | Fix | **B7** — `StatusChangedAt` sat efter Skipped, Succeeded, Failed | `BackupEngine.cs:437,532,561` |
 | Fix | **B8** — `LoadAsync` try-catch med typed exceptions (fail-first) | `BackupJsonSummaryStore.cs:43-57` |
 | Feat | **B8b** — `LoadAsync` async pipeline (`File.OpenRead` + `DeserializeAsync`) | `BackupJsonSummaryStore.cs:45-46` |
+| Fix | **B9** — `Progress<BackupScanProgress>` → `ActionProgress<BackupScanProgress>` | `BackupEngine.cs:210` |
 | Fix | **B10** — `ct.ThrowIfCancellationRequested()` i `OpenReadAsync` | `FileContent.cs:113` |
 | Audit | **B11** — ❌ AFKRÆFTET: `CancellationToken.None` i `finally` er designvalg | `BackupEngine.cs:576` |
 | Audit | **OCE catch** — `Pending` er korrekt status for cancelled items (resume prøver igen) | `BackupEngine.cs:541-548` |
@@ -217,7 +218,7 @@ Normaliseringsregler:
 ### Næste — prioriteret
 
 0. **🔴 Latente bugs — ingen tilbage** ✅. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige`
-1. **🔴 Dybdeanalyse bugs**: 4 CRITICAL (B1-B4), 2 HIGH (B5, B9), 3 MEDIUM (B13-B15), 3 LOW (B16-B18). Se `mangler.md § 🔴 Bugs (dybdeanalyse 25 Jun 2026)`
+1. **🔴 Dybdeanalyse bugs**: B1–B10 ✅ **ALLE FIXET**, B11 afkræftet. Resterer: 3 MEDIUM (B13-B15), 3 LOW (B16-B18). Se `mangler.md § 🔴 Bugs (dybdeanalyse 25 Jun 2026)`
 2. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
 3. **Integration tests**: MTP pipeline, BackupEngine E2E
 4. **Retry/Resilience**: Exponential backoff, MTP resilience
@@ -274,7 +275,7 @@ Normaliseringsregler:
 
 | Fil | Ændring |
 |---|---|
-| `BMTP3.Core4/Engine/BackupEngine.cs` | B7 — `StatusChangedAt` sat efter Skipped, Succeeded, Failed. `BackupEngine.cs` |
+| `BMTP3.Core4/Engine/BackupEngine.cs` | B7 — `StatusChangedAt` sat efter Skipped, Succeeded, Failed. B9 — `Progress<T>` → `ActionProgress<T>`. `BackupEngine.cs` |
 | `BMTP3.Core4/State/BackupJsonSummaryStore.cs` | B8/B8b — `LoadAsync` try-catch med typed exceptions + `File.OpenRead`/`DeserializeAsync` async pipeline |
 | `BMTP3.Core4/Models/FileContent.cs` | B10 — `ct.ThrowIfCancellationRequested()` før `FileStream` konstruktor |
 | `mangler.md` | B7 → ✅ FIXET. B8 → ✅ FIXET. B10 → ✅ FIXET. B11 → ❌ AFKRÆFTET. Resume opdateret. |
