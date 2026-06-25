@@ -1,10 +1,10 @@
 # BMTP3 — Agent Session Context
 
-> **Sidst opdateret:** 24 Jun 2026
+> **Sidst opdateret:** 25 Jun 2026
 > **Tests:** 1668/1668 passed (Core4: 932, MessageFormatter: 351, Common: 281, Consoles: 104)
-> **Build:** 0 errors, 0 warnings (Core4), 4 warnings (Consoles — archived Core2/Core3)
+> **Build:** 0 errors, 0 warnings (Core4), ~160 warnings (Consoles/archived/third-party)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
-> **Bugs:** 9 gennemgået (5 fikset, 4 ikke-bugs). Mistænkelige: #13 fikset, #16 slettet (forkert) — 0 tilbage
+> **Bugs:** 9 gennemgået (5 fikset, 4 ikke-bugs). Dybdeanalyse: B1/B6/B7/B8/B10 fikset, B11 afkræftet — 3 CRITICAL, 2 HIGH, 3 MEDIUM, 3 LOW tilbage
 
 ---
 
@@ -133,7 +133,20 @@ Normaliseringsregler:
 
 ## Session State
 
-### Done (seneste session — 23 Jun 2026)
+### Done (seneste session — 25 Jun 2026)
+
+| ID | Hvad | Fil(er) |
+|---|---|---|
+| Fix | **B7** — `StatusChangedAt` sat efter Skipped, Succeeded, Failed | `BackupEngine.cs:437,532,561` |
+| Fix | **B8** — `LoadAsync` try-catch med typed exceptions (fail-first) | `BackupJsonSummaryStore.cs:43-57` |
+| Feat | **B8b** — `LoadAsync` async pipeline (`File.OpenRead` + `DeserializeAsync`) | `BackupJsonSummaryStore.cs:45-46` |
+| Fix | **B10** — `ct.ThrowIfCancellationRequested()` i `OpenReadAsync` | `FileContent.cs:113` |
+| Audit | **B11** — ❌ AFKRÆFTET: `CancellationToken.None` i `finally` er designvalg | `BackupEngine.cs:576` |
+| Audit | **OCE catch** — `Pending` er korrekt status for cancelled items (resume prøver igen) | `BackupEngine.cs:541-548` |
+| Doc | mangler.md opdateret med sessionens rettelser | `mangler.md` |
+| Doc | AGENTS.md opdateret med session context | `AGENTS.md` |
+
+### Done (23 Jun 2026)
 
 | ID | Hvad | Fil(er) |
 |---|---|---|
@@ -204,11 +217,12 @@ Normaliseringsregler:
 ### Næste — prioriteret
 
 0. **🔴 Latente bugs — ingen tilbage** ✅. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige`
-1. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
-2. **Integration tests**: MTP pipeline, BackupEngine E2E
-3. **Retry/Resilience**: Exponential backoff, MTP resilience
-4. **2B error paths**: DownloadService cancellation/locks, HashService null stream — ✅ **FIXET**. Resterer: destination locked (kræver I/O), store filer (I/O), TempDirectoryHelper (I/O), SessionStateService (I/O)
-5. **2A TimeStamp**: Readers (13 files) + `EarliestTimestampResolutionService` — kræver reelle filer med EXIF/XMP metadata
+1. **🔴 Dybdeanalyse bugs**: 4 CRITICAL (B1-B4), 2 HIGH (B5, B9), 3 MEDIUM (B13-B15), 3 LOW (B16-B18). Se `mangler.md § 🔴 Bugs (dybdeanalyse 25 Jun 2026)`
+2. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
+3. **Integration tests**: MTP pipeline, BackupEngine E2E
+4. **Retry/Resilience**: Exponential backoff, MTP resilience
+5. **2B error paths**: DownloadService cancellation/locks, HashService null stream — ✅ **FIXET**. Resterer: destination locked (kræver I/O), store filer (I/O), TempDirectoryHelper (I/O), SessionStateService (I/O)
+6. **2A TimeStamp**: Readers (13 files) + `EarliestTimestampResolutionService` — kræver reelle filer med EXIF/XMP metadata
 
 ## Code Quality Audit — Status
 
@@ -260,10 +274,11 @@ Normaliseringsregler:
 
 | Fil | Ændring |
 |---|---|
-| `BMTP3.Core4/Engine/BackupEngine.cs` | Bug #2 — `FilterPendingRecords`: `Active` silent `break` → `throw new UnreachableException()`. `default:` guard tilføjet. `using System.Diagnostics` tilføjet. |
-| `BMTP3.Core4/Models/GatekeptStream.cs` | #13 — try-catch i konstruktør: `inner?.Dispose()` + `lease?.Dispose()` ved constructor-fejl (allerede fikset af bruger) |
-| `mangler.md` | Bug #2 → ✅ FIXET. Bug #9 → ❌ Ikke-bug med dybdeanalyse. #13 → ✅ FIXET (i GatekeptStream). #16 slettet (forkert). Resume opdateret. |
-| `plan.md` | P0 bugs sektion opdateret: tabel med status for alle 9 bugs. Højeste prioritet → "Alle 9 bugs gennemgået". |
+| `BMTP3.Core4/Engine/BackupEngine.cs` | B7 — `StatusChangedAt` sat efter Skipped, Succeeded, Failed. `BackupEngine.cs` |
+| `BMTP3.Core4/State/BackupJsonSummaryStore.cs` | B8/B8b — `LoadAsync` try-catch med typed exceptions + `File.OpenRead`/`DeserializeAsync` async pipeline |
+| `BMTP3.Core4/Models/FileContent.cs` | B10 — `ct.ThrowIfCancellationRequested()` før `FileStream` konstruktor |
+| `mangler.md` | B7 → ✅ FIXET. B8 → ✅ FIXET. B10 → ✅ FIXET. B11 → ❌ AFKRÆFTET. Resume opdateret. |
+| `AGENTS.md` | Session context opdateret for 25 Jun 2026 |
 
 ---
 
