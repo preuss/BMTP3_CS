@@ -37,7 +37,7 @@ public class BackupJsonSummaryStoreTests : IDisposable
 		};
 
 		await store.SaveAsync(summary, default);
-		BackupSummary? loaded = await store.LoadAsync();
+		BackupSummary? loaded = await store.LoadAsync(default);
 
 		Assert.NotNull(loaded);
 		Assert.Equal("testsession", loaded.SessionId);
@@ -50,7 +50,7 @@ public class BackupJsonSummaryStoreTests : IDisposable
 	public async Task LoadAsync_NoFile_ReturnsNull()
 	{
 		BackupJsonSummaryStore store = new(_tempDir, "nonexistent");
-		BackupSummary? loaded = await store.LoadAsync();
+		BackupSummary? loaded = await store.LoadAsync(default);
 		Assert.Null(loaded);
 	}
 

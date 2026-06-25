@@ -4,7 +4,7 @@
 > **Tests:** 1668/1668 passed (Core4: 932, MessageFormatter: 351, Common: 281, Consoles: 104)
 > **Build:** 0 errors, 0 warnings (Core4), ~160 warnings (Consoles/archived/third-party)
 > **Docs:** 24 forældede slettet, værdi merget ind i plan.md / AGENTS.md / mangler.md
-> **Bugs:** 9 gennemgået (5 fikset, 4 ikke-bugs). Dybdeanalyse: B1–B10, B13 fikset, B11 afkræftet — 2 MEDIUM, 3 LOW tilbage
+> **Bugs:** 9 gennemgået (5 fikset, 4 ikke-bugs). Dybdeanalyse: B1–B10, B13, B15 fikset, B11 afkræftet — 1 MEDIUM, 3 LOW tilbage
 
 ---
 
@@ -143,6 +143,7 @@ Normaliseringsregler:
 | Fix | **B9** — `Progress<BackupScanProgress>` → `ActionProgress<BackupScanProgress>` | `BackupEngine.cs:210` |
 | Fix | **B10** — `ct.ThrowIfCancellationRequested()` i `OpenReadAsync` | `FileContent.cs:113` |
 | Fix | **B13** — `ArrayPool.Return` med `clearArray:true` | `ParallelStreamHashGenerator.cs:129`, `PooledStreamHashGenerator.cs:117` |
+| Fix | **B15** — `LoadAsync` cancellable | `ISummaryStore.cs`, `BackupJsonSummaryStore.cs`, `BackupMemorySummaryStore.cs`, `SessionStateService.cs` |
 | Audit | **B11** — ❌ AFKRÆFTET: `CancellationToken.None` i `finally` er designvalg | `BackupEngine.cs:576` |
 | Audit | **OCE catch** — `Pending` er korrekt status for cancelled items (resume prøver igen) | `BackupEngine.cs:541-548` |
 | Doc | mangler.md opdateret med sessionens rettelser | `mangler.md` |
@@ -219,7 +220,7 @@ Normaliseringsregler:
 ### Næste — prioriteret
 
 0. **🔴 Latente bugs — ingen tilbage** ✅. Se `mangler.md § 🔴 Bugs (latente fejl)` og `§ ⚠️ Mistænkelige`
-1. **🔴 Dybdeanalyse bugs**: B1–B10 ✅ **ALLE FIXET**, B11 afkræftet. Resterer: 2 MEDIUM (B14-B15), 3 LOW (B16-B18). Se `mangler.md § 🔴 Bugs (dybdeanalyse 25 Jun 2026)`
+1. **🔴 Dybdeanalyse bugs**: B1–B10 ✅ **ALLE FIXET**, B11 afkræftet. Resterer: 1 MEDIUM (B14), 3 LOW (B16-B18). Se `mangler.md § 🔴 Bugs (dybdeanalyse 25 Jun 2026)`
 2. **Feature gates**: `MaxDegreeOfParallelism`, `BackupIndexType.Database`
 3. **Integration tests**: MTP pipeline, BackupEngine E2E
 4. **Retry/Resilience**: Exponential backoff, MTP resilience
@@ -281,7 +282,11 @@ Normaliseringsregler:
 | `BMTP3.Core4/Models/FileContent.cs` | B10 — `ct.ThrowIfCancellationRequested()` før `FileStream` |
 | `BMTP3.Core4/Hashing/ParallelStreamHashGenerator.cs` | B13 — `clearArray: true` tilføjet |
 | `BMTP3.Core4/Hashing/PooledStreamHashGenerator.cs` | B13 — `clearArray: true` tilføjet |
-| `mangler.md` | B7/B8/B9/B10/B13 → ✅ FIXET. B11 → ❌ AFKRÆFTET. Resume opdateret. |
+| `BMTP3.Core4/State/ISummaryStore.cs` | B15 — `CancellationToken` parameter på `LoadAsync` |
+| `BMTP3.Core4/State/BackupJsonSummaryStore.cs` | B15 — `CancellationToken` parameter + brug i stedet for `None` |
+| `BMTP3.Core4/State/BackupMemorySummaryStore.cs` | B15 — `CancellationToken` parameter |
+| `BMTP3.Core4/Engine/Session/SessionStateService.cs` | B15 — sender `cancellationToken` til `_store.LoadAsync` |
+| `mangler.md` | B7/B8/B9/B10/B13/B15 → ✅ FIXET. B11 → ❌ AFKRÆFTET. Resume opdateret. |
 | `AGENTS.md` | Session context opdateret for 25 Jun 2026 |
 
 ---

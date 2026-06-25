@@ -53,7 +53,7 @@ Systematisk gennemgang af Core4 ud over de 9 oprindelige bugs. Fokuseret på log
 | **B12** | `BackupEngine.cs` | 284-553 | Ingen checkpoint saves. Hard-kill (power loss, StackOverflowException) mister **hele run** |
 | **B13** | `ParallelStreamHashGenerator.cs`, `PooledStreamHashGenerator.cs` | 120, 108 | `ArrayPool.Return` uden `clearArray:true` → fil-data lækker i shared pool | ✅ **FIXET** — `clearArray: true` tilføjet |
 | **B14** | `Hashing/Crypto/BouncyCastle*.cs`, `SharpHashMD5.cs` | alle | **4 ubrugte** Crypto-wrappers — dead code. Ingen references i produktion. |
-| **B15** | `BackupJsonSummaryStore.cs` | 36-42 | `LoadAsync` ikke cancellable — `File.OpenRead` + `DeserializeAsync` men ingen `CancellationToken` parameter. `ApplyResumeAsync` har `CancellationToken` men sender den ikke ned. |
+| **B15** | `BackupJsonSummaryStore.cs` | 36-42 | `LoadAsync` ikke cancellable — `File.OpenRead` + `DeserializeAsync` men ingen `CancellationToken` parameter. `ApplyResumeAsync` har `CancellationToken` men sender den ikke ned. | ✅ **FIXED** — `CancellationToken` parameter tilføjet til interface + alle implementations, `SessionStateService` sender token. |
 
 ### 🟢 LOW
 
@@ -281,7 +281,7 @@ Ikke en runtime-fejl, men inkonsistent.
 | Prioritet | Antal | Område |
 |---|---|---|
 | 🔴 Bugs (latente — audit 23 Jun) | 0 | ✅ Alle 9 bugs gennemgået — 5 fikset, 4 re-evalueret som ikke-bugs |
-| 🔴 Bugs (dybdeanalyse 25 Jun) | 5 | **0 CRITICAL, 0 HIGH, 2 MEDIUM, 3 LOW** — B1–B10, B13 fikset, B11 afkræftet. B12/B14–B18 tilbage |
+| 🔴 Bugs (dybdeanalyse 25 Jun) | 4 | **0 CRITICAL, 0 HIGH, 1 MEDIUM, 3 LOW** — B1–B10, B13, B15 fikset, B11 afkræftet. B12/B14/B16–B18 tilbage |
 | 🟡 Bør testes (større) | ~60 filer | TimeStamp (~18 filer: 13 readers + EarliestTimestampResolutionService), integration tests, error paths i øvrige komponenter, SignalInterruptEngine, Drive providers |
 | 🟢 Nice-to-have | ~15 items | MediaDeviceContent, model defaults, edge cases |
 | 🔶 Kosmetisk | 2 | Sidecar separator style, CollisionStreategy filename |

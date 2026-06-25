@@ -228,7 +228,7 @@ public class SessionStateServiceTests
 			_summary = summary;
 		}
 
-		public Task<BackupSummary?> LoadAsync() => Task.FromResult(_summary);
+		public Task<BackupSummary?> LoadAsync(CancellationToken cancellationToken) => Task.FromResult(_summary);
 		public Task SaveAsync(BackupSummary summary, CancellationToken ct)
 		{
 			LastSaved = summary;

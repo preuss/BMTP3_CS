@@ -13,7 +13,7 @@ internal sealed class BackupMemorySummaryStore : ISummaryStore
 		return Task.CompletedTask;
 	}
 
-	public Task<BackupSummary?> LoadAsync()
+	public Task<BackupSummary?> LoadAsync(CancellationToken cancellationToken)
 	{
 		return Task.FromResult(_summary);
 	}

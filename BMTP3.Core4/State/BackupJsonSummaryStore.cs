@@ -33,7 +33,7 @@ internal sealed class BackupJsonSummaryStore : ISummaryStore
 	}
 
 
-	public async Task<BackupSummary?> LoadAsync()
+	public async Task<BackupSummary?> LoadAsync(CancellationToken cancellationToken)
 	{
 		if (!File.Exists(FilePath))
 		{
@@ -43,7 +43,7 @@ internal sealed class BackupJsonSummaryStore : ISummaryStore
 		try
 		{
 			await using FileStream stream = File.OpenRead(FilePath);
-			return await JsonSerializer.DeserializeAsync<BackupSummary>(stream, cancellationToken: CancellationToken.None)
+			return await JsonSerializer.DeserializeAsync<BackupSummary>(stream, cancellationToken: cancellationToken)
 				   ?? throw new InvalidDataException($"Backup summary file is empty or invalid: {FilePath}");
 		} catch (JsonException ex)
 		{

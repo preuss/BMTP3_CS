@@ -28,7 +28,7 @@ internal sealed class SessionStateService : ISessionStateService
 		CancellationToken cancellationToken
 	)
 	{
-		BackupSummary? summary = await _store.LoadAsync();
+		BackupSummary? summary = await _store.LoadAsync(cancellationToken);
 		if(summary is null) return;
 
 		Dictionary<string, BackupSummaryItem> summaryById = summary.Items.ToDictionary(i => i.Id);
