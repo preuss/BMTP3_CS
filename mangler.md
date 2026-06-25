@@ -119,6 +119,11 @@ Systematisk gennemgang af Core4 ud over de 9 oprindelige bugs. Fokuseret på log
 | 26| **SourceType nullable:** `BackupPlan.SourceType` → `BackupSourceType?` | Validator tjekker nu `SourceType == null` → kaster med "SourceType must be specified". Fanger glemt `--source-type` eller manglende `source.type` i config. |
 | 27| **Bug #2 — `FilterPendingRecords`:** `Active` silent `break` | `break` → `throw new UnreachableException(...)`. `default:` guard tilføjet mod fremtidige enum-værdier. |
 | 28| **#13 — MediaDeviceContent resource leak:** `rawStream` ikke disposed ved constructor-fejl | Allerede fikset af bruger i `GatekeptStream.cs` — try-catch i konstruktør: `inner?.Dispose()` + `lease?.Dispose()`. `MediaDeviceContent.cs` try-catch beholdes (lease cleanup ved `OpenRead()` fejl). |
+| B1 | `SaveAsync` i finally maskerer originale exceptions | Wrapped i try-catch med `LogWarning` |
+| B2 | PipelinedDownloadService deadlock ved consumer-fejl | `using var cts` deles mellem producer/consumer; consumer kalder `cts.Cancel()` |
+| B3 | Buffer leak ved WriteAsync-fejl | Egen try-catch om `WriteAsync` med `ArrayPool.Return(buffer)` før throw |
+| B4 | Buffers efterladt i channel ved producer cancellation | Consumer dræner kanal via `while(TryRead(out ...)) { Return(chunk.Buffer) }` |
+| B5 | `CancellationTokenSource` aldrig disposed | `using` på CTS-deklarationen |
 
 ---
 

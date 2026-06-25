@@ -111,7 +111,7 @@ internal sealed class BackupEngine : IBackupEngine
 
 		DateTimeOffset backupStartTime = DateTimeOffset.UtcNow;
 
-		CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+		using CancellationTokenSource cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
 		cancellationToken = cancellationTokenSource.Token; // Shadow callers token.
 
 		// Finally saves when Cancel() is called and OperationCanceledException (OCE) is thrown.
