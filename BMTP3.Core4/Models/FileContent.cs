@@ -110,6 +110,7 @@ internal class FileContent : IContent, IFileInfoSource
 	public Task<Stream> OpenReadAsync(CancellationToken ct)
 	{
 		ThrowIfInvalidated();
+		ct.ThrowIfCancellationRequested();
 
 		Stream fs = new FileStream(
 			FileInfo.FullName,
