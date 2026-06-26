@@ -190,11 +190,11 @@ public sealed record BackupPlan
 	/// Controls how backup items are identified (the scope of identifier uniqueness).
 	///
 	/// <list type="bullet">
+	///   <item><c>Persistent</c> — generated from metadata, independent of WPD identifiers (default).</item>
 	///   <item><c>Session</c> — ObjectId (<c>file.Id</c>), valid within <c>Connect()</c> only.</item>
 	///   <item><c>Connection</c> — PUID (<c>file.PersistentUniqueId</c>), stable across <c>Connect()</c>/<c>Disconnect()</c>.</item>
-	///   <item><c>Persistent</c> — generated from metadata, independent of WPD identifiers.</item>
 	/// </list>
 	/// </summary>
-	public ItemIdScope ItemIdScope { get; init; } = ItemIdScope.Connection;
+	public ItemIdScope ItemIdScope { get; init; } = ItemIdScope.Persistent;
 
 }

@@ -5,17 +5,19 @@ namespace BMTP3.Core4.State;
 internal sealed class BackupJsonSummaryStore : ISummaryStore
 {
 	private readonly string _storeDirectory;
-	private readonly string _sessionId;
+	private readonly string _storeFilePrefix;
 
 	public BackupJsonSummaryStore(string storeDirectory, string sessionId)
 	{
 		ArgumentNullException.ThrowIfNull(storeDirectory);
 		ArgumentNullException.ThrowIfNull(sessionId);
 		_storeDirectory = storeDirectory;
-		_sessionId = sessionId;
+		_storeFilePrefix = GetStoreFilePrefix(sessionId);
 	}
 
-	private string FilePath => Path.Combine(_storeDirectory, $"{_sessionId}.json");
+	private static string GetStoreFilePrefix(string sessionId) => $"session_{sessionId[..12]}";
+
+	private string FilePath => Path.Combine(_storeDirectory, $"{_storeFilePrefix}.json");
 
 	public FileInfo? StoreFile => new FileInfo(FilePath);
 

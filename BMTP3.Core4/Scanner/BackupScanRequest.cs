@@ -31,5 +31,5 @@ internal sealed record BackupScanRequest
 	/// <summary>
 	/// Controls how items are identified during scanning.
 	/// </summary>
-	public ItemIdScope ItemIdScope { get; init; } = ItemIdScope.Connection;
+	public ItemIdScope ItemIdScope { get; init; } = ItemIdScope.Persistent;
 }

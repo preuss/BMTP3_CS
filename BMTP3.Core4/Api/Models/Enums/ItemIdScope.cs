@@ -26,8 +26,6 @@ public enum ItemIdScope
 	/// Most devices (Windows, cameras, Android) also maintain PUID
 	/// stability across physical USB reconnections.
 	/// Apple devices (iPhone, iPad) regenerate PUIDs on every USB replug.
-	///
-	/// This is the default strategy.
 	/// </summary>
 	Connection,
 
@@ -41,6 +39,8 @@ public enum ItemIdScope
 	///
 	/// Same file always produces the same ID regardless of session state,
 	/// connection state, or device firmware behaviour.
+	///
+	/// This is the default strategy.
 	///
 	/// Usage: Apple devices, cross-connection resume, or any scenario
 	/// where WPD identifiers cannot be trusted.

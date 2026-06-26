@@ -31,5 +31,5 @@ internal sealed record SourceTraversalRequest
 	/// <summary>
 	/// Controls how items are identified during traversal.
 	/// </summary>
-	public ItemIdScope ItemIdScope { get; init; } = ItemIdScope.Connection;
+	public ItemIdScope ItemIdScope { get; init; } = ItemIdScope.Persistent;
 }

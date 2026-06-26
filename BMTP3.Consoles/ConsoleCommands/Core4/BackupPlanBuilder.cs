@@ -40,7 +40,7 @@ internal sealed class BackupPlanBuilder
 	public bool EnableTimestampCorrection = true;
 	public int Delay;
 	public SessionResumeStrategy ResumeBehavior = SessionResumeStrategy.Abort;
-	public ItemIdScope ItemIdScope = ItemIdScope.Connection;
+	public ItemIdScope ItemIdScope = ItemIdScope.Persistent;
 
 	public static BackupPlanBuilder CreateDefault() => new(new FileSystemPathResolver());
 

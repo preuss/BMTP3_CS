@@ -202,14 +202,14 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	public static Option<ItemIdScope> ItemIdScopeOption { get; } = new("--item-id-scope")
 	{
 		Description = "How files are identified during backup: " +
+			"Persistent (generated from file metadata, independent of WPD — default), " +
 			"Session (ObjectId, unique within Connect() only), " +
-			"Connection (PUID, stable across Connect/Disconnect — default), " +
-			"or Persistent (generated from file metadata, independent of WPD).",
+			"or Connection (PUID, stable across Connect/Disconnect).",
 		Arity = ArgumentArity.ZeroOrOne,
-		DefaultValueFactory = _ => ItemIdScope.Connection,
+		DefaultValueFactory = _ => ItemIdScope.Persistent,
 	};
 
-	public ItemIdScope ItemIdScope { get; set; } = ItemIdScope.Connection;
+	public ItemIdScope ItemIdScope { get; set; } = ItemIdScope.Persistent;
 
 	// --------------------------------------------------
 	// TIMESTAMP

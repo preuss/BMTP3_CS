@@ -66,7 +66,7 @@ public class BackupSessionKeyFactoryTests
 		string sessionId = BackupSessionKeyFactory.Create(
 			"C:\\Test", "D:\\Backup", BackupSourceType.FileSystem).SessionId;
 
-		Assert.Matches("^session_[0-9a-f]{12}$", sessionId);
+		Assert.Matches("^[0-9a-f]{64}$", sessionId);
 	}
 
 	[Fact]

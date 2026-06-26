@@ -34,6 +34,6 @@ internal static class BackupSessionKeyFactory
 	private static string CreateStableSessionId(string sourceIdentity)
 	{
 		byte[] bytes = SHA256.HashData(Encoding.UTF8.GetBytes(sourceIdentity));
-		return "session_" + Convert.ToHexString(bytes).ToLowerInvariant()[..12];
+		return Convert.ToHexString(bytes).ToLowerInvariant();
 	}
 }
