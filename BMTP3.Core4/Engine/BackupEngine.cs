@@ -4,6 +4,7 @@ using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.DriveDiscovery;
 using BMTP3.Core4.Engine.DiskSpace;
 using BMTP3.Core4.Engine.Downloader;
+using BMTP3.Core4.Engine.Exceptions;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Index;
 using BMTP3.Core4.Engine.Session;
@@ -23,6 +24,7 @@ using BMTP3.Core4.Storage;
 using BMTP3.Core4.Traversal;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace BMTP3.Core4.Engine;
 
@@ -648,6 +650,15 @@ internal sealed class BackupEngine : IBackupEngine
 
 			return result;
 		}
+		catch (COMException ex) when (IsMtpDeviceDisconnectError(ex))
+		{
+			// Session state already saved in the finally block above.
+			_logger.LogError(ex, "MTP device disconnected during backup.");
+			throw new MtpDeviceDisconnectedException(
+				"MTP device disconnected during backup. Check the USB connection and ensure the device stays unlocked. Reconnect and re-run to resume from where it stopped.",
+				ex.ErrorCode,
+				ex);
+		}
 		catch (OperationCanceledException)
 		{
 			_logger.LogInformation("Backup cancelled by user.");
@@ -820,5 +831,12 @@ internal sealed class BackupEngine : IBackupEngine
 		}
 
 		return null;
+	}
+
+	private static bool IsMtpDeviceDisconnectError(COMException ex)
+	{
+		// WPD API errors are in the range 0x802A0000 - 0x802AFFFF.
+		// Any COMException from the WPD facility means the device connection is dead.
+		return (unchecked((uint)ex.ErrorCode) & 0xFFFF0000) == 0x802A0000;
 	}
 }
