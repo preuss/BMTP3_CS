@@ -17,7 +17,7 @@ namespace BMTP3.Core.Metadata {
 			} catch(ImageProcessingException) {
 				//TODO: Try to cleanup this code, we should not read metadata if not an image.
 				return null;
-			} catch(ArgumentOutOfRangeException e) {
+			} catch(ArgumentOutOfRangeException) {
 				// Problem with ImageMetadataReader, it has some serious problems.
 				// TODO: Switch to a bette metadata reader
 				return null;

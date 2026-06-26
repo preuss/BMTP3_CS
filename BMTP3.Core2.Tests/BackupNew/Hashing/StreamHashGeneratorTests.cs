@@ -22,7 +22,7 @@ public class StreamHashGeneratorTests
 
 		// Act
 		Dictionary<HashType, string>
-			results = await gen.ComputeHashesAsync(stream, types, null, CancellationToken.None);
+			results = await gen.ComputeHashesAsync(stream, types, null!, CancellationToken.None);
 
 		// Compute using HashCalculator for reference
 		HashCalculator calc = new();

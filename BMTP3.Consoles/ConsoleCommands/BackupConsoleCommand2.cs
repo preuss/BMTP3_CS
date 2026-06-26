@@ -43,8 +43,9 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	CancellationToken cancellationToken
 	)
 	{
-		ConsolesPrinter2? consolePrinter = ServiceProvider.GetService<ConsolesPrinter2>();
-		consolePrinter?.PrintOptionsModel(GlobalOptions, BackupOptions);
+		ArgumentNullException.ThrowIfNull(ServiceProvider);
+		ConsolesPrinter2 consolePrinter = ServiceProvider.GetRequiredService<ConsolesPrinter2>(); 
+		consolePrinter.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		// Resolve logger from DI when available; fall back to a no-op logger so callers
 		// (including tests) can capture structured logs instead of relying on Console.
@@ -58,7 +59,7 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 
 
 		// Friendly user-facing message
-		consolePrinter?.PrintStatus(
+		consolePrinter.PrintStatus(
 		$"Starting backup: Name='{plan.Name}' SourceType={plan.SourceType} SourcePath='{plan.SourcePath}' OutputPath='{plan.OutputPath}'");
 		// Also log structured diagnostic information for tests/CI
 		logger.LogInformation(
@@ -74,14 +75,13 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 
 		Progress<IBackupProgress> progress = new(p =>
 		{
-			consolePrinter?.PrintProgress(p); // user-friendly progress
-			logger.LogInformation("{Phase}: discovered={Discovered} succeeded={Succeeded} failed={Failed}", p.Phase,
-	p.FilesDiscovered, p.FilesSucceeded, p.FilesFailed);
+			consolePrinter.PrintProgress(p); // user-friendly progress
+			logger.LogInformation("{Phase}: discovered={Discovered} succeeded={Succeeded} failed={Failed}", p.Phase, p.FilesDiscovered, p.FilesSucceeded, p.FilesFailed);
 		});
 
 		// Support Ctrl+C for interactive cancellation and link to provided token
 		CancellationTokenSource linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-		ConsoleCancelEventHandler? cancelHandler = (s, e) =>
+		ConsoleCancelEventHandler cancelHandler = (s, e) =>
 		{
 			e.Cancel = true; // prevent process termination so we can cleanup
 			logger.LogInformation("Cancellation requested, stopping backup...");
@@ -93,12 +93,9 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 		{
 			BackupJobResult result = await engine.RunAsync(plan, progress, linkedCts.Token);
 			// Print friendly result for the user and log diagnostics
-			consolePrinter?.PrintResult(result);
+			consolePrinter.PrintResult(result);
 			logger.LogInformation("Job '{JobName}' finished: {Status}", result.JobName, result.Status);
-			logger.LogInformation(
-			"Scanned: {Scanned} Copied: {Copied} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}",
-			result.TotalFilesScanned, result.FilesCopied, result.FilesFailed, result.FilesSkipped,
-			result.TotalBytesCopied);
+			logger.LogInformation("Scanned: {Scanned} Copied: {Copied} Failed: {Failed} Skipped: {Skipped} Bytes: {Bytes}", result.TotalFilesScanned, result.FilesCopied, result.FilesFailed, result.FilesSkipped, result.TotalBytesCopied);
 			if(result.GlobalErrors?.Count > 0)
 			{
 				logger.LogWarning("Global errors:");
@@ -111,19 +108,19 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 			return result.Status == JobState.Completed ? 0 : 1;
 		} catch(OperationCanceledException)
 		{
-			consolePrinter?.PrintStatus("Backup cancelled.");
+			consolePrinter.PrintStatus("Backup cancelled.");
 			logger.LogInformation("Backup cancelled.");
 			return 2;
 		} catch(Exception ex)
 		{
 			// Friendly message for the user about failure
-			consolePrinter?.PrintError($"Unhandled error running backup: {ex.Message}");
+			consolePrinter.PrintError($"Unhandled error running backup: {ex.Message}");
 			// Log full exception to aid diagnostics in automated tests / CI
 			logger.LogError(ex, "Unhandled error running backup");
 			return 1;
 		} finally
 		{
-			Console.CancelKeyPress -= cancelHandler!;
+			Console.CancelKeyPress -= cancelHandler;
 			//linkedCts.Dispose();
 		}
 	}
@@ -142,7 +139,8 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	public async Task<BackupJobResult> TryRunAsync(BackupPlan plan, IProgress<IBackupProgress>? progress,
 	CancellationToken ct)
 	{
-		ConsolesPrinter2? consolePrinter = ServiceProvider.GetService<ConsolesPrinter2>();
+		ArgumentNullException.ThrowIfNull(ServiceProvider);
+		ConsolesPrinter2 consolePrinter = ServiceProvider.GetRequiredService<ConsolesPrinter2>();
 		ILogger<BackupConsoleCommand2>? logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand2>>()
 												 ?? ServiceProvider.GetService<ILoggerFactory>()
 												 ?.CreateLogger<BackupConsoleCommand2>();
@@ -209,8 +207,9 @@ public class BackupConsoleCommand2 : BaseConsoleCommand
 	/// </summary>
 	private void PrintResult()
 	{
-		ConsolesPrinter2? printer = ServiceProvider.GetService<ConsolesPrinter2>();
-		printer?.PrintStatus("Backup completed!");
+		ArgumentNullException.ThrowIfNull(ServiceProvider);
+		ConsolesPrinter2 printer = ServiceProvider.GetRequiredService<ConsolesPrinter2>();
+		printer.PrintStatus("Backup completed!");
 	}
 
 	/// <summary>

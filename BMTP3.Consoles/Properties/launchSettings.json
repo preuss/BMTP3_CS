@@ -31,6 +31,10 @@
     "Help_backup4": {
       "commandName": "Project",
       "commandLineArgs": "backup4 --help"
+    },
+    "Backup_Includes": {
+      "commandName": "Project",
+      "commandLineArgs": "backup4 -o \"E:\\Bck.iPhone.2026_06_24\" -s \"mtp://Apple iPhone/Internal Storage\" --source-type MediaDevice --include \"**/.png\""
     }
   }
 }

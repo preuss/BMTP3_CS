@@ -51,13 +51,13 @@ public class BackupEngineIntegrationTests : IDisposable
 	public async Task RunAsync_WithSingleFile_CompleteSuccessfully()
 	{
 		// Arrange: Create a single test file
-		var testFile = Path.Combine(_testSourceDir, "test.txt");
-		var testContent = "Hello, World! This is a backup test.";
-		await File.WriteAllTextAsync(testFile, testContent);
+		string testFile = Path.Combine(_testSourceDir, "test.txt");
+		string testContent = "Hello, World! This is a backup test.";
+		await File.WriteAllTextAsync(testFile, testContent, TestContext.Current.CancellationToken);
 		File.SetLastWriteTime(testFile, new DateTime(2024, 1, 15, 10, 30, 0));
 
-		var engine = CreateEngine();
-		var plan = new BackupPlan
+		BackupEngineSequential engine = CreateEngine();
+		BackupPlan plan = new()
 		{
 			Source = _testSourceDir,
 			Destination = _testDestDir,
@@ -65,7 +65,7 @@ public class BackupEngineIntegrationTests : IDisposable
 		};
 
 		// Act
-		var result = await engine.RunAsync(plan, null, CancellationToken.None);
+		BackupJobResult result = await engine.RunAsync(plan, null, TestContext.Current.CancellationToken);
 
 		// Assert
 		Assert.NotNull(result);
@@ -74,13 +74,13 @@ public class BackupEngineIntegrationTests : IDisposable
 		Assert.Equal(0, result.FailedItems);
 
 		// Verify file was copied
-		var copiedFile = Path.Combine(_testDestDir, "test.txt");
+		string copiedFile = Path.Combine(_testDestDir, "test.txt");
 		Assert.True(File.Exists(copiedFile), "File not copied");
-		var copiedContent = await File.ReadAllTextAsync(copiedFile);
+		string copiedContent = await File.ReadAllTextAsync(copiedFile, TestContext.Current.CancellationToken);
 		Assert.Equal(testContent, copiedContent);
 
 		// Verify sidecar exists
-		var sidecar = Path.Combine(_testDestDir, "test.txt.sidecar");
+		string sidecar = Path.Combine(_testDestDir, "test.txt.sidecar");
 		Assert.True(File.Exists(sidecar), "Sidecar not created");
 	}
 
@@ -88,11 +88,11 @@ public class BackupEngineIntegrationTests : IDisposable
 	public async Task RunAsync_WithAllHashTypes_ComputesAllHashes()
 	{
 		// Arrange
-		var testFile = Path.Combine(_testSourceDir, "test.bin");
-		await File.WriteAllBytesAsync(testFile, new byte[] { 1, 2, 3, 4, 5 });
+		string testFile = Path.Combine(_testSourceDir, "test.bin");
+		await File.WriteAllBytesAsync(testFile, new byte[] { 1, 2, 3, 4, 5 }, TestContext.Current.CancellationToken);
 
-		var engine = CreateEngine();
-		var plan = new BackupPlan
+		BackupEngineSequential engine = CreateEngine();
+		BackupPlan plan = new()
 		{
 			Source = _testSourceDir,
 			Destination = _testDestDir,
@@ -111,11 +111,11 @@ public class BackupEngineIntegrationTests : IDisposable
 		};
 
 		// Act
-		var result = await engine.RunAsync(plan, null, CancellationToken.None);
+		BackupJobResult result = await engine.RunAsync(plan, null, TestContext.Current.CancellationToken);
 
 		// Assert
 		Assert.True(result.Success, $"Backup failed: {string.Join(", ", result.Errors)}");
-		var item = result.Items.First();
+		BackupItem item = result.Items.First();
 		Assert.NotNull(item.Hashes);
 		Assert.Equal(9, item.Hashes.Count);
 	}
@@ -123,15 +123,15 @@ public class BackupEngineIntegrationTests : IDisposable
 	[Fact]
 	public async Task RunAsync_WithEmptyDirectory_Succeeds()
 	{
-		var engine = CreateEngine();
-		var plan = new BackupPlan
+		BackupEngineSequential engine = CreateEngine();
+		BackupPlan plan = new()
 		{
 			Source = _testSourceDir,
 			Destination = _testDestDir,
 			HashTypes = new() { HashType.SHA2_256 }
 		};
 
-		var result = await engine.RunAsync(plan, null, CancellationToken.None);
+		BackupJobResult result = await engine.RunAsync(plan, null, TestContext.Current.CancellationToken);
 
 		Assert.True(result.Success);
 		Assert.Equal(0, result.TotalItems);
@@ -143,12 +143,12 @@ public class BackupEngineIntegrationTests : IDisposable
 		// Arrange: Create 3 files
 		for (int i = 1; i <= 3; i++)
 		{
-			var file = Path.Combine(_testSourceDir, $"file{i}.txt");
-			await File.WriteAllTextAsync(file, $"Content {i}");
+			string file = Path.Combine(_testSourceDir, $"file{i}.txt");
+			await File.WriteAllTextAsync(file, $"Content {i}", TestContext.Current.CancellationToken);
 		}
 
-		var engine = CreateEngine();
-		var plan = new BackupPlan
+		BackupEngineSequential engine = CreateEngine();
+		BackupPlan plan = new()
 		{
 			Source = _testSourceDir,
 			Destination = _testDestDir,
@@ -156,13 +156,13 @@ public class BackupEngineIntegrationTests : IDisposable
 		};
 
 		// Act
-		var result = await engine.RunAsync(plan, null, CancellationToken.None);
+		BackupJobResult result = await engine.RunAsync(plan, null, TestContext.Current.CancellationToken);
 
 		// Assert
 		Assert.True(result.Success);
 		Assert.Equal(3, result.TotalItems);
 		// Verify 3 files + 3 sidecars were created
-		var allFiles = Directory.GetFiles(_testDestDir);
+		string[] allFiles = Directory.GetFiles(_testDestDir);
 		Assert.Equal(6, allFiles.Length);
 	}
 }

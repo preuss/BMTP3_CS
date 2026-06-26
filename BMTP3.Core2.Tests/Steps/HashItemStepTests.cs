@@ -32,7 +32,7 @@ public class HashItemStepTests
 			HashStepContext context = new() { HashTypes = new[] { HashType.SHA2_256 }, ForceRecompute = false };
 			HashItemStep step = BuildStep(context, new Sha256ItemHasher());
 
-			HashStepResult result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			HashStepResult result = await step.ExecuteAsync(item, null!, CancellationToken.None);
 
 			// Result dict must contain a SHA2_256 entry
 			Assert.NotNull(result.Hashes);
@@ -79,7 +79,7 @@ public class HashItemStepTests
 			HashStepContext context = new() { HashTypes = new[] { HashType.SHA2_256 }, ForceRecompute = false };
 			HashItemStep step = BuildStep(context, countingHasher);
 
-			HashStepResult result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			HashStepResult result = await step.ExecuteAsync(item, null!, CancellationToken.None);
 
 			// Hasher must NOT have been invoked because hash already existed
 			Assert.Equal(0, callCount);
@@ -117,7 +117,7 @@ public class HashItemStepTests
 			HashStepContext context = new() { HashTypes = new[] { HashType.SHA2_256 }, ForceRecompute = true };
 			HashItemStep step = BuildStep(context, new Sha256ItemHasher());
 
-			HashStepResult result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			HashStepResult result = await step.ExecuteAsync(item, null!, CancellationToken.None);
 
 			// The bogus hash must have been replaced by the real one
 			Assert.NotNull(result.Hashes);
@@ -155,7 +155,7 @@ public class HashItemStepTests
 
 			// HashItemStep re-throws after calling item.Fail()
 			await Assert.ThrowsAsync<InvalidOperationException>(() =>
-				step.ExecuteAsync(item, null, CancellationToken.None));
+				step.ExecuteAsync(item, null!, CancellationToken.None));
 
 			// Verify the item was marked as failed
 			Assert.Equal(ItemResultState.Failed, item.ResultState);

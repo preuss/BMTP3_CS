@@ -40,7 +40,7 @@ public class DiskSpaceValidatorTests
 	public async Task EnsureSufficientBackupCapacityAsync_NullPath_Throws()
 	{
 		await Assert.ThrowsAsync<ArgumentNullException>(() =>
-			_validator.EnsureSufficientBackupCapacityAsync(null!, 100, default));
+			_validator.EnsureSufficientBackupCapacityAsync(null!, 100, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]

@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0-windows7.0</TargetFramework>
+    <TargetFramework>net10.0-windows7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
@@ -26,12 +26,12 @@
   <ItemGroup>
     <PackageReference Include="Blake3" Version="2.2.1" />
     <PackageReference Include="BouncyCastle.Cryptography" Version="2.6.2" />
-    <PackageReference Include="ExiftoolWrapper" Version="5.1.0" />
+    <PackageReference Include="ExiftoolWrapper" Version="5.2.0" />
     <PackageReference Include="MetadataExtractor" Version="2.9.3" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.7" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
     <PackageReference Include="SharpExifTool" Version="13.32.0.1" />
     <PackageReference Include="SharpHash" Version="1.2.0" />
-    <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.7" />
+    <PackageReference Include="System.Linq.AsyncEnumerable" Version="10.0.9" />
     <PackageReference Include="ZLogger" Version="2.5.10" />
   </ItemGroup>
 

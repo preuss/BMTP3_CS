@@ -532,8 +532,10 @@ verification-hash-algorithms = [""md5"", ""md5-128"", ""md5_128""]
 
 			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
+			Assert.NotNull(plan.ComparisonHashAlgorithmTypes);
 			Assert.Single(plan.ComparisonHashAlgorithmTypes);
 			Assert.Equal(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes[0]);
+			Assert.NotNull(plan.VerificationHashAlgorithmTypes);
 			Assert.Single(plan.VerificationHashAlgorithmTypes);
 			Assert.Equal(HashAlgorithmType.MD5_128, plan.VerificationHashAlgorithmTypes[0]);
 		}
@@ -562,6 +564,7 @@ comparison-hash-algorithms = [""sha256"", ""sha512"", ""md5"", ""blake3-256"", "
 
 			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
+			Assert.NotNull(plan.ComparisonHashAlgorithmTypes);
 			Assert.Equal(7, plan.ComparisonHashAlgorithmTypes.Count);
 			Assert.Contains(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes);
 			Assert.Contains(HashAlgorithmType.SHA2_512, plan.ComparisonHashAlgorithmTypes);
@@ -863,10 +866,12 @@ sidecar-format = ""none""
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
+		Assert.NotNull(plan.ComparisonHashAlgorithmTypes);
 		Assert.Equal(Enum.GetValues<HashAlgorithmType>().Length, plan.ComparisonHashAlgorithmTypes.Count);
 		Assert.Contains(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes);
 		Assert.Contains(HashAlgorithmType.BLAKE3_512, plan.ComparisonHashAlgorithmTypes);
 		Assert.Contains(HashAlgorithmType.SHA3_512_FIPS202, plan.ComparisonHashAlgorithmTypes);
+		Assert.NotNull(plan.VerificationHashAlgorithmTypes);
 		Assert.Equal(Enum.GetValues<HashAlgorithmType>().Length, plan.VerificationHashAlgorithmTypes.Count);
 		Assert.Contains(HashAlgorithmType.SHA2_256, plan.VerificationHashAlgorithmTypes);
 		Assert.Contains(HashAlgorithmType.BLAKE3_512, plan.VerificationHashAlgorithmTypes);
@@ -880,6 +885,7 @@ sidecar-format = ""none""
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
+		Assert.NotNull(plan.ComparisonHashAlgorithmTypes);
 		Assert.Single(plan.ComparisonHashAlgorithmTypes);
 		Assert.Equal(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes[0]);
 	}
@@ -892,6 +898,7 @@ sidecar-format = ""none""
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
+		Assert.NotNull(plan.ComparisonHashAlgorithmTypes);
 		Assert.Equal(2, plan.ComparisonHashAlgorithmTypes.Count);
 		Assert.Contains(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes);
 		Assert.Contains(HashAlgorithmType.BLAKE3_256, plan.ComparisonHashAlgorithmTypes);
@@ -905,6 +912,7 @@ sidecar-format = ""none""
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
+		Assert.NotNull(plan.VerificationHashAlgorithmTypes);
 		Assert.Single(plan.VerificationHashAlgorithmTypes);
 		Assert.Equal(HashAlgorithmType.SHA2_512, plan.VerificationHashAlgorithmTypes[0]);
 	}
@@ -917,6 +925,7 @@ sidecar-format = ""none""
 
 		BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
+		Assert.NotNull(plan.VerificationHashAlgorithmTypes);
 		Assert.Equal(2, plan.VerificationHashAlgorithmTypes.Count);
 		Assert.Contains(HashAlgorithmType.MD5_128, plan.VerificationHashAlgorithmTypes);
 		Assert.Contains(HashAlgorithmType.SHA3_256_FIPS202, plan.VerificationHashAlgorithmTypes);
@@ -963,8 +972,10 @@ verification-hash-algorithms = [""sha512""]
 
 			BackupPlan plan = BackupConsoleCommand4Helpers.BuildPlan(options, parseResult, Resolver);
 
+			Assert.NotNull(plan.ComparisonHashAlgorithmTypes);
 			Assert.Single(plan.ComparisonHashAlgorithmTypes);
 			Assert.Equal(HashAlgorithmType.SHA2_256, plan.ComparisonHashAlgorithmTypes[0]);
+			Assert.NotNull(plan.VerificationHashAlgorithmTypes);
 			Assert.Single(plan.VerificationHashAlgorithmTypes);
 			Assert.Equal(HashAlgorithmType.BLAKE3_512, plan.VerificationHashAlgorithmTypes[0]);
 		}

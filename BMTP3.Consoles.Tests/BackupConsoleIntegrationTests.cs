@@ -42,6 +42,9 @@ public class BackupConsoleIntegrationTests
 			Out = new AnsiConsoleOutput(new StringWriter())
 		}));
 		services.AddSingleton<ConsolesPrinter>();
+		services.AddSingleton<ConsolesPrinter2>();
+		services.AddSingleton<ConsolesPrinter3>();
+		services.AddSingleton<ConsolesPrinter4>();
 
 		// Register core engine with real filesystem scanner and relaxed validator for CI
 		services.AddBMTP3Core2(s =>

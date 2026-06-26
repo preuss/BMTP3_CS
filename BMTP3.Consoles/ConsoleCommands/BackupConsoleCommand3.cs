@@ -42,7 +42,8 @@ public class BackupConsoleCommand3 : BaseConsoleCommand
 		CancellationToken cancellationToken
 	)
 	{
-		ConsolesPrinter3? consolePrinter = ServiceProvider.GetService<ConsolesPrinter3>();
+		ArgumentNullException.ThrowIfNull(ServiceProvider);
+		ConsolesPrinter3 consolePrinter = ServiceProvider.GetRequiredService<ConsolesPrinter3>();
 		consolePrinter?.PrintOptionsModel(GlobalOptions, BackupOptions);
 
 		ILogger<BackupConsoleCommand3> logger = ServiceProvider.GetService<ILogger<BackupConsoleCommand3>>()
@@ -64,7 +65,7 @@ public class BackupConsoleCommand3 : BaseConsoleCommand
 		);
 
 		IBackupEngine? engine = ServiceProvider.GetService<IBackupEngine>();
-		if (engine == null)
+		if(engine == null)
 		{
 			logger.LogError("Core3 backup engine not configured in DI.");
 			return 1;
@@ -103,30 +104,27 @@ public class BackupConsoleCommand3 : BaseConsoleCommand
 				result.Duration.TotalMilliseconds
 			);
 
-			if (result.Errors?.Count > 0)
+			if(result.Errors?.Count > 0)
 			{
 				logger.LogWarning("Core3 backup errors:");
-				foreach (BackupError error in result.Errors)
+				foreach(BackupError error in result.Errors)
 				{
 					logger.LogWarning("  {ItemName}: {Message}", error.ItemName, error.Message);
 				}
 			}
 
 			return result.Success ? 0 : 1;
-		}
-		catch (OperationCanceledException)
+		} catch(OperationCanceledException)
 		{
 			consolePrinter?.PrintStatus("Core3 backup cancelled.");
 			logger.LogInformation("Core3 backup cancelled.");
 			return 2;
-		}
-		catch (Exception ex)
+		} catch(Exception ex)
 		{
 			consolePrinter?.PrintError($"Unhandled error in Core3 backup: {ex.Message}");
 			logger.LogError(ex, "Unhandled error in Core3 backup");
 			return 1;
-		}
-		finally
+		} finally
 		{
 			Console.CancelKeyPress -= cancelHandler!;
 		}
@@ -183,12 +181,12 @@ public class BackupConsoleCommand3 : BaseConsoleCommand
 
 	private void ValidateBackupOptions(BackupOptionsModel backupOptions)
 	{
-		if (backupOptions.OutputDirectory == null)
+		if(backupOptions.OutputDirectory == null)
 		{
 			throw new ArgumentException("--output is required for Core3 backup.");
 		}
 
-		if (string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
+		if(string.IsNullOrWhiteSpace(backupOptions.SourceDirectory))
 		{
 			throw new ArgumentException("--source-directory is required for Core3 backup.");
 		}

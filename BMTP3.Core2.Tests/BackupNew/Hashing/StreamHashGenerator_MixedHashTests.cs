@@ -21,15 +21,15 @@ public class StreamHashGenerator_MixedHashTests
 
 		// Act - stream generator
 		Dictionary<HashType, string> streamResults =
-			await gen.ComputeHashesAsync(stream, types, null, CancellationToken.None);
+			await gen.ComputeHashesAsync(stream, types, null!, TestContext.Current.CancellationToken);
 
 		// Act - file-based HashCalculator
 		HashCalculator calc = new();
 		string temp = Path.GetTempFileName();
 		try
 		{
-			await File.WriteAllBytesAsync(temp, data);
-			IReadOnlyDictionary<HashType, string> calcResults = calc.ComputeHashes(temp, types);
+			await File.WriteAllBytesAsync(temp, data, TestContext.Current.CancellationToken);
+			IReadOnlyDictionary<HashType, string> calcResults = calc.ComputeHashes(temp, types, cancellationToken: TestContext.Current.CancellationToken);
 
 			// Assert both hashes match
 			Assert.Equal(calcResults[HashType.SHA2_256], streamResults[HashType.SHA2_256]);

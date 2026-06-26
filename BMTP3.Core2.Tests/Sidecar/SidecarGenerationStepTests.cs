@@ -28,7 +28,7 @@ public class SidecarGenerationStepTests
 			item.Metadata.Set(MetadataKey.FinalTargetPath, dest);
 
 			SidecarGenerationItemStep step = new(plan, new TestFactory());
-			bool ok = await step.ExecuteAsync(item, null, CancellationToken.None);
+			bool ok = await step.ExecuteAsync(item, null!, CancellationToken.None);
 			Assert.True(ok);
 
 			string expected = Path.ChangeExtension(dest, ".ini");
@@ -92,7 +92,7 @@ public class SidecarGenerationStepTests
 			item.Metadata.Set(MetadataKey.FinalTargetPath, dest);
 
 			SidecarGenerationItemStep step = new(plan, new TestFactory());
-			bool ok = await step.ExecuteAsync(item, null, CancellationToken.None);
+			bool ok = await step.ExecuteAsync(item, null!, CancellationToken.None);
 			Assert.True(ok);
 
 			string expected = dest + ".bmtp3.json";

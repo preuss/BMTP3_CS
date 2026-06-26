@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using BMTP3.Core2.BackupNew.Api.Enums;
 using BMTP3.Core2.BackupNew.Api.Request;
 using BMTP3.Core2.BackupNew.Api.Request.Enums;
@@ -9,6 +8,7 @@ using BMTP3.Core2.BackupNew.Engine.Steps.TransferStep;
 using BMTP3.Core2.BackupNew.Engine.Strategies;
 using BMTP3.Core2.BackupNew.Engine.Transfers;
 using BMTP3.Core2.Tests.Utils;
+using System.Security.Cryptography;
 
 namespace BMTP3.Core2.Tests.Steps;
 
@@ -25,44 +25,38 @@ public class TransferItemStepTests
 		{
 			byte[] data = new byte[4096];
 			new Random(5).NextBytes(data);
-			await File.WriteAllBytesAsync(src, data);
-			await File.WriteAllBytesAsync(dest, data);
+			await File.WriteAllBytesAsync(src, data, TestContext.Current.CancellationToken);
+			await File.WriteAllBytesAsync(dest, data, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new() { OutputPath = dir, PostWriteVerification = PostWriteVerificationType.Hash };
 
 			BackupItem item = BackupItem.Create(new FileContent(src), Path.GetFileName(src));
 			// Intentionally do not set hashes on item.Metadata
 
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(),
-				new DummyFileTransfer(), new FakeItemHasher());
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), new DummyFileTransfer(), new FakeItemHasher());
 
-			bool ok = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null,
-				CancellationToken.None);
+			bool ok = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null!, TestContext.Current.CancellationToken);
 			Assert.True(ok);
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -79,8 +73,8 @@ public class TransferItemStepTests
 		{
 			byte[] data = new byte[4096];
 			new Random(9).NextBytes(data);
-			await File.WriteAllBytesAsync(src, data);
-			await File.WriteAllBytesAsync(dest, data);
+			await File.WriteAllBytesAsync(src, data, TestContext.Current.CancellationToken);
+			await File.WriteAllBytesAsync(dest, data, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new() { OutputPath = dir, PostWriteVerification = PostWriteVerificationType.Hash };
 
@@ -89,36 +83,30 @@ public class TransferItemStepTests
 			// Create an item hasher that throws to simulate failure
 			FailingItemHasher failingHasher = new();
 
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(),
-				new DummyFileTransfer(), failingHasher);
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), new DummyFileTransfer(), failingHasher);
 
-			bool ok = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null,
-				CancellationToken.None);
+			bool ok = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null!, TestContext.Current.CancellationToken);
 			Assert.True(ok);
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -137,43 +125,37 @@ public class TransferItemStepTests
 			new Random(11).NextBytes(data1);
 			byte[] data2 = new byte[4096];
 			new Random(12).NextBytes(data2);
-			await File.WriteAllBytesAsync(src, data1);
-			await File.WriteAllBytesAsync(dest, data2);
+			await File.WriteAllBytesAsync(src, data1, TestContext.Current.CancellationToken);
+			await File.WriteAllBytesAsync(dest, data2, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new() { OutputPath = dir, PostWriteVerification = PostWriteVerificationType.Hash };
 
 			BackupItem item = BackupItem.Create(new FileContent(src), Path.GetFileName(src));
 
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(),
-				new DummyFileTransfer(), new FakeItemHasher());
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), new DummyFileTransfer(), new FakeItemHasher());
 
-			bool ok = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null,
-				CancellationToken.None);
+			bool ok = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null!, TestContext.Current.CancellationToken);
 			Assert.False(ok);
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -190,8 +172,8 @@ public class TransferItemStepTests
 		{
 			byte[] data = new byte[4096];
 			new Random(7).NextBytes(data);
-			await File.WriteAllBytesAsync(src, data);
-			await File.WriteAllBytesAsync(dest, data);
+			await File.WriteAllBytesAsync(src, data, TestContext.Current.CancellationToken);
+			await File.WriteAllBytesAsync(dest, data, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new()
 			{
@@ -214,16 +196,14 @@ public class TransferItemStepTests
 			// so ensure the RetryHasher watches the actual destination path the step will use.
 			RetryHasher retryHasher = new(Path.Combine(plan.OutputPath, Path.GetFileName(src)), 3);
 
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(),
-				new DummyFileTransfer(), retryHasher);
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), new DummyFileTransfer(), retryHasher);
 
 			bool verified = false;
 			int attempts = 3;
-			for (int i = 1; i <= attempts; i++)
+			for(int i = 1; i <= attempts; i++)
 			{
-				verified = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null,
-					CancellationToken.None);
-				if (verified)
+				verified = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null!, TestContext.Current.CancellationToken);
+				if(verified)
 				{
 					break;
 				}
@@ -231,30 +211,26 @@ public class TransferItemStepTests
 
 			Assert.True(verified);
 			Assert.InRange(retryHasher.InvocationCount, 1, 3);
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -271,8 +247,8 @@ public class TransferItemStepTests
 		{
 			byte[] data = new byte[4096];
 			new Random(21).NextBytes(data);
-			await File.WriteAllBytesAsync(src, data);
-			await File.WriteAllBytesAsync(dest, data);
+			await File.WriteAllBytesAsync(src, data, TestContext.Current.CancellationToken);
+			await File.WriteAllBytesAsync(dest, data, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new() { OutputPath = dir, PostWriteVerification = PostWriteVerificationType.Hash };
 
@@ -281,36 +257,30 @@ public class TransferItemStepTests
 			// Hasher that always throws
 			FailingItemHasher failingHasher = new();
 
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(),
-				new DummyFileTransfer(), failingHasher);
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), new DummyFileTransfer(), failingHasher);
 
-			bool ok = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null,
-				CancellationToken.None);
+			bool ok = await step.VerifyTransferAsync(item, dest, PostWriteVerificationType.Hash, null!, TestContext.Current.CancellationToken);
 			Assert.True(ok, "Expected binary fallback to succeed when hasher fails");
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -327,7 +297,7 @@ public class TransferItemStepTests
 		{
 			byte[] data = new byte[4096];
 			new Random(13).NextBytes(data);
-			await File.WriteAllBytesAsync(src, data);
+			await File.WriteAllBytesAsync(src, data, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new()
 			{
@@ -354,37 +324,32 @@ public class TransferItemStepTests
 			// Hasher that sleeps longer than timeout
 			SlowHasher slowHasher = new(200);
 
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), copier,
-				slowHasher);
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), copier, slowHasher);
 
-			OperationResult result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			OperationResult result = await step.ExecuteAsync(item, null!, TestContext.Current.CancellationToken);
 
 			Assert.False(result.Success);
 			Assert.False(File.Exists(dest));
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -402,12 +367,11 @@ public class TransferItemStepTests
 		{
 			byte[] data = new byte[4096];
 			new Random(17).NextBytes(data);
-			await File.WriteAllBytesAsync(src, data);
+			await File.WriteAllBytesAsync(src, data, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new()
 			{
-				OutputPath = dir, PostWriteVerification = PostWriteVerificationType.Hash, VerificationRetryCount = 3,
-				VerificationRetryDelayMs = 10
+				OutputPath = dir, PostWriteVerification = PostWriteVerificationType.Hash, VerificationRetryCount = 3, VerificationRetryDelayMs = 10
 			};
 
 			BackupItem item = BackupItem.Create(new FileContent(src), Path.GetFileName(src));
@@ -426,12 +390,11 @@ public class TransferItemStepTests
 			RetryHasher retryHasher = new(dest, 3);
 
 			TestLogger<TransferItemStep> logger = new();
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), copier,
-				retryHasher, logger);
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), copier, retryHasher, logger);
 
-			OperationResult result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			OperationResult result = await step.ExecuteAsync(item, null!, TestContext.Current.CancellationToken);
 
-			if (!result.Success)
+			if(!result.Success)
 			{
 				Console.WriteLine(logger.Logs);
 			}
@@ -439,30 +402,26 @@ public class TransferItemStepTests
 			Assert.True(result.Success, "Expected transfer + verification to eventually succeed after retries");
 			Assert.InRange(retryHasher.InvocationCount, 1, 3);
 			Assert.True(File.Exists(dest));
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -480,11 +439,13 @@ public class TransferItemStepTests
 		{
 			byte[] data = new byte[4096];
 			new Random(19).NextBytes(data);
-			await File.WriteAllBytesAsync(src, data);
+			await File.WriteAllBytesAsync(src, data, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new()
 			{
-				OutputPath = dir, PostWriteVerification = PostWriteVerificationType.Hash, VerificationRetryCount = 0,
+				OutputPath = dir,
+				PostWriteVerification = PostWriteVerificationType.Hash,
+				VerificationRetryCount = 0,
 				VerificationRetryDelayMs = 10
 			};
 
@@ -505,12 +466,11 @@ public class TransferItemStepTests
 			RetryHasher retryHasher = new(Path.Combine(plan.OutputPath, Path.GetFileName(src)), 1);
 
 			TestLogger<TransferItemStep> logger = new();
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), copier,
-				retryHasher, logger);
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), copier, retryHasher, logger);
 
-			OperationResult result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			OperationResult result = await step.ExecuteAsync(item, null!, TestContext.Current.CancellationToken);
 
-			if (!result.Success)
+			if(!result.Success)
 			{
 				Console.WriteLine(logger.Logs);
 			}
@@ -518,30 +478,26 @@ public class TransferItemStepTests
 			Assert.True(result.Success, "Expected transfer + verification to succeed with retry count 0 treated as 1");
 			Assert.Equal(1, retryHasher.InvocationCount);
 			Assert.True(File.Exists(dest));
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -558,7 +514,7 @@ public class TransferItemStepTests
 		{
 			byte[] data = new byte[1024];
 			new Random(23).NextBytes(data);
-			await File.WriteAllBytesAsync(src, data);
+			await File.WriteAllBytesAsync(src, data, TestContext.Current.CancellationToken);
 
 			DateTimeOffset authoredUtc = new DateTimeOffset(2020, 01, 02, 03, 04, 05, TimeSpan.Zero);
 
@@ -572,40 +528,34 @@ public class TransferItemStepTests
 			BackupItem item = BackupItem.Create(new FileContent(src), Path.GetFileName(src));
 			item.Metadata.Set(MetadataKey.AuthoredDateTime, authoredUtc);
 
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(),
-				new CopyingFileTransfer(), new FakeItemHasher());
-			OperationResult result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), new CopyingFileTransfer(), new FakeItemHasher());
+			OperationResult result = await step.ExecuteAsync(item, null!, TestContext.Current.CancellationToken);
 
 			Assert.True(result.Success);
 			Assert.True(File.Exists(dest));
 
 			DateTime lastWrite = File.GetLastWriteTimeUtc(dest);
-			Assert.True(Math.Abs((lastWrite - authoredUtc.UtcDateTime).TotalSeconds) < 2,
-				$"Expected destination last write near {authoredUtc.UtcDateTime:o}, actual {lastWrite:o}");
-		}
-		finally
+			Assert.True(Math.Abs((lastWrite - authoredUtc.UtcDateTime).TotalSeconds) < 2, $"Expected destination last write near {authoredUtc.UtcDateTime:o}, actual {lastWrite:o}");
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(dest);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -620,8 +570,8 @@ public class TransferItemStepTests
 		string temp = Path.Combine(dir, "temp_cleanup.tmp");
 		try
 		{
-			await File.WriteAllBytesAsync(src, new byte[] { 10, 11, 12 });
-			await File.WriteAllBytesAsync(temp, new byte[] { 20, 21, 22 });
+			await File.WriteAllBytesAsync(src, new byte[] { 10, 11, 12 }, TestContext.Current.CancellationToken);
+			await File.WriteAllBytesAsync(temp, new byte[] { 20, 21, 22 }, TestContext.Current.CancellationToken);
 
 			BackupPlan plan = new()
 			{
@@ -633,37 +583,32 @@ public class TransferItemStepTests
 			BackupItem item = BackupItem.Create(new FileContent(src), Path.GetFileName(src));
 			item.Metadata.Set(MetadataKey.LocalTempPath, temp);
 
-			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(),
-				new DummyFileTransfer(), new FakeItemHasher());
-			OperationResult result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			TransferItemStep step = new(plan, new SimplePathGenerator(), new DummyCollisionResolver(), new DummyFileTransfer(), new FakeItemHasher());
+			OperationResult result = await step.ExecuteAsync(item, null!, TestContext.Current.CancellationToken);
 
 			Assert.True(result.Success);
 			Assert.False(File.Exists(temp));
 			Assert.True(File.Exists(src));
-		}
-		finally
+		} finally
 		{
 			try
 			{
 				File.Delete(src);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				File.Delete(temp);
-			}
-			catch
+			} catch
 			{
 			}
 
 			try
 			{
 				Directory.Delete(dir);
-			}
-			catch
+			} catch
 			{
 			}
 		}
@@ -684,18 +629,15 @@ public class TransferItemStepTests
 
 	private class DummyCollisionResolver : ICollisionResolver
 	{
-		public Task<CollisionResult> ResolveAsync(IBackupItem item, string proposedFullPath, BackupPlan plan,
-			CancellationToken ct)
+		public Task<CollisionResult> ResolveAsync(IBackupItem item, string proposedFullPath, BackupPlan plan, CancellationToken ct)
 		{
-			return Task.FromResult(new CollisionResult(BackupActionType.Copy,
-				proposedFullPath, ""));
+			return Task.FromResult(new CollisionResult(BackupActionType.Copy, proposedFullPath, ""));
 		}
 	}
 
 	private class DummyFileTransfer : IFileTransfer
 	{
-		public Task<OperationResult> TransferAsync(string stagingPath, string targetPath, bool dryRun,
-			CancellationToken ct)
+		public Task<OperationResult> TransferAsync(string stagingPath, string targetPath, bool dryRun, CancellationToken ct)
 		{
 			return Task.FromResult(OperationResult.Ok());
 		}
@@ -703,15 +645,14 @@ public class TransferItemStepTests
 
 	private class FakeItemHasher : IItemHasher
 	{
-		public async Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, List<HashType> hashTypes,
-			IProgress<ulong> progress, CancellationToken ct)
+		public async Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, List<HashType> hashTypes, IProgress<ulong> progress, CancellationToken ct)
 		{
 			using SHA256 sha = SHA256.Create();
 			using Stream s = item.Content.OpenRead();
 			byte[] h = sha.ComputeHash(s);
 			string hex = string.Concat(h.Select(b => b.ToString("x2")));
 			Dictionary<HashType, string> dict = new();
-			foreach (HashType ht in hashTypes)
+			foreach(HashType ht in hashTypes)
 			{
 				dict[ht] = hex;
 			}
@@ -722,8 +663,7 @@ public class TransferItemStepTests
 
 	private class FailingItemHasher : IItemHasher
 	{
-		public Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, List<HashType> hashTypes,
-			IProgress<ulong> progress, CancellationToken ct)
+		public Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, List<HashType> hashTypes, IProgress<ulong> progress, CancellationToken ct)
 		{
 			throw new InvalidOperationException("Simulated hashing failure");
 		}
@@ -743,20 +683,19 @@ public class TransferItemStepTests
 
 		public int InvocationCount { get; private set; }
 
-		public async Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, List<HashType> hashTypes,
-			IProgress<ulong> progress, CancellationToken ct)
+		public async Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, List<HashType> hashTypes, IProgress<ulong> progress, CancellationToken ct)
 		{
 			InvocationCount++;
 			// (diagnostic logging removed)
 			// If hashing the destination path, sometimes return wrong hash
-			if (item.Content is FileContent fc && Path.GetFullPath(fc.FileInfo.FullName)
-				    .Equals(_destPath, StringComparison.OrdinalIgnoreCase))
+			if(item.Content is FileContent fc && Path.GetFullPath(fc.FileInfo.FullName)
+					.Equals(_destPath, StringComparison.OrdinalIgnoreCase))
 			{
-				if (InvocationCount < _succeedAfter)
+				if(InvocationCount < _succeedAfter)
 				{
 					// return a deterministic wrong hash
 					Dictionary<HashType, string> wrong = new();
-					foreach (HashType ht in hashTypes)
+					foreach(HashType ht in hashTypes)
 					{
 						wrong[ht] = new string('0', 64);
 					}
@@ -771,7 +710,7 @@ public class TransferItemStepTests
 				byte[] h = sha.ComputeHash(s);
 				string hex = string.Concat(h.Select(b => b.ToString("x2")));
 				Dictionary<HashType, string> dict = new();
-				foreach (HashType ht in hashTypes)
+				foreach(HashType ht in hashTypes)
 				{
 					dict[ht] = hex;
 				}
@@ -781,14 +720,14 @@ public class TransferItemStepTests
 			}
 
 			// For any other path, compute actual hash
-			if (item.Content is FileContent fc2)
+			if(item.Content is FileContent fc2)
 			{
 				using SHA256 sha2 = SHA256.Create();
 				using FileStream s2 = File.OpenRead(fc2.FileInfo.FullName);
 				byte[] h2 = sha2.ComputeHash(s2);
 				string hex2 = string.Concat(h2.Select(b => b.ToString("x2")));
 				Dictionary<HashType, string> dict2 = new();
-				foreach (HashType ht in hashTypes)
+				foreach(HashType ht in hashTypes)
 				{
 					dict2[ht] = hex2;
 				}
@@ -802,19 +741,17 @@ public class TransferItemStepTests
 
 	private class CopyingFileTransfer : IFileTransfer
 	{
-		public Task<OperationResult> TransferAsync(string stagingPath, string targetPath, bool dryRun,
-			CancellationToken ct)
+		public Task<OperationResult> TransferAsync(string stagingPath, string targetPath, bool dryRun, CancellationToken ct)
 		{
 			try
 			{
-				if (!dryRun)
+				if(!dryRun)
 				{
 					File.Copy(stagingPath, targetPath, true);
 				}
 
 				return Task.FromResult(OperationResult.Ok());
-			}
-			catch (Exception ex)
+			} catch(Exception ex)
 			{
 				return Task.FromResult(OperationResult.Fail(ex.Message));
 			}
@@ -830,19 +767,18 @@ public class TransferItemStepTests
 			_delayMs = delayMs;
 		}
 
-		public async Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, List<HashType> hashTypes,
-			IProgress<ulong> progress, CancellationToken ct)
+		public async Task<Dictionary<HashType, string>> ComputeHashesAsync(IBackupItem item, List<HashType> hashTypes, IProgress<ulong> progress, CancellationToken ct)
 		{
 			await Task.Delay(_delayMs, ct);
 			// If not canceled, compute a normal hash
-			if (item.Content is FileContent fc)
+			if(item.Content is FileContent fc)
 			{
 				using SHA256 sha = SHA256.Create();
 				using FileStream s = File.OpenRead(fc.FileInfo.FullName);
 				byte[] h = sha.ComputeHash(s);
 				string hex = string.Concat(h.Select(b => b.ToString("x2")));
 				Dictionary<HashType, string> dict = new();
-				foreach (HashType ht in hashTypes)
+				foreach(HashType ht in hashTypes)
 				{
 					dict[ht] = hex;
 				}

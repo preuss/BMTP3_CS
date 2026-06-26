@@ -33,7 +33,7 @@ public class JsonBackupIndexWriterTests
 				State = BackupResultState.Completed,
 			};
 
-			await writer.WriteAsync(tempDir, "session123", records, plan, result, default);
+			await writer.WriteAsync(tempDir, "session123", records, plan, result, TestContext.Current.CancellationToken);
 
 			string catalogDir = Path.Combine(tempDir, ".bmtp3", "session123");
 			string catalogFile = Path.Combine(catalogDir, "backup_catalog.json");
@@ -149,8 +149,8 @@ public class JsonBackupIndexWriterTests
 			BackupIndexCatalog? catalog = JsonSerializer.Deserialize<BackupIndexCatalog>(json);
 
 			Assert.NotNull(catalog);
-			Assert.NotEmpty(catalog.Files[0].Hashes);
-			Assert.Equal("abcdef", catalog.Files[0].Hashes["SHA2_256"]);
+			Assert.NotEmpty(catalog.Files[0].Hashes!);
+			Assert.Equal("abcdef", catalog.Files[0].Hashes!["SHA2_256"]);
 		} finally
 		{
 			if(Directory.Exists(tempDir))

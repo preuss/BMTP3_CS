@@ -13,9 +13,9 @@ namespace BMTP3.Core.Testing {
 			var task1Progress = 0;
 			var task2Progress = 0;
 
-			var table = new Table().Centered();
+			var table = new Table();
 
-			AnsiConsole.Live(table)
+			AnsiConsole.Live(new Align(table, HorizontalAlignment.Center))
 				.Start(ctx => {
 					table.AddColumn("Foo");
 					ctx.Refresh();

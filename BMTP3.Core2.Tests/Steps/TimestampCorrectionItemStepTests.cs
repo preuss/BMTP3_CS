@@ -32,7 +32,7 @@ public class TimestampCorrectionItemStepTests
 			item.Metadata.Set(MetadataKey.AuthoredDateTime, authored);
 
 			TimestampCorrectionItemStep step = BuildStep();
-			await step.ExecuteAsync(item, null, CancellationToken.None);
+			await step.ExecuteAsync(item, null!, CancellationToken.None);
 
 			// Both creation and last-write times must have been updated to the authored date
 			FileInfo fileInfo = new(tempFile);
@@ -67,7 +67,7 @@ public class TimestampCorrectionItemStepTests
 			item.Metadata.Set(MetadataKey.CreatedDateTime, created);
 
 			TimestampCorrectionItemStep step = BuildStep();
-			await step.ExecuteAsync(item, null, CancellationToken.None);
+			await step.ExecuteAsync(item, null!, CancellationToken.None);
 
 			FileInfo fileInfo = new(tempFile);
 			Assert.Equal(created, fileInfo.LastWriteTimeUtc, TimeSpan.FromSeconds(2));
@@ -98,7 +98,7 @@ public class TimestampCorrectionItemStepTests
 		TimestampCorrectionItemStep step = BuildStep();
 
 		// Must not throw
-		bool result = await step.ExecuteAsync(item, null, CancellationToken.None);
+		bool result = await step.ExecuteAsync(item, null!, CancellationToken.None);
 
 		Assert.True(result);
 		// Item must not have been marked failed
@@ -118,7 +118,7 @@ public class TimestampCorrectionItemStepTests
 
 			// No timestamp keys are set at all – step should be a no-op
 			TimestampCorrectionItemStep step = BuildStep();
-			bool result = await step.ExecuteAsync(item, null, CancellationToken.None);
+			bool result = await step.ExecuteAsync(item, null!, CancellationToken.None);
 
 			Assert.True(result);
 			Assert.Equal(ItemResultState.Pending, item.ResultState);

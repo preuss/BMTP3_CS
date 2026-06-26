@@ -54,20 +54,20 @@ namespace BMTP3.Core {
 
 		static async Task<int> Main(string[] args) {
 #if DEBUG
+			/*
 			// Test only code here.
 			const bool enableHashTesting = false;
 			if(enableHashTesting) {
 				FileInfo fileInfo = new FileInfo(@"c:\Priv2\xxx3.png");
 				List<HashCalculator.HashType> hashTypes = [
-					/*
-						HashCalculator.HashType.SHA3_512_KECCAK,
-						HashCalculator.HashType.SHA3_512_FIPS202,
-						HashCalculator.HashType.SHA2_512,
-						HashCalculator.HashType.SHA2_256,
-						HashCalculator.HashType.MD5_128,
-						HashCalculator.HashType.BLAKE3_256,
-						HashCalculator.HashType.BLAKE3_512,*/
-					HashCalculator.HashType.MD5_128,
+//						HashCalculator.HashType.SHA3_512_KECCAK,
+//						HashCalculator.HashType.SHA3_512_FIPS202,
+//						HashCalculator.HashType.SHA2_512,
+//						HashCalculator.HashType.SHA2_256,
+//						HashCalculator.HashType.MD5_128,
+//						HashCalculator.HashType.BLAKE3_256,
+//						HashCalculator.HashType.BLAKE3_512,
+			HashCalculator.HashType.MD5_128,
 
 			];
 
@@ -84,7 +84,7 @@ namespace BMTP3.Core {
 				}
 				return 0;
 			}
-
+			*/
 
 			// Only inject test arguments if none provided.
 			if(args.Length == 0) {

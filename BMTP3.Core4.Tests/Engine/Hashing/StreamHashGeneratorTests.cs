@@ -17,12 +17,7 @@ public class StreamHashGeneratorTests
 	{
 		await using MemoryStream stream = new(TestData);
 
-		Dictionary<HashType, string> results = await Generator.ComputeHashesAsync(
-			stream,
-			Enum.GetValues<HashType>(),
-			null,
-			new NoOpThrottler(),
-			default);
+		Dictionary<HashType, string> results = await Generator.ComputeHashesAsync(stream, Enum.GetValues<HashType>(), null, new NoOpThrottler(), TestContext.Current.CancellationToken);
 
 		Assert.Equal(9, results.Count);
 

@@ -75,7 +75,7 @@ public class SidecarServiceTests
 	public async Task WriteAsync_NullRequest_Throws()
 	{
 		await Assert.ThrowsAsync<ArgumentNullException>(() =>
-			Service.WriteAsync("somepath", null!, default));
+			Service.WriteAsync("somepath", null!, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]

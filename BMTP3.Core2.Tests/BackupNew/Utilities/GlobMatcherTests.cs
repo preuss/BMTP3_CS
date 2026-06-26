@@ -37,7 +37,7 @@ public class GlobMatcherTests
 	[InlineData("other/file.txt", "sub/*.txt", false)]
 	public void Separator_Flexibility(string path, string pattern, bool expected)
 	{
-		Assert.Equal(expected, GlobMatcher.Matches(path, pattern));
+		Assert.Equal(expected, GlobMatcher.Matches(path, pattern, GlobSeparatorMode.Both));
 	}
 
 	// -----------------------------------------------------------------------

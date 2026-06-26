@@ -108,7 +108,7 @@ public class BackupEngineTests
 
 		try
 		{
-			await engine.RunAsync(plan, null, CancellationToken.None);
+			await engine.RunAsync(plan, null!, CancellationToken.None);
 			Assert.Fail("Expected DirectoryNotFoundException");
 		}
 		catch (DirectoryNotFoundException)
@@ -154,7 +154,7 @@ public class BackupEngineTests
 
 		try
 		{
-			await engine.RunAsync(plan, null, CancellationToken.None);
+			await engine.RunAsync(plan, null!, CancellationToken.None);
 			// If it doesn't throw, that's okay - might have access on this system
 		}
 		catch (UnauthorizedAccessException)
@@ -200,7 +200,7 @@ public class BackupEngineTests
 
 		try
 		{
-			await engine.RunAsync(plan, null, CancellationToken.None);
+			await engine.RunAsync(plan, null!, CancellationToken.None);
 			// If it doesn't throw, that's okay - might have access on this system
 		}
 		catch (UnauthorizedAccessException)
@@ -246,7 +246,7 @@ public class BackupEngineTests
 
 		try
 		{
-			BackupJobResult result = await engine.RunAsync(plan, null, CancellationToken.None);
+			BackupJobResult result = await engine.RunAsync(plan, null!, CancellationToken.None);
 			Assert.NotNull(result);
 			Assert.Equal(JobState.Completed, result.Status);
 		}

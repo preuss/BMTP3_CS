@@ -20,7 +20,7 @@ public class StreamHashGenerator_AdvancedTests
 
 		await Assert.ThrowsAsync<TaskCanceledException>(async () =>
 		{
-			await gen.ComputeHashesAsync(slow, new[] { HashType.SHA2_256 }, null, cts.Token);
+			await gen.ComputeHashesAsync(slow, new[] { HashType.SHA2_256 }, null!, cts.Token);
 		});
 	}
 
@@ -34,7 +34,7 @@ public class StreamHashGenerator_AdvancedTests
 		StreamHashGenerator gen = new(logger);
 
 		Dictionary<HashType, string> result =
-			await gen.ComputeHashesAsync(ns, new[] { HashType.SHA2_256 }, null, CancellationToken.None);
+			await gen.ComputeHashesAsync(ns, new[] { HashType.SHA2_256 }, null!, CancellationToken.None);
 		Assert.NotNull(result);
 		Assert.True(result.ContainsKey(HashType.SHA2_256));
 		Assert.False(string.IsNullOrWhiteSpace(result[HashType.SHA2_256]));

@@ -72,7 +72,7 @@ public class BackupEngineComprehensiveTests
 		ctx.DownloadService.FailOnItemIndex = 1;
 
 		await Assert.ThrowsAsync<IOException>(() =>
-			ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, default));
+			ctx.Engine.RunAsync(ctx.Plan, ctx.Progress, TestContext.Current.CancellationToken));
 	}
 
 	[Fact]

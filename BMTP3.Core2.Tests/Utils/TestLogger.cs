@@ -14,7 +14,7 @@ public class TestLogger<T> : ILogger<T>, IDisposable
 	{
 	}
 
-	public IDisposable BeginScope<TState>(TState state)
+	IDisposable ILogger.BeginScope<TState>(TState state)
 	{
 		return this;
 	}

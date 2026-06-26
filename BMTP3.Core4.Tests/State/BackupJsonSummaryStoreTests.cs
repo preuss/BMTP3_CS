@@ -36,8 +36,8 @@ public class BackupJsonSummaryStoreTests : IDisposable
 			},
 		};
 
-		await store.SaveAsync(summary, default);
-		BackupSummary? loaded = await store.LoadAsync(default);
+		await store.SaveAsync(summary, TestContext.Current.CancellationToken);
+		BackupSummary? loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
 
 		Assert.NotNull(loaded);
 		Assert.Equal("testsession", loaded.SessionId);
@@ -50,7 +50,7 @@ public class BackupJsonSummaryStoreTests : IDisposable
 	public async Task LoadAsync_NoFile_ReturnsNull()
 	{
 		BackupJsonSummaryStore store = new(_tempDir, "nonexistent");
-		BackupSummary? loaded = await store.LoadAsync(default);
+		BackupSummary? loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
 		Assert.Null(loaded);
 	}
 
@@ -64,7 +64,7 @@ public class BackupJsonSummaryStoreTests : IDisposable
 			SourceRoot = "C:\\",
 			CreatedAt = DateTimeOffset.UtcNow,
 			Items = new List<BackupSummaryItem>(),
-		}, default);
+		}, TestContext.Current.CancellationToken);
 
 		Assert.True(File.Exists(Path.Combine(_tempDir, "deletable.json")));
 
@@ -110,9 +110,9 @@ public class BackupJsonSummaryStoreTests : IDisposable
 			SourceRoot = "C:\\",
 			CreatedAt = DateTimeOffset.UtcNow,
 			Items = new List<BackupSummaryItem>(),
-		}, default);
+		}, TestContext.Current.CancellationToken);
 
-		Assert.False(Directory.EnumerateFiles(_tempDir).Any(f => f.EndsWith(".tmp")));
+		Assert.DoesNotContain(Directory.EnumerateFiles(_tempDir), f => f.EndsWith(".tmp"));
 	}
 
 	public void Dispose()
