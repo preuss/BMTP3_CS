@@ -130,7 +130,10 @@ public sealed class BackupProgressDisplay
 			return state;
 		}
 
-		FileTaskState created = new(ctx.AddTask(fileName.EscapeMarkup()));
+		FileTaskState created = new(ctx.AddTaskAt(
+			fileName.EscapeMarkup(),
+			new ProgressTaskSettings { AutoStart = true, MaxValue = 100 },
+			1));
 		created.Task.State.Update<bool>("IsByteTask", _ => true);
 		fileTasks.Add(fileName, created);
 
