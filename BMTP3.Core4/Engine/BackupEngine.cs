@@ -319,11 +319,25 @@ internal sealed class BackupEngine : IBackupEngine
 							BackupStartTime = backupStartTime,
 						};
 
-						await _downloadService.DownloadAsync(
-							downloadRequest,
-							downloadProgress,
-							cancellationToken
-						);
+						try
+						{
+							await _downloadService.DownloadAsync(
+								downloadRequest,
+								downloadProgress,
+								cancellationToken
+							);
+						}
+						catch (IOException ex) when (ex.InnerException is COMException && record.Item.Content.Length == 4096)
+						{
+							_logger.LogWarning(
+								"Skipping '{Path}': MTP reported a directory as a file (Length=4096). " +
+								"This is a known Android MTP quirk.",
+								record.Item.SourcePath);
+							TempDirectoryHelper.CleanupTempFiles(tempFile?.FullName, null);
+							record.Status = BackupItemStatus.Skipped;
+							record.StatusChangedAt = DateTimeOffset.UtcNow;
+							continue;
+						}
 
 						await throttler.WaitAsync();
 

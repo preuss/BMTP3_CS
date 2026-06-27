@@ -149,6 +149,12 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 		{
 			cancellationToken.ThrowIfCancellationRequested();
 
+			// Android MTP reports some directories as IMediaFile (Length=4096)
+			// but sets the Directory attribute flag. Skip them — opening a
+			// directory as a stream always fails with COMException.
+			if(file.Attributes.HasFlag(MediaFileAttribute.Directory))
+				continue;
+
 			string rel = PathHelper.JoinPathSegments(relativePrefix, file.Name);
 
 			yield return (file, rel);

@@ -1,4 +1,5 @@
 ﻿using BMTP3.Core4.Models;
+using System.Runtime.InteropServices;
 
 namespace BMTP3.Core4.Engine.Downloader;
 internal sealed class DownloadService : IDownloadService
@@ -7,7 +8,23 @@ internal sealed class DownloadService : IDownloadService
 
 	public async Task DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken)
 	{
-		await using(Stream sourceStream = await request.Item.Content.OpenReadAsync(cancellationToken))
+		Stream sourceStream;
+		try
+		{
+			sourceStream = await request.Item.Content.OpenReadAsync(cancellationToken);
+		}
+		catch (COMException ex)
+		{
+			throw new IOException(
+				$"Failed to open source file for download. " +
+				$"File: '{request.Item.RelativeFilePath}', " +
+				$"SourcePath: '{request.Item.SourcePath}', " +
+				$"FileName: '{request.Item.FileName}', " +
+				$"Length: {request.Item.Content.Length}. " +
+				$"COM error: {ex.Message}", ex);
+		}
+
+		await using(sourceStream)
 		{
 			using(FileStream destStream = request.Destination.Create())
 			{
