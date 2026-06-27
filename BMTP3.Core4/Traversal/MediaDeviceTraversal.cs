@@ -120,12 +120,14 @@ internal sealed class MediaDeviceTraversal : ISourceTraversal
 				_ => Guard.RequireNonNull(file.PersistentUniqueId),
 			};
 
+			string fileName = file.Name;
+
 			yield return new SourceTraversalItem
 			{
 				Id = itemId,
 				SourcePath = $"{request.SourcePath.TrimEnd('/')}/{relativeFilePath}",
 				RelativeFilePath = relativeFilePath,
-				FileName = file.Name,
+				FileName = fileName,
 				Content = new MediaDeviceContent(file, _gatekeeper),
 				DateCreated = dateCreated,
 				DateModified = dateModified,

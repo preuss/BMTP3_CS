@@ -1,5 +1,6 @@
 ﻿using BMTP3.Core4.Models;
 using System.Buffers;
+using System.Runtime.InteropServices;
 using System.Threading.Channels;
 
 namespace BMTP3.Core4.Engine.Downloader;
@@ -7,7 +8,8 @@ namespace BMTP3.Core4.Engine.Downloader;
 internal sealed class PipelinedDownloadService : IDownloadService
 {
 	private const int BufferSize = 2 * 1024 * 1024; // 2 MB buffer for efficient sequential stream copying.
-	private const int QueueCapacity = 2;            // ~4 MB read-ahead; still only one reader (1 reader and 1 writer), suitable for MTP/PTP streams.
+	//private const int QueueCapacity = 2;            // ~4 MB read-ahead; still only one reader (1 reader and 1 writer), suitable for MTP/PTP streams.
+	private const int QueueCapacity = 4;            // ~8 MB read-ahead; still only one reader (1 reader and 1 writer), suitable for MTP/PTP streams.
 
 	public async Task DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken)
 	{
@@ -93,6 +95,13 @@ internal sealed class PipelinedDownloadService : IDownloadService
 					try
 					{
 						read = await sourceStream.ReadAsync(buffer.AsMemory(0, BufferSize), token);
+					}
+					catch (COMException ex)
+					{
+						ArrayPool<byte>.Shared.Return(buffer);
+						// MTP COM errors kill the underlying connection — the stream is dead.
+						// Wrap as IOException so the engine treats it as a transient IO error.
+						throw new IOException($"Error reading from source stream: {ex.Message}", ex);
 					}
 					catch
 					{

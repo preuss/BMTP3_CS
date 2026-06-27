@@ -35,8 +35,8 @@ public static class ServiceCollectionExtensions
 		services.TryAddSingleton<IDiskSpaceValidator, DiskSpaceValidator>();
 
 		// Engine services - Downloader
-		//services.TryAddSingleton<IDownloadService, DownloadService>();
-		services.TryAddSingleton<IDownloadService, PipelinedDownloadService>();
+		services.TryAddSingleton<IDownloadService, DownloadService>();
+		//services.TryAddSingleton<IDownloadService, PipelinedDownloadService>();
 
 		// Engine services
 		services.TryAddSingleton<IEarliestTimestampResolutionService, EarliestTimestampResolutionService>();

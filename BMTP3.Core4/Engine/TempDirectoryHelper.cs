@@ -120,11 +120,26 @@ internal static class TempDirectoryHelper
 
 		string guidPart = BuildGuidPart();
 		string nameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
+		// Dot-file (e.g. .gitignore): Path.GetFileNameWithoutExtension(".gitignore")
+		// returns "" (treats the whole name as extension). We keep the full name
+		// as base so the temp file becomes "{guid}_.gitignore" — not "_.gitignore.gitignore".
+		string extensionPart;
+		if(string.IsNullOrEmpty(nameWithoutExt))
+		{
+			nameWithoutExt = fileName;
+			extensionPart = "";
+		}
+		else
+		{
+			extensionPart = string.IsNullOrWhiteSpace(TempFileExtension)
+				? Path.GetExtension(fileName)
+				: Path.GetExtension(fileName) + TempFileExtension;
+		}
+
 		string basePart = BuildBasePart(nameWithoutExt);
 		string separatorPart = ElementSeparator;
-		string extensionPart = string.IsNullOrWhiteSpace(TempFileExtension)
-			? Path.GetExtension(fileName)
-			: Path.GetExtension(fileName) + TempFileExtension;
+		// ElementSeparator "_" sits between GUID and basePart.
+		// Dot-files: ".gitignore" as base gives "{guid}_.gitignore".
 
 		string adjustedBasePart = EnforceLength(
 			guidPart,
@@ -206,7 +221,7 @@ internal static class TempDirectoryHelper
 
 		if(string.IsNullOrEmpty(result))
 		{
-			throw new ArgumentException($"File name '{fileName}' produced an empty filename.");
+			throw new ArgumentException($"File name '{fileName}' produced an empty filename after sanitization.");
 		}
 
 		return result;
