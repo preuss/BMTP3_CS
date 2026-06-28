@@ -251,10 +251,11 @@ internal sealed class BackupEngine : IBackupEngine
 			// 5c. Validate disk space — sufficient capacity for backup content
 			//      (total file size + overhead buffer).
 			// ------------------------------------------------------------
-			long totalBytesRequired = pendingRecords.Sum(r => (long)r.Item.Content.Length);
-			await _diskSpaceValidator.EnsureSufficientBackupCapacityAsync(plan.Destination, totalBytesRequired, cancellationToken);
+			long totalBytesRemaining = pendingRecords.Sum(r => (long)r.Item.Content.Length);
+			await _diskSpaceValidator.EnsureSufficientBackupCapacityAsync(plan.Destination, totalBytesRemaining, cancellationToken);
 
-			_currentProgress = _currentProgress with { TotalBytesSelected = totalBytesRequired };
+			long totalBytesAll = repository.GetAll().Sum(r => (long)r.Item.Content.Length);
+			_currentProgress = _currentProgress with { TotalBytesSelected = totalBytesAll };
 			progress?.Report(_currentProgress);
 
 			// ------------------------------------------------------------
@@ -757,10 +758,14 @@ internal sealed class BackupEngine : IBackupEngine
 				case BackupItemStatus.Active:
 					// Active is never persisted — SessionStateService.ApplyResumeAsync throws if encountered.
 					throw new UnreachableException($"Unexpected Active status for record '{record.Item.SourcePath}'.");
-				case BackupItemStatus.Succeeded:
-					currentProgress = currentProgress with { FilesSucceeded = currentProgress.FilesSucceeded + 1 };
-					progress?.Report(currentProgress);
-					break;
+		case BackupItemStatus.Succeeded:
+				currentProgress = currentProgress with
+				{
+					FilesSucceeded = currentProgress.FilesSucceeded + 1,
+					BytesProcessed = currentProgress.BytesProcessed + (long)record.Item.Content.Length,
+				};
+				progress?.Report(currentProgress);
+				break;
 				case BackupItemStatus.Skipped:
 					currentProgress = currentProgress with { FilesSkipped = currentProgress.FilesSkipped + 1 };
 					progress?.Report(currentProgress);
