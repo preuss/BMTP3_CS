@@ -35,15 +35,25 @@ internal sealed class SessionStateService : ISessionStateService
 		HashSet<string> summaryIds = new(summaryById.Keys);
 		HashSet<string> recordIds = records.Select(r => r.Item.Id).ToHashSet();
 
-		int added = recordIds.Except(summaryIds).Count();
-		int removed = summaryIds.Except(recordIds).Count();
+		HashSet<string> addedIds = recordIds.Except(summaryIds).ToHashSet();
+		HashSet<string> removedIds = summaryIds.Except(recordIds).ToHashSet();
+		int added = addedIds.Count;
+		int removed = removedIds.Count;
 
 		if(added > 0 || removed > 0)
 		{
 			switch(resumeBehavior)
 			{
 				case SessionResumeStrategy.Abort:
-					throw new SessionResumeMismatchException(added, removed, _store.StoreFile);
+					List<string> newFiles = records
+						.Where(r => addedIds.Contains(r.Item.Id))
+						.Select(r => r.Item.SourcePath)
+						.ToList();
+					List<string> removedFiles = summaryById
+						.Where(kvp => removedIds.Contains(kvp.Key))
+						.Select(kvp => kvp.Value.SourcePath)
+						.ToList();
+					throw new SessionResumeMismatchException(added, removed, newFiles, removedFiles, _store.StoreFile);
 
 				case SessionResumeStrategy.Restart:
 					await _store.DeleteAsync();
