@@ -23,6 +23,7 @@ internal sealed record ProgressReport(
 public sealed class BackupProgressDisplay
 {
 	private static readonly TimeSpan FileTaskExpiration = TimeSpan.FromSeconds(5);
+	private const int MaxCompletedFileTasks = 20;
 
 	private readonly IAnsiConsole _console;
 	private readonly bool _debug;
@@ -151,6 +152,19 @@ public sealed class BackupProgressDisplay
 		{
 			ctx.RemoveTask(state.Task);
 			fileTasks.Remove(key);
+		}
+
+		// Keep at most MaxCompletedFileTasks — remove oldest first
+		if (fileTasks.Count > MaxCompletedFileTasks)
+		{
+			foreach ((string key, FileTaskState state) in fileTasks
+						 .OrderByDescending(kvp => kvp.Value.LastUpdateUtc)
+						 .Skip(MaxCompletedFileTasks)
+						 .ToArray())
+			{
+				ctx.RemoveTask(state.Task);
+				fileTasks.Remove(key);
+			}
 		}
 	}
 

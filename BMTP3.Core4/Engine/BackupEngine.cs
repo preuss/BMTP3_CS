@@ -327,12 +327,17 @@ internal sealed class BackupEngine : IBackupEngine
 								cancellationToken
 							);
 						}
-						catch (IOException ex) when (ex.InnerException is COMException && record.Item.Content.Length == 4096)
+						catch (IOException ex) when (ex.InnerException is COMException comEx)
 						{
+							if(IsMtpDeviceDisconnectError(comEx))
+								throw; // device disconnected — stop immediately
+
+							// File-specific MTP error (locked, DRM, unreadable) — skip and continue
 							_logger.LogWarning(
-								"Skipping '{Path}': MTP reported a directory as a file (Length=4096). " +
-								"This is a known Android MTP quirk.",
-								record.Item.SourcePath);
+								"Skipping '{Path}': MTP cannot read this file (Length={Length}). " +
+								"This can happen if the file is locked, DRM-protected, " +
+								"or a special MTP object.",
+								record.Item.SourcePath, record.Item.Content.Length);
 							TempDirectoryHelper.CleanupTempFiles(tempFile?.FullName, null);
 							record.Status = BackupItemStatus.Skipped;
 							record.StatusChangedAt = DateTimeOffset.UtcNow;
