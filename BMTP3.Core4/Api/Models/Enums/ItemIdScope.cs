@@ -4,8 +4,8 @@ namespace BMTP3.Core4.Api.Models.Enums;
 /// Controls how backup items are identified.
 ///
 /// Session — ObjectId  — unique within Connect() only
-/// Connection — PUID   — stable across Connect/Disconnect, device-dependent across USB replug
-/// Persistent — generated — independent of WPD identifiers
+/// Connection — PUID   — stable across Connect/Disconnect, same USB port
+/// Persistent — generated from path + size + dates — stable across USB reconnections
 /// </summary>
 public enum ItemIdScope
 {
@@ -21,29 +21,33 @@ public enum ItemIdScope
 	/// <summary>
 	/// Uses the WPD PersistentUniqueId / PUID (<c>file.PersistentUniqueId</c>).
 	/// Stable across <c>Connect()</c>/<c>Disconnect()</c> cycles within the same
-	/// physical USB connection.
+	/// physical USB connection. Most Android devices also maintain PUID
+	/// stability across physical USB reconnections, but Apple devices
+	/// regenerate PUIDs on every USB replug.
 	///
-	/// Most devices (Windows, cameras, Android) also maintain PUID
-	/// stability across physical USB reconnections.
-	/// Apple devices (iPhone, iPad) regenerate PUIDs on every USB replug.
+	/// Usage: Same USB port resume, or any scenario where the device stays
+	/// on the same port between runs.
 	/// </summary>
 	Connection,
 
 	/// <summary>
 	/// Uses <c>GenerateDeviceUniqueId()</c> — a deterministic identifier
-	/// built from stable file metadata (device path + size + 3 timestamps).
+	/// built from file metadata (device path + size + 3 timestamps).
 	///
-	/// The ID is independent of WPD: no dependency on ObjectId or PUID.
-	/// It is computed purely from the file's own properties, making it
-	/// immune to WPD identifier instability across sessions or connections.
+	/// Independent of WPD: no dependency on ObjectId or PUID.
+	/// Stable across USB reconnections and port changes
+	/// — unlike PUID on Apple devices.
 	///
-	/// Same file always produces the same ID regardless of session state,
-	/// connection state, or device firmware behaviour.
+	/// <b>Limitation:</b> because size and timestamps are part of the ID,
+	/// any change to file content or dates produces a <i>different</i> ID.
+	/// Resume will treat the file as "new" (and the old entry as "removed").
+	/// For files that are known to be volatile (caches, live photos, metadata),
+	/// consider using <see cref="Connection"/> instead.
 	///
 	/// This is the default strategy.
 	///
-	/// Usage: Apple devices, cross-connection resume, or any scenario
-	/// where WPD identifiers cannot be trusted.
+	/// Usage: Apple devices, cross-connection resume, stable files
+	/// that do not change between backup runs.
 	/// </summary>
 	Persistent,
 }

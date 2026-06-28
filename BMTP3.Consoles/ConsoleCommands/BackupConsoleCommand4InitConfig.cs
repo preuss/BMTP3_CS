@@ -116,6 +116,10 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		       # Resume behavior: abort, continue, restart
 		       resume-behavior = "abort"
 		       # Item ID scope: session, connection, persistent
+		       #   persistent (default) — metadata like path+size+dates, independent of WPD,
+		       #     stable across USB reconnections. Changes ID when file size/dates change.
+		       #   connection — device PUID, stable on same USB port.
+		       #   session — ObjectId, only within one Connect().
 		       item-id-scope = "connection"
 		       """;
 	}
@@ -155,6 +159,11 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		           "stopOnError": true,
 		           "delay": 0,
 		           "resumeBehavior": "abort",
+		           // Item ID scope: session, connection, persistent
+		           //   persistent (default) — metadata like path+size+dates, independent of WPD,
+		           //     stable across USB reconnections. Changes ID when file size/dates change.
+		           //   connection — device PUID, stable on same USB port.
+		           //   session — ObjectId, only within one Connect().
 		           "itemIdScope": "connection"
 		         }
 		       }
@@ -226,6 +235,10 @@ public class BackupConsoleCommand4InitConfig : BaseConsoleCommand
 		           // Resume behavior: abort, continue, restart
 		           resumeBehavior: 'abort'
 		           // Item ID scope: session, connection, persistent
+		           //   persistent (default) — metadata like path+size+dates, independent of WPD,
+		           //     stable across USB reconnections. Changes ID when file size/dates change.
+		           //   connection — device PUID, stable on same USB port.
+		           //   session — ObjectId, only within one Connect().
 		           itemIdScope: 'connection'
 		         }
 		       }
