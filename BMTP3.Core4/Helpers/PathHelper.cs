@@ -216,6 +216,7 @@ internal static class PathHelper
 			.Replace(CanonicalSeparator, separator);
 	}
 
+
 	/// <summary>
 	/// Throws an <see cref="ArgumentException"/> if the specified separator is not supported.
 	/// </summary>
@@ -323,6 +324,12 @@ internal static class PathHelper
 
 		char separator = Path.DirectorySeparatorChar;
 
+		// Normalize separators.
+		// This replaces both '/' and '\' with the internal separator.
+		// Both files "/Folder/File.jpg" and "\Folder\File.jpg" 
+		// normalize to "\Folder\File.jpg".
+		// Both folders "/Folder/SubFolder/" and "\Folder\SubFolder\"
+		// normalize to "\Folder\SubFolder\".
 		string normalized = relativePath
 			.Trim()
 			.Replace('\\', separator)
@@ -337,9 +344,10 @@ internal static class PathHelper
 		}
 
 		// Leading and trailing separators are treated as input noise.
-		// This preserves the behavior where "\Folder\File.jpg"
-		// and "/Folder/File.jpg" normalize to "Folder\File.jpg".
-		normalized = normalized.Trim(separator);
+		// Removing them ensures that the normalized path is a clean relative path.
+		// File path like "\Folder\File.jpg" is trimmed to "Folder\File.jpg".
+		// Folder path like "\Folder\OtherFolder\" is trimmed to "Folder\OtherFolder".
+		normalized = TrimSeparators(normalized, separator);
 
 		if(normalized.Length == 0)
 		{
@@ -362,6 +370,34 @@ internal static class PathHelper
 		}
 
 		return string.Join(separator, parts);
+	}
+
+	/// <summary>
+	/// Removes leading and trailing occurrences of the specified separator.
+	/// </summary>
+	/// <param name="path">The value to trim.</param>
+	/// <param name="separator">
+	/// The separator to trim. Must be either <c>/</c> or <c>\</c>.
+	/// </param>
+	/// <returns>
+	/// The input value without leading or trailing occurrences of <paramref name="separator"/>.
+	/// </returns>
+	/// <exception cref="ArgumentNullException">
+	/// Thrown when <paramref name="path"/> is <c>null</c>.
+	/// </exception>
+	/// <exception cref="ArgumentException">
+	/// Thrown when <paramref name="separator"/> is not <c>/</c> or <c>\</c>.
+	/// </exception>
+	/// <remarks>
+	/// This method only trims the specified separator.
+	/// It does not normalize separators first.
+	/// </remarks>
+	public static string TrimSeparators(string path, char separator)
+	{
+		ArgumentNullException.ThrowIfNull(path);
+		ThrowIfInvalidSeparator(separator);
+
+		return path.Trim(separator);
 	}
 
 	/// <summary>

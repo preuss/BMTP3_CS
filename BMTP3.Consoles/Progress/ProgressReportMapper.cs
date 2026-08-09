@@ -23,20 +23,21 @@ internal static class ProgressReportMapper
 			? progress.ActiveFiles[0]
 			: null;
 
-		string phase = isScanning
-			? $"Scanning: {progress.DirectoriesTraversed} dirs, {progress.FilesDiscovered} files"
+		string overallDisplayText = isScanning
+			? $"{progress.DirectoriesTraversed} dirs, {progress.FilesDiscovered} files"
 			: activeFile != null
-				? $"{activeFile.Phase}: {activeFile.RelativeFilePath} ({completed}/{total} files)"
-				: $"Transferring: {completed}/{total} files";
+				? $"{activeFile.RelativeFilePath} ({completed}/{total} files)"
+				: $"{completed}/{total} files";
 
 		return new ProgressReport(
 			completed,
 			total,
 			progress.DirectoriesTraversed,
 			progress.FilesDiscovered,
-			phase,
+			progress.CurrentPhase,
+			overallDisplayText,
 			activeFile?.RelativeFilePath,
-			activeFile?.Phase.ToString(),
+			activeFile?.Phase,
 			activeFile?.BytesProcessed ?? 0,
 			activeFile?.Length ?? 0,
 			progress.BytesProcessed,

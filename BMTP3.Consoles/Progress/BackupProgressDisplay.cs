@@ -2,6 +2,7 @@
 using BMTP3.Consoles.IO.Consoles.ProgressStatus;
 using BMTP3.Consoles.IO.Consoles.Spinner;
 using BMTP3.Core4.Api.Models;
+using BMTP3.Core4.Api.Models.Enums;
 using Spectre.Console;
 
 namespace BMTP3.Consoles.Progress;
@@ -11,9 +12,10 @@ internal sealed record ProgressReport(
 	int FilesTotal,
 	int DirectoriesTraversed,
 	int FilesDiscovered,
-	string Phase,
+	BackupProgressPhase OverallPhase,
+	string OverallDisplayText,
 	string? ActiveFileName,
-	string? ActiveFilePhase,
+	BackupProgressItemPhase? ActiveFilePhase,
 	long ActiveFileBytesRead,
 	long ActiveFileBytesTotal,
 	long TotalBytesProcessed,
@@ -76,9 +78,11 @@ public sealed class BackupProgressDisplay
 		return new ProgressColumn[]
 		{
 			new SpinnerColumn(new SequenceSpinner(SequenceSpinner.Sequence7)),
-			new CounterColumn(),
-			new ProgressBarColumn { Width = 10 },
+			new PhaseColumn(),
+			new FileNameColumn(),
+			new ProgressBarColumn { Width = 6 },
 			new PercentageColumn(),
+			new ThroughputColumn(),
 			new RemainingTimeColumn(),
 			new ValueOfMaxColumn(),
 			new ElapsedTimeAdvancedColumn(),
@@ -95,7 +99,8 @@ public sealed class BackupProgressDisplay
 		overallTask.Value = hasBytesTotal
 			? Math.Min(report.TotalBytesProcessed, overallTask.MaxValue)
 			: Math.Min(report.FilesCompleted, overallTask.MaxValue);
-		overallTask.Description = report.Phase;
+		overallTask.Description = report.OverallDisplayText;
+		overallTask.State.Update<int>("OverallPhase", _ => (int)report.OverallPhase);
 		overallTask.State.Update<long>("TotalBytesProcessed", _ => report.TotalBytesProcessed);
 		overallTask.State.Update<long>("TotalBytesSelected", _ => report.TotalBytesSelected);
 	}
@@ -115,7 +120,9 @@ public sealed class BackupProgressDisplay
 			state.LastUpdateUtc = now;
 			state.Task.MaxValue = Math.Max(1, report.ActiveFileBytesTotal);
 			state.Task.Value = Math.Min(report.ActiveFileBytesRead, state.Task.MaxValue);
-			state.Task.Description = $"{report.ActiveFilePhase}: {report.ActiveFileName.EscapeMarkup()}";
+			state.Task.Description = report.ActiveFileName ?? "?";
+			// -1 = no active file
+			state.Task.State.Update<int>("ActiveFilePhase", _ => report.ActiveFilePhase.HasValue ? (int)report.ActiveFilePhase.Value : -1);
 		}
 
 		RemoveExpiredFileTasks(ctx, fileTasks, now);
