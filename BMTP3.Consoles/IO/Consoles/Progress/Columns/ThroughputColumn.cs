@@ -1,3 +1,4 @@
+using System.Globalization;
 using Spectre.Console;
 using Spectre.Console.Rendering;
 
@@ -11,21 +12,23 @@ public class ThroughputColumn : ProgressColumn
 
 	public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
 	{
-		bool isByteTask = task.State.Get<bool>("IsByteTask");
-		long bytes = isByteTask ? (long)task.Value : task.State.Get<long>("TotalBytesProcessed");
-		TimeSpan? elapsed = task.ElapsedTime;
+		bool isByteTask = task.State.Get<bool>(ProgressTaskStateKeys.IsByteTask);
+		long bytes = isByteTask ? (long)task.Value : task.State.Get<long>(ProgressTaskStateKeys.TotalBytesProcessed);
 
+		return new Text(FormatThroughput(bytes, task.ElapsedTime), Style ?? Spectre.Console.Style.Plain);
+	}
+
+	internal static string FormatThroughput(long bytes, TimeSpan? elapsed)
+	{
 		if (elapsed == null || elapsed.Value.TotalSeconds < 1 || bytes <= 0)
-			return new Text("--.- MB/s", Style ?? Spectre.Console.Style.Plain);
+			return "--.- MB/s";
 
 		double bytesPerSecond = bytes / elapsed.Value.TotalSeconds;
 		double mbps = bytesPerSecond / (1024.0 * 1024.0);
 
-		string text = mbps < 1.0
-			? $"{bytesPerSecond / 1024.0:F0} KB/s"
-			: $"{mbps:F1} MB/s";
-
-		return new Text(text, Style ?? Spectre.Console.Style.Plain);
+		return mbps < 1.0
+			? $"{(bytesPerSecond / 1024.0).ToString("F0", CultureInfo.InvariantCulture)} KB/s"
+			: $"{mbps.ToString("F1", CultureInfo.InvariantCulture)} MB/s";
 	}
 
 	public override int? GetColumnWidth(RenderOptions options) => 10;

@@ -33,7 +33,7 @@ public class FileNameColumn : ProgressColumn
 			return path;
 
 		char sep = path.Contains('\\') ? '\\' : '/';
-		string[] parts = path.Split(sep);
+		string[] parts = path.Split('\\', '/');
 
 		string ext = Path.GetExtension(parts[^1]);
 		string stem = Path.GetFileNameWithoutExtension(parts[^1]);

@@ -76,6 +76,7 @@ Helpers/     → Utilities (PathHelper, Guard, TransformProgress)
 1. **BackupItem.Content må aldrig være null under traversal** — Scanner sætter altid Content.
 2. **Session state skal persisteres atomisk** — `SessionStateService.SaveAsync` i `finally` block.
 3. **Progress må aldrig dispatche async** — brug `TransformProgress<TInner,TOuter>` og `ActionProgress<T>`, aldrig `Progress<T>` i Core4.
+4. **Ændr aldrig formatering/stil i eksisterende filer** — kun nødvendige funktionelle ændringer; følg den enkelte fils eksisterende konvention (fx `if(` vs `if (`, `} else`-mønstre, trailing newline).
 
 ## Error Taxonomy
 

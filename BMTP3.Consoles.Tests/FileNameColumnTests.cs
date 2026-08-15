@@ -292,4 +292,41 @@ public class FileNameColumnTests
 		Assert.EndsWith(".txt", result);
 		Assert.Contains("...", result);
 	}
+
+	// -------------------------------------------------------------------------
+	// ShortenPath — mixed separators
+	// -------------------------------------------------------------------------
+
+	[Fact]
+	public void ShortenPath_MixedSeparators_UsesBackslashAsDisplaySeparator()
+	{
+		// Long enough to force shortening, with dirs preserved (stem truncation case)
+		string path = "alpha/bravo\\charlie/SomeVeryLongFileNameThatDoesNotFit.txt";
+		string result = FileNameColumn.ShortenPath(path, 40);
+
+		Assert.True(result.Length <= 40, $"Expected <=40 chars, got {result.Length}: '{result}'");
+		Assert.EndsWith(".txt", result);
+		Assert.Contains("\\", result);
+		Assert.DoesNotContain("/", result);
+	}
+
+	[Theory]
+	[InlineData(@"alpha/bravo\file.txt", 15)]
+	[InlineData(@"alpha/bravo\file.txt", 20)]
+	[InlineData(@"a\b/c/file.txt", 12)]
+	public void ShortenPath_MixedSeparators_NeverExceedsMaxLength(string path, int maxLength)
+	{
+		string result = FileNameColumn.ShortenPath(path, maxLength);
+		Assert.True(result.Length <= maxLength,
+			$"maxLength={maxLength}: got '{result}' ({result.Length} chars)");
+	}
+
+	[Theory]
+	[InlineData(@"alpha/bravo\file.txt", 20, ".txt")]
+	[InlineData(@"a\b/c/file.json", 15, ".json")]
+	public void ShortenPath_MixedSeparators_PreservesExtension(string path, int maxLength, string ext)
+	{
+		string result = FileNameColumn.ShortenPath(path, maxLength);
+		Assert.EndsWith(ext, result);
+	}
 }

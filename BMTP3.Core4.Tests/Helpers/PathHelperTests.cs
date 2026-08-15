@@ -233,4 +233,46 @@ public class PathHelperTests
 	{
 		Assert.Throws<ArgumentException>(() => PathHelper.NormalizeSeparators("a/b", separator));
 	}
+
+	[Theory]
+	[InlineData(@"\folder\file\", '\\', @"folder\file")]
+	[InlineData(@"/folder/file/", '/', "folder/file")]
+	public void TrimSeparators_TrimsLeadingAndTrailing(string input, char separator, string expected)
+	{
+		string result = PathHelper.TrimSeparators(input, separator);
+		Assert.Equal(expected, result);
+	}
+
+	[Fact]
+	public void TrimSeparators_NoSeparators_Unchanged()
+	{
+		string result = PathHelper.TrimSeparators(@"folder\file", '\\');
+		Assert.Equal(@"folder\file", result);
+	}
+
+	[Fact]
+	public void TrimSeparators_OnlyTrimsSpecifiedSeparator()
+	{
+		string result = PathHelper.TrimSeparators(@"\folder\file/", '\\');
+		Assert.Equal(@"folder\file/", result);
+	}
+
+	[Fact]
+	public void TrimSeparators_AllSeparators_ReturnsEmpty()
+	{
+		string result = PathHelper.TrimSeparators(@"\\\\", '\\');
+		Assert.Equal("", result);
+	}
+
+	[Fact]
+	public void TrimSeparators_Null_Throws()
+	{
+		Assert.Throws<ArgumentNullException>(() => PathHelper.TrimSeparators(null!, '\\'));
+	}
+
+	[Fact]
+	public void TrimSeparators_InvalidSeparator_Throws()
+	{
+		Assert.Throws<ArgumentException>(() => PathHelper.TrimSeparators("a/b", '|'));
+	}
 }

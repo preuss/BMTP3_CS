@@ -17,7 +17,11 @@ public class CounterColumn : ProgressColumn
 	/// <inheritdoc/>
 	public override IRenderable Render(RenderOptions options, ProgressTask task, TimeSpan deltaTime)
 	{
-		string? text = task.Description?.RemoveNewLines()?.Trim();
-		return new Markup(text ?? string.Empty).Overflow(Overflow.Ellipsis).Justify(Alignment);
+		return new Markup(RenderText(task.Description)).Overflow(Overflow.Ellipsis).Justify(Alignment);
+	}
+
+	internal static string RenderText(string? text)
+	{
+		return (text?.RemoveNewLines()?.Trim() ?? string.Empty).EscapeMarkup();
 	}
 }

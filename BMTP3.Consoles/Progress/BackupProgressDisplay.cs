@@ -100,9 +100,9 @@ public sealed class BackupProgressDisplay
 			? Math.Min(report.TotalBytesProcessed, overallTask.MaxValue)
 			: Math.Min(report.FilesCompleted, overallTask.MaxValue);
 		overallTask.Description = report.OverallDisplayText;
-		overallTask.State.Update<int>("OverallPhase", _ => (int)report.OverallPhase);
-		overallTask.State.Update<long>("TotalBytesProcessed", _ => report.TotalBytesProcessed);
-		overallTask.State.Update<long>("TotalBytesSelected", _ => report.TotalBytesSelected);
+		overallTask.State.Update<int>(ProgressTaskStateKeys.OverallPhase, _ => (int)report.OverallPhase);
+		overallTask.State.Update<long>(ProgressTaskStateKeys.TotalBytesProcessed, _ => report.TotalBytesProcessed);
+		overallTask.State.Update<long>(ProgressTaskStateKeys.TotalBytesSelected, _ => report.TotalBytesSelected);
 	}
 
 	private static void UpdateFileTasks(
@@ -122,7 +122,7 @@ public sealed class BackupProgressDisplay
 			state.Task.Value = Math.Min(report.ActiveFileBytesRead, state.Task.MaxValue);
 			state.Task.Description = report.ActiveFileName ?? "?";
 			// -1 = no active file
-			state.Task.State.Update<int>("ActiveFilePhase", _ => report.ActiveFilePhase.HasValue ? (int)report.ActiveFilePhase.Value : -1);
+			state.Task.State.Update<int>(ProgressTaskStateKeys.ActiveFilePhase, _ => report.ActiveFilePhase.HasValue ? (int)report.ActiveFilePhase.Value : -1);
 		}
 
 		RemoveExpiredFileTasks(ctx, fileTasks, now);
@@ -142,7 +142,7 @@ public sealed class BackupProgressDisplay
 			fileName.EscapeMarkup(),
 			new ProgressTaskSettings { AutoStart = true, MaxValue = 100 },
 			1));
-		created.Task.State.Update<bool>("IsByteTask", _ => true);
+		created.Task.State.Update<bool>(ProgressTaskStateKeys.IsByteTask, _ => true);
 		fileTasks.Add(fileName, created);
 
 		return created;
