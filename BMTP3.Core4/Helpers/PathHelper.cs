@@ -25,22 +25,76 @@ internal static class PathHelper
 	public const char CanonicalSeparator = '/';
 	public const char FileSystemSeparator = '\\';
 
+	private const string MediaDeviceUriScheme = "mtp://";
+	private const string FileUriScheme = "file://";
+	private const string LocalFileUriPrefix = "file:///";
 
 	public static string ToInternalCanonicalUri(string externalSourcePath, BackupSourceType sourceType)
 	{
-		ArgumentNullException.ThrowIfNull(externalSourcePath);
+		ArgumentException.ThrowIfNullOrWhiteSpace(externalSourcePath);
+
+		string trimmedExternalSourcePath = externalSourcePath.Trim();
+
+		BackupSourceType detectedSourceType = DetectSourceType(trimmedExternalSourcePath);
+
+		if (detectedSourceType != sourceType)
+			throw new ArgumentException($"Source type mismatch. Expected '{sourceType}', but input looks like '{detectedSourceType}'.", nameof(sourceType));
 
 		string internalCanonicalUri = sourceType switch
 		{
-			BackupSourceType.FileSystem => ToCanonicalFileUri(externalSourcePath),
-			BackupSourceType.MediaDevice => NormalizeSeparators(externalSourcePath),
+			BackupSourceType.FileSystem => NormalizeToCanonicalFileUri(trimmedExternalSourcePath),
+			BackupSourceType.MediaDevice => NormalizeSeparators(trimmedExternalSourcePath),
 			_ => throw new ArgumentOutOfRangeException(nameof(sourceType), $"Unsupported source type: {sourceType}")
 		};
 
+		// Redundant check to ensure the internal canonical URI matches the expected source type.
+		// I like it, therefore it stays. It ensures that the internal representation is consistent with the expected source type.
+		detectedSourceType = DetectSourceType(internalCanonicalUri);
+		if(detectedSourceType != sourceType)
+			throw new ArgumentException($"Source type mismatch. Expected '{sourceType}', but internal canonical URI looks like '{detectedSourceType}'.", nameof(sourceType));
+
 		return internalCanonicalUri;
 	}
+	private static BackupSourceType DetectSourceType(string source)
+	{
+		if(source.StartsWith(FileUriScheme, StringComparison.OrdinalIgnoreCase))
+			return BackupSourceType.FileSystem;
 
+		if(source.StartsWith(MediaDeviceUriScheme, StringComparison.OrdinalIgnoreCase))
+			return BackupSourceType.MediaDevice;
 
+		if(IsWindowsAbsolutePath(source))
+			return BackupSourceType.FileSystem;
+
+		if (IsWindowsUncPath(source))
+			return BackupSourceType.FileSystem;
+
+		throw new ArgumentException($"Unsupported source path format: '{source}'", nameof(source));
+	}
+
+	private static bool IsWindowsAbsolutePath(string path)
+	{
+		if(path.Length < 3)
+			return false;
+
+		return
+			char.IsLetter(path[0]) &&
+			path[1] == ':' &&
+			(path[2] == '\\' || path[2] == '/');
+	}
+
+	private static bool IsWindowsUncPath(string path)
+	{
+		if(!path.StartsWith(@"\\", StringComparison.Ordinal))
+			return false;
+
+		string normalized = NormalizeSeparators(path);
+
+		string[] parts = normalized.Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+		return parts.Length >= 2;
+	}
+	
 	/// <summary>
 	/// Converts an absolute file system path to a canonical file URI.
 	/// </summary>
@@ -57,7 +111,7 @@ internal static class PathHelper
 	/// 
 	/// Example:
 	/// <code>
-	/// C:\source\file.jpg → file:///C:/source/file.jpg
+	/// C:\source\file.jpg → file:///c:/source/file.jpg
 	/// </code>
 	/// </returns>
 	/// <exception cref="ArgumentNullException">
@@ -78,23 +132,96 @@ internal static class PathHelper
 	/// The returned value is intended for internal use within the system's canonical
 	/// path model and is not URI-encoded.
 	/// </remarks>
-	private static string ToCanonicalFileUri(string externalSourcePath)
+	private static string NormalizeToCanonicalFileUri(string externalSourcePath)
 	{
-		ArgumentNullException.ThrowIfNull(externalSourcePath);
+		ArgumentException.ThrowIfNullOrWhiteSpace(externalSourcePath);
 
-		if(!Path.IsPathRooted(externalSourcePath))
-			throw new ArgumentException("Path must be absolute.", nameof(externalSourcePath));
+		string trimmed = externalSourcePath.Trim();
 
-		string full = Path.GetFullPath(externalSourcePath);
+		string uriPrefix;
+		string pathPart;
+		bool isShare;
+		bool isAlreadyFileUri;
 
-		full = PathHelper.NormalizeSeparators(full);
+		if(trimmed.StartsWith(LocalFileUriPrefix, StringComparison.OrdinalIgnoreCase))
+		{
+			uriPrefix = LocalFileUriPrefix;
+			pathPart = trimmed.Substring(LocalFileUriPrefix.Length);
+			isShare = false;
+			isAlreadyFileUri = true;
 
-		return $"file:///{full}";
+			if(!IsWindowsAbsolutePath(pathPart))
+				throw new ArgumentException("File URI must contain an absolute Windows path.", nameof(externalSourcePath));
+		} else if(trimmed.StartsWith(FileUriScheme, StringComparison.OrdinalIgnoreCase))
+		{
+			uriPrefix = FileUriScheme;
+			pathPart = trimmed.Substring(FileUriScheme.Length);
+			isShare = true;
+			isAlreadyFileUri = true;
+
+			if(!IsValidSharePathPart(pathPart))
+				throw new ArgumentException("File share URI must contain server and share name.", nameof(externalSourcePath));
+		} else if(IsWindowsAbsolutePath(trimmed))
+		{
+			uriPrefix = LocalFileUriPrefix;
+			pathPart = trimmed;
+			isShare = false;
+			isAlreadyFileUri = false;
+		} else if(IsWindowsUncPath(trimmed))
+		{
+			uriPrefix = FileUriScheme;
+			pathPart = trimmed;
+			isShare = true;
+			isAlreadyFileUri = false;
+		} else
+		{
+			throw new ArgumentException("Path must be an absolute file system path or file URI.", nameof(externalSourcePath));
+		}
+
+		string canonicalPath;
+
+		if(isShare)
+		{
+			canonicalPath = isAlreadyFileUri
+				? pathPart
+				: Path.GetFullPath(pathPart);
+			canonicalPath = NormalizeSeparators(canonicalPath);
+			canonicalPath = TrimSeparators(canonicalPath, CanonicalSeparator);
+
+			if(!IsValidSharePathPart(canonicalPath))
+				throw new ArgumentException("File share path must contain server and share name.", nameof(externalSourcePath));
+		} else
+		{
+			canonicalPath = Path.GetFullPath(pathPart);
+			canonicalPath = NormalizeWindowsDriveLetter(canonicalPath);
+			canonicalPath = NormalizeSeparators(canonicalPath);
+		}
+
+		return $"{uriPrefix}{canonicalPath}";
+	}
+
+	private static bool IsValidSharePathPart(string pathPart)
+	{
+		string normalized = NormalizeSeparators(pathPart).Trim(CanonicalSeparator);
+
+		string[] parts = normalized.Split(
+			CanonicalSeparator,
+			StringSplitOptions.RemoveEmptyEntries);
+
+		return parts.Length >= 2;
+	}
+
+	private static string NormalizeWindowsDriveLetter(string path)
+	{
+		if(path.Length >= 2 && char.IsLetter(path[0]) && path[1] == ':')
+			return char.ToLowerInvariant(path[0]) + path.Substring(1);
+
+		return path;
 	}
 
 	public static string FromCanonicalFileUri(string canonicalUri)
 	{
-		ArgumentNullException.ThrowIfNull(canonicalUri);
+		ArgumentException.ThrowIfNullOrWhiteSpace(canonicalUri);
 
 		const string prefix = "file:///";
 
@@ -119,9 +246,9 @@ internal static class PathHelper
 	/// </exception>
 	/// <example>
 	/// <code>
-	/// FromCanonicalUriSubDrivePath("file:///C:/DCIM/Camera")    → "DCIM/Camera"
+	/// FromCanonicalUriSubDrivePath("file:///c:/DCIM/Camera")    → "DCIM/Camera"
 	/// FromCanonicalUriSubDrivePath("mtp://Phone/Storage/DCIM")   → "DCIM"
-	/// FromCanonicalUriSubDrivePath("file:///C:/")                → ""
+	/// FromCanonicalUriSubDrivePath("file:///c:/")                → ""
 	/// FromCanonicalUriSubDrivePath("mtp://Phone/Storage")        → ""
 	/// </code>
 	/// </example>

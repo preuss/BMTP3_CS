@@ -77,7 +77,7 @@ Core4 (`BMTP3.Core4/`) er backup-motoren. Agendaen blev analyseret subsystem for
 
 ## 4. 🟡 Lave / KISS / DRY / test-huller
 
-- **Dead code > 950 linjer**: `PathHelperOld.cs`, `PathHelper_ai_1.cs` (broken stub), `PathTextHelper.cs`, `Uuid7.cs` (kun test), `Crypto/BouncyCastle*` + `SharpHashMD5` (ingen reference), `Models/Enums/BackupPhase.cs`, `FileFormatValuesFactory.NotYetImplemented`, `Parsed<T>`, `TimestampCandidateFactory.FromRaw*`.
+- **Dead code ~500 linjer**: `Uuid7.cs` (kun test), `Crypto/BouncyCastle*` + `SharpHashMD5` (ingen reference), `Models/Enums/BackupPhase.cs`, `FileFormatValuesFactory.NotYetImplemented`, `Parsed<T>`, `TimestampCandidateFactory.FromRaw*`.
 - **`CreateAlgorithm`-switch tripliceret** i 3 hash-generatorer (DRY).
 - `ActionProgress` mangler null-guard på `action`.
 - `Guard` underudnyttet (2 call-sites) — adopt or remove.
