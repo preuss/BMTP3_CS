@@ -19,6 +19,11 @@ public sealed record BackupSummaryItem
 	public BackupSummaryItemStatus Status { get; init; }
 
 	/// <summary>
+	/// Human-readable reason why this item failed in the last run. Null when not failed.
+	/// </summary>
+	public string? FailureReason { get; init; }
+
+	/// <summary>
 	/// Convenience flag for quick readability in JSON.
 	/// True when <see cref="Status"/> is <see cref="BackupSummaryItemStatus.Succeeded"/> or <see cref="BackupSummaryItemStatus.Skipped"/>.
 	/// </summary>

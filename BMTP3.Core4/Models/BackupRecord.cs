@@ -21,6 +21,11 @@ internal sealed record BackupRecord
 	public BackupItemStatus Status { get; set; } = BackupItemStatus.Pending;
 
 	/// <summary>
+	/// Human-readable reason why this item failed. Null when no failure has occurred.
+	/// </summary>
+	public string? FailureReason { get; set; }
+
+	/// <summary>
 	/// The timestamp when the status last changed.
 	/// Null when the item is still in its initial Pending state.
 	/// </summary>

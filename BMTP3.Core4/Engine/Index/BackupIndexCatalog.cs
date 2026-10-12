@@ -23,6 +23,7 @@ internal sealed record BackupIndexFileEntry
 	public string? DestinationPath { get; init; }
 	public required long Length { get; init; }
 	public required string Status { get; init; }
+	public string? FailureReason { get; init; }
 	public Dictionary<string, string>? Hashes { get; init; }
 	public BackupIndexTimestamps? Timestamps { get; init; }
 }

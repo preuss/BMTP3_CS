@@ -13,10 +13,12 @@ using BMTP3.Core4.Infrastructure.Throttling;
 using BMTP3.Core4.Models;
 using BMTP3.Core4.Models.Enums;
 using BMTP3.Core4.Scanner;
+using BMTP3.Core4.State;
 using BMTP3.Core4.Storage;
 using BMTP3.Core4.Traversal;
 using BMTP3.Core4.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Text.Json;
 
 namespace BMTP3.Core4.Tests.Engine;
 
@@ -447,6 +449,53 @@ public class BackupEngineErrorPathTests
 			BackupResult result = await engine.RunAsync(plan, null, CancellationToken.None);
 
 			Assert.Equal(BackupResultState.Cancelled, result.State);
+		}
+		finally
+		{
+			if(Directory.Exists(testDir))
+				Directory.Delete(testDir, recursive: true);
+		}
+	}
+
+	[Fact]
+	public async Task ItemFailure_PersistsFailureReasonInSessionJson()
+	{
+		string testDir = Path.Combine(Path.GetTempPath(), "BMTP3_ErrorTest_" + Guid.NewGuid().ToString("N"));
+		try
+		{
+			Directory.CreateDirectory(testDir);
+			string sourceRoot = Path.Combine(testDir, "Source");
+			string driveRoot = Path.GetPathRoot(testDir) ?? "C:\\";
+
+			BackupPlan plan = CreateTestPlan(sourceRoot, testDir, stopOnError: false);
+
+			FakeBackupDriveInfo drive = new(
+				PathHelper.ToInternalCanonicalUri(driveRoot, BackupSourceType.FileSystem), driveRoot.TrimEnd('\\'));
+
+			BackupItem item1 = CreateBackupItem("photo.jpg", "", sourceRoot);
+			BackupItem item2 = CreateBackupItem("document.pdf", "Docs", sourceRoot);
+
+			FakeDownloadService downloadService = new() { FailOnItemIndex = 1 };
+
+			BackupEngine engine = CreateEngine(
+				items: new[] { item1, item2 },
+				testDir: testDir,
+				drive: drive,
+				downloadService: downloadService);
+
+			BackupResult result = await engine.RunAsync(plan, null, CancellationToken.None);
+
+			Assert.Equal(BackupResultState.Failed, result.State);
+
+			string sessionFile = Directory.GetFiles(Path.Combine(testDir, ".bmtp3"), "session_*.json").Single();
+			BackupSummary summary = JsonSerializer.Deserialize<BackupSummary>(File.ReadAllText(sessionFile))!;
+
+			BackupSummaryItem failed = summary.Items.Single(i => i.FileName == "document.pdf");
+			Assert.Equal(BackupSummaryItemStatus.Pending, failed.Status);
+			Assert.Equal("IOException: Simulated download failure for item 1.", failed.FailureReason);
+
+			BackupSummaryItem succeeded = summary.Items.Single(i => i.FileName == "photo.jpg");
+			Assert.Null(succeeded.FailureReason);
 		}
 		finally
 		{

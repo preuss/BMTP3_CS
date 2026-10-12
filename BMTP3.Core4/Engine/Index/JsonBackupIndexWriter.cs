@@ -69,6 +69,7 @@ internal sealed class JsonBackupIndexWriter : IBackupIndexWriter
 				DestinationPath = record.DestinationPath,
 				Length = (long)record.Item.Content.Length,
 				Status = MapStatus(record.Status),
+				FailureReason = record.FailureReason,
 				Hashes = MapHashes(record.Metadata.ComputedHashes),
 				Timestamps = MapTimestamps(record.Metadata),
 			};

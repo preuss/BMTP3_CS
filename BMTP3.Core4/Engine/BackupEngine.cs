@@ -344,6 +344,7 @@ internal sealed class BackupEngine : IBackupEngine
 							TempDirectoryHelper.CleanupTempFiles(tempFile?.FullName, null);
 							record.Status = BackupItemStatus.Failed;
 							record.StatusChangedAt = DateTimeOffset.UtcNow;
+							record.FailureReason = $"MTP read failed (HRESULT 0x{comEx.ErrorCode:X8})";
 							continue;
 						}
 
@@ -583,6 +584,7 @@ internal sealed class BackupEngine : IBackupEngine
 
 						record.Status = BackupItemStatus.Failed;
 						record.StatusChangedAt = DateTimeOffset.UtcNow;
+						record.FailureReason = $"{ex.GetType().Name}: {ex.Message}";
 						_logger.LogError(ex, "Item failed: {Path}", record.Item.SourcePath);
 
 						if (plan.StopOnError) throw;
