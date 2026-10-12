@@ -333,14 +333,16 @@ internal sealed class BackupEngine : IBackupEngine
 							if(IsMtpDeviceDisconnectError(comEx))
 								throw; // device disconnected — stop immediately
 
-							// File-specific MTP error (locked, DRM, unreadable) — skip and continue
+							// File-specific MTP error (locked, DRM, unreadable) — mark Failed so the item is retried on resume.
+							// Never use Skipped here: Skipped means "already backed up / nothing to do", not "could not be read".
 							_logger.LogWarning(
-								"Skipping '{Path}': MTP cannot read this file (Length={Length}). " +
+								"Read failed for '{Path}' (Length={Length}, HRESULT=0x{ErrorCode:X8}): " +
+								"MTP cannot read this file. Marked as Failed — will be retried on next run. " +
 								"This can happen if the file is locked, DRM-protected, " +
 								"or a special MTP object.",
-								record.Item.SourcePath, record.Item.Content.Length);
+								record.Item.SourcePath, record.Item.Content.Length, comEx.ErrorCode);
 							TempDirectoryHelper.CleanupTempFiles(tempFile?.FullName, null);
-							record.Status = BackupItemStatus.Skipped;
+							record.Status = BackupItemStatus.Failed;
 							record.StatusChangedAt = DateTimeOffset.UtcNow;
 							continue;
 						}
