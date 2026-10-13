@@ -331,7 +331,15 @@ internal sealed class BackupEngine : IBackupEngine
 						catch (IOException ex) when (ex.InnerException is COMException comEx)
 						{
 							if(IsMtpDeviceDisconnectError(comEx))
-								throw; // device disconnected — stop immediately
+							{
+								// Read-loop disconnect arrives as raw IOException (wrapped by DownloadService),
+								// so the outer COMException catch cannot see it. Throw the friendly
+								// exception here instead.
+								throw new MtpDeviceDisconnectedException(
+									MtpDeviceDisconnectedMessage,
+									comEx.ErrorCode,
+									comEx);
+							}
 
 							// File-specific MTP error (locked, DRM, unreadable) — mark Failed so the item is retried on resume.
 							// Never use Skipped here: Skipped means "already backed up / nothing to do", not "could not be read".
@@ -571,6 +579,10 @@ internal sealed class BackupEngine : IBackupEngine
 						TempDirectoryHelper.CleanupTempFiles(tempFile?.FullName, null);
 						throw;
 					}
+					catch (MtpDeviceDisconnectedException)
+					{
+						throw;
+					}
 					catch (Exception ex)
 					{
 						try
@@ -679,7 +691,7 @@ internal sealed class BackupEngine : IBackupEngine
 			// Session state already saved in the finally block above.
 			_logger.LogError(ex, "MTP device disconnected during backup.");
 			throw new MtpDeviceDisconnectedException(
-				"MTP device disconnected during backup. Check the USB connection and ensure the device stays unlocked. Reconnect and re-run to resume from where it stopped.",
+				MtpDeviceDisconnectedMessage,
 				ex.ErrorCode,
 				ex);
 		}
@@ -860,6 +872,9 @@ internal sealed class BackupEngine : IBackupEngine
 
 		return null;
 	}
+
+	private const string MtpDeviceDisconnectedMessage =
+		"MTP device disconnected during backup. Check the USB connection and ensure the device stays unlocked. Reconnect and re-run to resume from where it stopped.";
 
 	private static bool IsMtpDeviceDisconnectError(COMException ex)
 	{

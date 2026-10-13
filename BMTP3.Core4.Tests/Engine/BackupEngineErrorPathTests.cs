@@ -3,6 +3,8 @@ using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Engine;
 using BMTP3.Core4.DriveDiscovery;
 using BMTP3.Core4.Engine.DiskSpace;
+using BMTP3.Core4.Engine.Downloader;
+using BMTP3.Core4.Engine.Exceptions;
 using BMTP3.Core4.Engine.Hashing;
 using BMTP3.Core4.Engine.Sidecar;
 using BMTP3.Core4.Engine.Strategies;
@@ -18,6 +20,7 @@ using BMTP3.Core4.Storage;
 using BMTP3.Core4.Traversal;
 using BMTP3.Core4.Tests.Fakes;
 using Microsoft.Extensions.Logging.Abstractions;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 
 namespace BMTP3.Core4.Tests.Engine;
@@ -504,6 +507,95 @@ public class BackupEngineErrorPathTests
 		}
 	}
 
+	[Fact]
+	public async Task MtpReadFailure_MarksFailedAndContinues_EvenWithStopOnError()
+	{
+		string testDir = Path.Combine(Path.GetTempPath(), "BMTP3_ErrorTest_" + Guid.NewGuid().ToString("N"));
+		try
+		{
+			Directory.CreateDirectory(testDir);
+			string sourceRoot = Path.Combine(testDir, "Source");
+			string driveRoot = Path.GetPathRoot(testDir) ?? "C:\\";
+
+			BackupPlan plan = CreateTestPlan(sourceRoot, testDir, stopOnError: true);
+
+			FakeBackupDriveInfo drive = new(
+				PathHelper.ToInternalCanonicalUri(driveRoot, BackupSourceType.FileSystem), driveRoot.TrimEnd('\\'));
+
+			BackupItem item1 = CreateBackupItem("photo.jpg", "", sourceRoot);
+			BackupItem item2 = CreateBackupItem("document.pdf", "Docs", sourceRoot);
+			BackupItem item3 = CreateBackupItem("notes.txt", "Docs", sourceRoot);
+
+			// 0x80070013 = win32 facility: file-specific error, not a device disconnect.
+			MtpThrowingDownloadService downloadService = new(unchecked((int)0x80070013)) { FailOnItemIndex = 1 };
+
+			BackupEngine engine = CreateEngine(
+				items: new[] { item1, item2, item3 },
+				testDir: testDir,
+				drive: drive,
+				downloadService: downloadService);
+
+			BackupResult result = await engine.RunAsync(plan, null, CancellationToken.None);
+
+			// StopOnError=true, yet the run did not throw — MTP read failures always continue.
+			Assert.Equal(BackupResultState.Failed, result.State);
+			Assert.Equal(3, result.ItemResults.Count);
+			Assert.Equal(BackupResultItemState.Succeeded, result.ItemResults[0].State);
+			Assert.Equal(BackupResultItemState.Failed, result.ItemResults[1].State);
+			Assert.Equal(BackupResultItemState.Succeeded, result.ItemResults[2].State);
+		}
+		finally
+		{
+			if(Directory.Exists(testDir))
+			{
+				Directory.Delete(testDir, recursive: true);
+			}
+		}
+	}
+
+	[Fact]
+	public async Task MtpDeviceDisconnect_StopsJobAndKeepsSession()
+	{
+		string testDir = Path.Combine(Path.GetTempPath(), "BMTP3_ErrorTest_" + Guid.NewGuid().ToString("N"));
+		try
+		{
+			Directory.CreateDirectory(testDir);
+			string sourceRoot = Path.Combine(testDir, "Source");
+			string driveRoot = Path.GetPathRoot(testDir) ?? "C:\\";
+
+			BackupPlan plan = CreateTestPlan(sourceRoot, testDir, stopOnError: false);
+
+			FakeBackupDriveInfo drive = new(
+				PathHelper.ToInternalCanonicalUri(driveRoot, BackupSourceType.FileSystem), driveRoot.TrimEnd('\\'));
+
+			BackupItem item1 = CreateBackupItem("photo.jpg", "", sourceRoot);
+			BackupItem item2 = CreateBackupItem("document.pdf", "Docs", sourceRoot);
+
+			// 0x802A0004 = WPD facility: device disconnect.
+			MtpThrowingDownloadService downloadService = new(unchecked((int)0x802A0004)) { FailOnItemIndex = 0 };
+
+			BackupEngine engine = CreateEngine(
+				items: new[] { item1, item2 },
+				testDir: testDir,
+				drive: drive,
+				downloadService: downloadService);
+
+			MtpDeviceDisconnectedException ex = await Assert.ThrowsAsync<MtpDeviceDisconnectedException>(
+				() => engine.RunAsync(plan, null, CancellationToken.None));
+			Assert.Equal(unchecked((int)0x802A0004), ex.HResultValue);
+
+			// Session state is still saved via the finally block — resume is possible after reconnect.
+			Assert.Single(Directory.GetFiles(Path.Combine(testDir, ".bmtp3"), "session_*.json"));
+		}
+		finally
+		{
+			if(Directory.Exists(testDir))
+			{
+				Directory.Delete(testDir, recursive: true);
+			}
+		}
+	}
+
 	// ----------------------------------------------------------------
 	// Fakes
 	// ----------------------------------------------------------------
@@ -552,6 +644,33 @@ public class BackupEngineErrorPathTests
 				new InvalidOperationException("Simulated HashService failure."));
 	}
 
+	private sealed class MtpThrowingDownloadService : IDownloadService
+	{
+		private readonly int _hresult;
+		private int _callCount;
+
+		public MtpThrowingDownloadService(int hresult)
+		{
+			_hresult = hresult;
+		}
+
+		public int FailOnItemIndex { get; set; } = -1;
+
+		public Task DownloadAsync(DownloadRequest request, IProgress<ulong>? progress, CancellationToken cancellationToken)
+		{
+			int index = _callCount++;
+			if(index == FailOnItemIndex)
+			{
+				throw new IOException(
+					"Error reading from source stream: simulated MTP failure.",
+					new COMException("Simulated MTP failure.", _hresult));
+			}
+
+			progress?.Report(request.Item.Content.Length);
+			return Task.CompletedTask;
+		}
+	}
+
 	private sealed class NullTimestampService : IEarliestTimestampResolutionService
 	{
 		public Task<EarliestTimestampResolutionResult> ResolveAndApplyEarliestAsync(
@@ -591,7 +710,7 @@ public class BackupEngineErrorPathTests
 		IReadOnlyList<BackupItem> items,
 		string testDir,
 		FakeBackupDriveInfo? drive = null,
-		FakeDownloadService? downloadService = null,
+		IDownloadService? downloadService = null,
 		IBackupScanner? scanner = null,
 		ITargetPathResolver? targetPathResolver = null,
 		ICollisionResolver? collisionResolver = null,
