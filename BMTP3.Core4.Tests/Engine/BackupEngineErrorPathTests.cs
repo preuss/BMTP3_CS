@@ -596,6 +596,56 @@ public class BackupEngineErrorPathTests
 		}
 	}
 
+	[Fact]
+	public async Task LegacySession_VersionMismatch_ThrowsLikeUnreadableData()
+	{
+		string testDir = Path.Combine(Path.GetTempPath(), "BMTP3_ErrorTest_" + Guid.NewGuid().ToString("N"));
+		try
+		{
+			Directory.CreateDirectory(testDir);
+			string sourceRoot = Path.Combine(testDir, "Source");
+			string driveRoot = Path.GetPathRoot(testDir) ?? "C:\\";
+
+			BackupPlan plan = CreateTestPlan(sourceRoot, testDir, stopOnError: true);
+
+			FakeBackupDriveInfo drive = new(
+				PathHelper.ToInternalCanonicalUri(driveRoot, BackupSourceType.FileSystem), driveRoot.TrimEnd('\\'));
+
+			BackupItem item1 = CreateBackupItem("photo.jpg", "", sourceRoot);
+
+			// First run creates a current-version session.
+			BackupEngine engine = CreateEngine(
+				items: new[] { item1 },
+				testDir: testDir,
+				drive: drive);
+			await engine.RunAsync(plan, null, CancellationToken.None);
+
+			// Rewrite the session as a legacy file (no SessionVersion) — pre-versioning format.
+			string sessionFile = Directory.GetFiles(Path.Combine(testDir, ".bmtp3"), "session_*.json").Single();
+			string legacy = string.Join(Environment.NewLine,
+				File.ReadAllText(sessionFile).Split('\n').Where(line => !line.Contains("SessionVersion")));
+			File.WriteAllText(sessionFile, legacy);
+
+			// Even Restart cannot rescue it — identical to an unreadable session in the old code.
+			BackupPlan restartPlan = plan with { ResumeBehavior = SessionResumeStrategy.Restart };
+			BackupEngine engine2 = CreateEngine(
+				items: new[] { item1 },
+				testDir: testDir,
+				drive: drive);
+
+			SessionVersionMismatchException ex = await Assert.ThrowsAsync<SessionVersionMismatchException>(
+				() => engine2.RunAsync(restartPlan, null, CancellationToken.None));
+			Assert.Equal(1, ex.FoundVersion);
+		}
+		finally
+		{
+			if(Directory.Exists(testDir))
+			{
+				Directory.Delete(testDir, recursive: true);
+			}
+		}
+	}
+
 	// ----------------------------------------------------------------
 	// Fakes
 	// ----------------------------------------------------------------

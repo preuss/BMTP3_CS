@@ -107,7 +107,6 @@ public class SessionStateServiceTests
 				FileName = "file0.jpg",
 				DestinationPath = "D:\\Backup\\file0.jpg",
 				Status = BackupSummaryItemStatus.Succeeded,
-				IsCompleted = true,
 				CompletedAt = DateTimeOffset.UtcNow.AddHours(-1),
 			},
 			new BackupSummaryItem
@@ -117,7 +116,6 @@ public class SessionStateServiceTests
 				RelativeFilePath = "file1.jpg",
 				FileName = "file1.jpg",
 				Status = BackupSummaryItemStatus.Pending,
-				IsCompleted = false,
 			},
 		};
 

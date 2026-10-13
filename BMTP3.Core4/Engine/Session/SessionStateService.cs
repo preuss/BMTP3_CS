@@ -154,7 +154,6 @@ internal sealed class SessionStateService : ISessionStateService
 			DestinationPath = record.DestinationPath,
 			Status = ToSummaryItemStatus(record.Status),
 			FailureReason = record.FailureReason,
-			IsCompleted = record.Status is BackupItemStatus.Succeeded or BackupItemStatus.Skipped,
 			CompletedAt = record.StatusChangedAt,
 		};
 	}

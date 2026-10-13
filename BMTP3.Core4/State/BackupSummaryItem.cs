@@ -23,11 +23,16 @@ public sealed record BackupSummaryItem
 	/// </summary>
 	public string? FailureReason { get; init; }
 
-	/// <summary>
-	/// Convenience flag for quick readability in JSON.
-	/// True when <see cref="Status"/> is <see cref="BackupSummaryItemStatus.Succeeded"/> or <see cref="BackupSummaryItemStatus.Skipped"/>.
-	/// </summary>
-	public bool IsCompleted { get; init; }
-
 	public DateTimeOffset? CompletedAt { get; init; }
+
+	/// <summary>
+	/// Derived flags for quick readability in the session JSON.
+	/// Recomputed from <see cref="Status"/> on every save — editing these values
+	/// has no effect, because the next save overwrites them.
+	/// </summary>
+	public BackupSummaryItemComputed Computed => new()
+	{
+		// True when Status is Succeeded or Skipped.
+		IsCompleted = Status is BackupSummaryItemStatus.Succeeded or BackupSummaryItemStatus.Skipped,
+	};
 }
