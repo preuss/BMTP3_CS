@@ -724,6 +724,524 @@
             Unknown format
             </summary>
         </member>
+        <member name="F:MediaDevices.Formats.Association">
+            <summary>
+            WPD_OBJECT_FORMAT_PROPERTIES_ONLY
+            This object has no data stream and is completely specified by properties only.
+            Device Services FormatId: FORMAT_Association
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.Undefined">
+            <summary>
+            WPD_OBJECT_FORMAT_UNSPECIFIED
+            An undefined object format on the mediaDevice (e.g. objects that can not be classified by the other defined WPD format codes)
+            Device Services FormatId: FORMAT_Undefined
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.DeviceScript">
+            <summary>
+            WPD_OBJECT_FORMAT_SCRIPT
+            A mediaDevice model-specific script
+            Device Services FormatId: FORMAT_DeviceScript
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.DeviceExecutable">
+            <summary>
+            WPD_OBJECT_FORMAT_EXECUTABLE
+            A mediaDevice model-specific binary executable
+            Device Services FormatId: FORMAT_DeviceExecutable
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.TextDocument">
+            <summary>
+            WPD_OBJECT_FORMAT_TEXT
+            A text file
+            Device Services FormatId: FORMAT_TextDocument
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.HTMLDocument">
+            <summary>
+            WPD_OBJECT_FORMAT_HTML
+            A HyperText Markup Language file (text)
+            Device Services FormatId: FORMAT_HTMLDocument
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.DPOFDocument">
+            <summary>
+            WPD_OBJECT_FORMAT_DPOF
+            A Digital Print Order File (text)
+            Device Services FormatId: FORMAT_DPOFDocument
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AIFFFile">
+            <summary>
+            WPD_OBJECT_FORMAT_AIFF
+            Audio file format
+            Device Services FormatId: FORMAT_AIFFFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.WAVFile">
+            <summary>
+            WPD_OBJECT_FORMAT_WAVE
+            Audio file format
+            Device Services FormatId: FORMAT_WAVFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.MP3File">
+            <summary>
+            WPD_OBJECT_FORMAT_MP3
+            Audio file format
+            Device Services FormatId: FORMAT_MP3File
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AVIFile">
+            <summary>
+            WPD_OBJECT_FORMAT_AVI
+            Video file format
+            Device Services FormatId: FORMAT_AVIFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.MPEGFile">
+            <summary>
+            WPD_OBJECT_FORMAT_MPEG
+            Video file format
+            Device Services FormatId: FORMAT_MPEGFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.ASFFile">
+            <summary>
+            WPD_OBJECT_FORMAT_ASF
+            Video file format (Microsoft Advanced Streaming FormatId)
+            Device Services FormatId: FORMAT_ASFFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.PLISTFile">
+            <summary>
+            Used by Apple to pass configuration files in XML format (such as .plist files) to the MTP subsystem.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.EXIFImage">
+            <summary>
+            WPD_OBJECT_FORMAT_EXIF
+              Image file format (Exchangeable File FormatId), JEIDA standard
+              Device Services FormatId: FORMAT_EXIFImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.TIFFEPImage">
+            <summary>
+            WPD_OBJECT_FORMAT_TIFFEP
+            Image file format (Tag Image File FormatId for Electronic Photography)
+            Device Services FormatId: FORMAT_TIFFEPImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.FlashPixImage">
+            <summary>
+            WPD_OBJECT_FORMAT_FLASHPIX
+            Image file format (Structured Storage Image FormatId)
+            Device Services FormatId: FORMAT_FlashPixImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.BMPImage">
+            <summary>
+            WPD_OBJECT_FORMAT_BMP
+            Image file format (Microsoft Windows Bitmap file)
+            Device Services FormatId: FORMAT_BMPImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.CIFFImage">
+            <summary>
+            WPD_OBJECT_FORMAT_CIFF
+            Image file format (Canon Camera Image File FormatId)
+            Device Services FormatId: FORMAT_CIFFImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.GIFImage">
+            <summary>
+            WPD_OBJECT_FORMAT_GIF
+            Image file format (Graphics Interchange FormatId)
+            Device Services FormatId: FORMAT_GIFImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.JFIFImage">
+            <summary>
+            WPD_OBJECT_FORMAT_JFIF
+            Image file format (JPEG Interchange FormatId)
+            Device Services FormatId: FORMAT_JFIFImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.PCDImage">
+            <summary>
+            WPD_OBJECT_FORMAT_PCD
+            Image file format (PhotoCD Image Pac)
+            Device Services FormatId: FORMAT_PCDImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.PICTImage">
+            <summary>
+            WPD_OBJECT_FORMAT_PICT
+            Image file format (Quickdraw Image FormatId)
+            Device Services FormatId: FORMAT_PICTImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.PNGImage">
+            <summary>
+            WPD_OBJECT_FORMAT_PNG
+            Image file format (Portable Network Graphics)
+            Device Services FormatId: FORMAT_PNGImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.TIFFImage">
+            <summary>
+            WPD_OBJECT_FORMAT_TIFF
+            Image file format (Tag Image File FormatId)
+            Device Services FormatId: FORMAT_TIFFImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.TIFFITImage">
+            <summary>
+            WPD_OBJECT_FORMAT_TIFFIT
+            Image file format (Tag Image File FormatId for Informational Technology) Graphic Arts
+            Device Services FormatId: FORMAT_TIFFITImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.JP2Image">
+            <summary>
+            WPD_OBJECT_FORMAT_JP2
+              Image file format (JPEG2000 Baseline File FormatId)
+              Device Services FormatId: FORMAT_JP2Image
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.JPXImage">
+            <summary>
+            WPD_OBJECT_FORMAT_JPX
+            Image file format (JPEG2000 Extended File FormatId)
+            Device Services FormatId: FORMAT_JPXImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.WBMPImage">
+            <summary>
+            WPD_OBJECT_FORMAT_WBMP
+            Image file format (Wireless Application Protocol Bitmap FormatId)
+            Device Services FormatId: FORMAT_WBMPImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.JPEGXRImage">
+            <summary>
+            WPD_OBJECT_FORMAT_JPEGXR
+            Image file format (JPEG XR, also known as HD Photo)
+            Device Services FormatId: FORMAT_JPEGXRImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.HDPhotoImage">
+            <summary>
+            WPD_OBJECT_FORMAT_WINDOWSIMAGEFORMAT
+            Image file format
+            Device Services FormatId: FORMAT_HDPhotoImage
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.CanonCRWFormat">
+            <summary>
+            Legacy Canon RAW format used by older PowerShot and early EOS models.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.CanonCR2CR3Format">
+            <summary>
+            Modern Canon RAW image data formats (CR2 and CR3).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.CanonMOVMP4Video">
+            <summary>
+            Video recorded using Canon-proprietary codec profiles (e.g. All-I or IPB).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.WMAFile">
+            <summary>
+            WPD_OBJECT_FORMAT_WMA
+            Audio file format (Windows Media Audio)
+            Device Services FormatId: FORMAT_WMAFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.WMVFile">
+            <summary>
+            WPD_OBJECT_FORMAT_WMV
+            Video file format (Windows Media Video)
+            Device Services FormatId: FORMAT_WMVFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.WPLPlaylist">
+            <summary>
+            WPD_OBJECT_FORMAT_WPLPLAYLIST
+            Playlist file format
+            Device Services FormatId: FORMAT_WPLPlaylist
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.M3UPlaylist">
+            <summary>
+            WPD_OBJECT_FORMAT_M3UPLAYLIST
+            Playlist file format
+            Device Services FormatId: FORMAT_M3UPlaylist
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.MPLPlaylist">
+            <summary>
+            WPD_OBJECT_FORMAT_MPLPLAYLIST
+            Playlist file format
+            Device Services FormatId: FORMAT_MPLPlaylist
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.ASXPlaylist">
+            <summary>
+            WPD_OBJECT_FORMAT_ASXPLAYLIST
+            Playlist file format
+            Device Services FormatId: FORMAT_ASXPlaylist
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.PLSPlaylist">
+            <summary>
+            WPD_OBJECT_FORMAT_PLSPLAYLIST
+            Playlist file format
+            Device Services FormatId: FORMAT_PSLPlaylist
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AbstractContactGroup">
+            <summary>
+            WPD_OBJECT_FORMAT_ABSTRACT_CONTACT_GROUP
+            Generic format for contact group objects
+            Device Services FormatId: FORMAT_AbstractContactGroup
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AbstractMediacast">
+            <summary>
+            WPD_OBJECT_FORMAT_ABSTRACT_MEDIA_CAST
+            MediaCast file format
+            Device Services FormatId: FORMAT_AbstractMediacast
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.VCalendar1">
+            <summary>
+            WPD_OBJECT_FORMAT_VCALENDAR1
+            VCALENDAR file format (VCALENDAR Version 1)
+            Device Services FormatId: FORMAT_VCalendar1
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.ICalendar">
+            <summary>
+            WPD_OBJECT_FORMAT_ICALENDAR
+            ICALENDAR file format (VCALENDAR Version 2)
+            Device Services FormatId: FORMAT_ICalendar
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AbstractContact">
+            <summary>
+            WPD_OBJECT_FORMAT_ABSTRACT_CONTACT
+            Abstract contact file format
+            Device Services FormatId: FORMAT_AbstractContact
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.VCard2Contact">
+            <summary>
+            WPD_OBJECT_FORMAT_VCARD2
+            VCARD file format (VCARD Version 2)
+            Device Services FormatId: FORMAT_VCard2Contact
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.VCard3Contact">
+            <summary>
+            WPD_OBJECT_FORMAT_VCARD3
+            VCARD file format (VCARD Version 3)
+            Device Services FormatId: FORMAT_VCard3Contact
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.XMLDocument">
+            <summary>
+            WPD_OBJECT_FORMAT_XML
+            XML file format.
+            Device Services FormatId: FORMAT_XMLDocument
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AACFile">
+            <summary>
+            WPD_OBJECT_FORMAT_AAC
+            Audio file format
+            Device Services FormatId: FORMAT_AACFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AudibleFile">
+            <summary>
+            WPD_OBJECT_FORMAT_AUDIBLE
+            Audio file format
+            Device Services FormatId: FORMAT_AudibleFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.FLACFile">
+            <summary>
+            WPD_OBJECT_FORMAT_FLAC
+            Audio file format
+            Device Services FormatId: FORMAT_FLACFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.QCELPFile">
+            <summary>
+            WPD_OBJECT_FORMAT_QCELP
+            Audio file format (Qualcomm Code Excited Linear Prediction)
+            Device Services FormatId: FORMAT_QCELPFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AMRFile">
+            <summary>
+            WPD_OBJECT_FORMAT_AMR
+            Audio file format (Adaptive Multi-Rate audio codec)
+            Device Services FormatId: FORMAT_AMRFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.OGGFile">
+            <summary>
+            WPD_OBJECT_FORMAT_OGG
+            Audio file format
+            Device Services FormatId: FORMAT_OGGFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.MPEG4File">
+            <summary>
+            WPD_OBJECT_FORMAT_MP4
+            Audio or Video file format
+            Device Services FormatId: FORMAT_MPEG4File
+            ISO 14496-1
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.MPEG2File">
+            <summary>
+            WPD_OBJECT_FORMAT_MP2
+            Audio or Video file format
+            Device Services FormatId: FORMAT_MPEG2File
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.WordDocument">
+            <summary>
+            WPD_OBJECT_FORMAT_MICROSOFT_WORD
+            Microsoft Office Word Document file format.
+            Device Services FormatId: FORMAT_WordDocument
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.MHTDocument">
+            <summary>
+            WPD_OBJECT_FORMAT_MHT_COMPILED_HTML
+            MHT Compiled HTML Document file format.
+            Device Services FormatId: FORMAT_MHTDocument
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.ExcelDocument">
+            <summary>
+            WPD_OBJECT_FORMAT_MICROSOFT_EXCEL
+            Microsoft Office Excel Document file format.
+            Device Services FormatId: FORMAT_ExcelDocument
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.PowerPointDocument">
+            <summary>
+            WPD_OBJECT_FORMAT_MICROSOFT_POWERPOINT
+            Microsoft Office PowerPoint Document file format.
+            Device Services FormatId: FORMAT_PowerPointDocument
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats._3GPPFile">
+            <summary>
+            WPD_OBJECT_FORMAT_3GP
+            Audio or Video file format
+            Device Services FormatId: FORMAT_3GPPFile
+            3GPP file format. Details: http://www.3gpp.org/ftp/Specs/html-info/26244.htm (page title - \u201cTransparent end-to-end packet switched streaming service, 3GPP file format\u201d).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats._3GPP2File">
+            <summary>
+            WPD_OBJECT_FORMAT_3G2
+            Audio or Video file format
+            Device Services FormatId: FORMAT_3GPP2File
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AVCHDFile">
+            <summary>
+            WPD_OBJECT_FORMAT_AVCHD
+            Audio or Video file format
+            Device Services FormatId: FORMAT_AVCHDFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.ATSCTSFile">
+            <summary>
+            WPD_OBJECT_FORMAT_ATSCTS
+            Audio or Video file format
+            Device Services FormatId: FORMAT_ATSCTSFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.DVBTSFile">
+            <summary>
+            WPD_OBJECT_FORMAT_DVBTS
+            Audio or Video file format
+            Device Services FormatId: FORMAT_DVBTSFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.MKVFile">
+            <summary>
+            WPD_OBJECT_FORMAT_MKV
+            Audio or Video file format
+            Device Services FormatId: FORMAT_MKVFile
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.HEICImage">
+            <summary>
+            Apple Media/Live Photo Link. Identifies the primary photo object and links the components of a Live Photo.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AAEFile">
+            <summary>
+            Apple Metadata/Sidecar File. Non-destructive editing data (typical .AAE files).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AppleDirectoryAndIndexConfiguration">
+            <summary>
+            Apple Directory/Index Configuration. Internal database structures for virtual albums and DCIM folder structure.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AppleBurstGroupMarker">
+            <summary>
+            Apple Burst Group Marker. Groups burst shots as a cohesive series.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AppleDeviceLockAndTrustStatus">
+            <summary>
+            Apple Device Lock and Trust Status. Reports whether the device is unlocked and the computer is trusted.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AppleHostConnectionMode">
+            <summary>
+            Apple Host Connection Mode. Controls whether photos transfer in original format or converted.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AppleCameraContinuityControl">
+            <summary>
+            Apple Camera/Continuity Control. Advanced camera interactions (e.g. Continuity Camera).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.Defined">
+            <summary>
+            Unknown image object
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.DNGFile">
+            <summary>
+            Samsung (Digital Negative) 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.HEIFFile">
+            <summary>
+            Samsung (High Efficiency Image File Format)
+            </summary>
+        </member>
+        <member name="F:MediaDevices.Formats.AAVPlaylist">
+            <summary>
+            Abstract Audio Video Playlist (M3U- or PLS-Playlist-File)
+            </summary>
+        </member>
         <member name="T:MediaDevices.FunctionalCategory">
             <summary>
             Functional categories
@@ -785,6 +1303,156 @@
             This functional category is only valid as a parameter to API functions and driver commands. 
             It should not be reported as a supported functional category by the driver.
             </summary>                  
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.HewlettPackard">
+            <summary>
+            Hewlett-Packard (HP)
+            </summary>
+            <remarks>Legacy HP cameras and MTP-enabled scanners</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Microsoft">
+            <summary>
+            Microsoft Corp.
+            </summary>
+            <remarks>Zune players (historical MTP variant)</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Canon">
+            <summary>
+            Canon Inc.
+            </summary>
+            <remarks>EOS DSLR/Mirrorless and PowerShot cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Nikon">
+            <summary>
+            Nikon Corp.
+            </summary>
+            <remarks>Z-System mirrorless, DSLRs, and Coolpix cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Fujifilm">
+            <summary>
+            Fujifilm Co., Ltd.
+            </summary>
+            <remarks>X-System and GFX medium format cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Panasonic">
+            <summary>
+            Panasonic Corporation
+            </summary>
+            <remarks>Lumix digital cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Samsung">
+            <summary>
+            Samsung Electronics Co., Ltd.
+            </summary>
+            <remarks>Galaxy smartphones and tablets</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Leica">
+            <summary>
+            Nactel (Nesta) / Leica
+            </summary>
+            <remarks>Leica digital cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.SonyCorporation">
+            <summary>
+            Sony Corporation (Consumer Electronics)
+            </summary>
+            <remarks>Sony Alpha mirrorless cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Apple">
+            <summary>
+            Apple, Inc.
+            </summary>
+            <remarks>iPhones emulate PTP when connected to Windows/Mac for photo importing</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Qualcomm">
+            <summary>
+            Qualcomm, Inc.
+            </summary>
+            <remarks>Various Android devices in USB debugging/MTP fallback modes</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Olympus">
+            <summary>
+            Olympus Optical Co., Ltd.
+            </summary>
+            <remarks>OM System and legacy Olympus cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Pentax">
+            <summary>
+            Pentax Corporation
+            </summary>
+            <remarks>Pentax DSLRs and Ricoh cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.HTC">
+            <summary>
+            HTC Corporation
+            </summary>
+            <remarks>Legacy HTC Android devices</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.SonyMobileCommunications">
+            <summary>
+            Sony Mobile Communications (Smartphones &amp; Tablets)
+            </summary>
+            <remarks>Xperia smartphones</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.LG">
+            <summary>
+            LG Electronics Inc.
+            </summary>
+            <remarks>Legacy LG smartphones</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Huawei">
+            <summary>
+            Huawei Technologies Co., Ltd.
+            </summary>
+            <remarks>Huawei and Honor devices</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Google">
+            <summary>
+            Google Inc.
+            </summary>
+            <remarks>Pixel smartphones and legacy Nexus devices</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.TCL">
+            <summary>
+            TCL Corporation
+            </summary>
+            <remarks>Alcatel and TCL mobile devices</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Motorola">
+            <summary>
+            Motorola PCS
+            </summary>
+            <remarks>Motorola smartphones</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.OPPO">
+            <summary>
+            OPPO Mobile Telecommunications
+            </summary>
+            <remarks>Oppo and Realme smartphones</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.GoPro">
+            <summary>
+            GoPro
+            </summary>t
+            <remarks>Hero action cameras</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Xiaomi">
+            <summary>
+            Xiaomi Communications Co., Ltd.
+            </summary>
+            <remarks>Xiaomi, Redmi, Poco, and Black Shark devices</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.OnePlus">
+            <summary>
+            OnePlus Technology Co., Ltd.
+            </summary>
+            <remarks>OnePlus devices</remarks>
+        </member>
+        <member name="F:MediaDevices.ManufacturerId.Fairphone">
+            <summary>
+            Fairphone B.V.
+            </summary>
+            <remarks>Sustainable Fairphone models</remarks>
         </member>
         <member name="T:MediaDevices.MediaDeviceAccess">
             <summary>
@@ -992,6 +1660,731 @@
             Unknown method
             </summary>
         </member>
+        <member name="T:MediaDevices.OpCodes">
+            <summary>
+            Base operation codes (opcodes) used in Picture Transfer Protocol (PTP) and vendor-specific device communication.
+            </summary>
+            <remarks>
+            <para>
+            This enum holds the manufacturer-independent opcodes. Vendor-specific opcodes are in the
+            OpCodesCanon, OpCodesNikon, OpCodesSony, OpCodesPanasonic, OpCodesSamsung, OpCodesLeica
+            and OpCodesFujifilm enums.
+            </para>
+            <para>
+            The enum is organized into the following categories:
+            <list type="bullet">
+            <item><description>PTP Commands (0x1001 - 0x101C): Standard Picture Transfer Protocol commands for basic device operations.</description></item>
+            <item><description>MTP Extensions (0x9201 - 0x9203): Standard MTP operations.</description></item>
+            <item><description>Vendor (0x9xxx): Generic vendor codes for unspecified manufacturers.</description></item>
+            <item><description>Microsoft Extensions (0x98xx): MTP (Media Transfer Protocol) extensions for object properties and references.</description></item>
+            </list>
+            </para>
+            <para>
+            Each opcode is a 16-bit unsigned integer (ushort) that identifies a specific command to send to the device.
+            Opcode values are only unique within one manufacturer - the same value can mean different
+            commands for different vendors, which is why the vendor-specific opcodes use separate enums.
+            </para>
+            </remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Unknown">
+            <summary>
+            Unknown command.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetDeviceInfo">
+            <summary>
+            Queries basic hardware and protocol data.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.OpenSession">
+            <summary>
+            Starts a new communication session with the device.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.CloseSession">
+            <summary>
+            Ends the active session.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetStorageIDs">
+            <summary>
+            Provides a list of all available storage devices (e.g., internal storage, SD card).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetStorageInfo">
+            <summary>
+            Queries the capacity and free space of a storage device.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetNumObjects">
+            <summary>
+            Returns the number of objects in a directory or storage.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetObjectHandles">
+            <summary>
+            Retrieves a list of IDs (handles) for all files in a directory.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetObjectInfo">
+            <summary>
+            Retrieves metadata (file name, size, and type).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetObject">
+            <summary>
+            Starts the actual data transfer of a file from the device to the PC.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetThumb">
+            <summary>
+            Downloads the thumbnail image of an object.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.DeleteObject">
+            <summary>
+            Deletes a file or folder on the device.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.SendObjectInfo">
+            <summary>
+            Sends metadata for a new file to the device before the file is transferred.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.SendObject">
+            <summary>
+            Transfers the actual file data from the PC to the device.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.InitiateCapture">
+            <summary>
+            Triggers the device's camera function to take a picture.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.FormatStore">
+            <summary>
+            Formats the specified storage medium.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetDevicePropDesc">
+            <summary>
+            Retrieves the description/limits of a device property (e.g., battery level).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetDevicePropValue">
+            <summary>
+            Reads the current value of a device property.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.SetDevicePropValue">
+            <summary>
+            Changes the value of a device property (e.g., time zone or name).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.ResetDevicePropValue">
+            <summary>
+            Resets a device property to the factory default.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetPartialObject">
+            <summary>
+            Reads only a specific section (byte range) of a file.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.InitiateOpenCapture">
+            <summary>
+            Starts continuous media recording (e.g., video).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.ReportAddedDeletedItems">
+            <summary>
+            Reports objects that have been added to or deleted from the device.
+            </summary>
+            <remarks>
+            This MTP (Media Transfer Protocol) extension opcode is used to notify the host about changes
+            to the file system on the device, allowing synchronization of added and removed items.
+            </remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodes.ReportAcquiredItems">
+            <summary>
+            Reports objects that have been acquired or captured by the device.
+            </summary>
+            <remarks>
+            This MTP extension opcode notifies the host about newly captured or imported objects,
+            such as recently taken photos or downloaded media on the device.
+            </remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodes.PlaylistObjectPref">
+            <summary>
+            Retrieves or manages playlist object preferences on the device.
+            </summary>
+            <remarks>
+            This MTP extension opcode is used to query or configure playlist-related object preferences,
+            enabling enhanced media management and playlist handling on devices that support this feature.
+            </remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_001">
+            <summary>
+            Vendor code 0x9001 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_002">
+            <summary>
+            Vendor code 0x9002 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_003">
+            <summary>
+            Vendor code 0x9003 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_004">
+            <summary>
+            Vendor code 0x9004 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_005">
+            <summary>
+            Vendor code 0x9005 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_006">
+            <summary>
+            Vendor code 0x9006 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_007">
+            <summary>
+            Vendor code 0x9007 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_008">
+            <summary>
+            Vendor code 0x9008 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_009">
+            <summary>
+            Vendor code 0x9009 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_00A">
+            <summary>
+            Vendor code 0x900A 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_00B">
+            <summary>
+            Vendor code 0x900B 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_00C">
+            <summary>
+            Vendor code 0x900C 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_00D">
+            <summary>
+            Vendor code 0x900D 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_00E">
+            <summary>
+            Vendor code 0x900E 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_00F">
+            <summary>
+            Vendor code 0x900F 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_010">
+            <summary>
+            Vendor code 0x9010 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_01A">
+            <summary>
+            Vendor code 0x901A 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_01B">
+            <summary>
+            Vendor code 0x901B 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_01C">
+            <summary>
+            Vendor code 0x901C 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_01D">
+            <summary>
+            Vendor code 0x901D 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_01E">
+            <summary>
+            Vendor code 0x901E 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_01F">
+            <summary>
+            Vendor code 0x901F 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_701">
+            <summary>
+            Vendor code 0x9701 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Vendor_702">
+            <summary>
+            Vendor code 0x901F 
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetObjectPropsSupported">
+            <summary>
+            Lists the metadata properties supported by a file format.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetObjectPropDesc">
+            <summary>
+            Provides the technical description of a specific object property.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetObjectPropValue">
+            <summary>
+            Reads a specific property of a file (e.g., song artist).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.SetObjectPropValue">
+            <summary>
+            Writes/modifies a specific file property on the device.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetObjPropList">
+            <summary>
+            Queries a list of multiple properties for one or more objects simultaneously (important for fast browsing).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.SetObjPropList">
+            <summary>
+            Changes multiple properties for multiple objects in one go.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetInterdependentPropDesc">
+            <summary>
+            Lists dependencies between different properties.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.SendObjectPropList">
+            <summary>
+            Transfers a list of properties in parallel when creating a new file.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.GetObjectReferences">
+            <summary>
+            Retrieves an object's links (used for playlists).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.SetObjectReferences">
+            <summary>
+            Creates or overwrites links (e.g., adding a title to a playlist).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodes.Skip">
+            <summary>
+            Skips data fragments during sequential data transmission.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.GetPartialObjectInfo">
+            <summary>
+            Retrieves the size of a specified object on the Canon PowerShot device.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.KeepDeviceOn">
+            <summary>
+            Keeps the Canon PowerShot device active to prevent automatic power-down during communication sessions.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.LockDeviceUI">
+            <summary>
+            Locks the user interface on the Canon PowerShot device to prevent accidental button presses during remote operations.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.UnlockDeviceUI">
+            <summary>
+            Unlocks the user interface on the Canon PowerShot device to allow normal button presses and manual control.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.ViewfinderOn">
+            <summary>
+            Enables the viewfinder display on the Canon PowerShot device to show real-time preview.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.ViewfinderOff">
+            <summary>
+            Disables the viewfinder display on the Canon PowerShot device to conserve power.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.GetViewfinderImage">
+            <summary>
+            Retrieves the current viewfinder image from the Canon PowerShot device for live preview display.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_GetStorageIDs">
+            <summary>
+            Retrieves the list of storage device identifiers (handles) available on the Canon EOS camera.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_GetObject">
+            <summary>
+            Downloads a file object from the Canon EOS camera to the PC.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_GetDeviceInfoEx">
+            <summary>
+            Queries extended device information and capabilities specific to Canon EOS cameras.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_RemoteRelease">
+            <summary>
+            Triggers a remote shutter release on the Canon EOS camera.
+            </summary>
+            <remarks>Triggers the camera via USB/IP.</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_SetRemoteMode">
+            <summary>
+            Enables or disables remote control mode on the Canon EOS camera.
+            </summary>
+            <remarks>Switches the camera to PC control mode.</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_GetEvent">
+            <summary>
+            Polls for pending events on the Canon EOS camera such as button presses, focus completion, or operational status changes.
+            </summary>
+            <remarks>Queries camera events, e.g., setting changes.</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_BulbStart">
+            <summary>
+            Initiates continuous bulb exposure (long shutter) mode on the Canon EOS camera.
+            </summary>
+            <remarks>For long exposures</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_BulbEnd">
+            <summary>
+            Terminates continuous bulb exposure (long shutter) mode on the Canon EOS camera.
+            </summary>
+            <remarks>For long exposures</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_InitiateViewfinder">
+            <summary>
+            Starts the viewfinder preview stream on the Canon EOS camera for live view display.
+            </summary>
+            <remarks>For Live View</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_TerminateViewfinder">
+            <summary>
+            Stops the viewfinder preview stream on the Canon EOS camera.
+            </summary>
+            <remarks>For Live View</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_GetViewFinderDat">
+            <summary>
+            Retrieves the current viewfinder image frame from the Canon EOS camera for live preview display.
+            </summary>
+            <remarks>Transfers the live view still images to the PC.</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_DoAf">
+            <summary>
+            Triggers autofocus on the Canon EOS camera.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesCanon.EOS_DriveLens">
+            <summary>
+            Controls lens focus motor movement on the Canon EOS camera for manual focus adjustments.
+            </summary>
+            <remarks>Manual focusing/lens stepping via software.</remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesFujifilm.Fujifilm_InitiateTethering">
+            <summary>
+            Switches the camera to "tethering mode" via software. 
+            The camera's display typically locks or shows a connection icon while control is handed over to the USB channel.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesFujifilm.Fujifilm_GetCheckEvent">
+            <summary>
+            Queries the manufacturer-specific event buffer to report asynchronous camera changes 
+            (e.g., when the photographer manually turns the aperture ring) to the PC.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesLeica.Leica_SetCameraSettings">
+            <summary>
+            Used by desktop applications such as Leica Image Shuttle to transfer camera settings and profiles directly to the camera body.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesLeica.Leica_GetCameraSettings">
+            <summary>
+            Retrieves the current configuration package and the status of the camera system.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesLeica.Leica_GetLensParameter">
+            <summary>
+            Reads out specific lens parameters. 
+            This is used, among other things, in the Adobe Lightroom tethering plugin to retrieve lens metadata from digital rangefinder cameras (such as the M-series).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesMicrosoft.Zune_GetUndefined001">
+            <summary>
+            Represents an undefined Microsoft Zune operation code.
+            </summary>
+            <remarks>
+            This is a vendor-specific opcode used by Microsoft Zune devices. The exact functionality
+            of this operation is not documented or is device-specific. This opcode should be handled
+            with care as its behavior may vary depending on the device implementation.
+            </remarks>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.GetProfileAllData">
+            <summary>
+            Used with older network profiles (Wi-Fi/Ethernet transfers).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.SetProfileData">
+            <summary>
+            Used with older network profiles (Wi-Fi/Ethernet transfers).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.InitiateCaptureRecInSdram">
+            <summary>
+            Triggers the camera and saves the image directly to the camera's internal memory (SDRAM) instead of the memory card.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.AfDrive">
+            <summary>
+            Activates and controls the lens's autofocus motor.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.ChangeCameraMode">
+            <summary>
+            Switches between internal camera modes or priorities.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.DelImageSDRAM">
+            <summary>
+            Deletes an image previously stored in volatile SDRAM.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.GetLargeThumb">
+            <summary>
+            Downloads a high-resolution preview image (full-screen thumbnail).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.GetEvent">
+            <summary>
+            Queries the camera's event buffer. 
+            The camera responds with manufacturer-specific event codes 
+            (e.g., 0xC101 for Nikon_ObjectAddedInSDRAM or 0xC10C for Nikon_LiveViewStateChanged).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.GetVendorPropCodes">
+            <summary>
+            Lists all manufacturer-specific device features supported by this Nikon model.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.AfCaptureSDRAM">
+            <summary>
+            Combined command: Automatically focuses and triggers directly to SDRAM.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.GetPictCtrlData">
+            <summary>
+            Reads the camera's "Picture Control" profiles (color profiles such as Standard, Neutral, and Portrait).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.SetPictCtrlData">
+            <summary>
+            Writes the camera's "Picture Control" profiles (color profiles such as Standard, Neutral, and Portrait).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.Placeholder">
+            <summary>
+            The code 0x9200 marks the exact beginning of the live-view command class. It is included by the camera firmware as a placeholder but does not itself perform any executable function.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.StartLiveView">
+            <summary>
+            Flips up the mirror (on DSLRs) and starts the camera's Live View mode.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.EndLiveView">
+            <summary>
+            Ends live view mode and closes the sensor stream.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.GetLiveViewImg">
+            <summary>
+            Retrieves the current live image as a continuous JPEG frame (called in a loop for video preview).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.MfDrive">
+            <summary>
+            Controls the focus motor manually in precise steps (important for software-based macro focus stacking).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.ChangeAfArea">
+            <summary>
+            Moves the autofocus point in the Live View image.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesNikon.InitiateCaptureRecInMedia">
+            <summary>
+            Immediately cancels an ongoing autofocus operation.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_InternalInit">
+            <summary>
+            Internal initialization command
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_OpenSession">
+            <summary>
+            Starts a manufacturer-specific session (typically expects storage ID 0x00010001 as an argument).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_CloseSession">
+            <summary>
+            Properly closes the manufacturer-specific Panasonic session.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_GetExtDeviceID">
+            <summary>
+            Retrieves an extended device and protocol ID from the Lumix camera.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_InitRemoteMode">
+            <summary>
+            Initial control command to activate remote mode.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_GetProperty">
+            <summary>
+            Queries manufacturer-specific camera properties (used extensively to read out Lumix-specific menu items).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_SetProperty">
+            <summary>
+            Changes Panasonic camera settings via USB command.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_InitiateCapture">
+            <summary>
+            The primary command to trigger the camera digitally (open shutter/take photo).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_RecCtrl_AF_AE">
+            <summary>
+            Controls autofocus (AF) and exposure metering (AE) in shooting mode (equivalent to pressing the shutter button halfway).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesPanasonic.Panasonic_SetupCtrl">
+            <summary>
+            Performs administrative functions on the camera (used, among other things, for software-controlled formatting of memory cards).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSamsung.Unknown1">
+            <summary>
+            Samsung vendor-specific opcode (0x9501).
+            Purpose is not publicly documented; observed in Samsung device traffic.
+            Treat as reserved/vendor-specific and avoid relying on behavior across models/firmware.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSamsung.Unknown2">
+            <summary>
+            Samsung vendor-specific opcode (0x9502).
+            Purpose is not publicly documented; observed in Samsung device traffic.
+            Treat as reserved/vendor-specific and avoid relying on behavior across models/firmware.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSamsung.Unknown3">
+            <summary>
+            Samsung vendor-specific opcode (0x9503).
+            Purpose is not publicly documented; observed in Samsung device traffic.
+            Treat as reserved/vendor-specific and avoid relying on behavior across models/firmware.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSamsung.Unknown4">
+            <summary>
+            Samsung vendor-specific opcode (0x9504).
+            Purpose is not publicly documented; observed in Samsung device traffic.
+            Treat as reserved/vendor-specific and avoid relying on behavior across models/firmware.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSamsung.Unknown5">
+            <summary>
+            Samsung vendor-specific opcode (0x9201).
+            Purpose is not publicly documented; observed in Samsung device traffic.
+            Treat as reserved/vendor-specific and avoid relying on behavior across models/firmware.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSamsung.Unknown6">
+            <summary>
+            Samsung vendor-specific opcode (0x9202).
+            Purpose is not publicly documented; observed in Samsung device traffic.
+            Treat as reserved/vendor-specific and avoid relying on behavior across models/firmware.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_SDIO_Connect">
+            <summary>
+            Performs the initial authentication handshake to unlock advanced PC control.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_SDIO_GetExtDeviceInfo">
+            <summary>
+            Retrieves extended Sony protocol versions and lists of supported properties.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_SDIO_GetExtObjectInfo">
+            <summary>
+            Retrieves specific object metadata for Sony file structures.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_SDIO_GetExtObject">
+            <summary>
+            Downloads media objects via optimized Sony data channels.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_SDIO_SetExtDevicePropValue">
+            <summary>
+            Sets manufacturer-specific camera properties (e.g., exposure or focus modes)
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_SDIO_ControlDevice">
+            <summary>
+            Transmits direct triggering and control commands to the camera electronics (e.g., opening the shutter).
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_SDIO_GetAllExtDevicePropInfo">
+            <summary>
+            Retrieves all current camera settings simultaneously. 
+            PCs send this command at regular intervals to reflect changes made to the camera settings by the photographer live within the software.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_DiExtCmd_write">
+            <summary>
+            Used for direct memory and firmware write accesses.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_DiExtCmd_read">
+            <summary>
+            Used for direct memory and firmware read accesses.
+            </summary>
+        </member>
+        <member name="F:MediaDevices.OpCodesSony.Sony_ReqReconnect">
+            <summary>
+            Forces a restart of the USB interface to switch the device to a different mode (e.g., app mode or mass storage) via software control.
+            </summary>
+        </member>
         <member name="T:MediaDevices.OperationState">
             <summary>
             Indicates the current state of the operation in progress.
@@ -1185,6 +2578,16 @@
             Creates a new MediaDevMgrClassFactory instance (WMDM).
             </summary>
         </member>
+        <member name="M:MediaDevices.Internal.FileSystemPathCheck.ThrowIfInvalidPath(System.String,System.String)">
+            <summary>
+            Validates a device path and throws the appropriate exception when invalid.
+            </summary>
+            <param name="path">The path to validate.</param>
+            <param name="paramName">The name of the parameter, automatically inferred from the call site.</param>
+            <exception cref="T:System.ArgumentNullException">path is null.</exception>
+            <exception cref="T:System.ArgumentException">path is empty or whitespace, or contains invalid characters as defined by <see cref="M:System.IO.Path.GetInvalidPathChars"/>.</exception>
+            <exception cref="T:System.IO.PathTooLongException">path has more than <c>maxPathLength</c> characters.</exception>
+        </member>
         <member name="T:MediaDevices.Internal.HResult">
             <summary>
             Media Device HRESULTS
@@ -1301,11 +2704,24 @@
             <param name="device"></param>
             <param name="id"></param>
         </member>
-        <member name="M:MediaDevices.Internal.Item.TryHandleNonHierarchicalStorage">
-            <summary>
-            Handles DCF storages specific for Apple iPhones.
-            </summary>
-            <returns></returns>
+        <member name="M:MediaDevices.Internal.Item.ResolveParentForPath(MediaDevices.Internal.Item)">
+             <summary>
+             Resolves the logical parent used for path construction.
+             </summary>
+             <remarks>
+             Most MTP devices expose a normal hierarchical object graph where each object
+             has a WPD_OBJECT_PARENT_ID. Android devices usually behave like this.
+            
+             Some devices, especially Apple devices exposing DCF-style storage, may not
+             expose a usable ParentId for top-level folders. In those cases the object may
+             instead expose WPD_OBJECT_CONTAINER_FUNCTIONAL_OBJECT_ID, which points to the
+             closest functional object, typically the storage root.
+            
+             This method keeps both behaviours in one place:
+             1. Use ParentId for normal hierarchical devices.
+             2. Treat functional storage objects as direct children of DEVICE.
+             3. Fall back to ParentContainerId for non-hierarchical / DCF-like devices.
+             </remarks>
         </member>
         <member name="T:MediaDevices.Internal.PortableDeviceKeyCollection">
             <summary>
@@ -1559,6 +2975,118 @@
             Throws <see cref="T:System.InvalidOperationException"/> if the PROPVARIANT type is not <c>VT_DATE</c>.
             </remarks>
         </member>
+        <member name="M:MediaDevices.Internal.StreamWrapper.#ctor(System.Runtime.InteropServices.ComTypes.IStream,System.UInt64,System.Nullable{System.Boolean},System.Nullable{System.Boolean})">
+            <summary>
+            Wraps a COM <see cref="T:System.Runtime.InteropServices.ComTypes.IStream"/> as a managed <see cref="P:MediaDevices.Internal.StreamWrapper.Stream"/>.
+            <para/>
+            This implementation is designed to work with device-based streams
+            such as MTP/WPD (e.g., Android, iPhone, portable devices),
+            where the underlying COM stream may not fully respect the standard
+            <see cref="P:MediaDevices.Internal.StreamWrapper.Stream"/> contract.
+            </summary>
+            <param name="stream">
+            The underlying COM <see cref="T:System.Runtime.InteropServices.ComTypes.IStream"/> instance. Must not be null.
+            </param>
+            <param name="size">
+            Optional size of the stream. Some WPD/MTP streams do not report length reliably,
+            so this can be provided externally.
+            </param>
+            <param name="canWrite">
+            Indicates whether the stream supports writing.
+            <para/>
+            If <c>null</c>, access mode is inferred from <see cref="M:System.Runtime.InteropServices.ComTypes.IStream.Stat(System.Runtime.InteropServices.ComTypes.STATSTG@,System.Int32)"/>.
+            Due to unreliable driver implementations, explicitly specifying this value
+            is recommended for device streams.
+            </param>
+            <param name="canSeek">
+            Indicates whether the stream supports seeking.
+            <para/>
+            For MTP/WPD streams this should normally be set to <c>false</c>.
+            These streams often report seek support but do not behave correctly
+            (e.g. incorrect position, partial support, or runtime failures).
+            <para/>
+            If <c>null</c>, a best-effort probe is performed, but this is not reliable
+            for device streams and may produce false positives.
+            </param>
+            <exception cref="T:System.ArgumentNullException">
+            Thrown if <paramref name="stream"/> is null.
+            </exception>
+            <remarks>
+            This wrapper takes a defensive approach for device streams (MTP/WPD),
+            where COM <see cref="T:System.Runtime.InteropServices.ComTypes.IStream"/> implementations are often incomplete
+            or inconsistent:
+            <list type="bullet">
+            <item><description>Seek may report success without working correctly</description></item>
+            <item><description>Commit may throw even after successful writes</description></item>
+            <item><description>Read/Write may ignore offsets</description></item>
+            </list>
+            
+            Because of this, callers are encouraged to explicitly specify capabilities
+            rather than relying on auto-detection.
+            </remarks>
+        </member>
+        <member name="P:MediaDevices.Internal.StreamWrapper.Length">
+            Note: A value of 0 may indicate either an empty stream
+            or that the size is unknown for device-based streams.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.DEVSVC_NAMESPACE_Services">
+            Device Service (DEVSVC) common service property set.
+            Alias: DEVSVC_NAMESPACE_Services.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.ServiceDisplayName">
+            Alias: DEVSVC_PKEY_Services_ServiceDisplayName.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.ServiceIcon">
+            Alias: DEVSVC_PKEY_Services_ServiceIcon.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.ServiceLocale">
+            Alias: DEVSVC_PKEY_Services_ServiceLocale.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.DEVSVC_SERVICE_Status">
+            Status service type.
+            Alias: DEVSVC_SERVICE_Status.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.DEVSVC_PROPERTY_SET_Devices">
+            Device Service (DEVSVC) Devices property set (DEVSVC_PROPERTY_SET_Devices).
+            Renamed from STATUSSVC_SERVICE_PROPERTIES.
+            Alias: DEVSVC_NAMESPACE_StatusSvc, STATUSSVC_SERVICE_PROPERTIES.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.SignalStrength">
+            Alias: DEVSVC_PKEY_StatusSvc_SignalStrength.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.TextMessages">
+            Alias: DEVSVC_PKEY_StatusSvc_TextMessages.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.NewPictures">
+            Alias: DEVSVC_PKEY_StatusSvc_NewPictures.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.MissedCalls">
+            Alias: DEVSVC_PKEY_StatusSvc_MissedCalls.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.VoiceMail">
+            Alias: DEVSVC_PKEY_StatusSvc_VoiceMail.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.NetworkName">
+            Alias: DEVSVC_PKEY_StatusSvc_NetworkName.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.NetworkType">
+            Alias: DEVSVC_PKEY_StatusSvc_NetworkType.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.Roaming">
+            Alias: DEVSVC_PKEY_StatusSvc_Roaming.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.BatteryLife">
+            Alias: DEVSVC_PKEY_StatusSvc_BatteryLife.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.ChargingState">
+            Alias: DEVSVC_PKEY_StatusSvc_ChargingState.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.StorageCapacity">
+            Alias: DEVSVC_PKEY_StatusSvc_StorageCapacity.
+        </member>
+        <member name="F:MediaDevices.Internal.WPD.StorageFreeSpace">
+            Alias: DEVSVC_PKEY_StatusSvc_StorageFreeSpace.
+        </member>
         <member name="T:MediaDevices.MediaDevice">
             <summary>
             Represents a portable device.
@@ -1629,7 +3157,7 @@
         </member>
         <member name="P:MediaDevices.MediaDevice.IsCaseSensitive">
             <summary>
-            Select if path is case-sensitive or not. Default is not. 
+            Select if path is case-sensitive or not. Default is not.
             </summary>
         </member>
         <member name="P:MediaDevices.MediaDevice.DeviceId">
@@ -1643,6 +3171,11 @@
             Description of the portable device.
             </summary>
             <remarks>Readable when not connected.</remarks>
+        </member>
+        <member name="P:MediaDevices.MediaDevice.IsFriendlyNameEditable">
+            <summary>
+            True if the friendly name of the portable device can be changed. Set on connect.
+            </summary>
         </member>
         <member name="P:MediaDevices.MediaDevice.FriendlyName">
             <summary>
@@ -2227,6 +3760,16 @@
             <exception cref="T:System.ArgumentNullException">persistentUniqueId is null or empty.</exception>
             <exception cref="T:System.IO.FileNotFoundException">persistentUniqueId not found.</exception>
         </member>
+        <member name="M:MediaDevices.MediaDevice.GetPathFromPersistentUniqueId(System.String)">
+            <summary>
+            Gets the full path of a file or folder from its Persistent Unique Id.
+            </summary>
+            <param name="persistentUniqueId">Persistent Unique Id of the file or folder.</param>
+            <returns>Full path of the file or folder.</returns>
+            <exception cref="T:MediaDevices.NotConnectedException">device is not connected.</exception>
+            <exception cref="T:System.ArgumentNullException">persistentUniqueId is null or empty.</exception>
+            <exception cref="T:System.IO.FileNotFoundException">persistentUniqueId not found.</exception>
+        </member>
         <member name="M:MediaDevices.MediaDevice.SupportedCommands">
             <summary>
             Retrieves all commands supported by the device.
@@ -2375,10 +3918,31 @@
             <returns>List of vendor extended operation code.</returns>
             <exception cref="T:MediaDevices.NotConnectedException">device is not connected.</exception>
         </member>
+        <member name="M:MediaDevices.MediaDevice.VendorOpcodes``1">
+            <summary>
+            Queries for vendor extended operation code, cast to the given vendor enum
+            (OpCodesCanon, OpCodesNikon, OpCodesSony, OpCodesPanasonic, OpCodesSamsung, OpCodesLeica, OpCodesFujifilm or OpCodesMicrosoft).
+            </summary>
+            <typeparam name="TEnum">Vendor-specific opcode enum.</typeparam>
+            <returns>List of vendor extended operation codes.</returns>
+            <exception cref="T:MediaDevices.NotConnectedException">device is not connected.</exception>
+        </member>
         <member name="M:MediaDevices.MediaDevice.VendorExecute(System.UInt32,System.Collections.Generic.IEnumerable{System.UInt32},System.UInt32@)">
             <summary>
             Execute a vendor command.
             </summary>
+            <param name="opCode">Operational code of the vendor command.</param>
+            <param name="inputParams">Input parameters.</param>
+            <param name="respCode">Response code</param>
+            <returns>Output parameters</returns>
+            <exception cref="T:MediaDevices.NotConnectedException">device is not connected.</exception>
+        </member>
+        <member name="M:MediaDevices.MediaDevice.VendorExecute``1(``0,System.Collections.Generic.IEnumerable{System.UInt32},System.UInt32@)">
+            <summary>
+            Execute a vendor command with a vendor-typed opcode
+            (OpCodesCanon, OpCodesNikon, OpCodesSony, OpCodesPanasonic, OpCodesSamsung, OpCodesLeica, OpCodesFujifilm or OpCodesMicrosoft).
+            </summary>
+            <typeparam name="TEnum">Vendor-specific opcode enum.</typeparam>
             <param name="opCode">Operational code of the vendor command.</param>
             <param name="inputParams">Input parameters.</param>
             <param name="respCode">Response code</param>
@@ -2416,6 +3980,13 @@
             Retrieves the vendor extension description string.
             </summary>
             <returns>Vendor extension description string</returns>
+            <exception cref="T:MediaDevices.NotConnectedException">device is not connected.</exception>
+        </member>
+        <member name="M:MediaDevices.MediaDevice.GetManufacturer">
+            <summary>
+            Determines the manufacturer from the PnP device id (USB vendor id).
+            </summary>
+            <returns>Manufacturer, or null if the vendor id is unknown.</returns>
             <exception cref="T:MediaDevices.NotConnectedException">device is not connected.</exception>
         </member>
         <member name="M:MediaDevices.MediaDevice.GetServices(MediaDevices.MediaDeviceServices)">
@@ -2524,6 +4095,55 @@
             <summary>
             Indicates the service method invocation context.
             </summary>
+        </member>
+        <member name="T:MediaDevices.MediaDeviceException">
+            <summary>
+            Represents errors that occur when interacting with media devices and COM components.
+            </summary>
+            <param name="message">The error message that explains the reason for the exception.</param>
+        </member>
+        <member name="M:MediaDevices.MediaDeviceException.#ctor(System.String)">
+            <summary>
+            Represents errors that occur when interacting with media devices and COM components.
+            </summary>
+            <param name="message">The error message that explains the reason for the exception.</param>
+        </member>
+        <member name="M:MediaDevices.MediaDeviceException.ThrowIfComError(System.Int32,System.String,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Throws a <see cref="T:MediaDevices.MediaDeviceException"/> when a COM call returns a failure HRESULT.
+            </summary>
+            <param name="errorCode">The HRESULT returned by the COM call. A negative value indicates failure.</param>
+            <param name="interf">The COM interface or component where the error occurred.</param>
+            <param name="function">The function or method that reported the error.</param>
+            <param name="lineNumber">The source line number of the caller (provided by the compiler).</param>
+            <param name="memberName">The member name of the caller (provided by the compiler).</param>
+            <param name="filePath">The source file path of the caller (provided by the compiler).</param>
+            <remarks>
+            When <paramref name="errorCode"/> is a failure (negative) value, this method:
+            - Obtains a descriptive exception message from <see cref="M:System.Runtime.InteropServices.Marshal.GetExceptionForHR(System.Int32)"/>.
+            - Builds a diagnostic message that includes the HRESULT, interface, function, and caller location.
+            - Writes the diagnostic message to the debug output and throws a <see cref="T:MediaDevices.MediaDeviceException"/>.
+            </remarks>
+            <exception cref="T:MediaDevices.MediaDeviceException">Thrown when <paramref name="errorCode"/> indicates a COM failure.</exception>
+        </member>
+        <member name="M:MediaDevices.MediaDeviceException.ThrowIfComError(System.Int32,System.String,System.String,System.String,System.Int32,System.String,System.String)">
+            <summary>
+            Throws a <see cref="T:MediaDevices.MediaDeviceException"/> when a COM call returns a failure HRESULT.
+            </summary>
+            <param name="errorCode">The HRESULT returned by the COM call. A negative value indicates failure.</param>
+            <param name="interf">The COM interface or component where the error occurred.</param>
+            <param name="function">The function or method that reported the error.</param>
+            <param name="parameter">An optional parameter or context value related to the failing call.</param>
+            <param name="lineNumber">The source line number of the caller (provided by the compiler).</param>
+            <param name="memberName">The member name of the caller (provided by the compiler).</param>
+            <param name="filePath">The source file path of the caller (provided by the compiler).</param>
+            <remarks>
+            When <paramref name="errorCode"/> is a failure (negative) value, this method:
+            - Obtains a descriptive exception message from <see cref="M:System.Runtime.InteropServices.Marshal.GetExceptionForHR(System.Int32)"/>.
+            - Builds a diagnostic message that includes the HRESULT, interface, function, parameter, and caller location.
+            - Writes the diagnostic message to the debug output and throws a <see cref="T:MediaDevices.MediaDeviceException"/>.
+            </remarks>
+            <exception cref="T:MediaDevices.MediaDeviceException">Thrown when <paramref name="errorCode"/> indicates a COM failure.</exception>
         </member>
         <member name="T:MediaDevices.MediaDeviceExtentions">
             <summary>
@@ -3432,14 +5052,72 @@
         </member>
         <member name="M:MediaDevices.Progress.StreamExtensions.CopyToStreamAsync(System.IO.Stream,System.IO.Stream,System.UInt64,System.IProgress{MediaDevices.Progress.FileProgressReport},System.Int32,System.Threading.CancellationToken)">
             <summary>
-            Asynchronously copies the contents from a source stream to a destination stream with progress reporting.
+            Asynchronously copies the contents from a source stream to a destination stream with optional progress reporting.
             </summary>
-            <param name="sourceStream">The source stream to copy from (this).</param>
+            <param name="sourceStream">The source stream to copy from.</param>
             <param name="destinationStream">The destination stream to copy to.</param>
             <param name="sourceSize">The total size of the source content.</param>
-            <param name="progressReporter">The progress reporter.</param>
+            <param name="progressReporter">The optional progress reporter.</param>
             <param name="bufferSize">The buffer size.</param>
             <param name="cancellationToken">The cancellation token.</param>
+        </member>
+        <member name="T:MediaDevices.VendorOpCode">
+            <summary>
+            A vendor extended operation code together with the manufacturer it belongs to.
+            The numeric id alone is ambiguous across vendors (0x9201 is both
+            <see cref="F:MediaDevices.OpCodesNikon.StartLiveView"/> and <see cref="F:MediaDevices.OpCodesSony.Sony_SDIO_Connect"/>),
+            so the manufacturer is part of this item's identity.
+            </summary>
+        </member>
+        <member name="M:MediaDevices.VendorOpCode.#ctor(System.Nullable{MediaDevices.ManufacturerId},System.UInt16,System.String)">
+            <summary>
+            A vendor extended operation code together with the manufacturer it belongs to.
+            The numeric id alone is ambiguous across vendors (0x9201 is both
+            <see cref="F:MediaDevices.OpCodesNikon.StartLiveView"/> and <see cref="F:MediaDevices.OpCodesSony.Sony_SDIO_Connect"/>),
+            so the manufacturer is part of this item's identity.
+            </summary>
+        </member>
+        <member name="M:MediaDevices.VendorOpCode.ToString">
+            <summary>
+            Returns the opcode as a hex id followed by its name, e.g. "0x9201 StartLiveView".
+            </summary>
+        </member>
+        <member name="T:MediaDevices.VendorOpCodes">
+            <summary>
+            Translates vendor opcodes reported by a device into <see cref="T:MediaDevices.VendorOpCode"/>
+            items with manufacturer, numeric id and name.
+            </summary>
+        </member>
+        <member name="M:MediaDevices.VendorOpCodes.From(MediaDevices.MediaDevice,System.Nullable{MediaDevices.ManufacturerId})">
+            <summary>
+            Returns the vendor opcodes supported by the device, translated through the
+            opcode enum of the detected manufacturer. Unknown manufacturers fall back
+            to raw opcode values.
+            </summary>
+            <param name="device">The connected device.</param>
+            <param name="manufacturer">
+            Manufacturer of the device. Pass the value when it is already known to avoid
+            an additional device query; when null it is resolved from the device.
+            </param>
+            <returns>The supported vendor opcodes.</returns>
+            <exception cref="T:MediaDevices.NotConnectedException">device is not connected.</exception>
+        </member>
+        <member name="M:MediaDevices.VendorOpCodes.From``1(System.Collections.Generic.IEnumerable{``0})">
+            <summary>
+            Converts vendor opcode enum values to items, with the manufacturer
+            derived from the enum type.
+            </summary>
+            <typeparam name="TEnum">Vendor-specific opcode enum.</typeparam>
+            <param name="opCodes">The opcodes to convert.</param>
+            <returns>The converted opcodes.</returns>
+        </member>
+        <member name="M:MediaDevices.VendorOpCodes.From(System.Collections.Generic.IEnumerable{System.UInt32},System.Nullable{MediaDevices.ManufacturerId})">
+            <summary>
+            Converts raw vendor opcode values to items with unresolved names.
+            </summary>
+            <param name="opCodes">The opcodes to convert.</param>
+            <param name="manufacturer">Manufacturer of the device, or null when unknown.</param>
+            <returns>The converted opcodes.</returns>
         </member>
         <member name="M:MediaDevices.WMDM.IWMDeviceManager2.EnumDevices(MediaDevices.WMDM.IWMDMEnumDevice@)">
             [MethodImpl(MethodImplOptions.InternalCall)]
