@@ -4,6 +4,7 @@ using BMTP3.Consoles.Services;
 using BMTP3.Core4.Api;
 using BMTP3.Core4.Api.Models;
 using BMTP3.Core4.Api.Models.Enums;
+using BMTP3.Core4.Engine.Exceptions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Spectre.Console;
@@ -72,6 +73,15 @@ public class BackupConsoleCommand4 : BaseConsoleCommand
 			consolePrinter.PrintStatus("Core4 backup cancelled.");
 			logger.LogInformation("Core4 backup cancelled.");
 			return 2;
+		}
+		catch (SessionVersionMismatchException ex)
+		{
+			// The printed message already states found/expected version and the remedy; the log line carries the versions for grepping.
+			consolePrinter.PrintError(ex.Message);
+			logger.LogWarning(ex,
+				"Incompatible session file: found version {FoundVersion}, expected version {ExpectedVersion}. Delete the session file and run again.",
+				ex.FoundVersion, ex.ExpectedVersion);
+			return 1;
 		}
 		catch (Exception ex)
 		{
