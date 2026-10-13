@@ -177,7 +177,8 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public static Option<bool> SimulateOption { get; } = new("--dry-run", "-n", "--simulate")
 	{
-		Description = "Simulates the backup without performing any write operations."
+		Description = "Simulates the backup without performing any write operations.",
+		DefaultValueFactory = _ => false
 	};
 
 	public bool Simulate { get; set; }
@@ -192,7 +193,7 @@ public class BackupOptionsModel4 : BaseOptionsModel
 
 	public static Option<SessionResumeStrategy> ResumeBehaviorOption { get; } = new("--resume-behavior")
 	{
-		Description = "How to handle a session mismatch (file list changed since last run): Abort (default), Restart (delete old session and start over), or Continue (reconcile and resume anyway).",
+		Description = "How to handle a session mismatch (file list changed since last run): Abort, Restart (delete old session and start over), or Continue (reconcile and resume anyway).",
 		Arity = ArgumentArity.ZeroOrOne,
 		DefaultValueFactory = _ => SessionResumeStrategy.Abort
 	};
@@ -202,8 +203,7 @@ public class BackupOptionsModel4 : BaseOptionsModel
 	public static Option<ItemIdScope> ItemIdScopeOption { get; } = new("--item-id-scope")
 	{
 		Description = "How files are identified for resume: " +
-			"Persistent (metadata like path+size+dates, independent of WPD — default, " +
-			"stable across USB reconnections). Note: changes when file size or dates change. " +
+			"Persistent (metadata like path+size+dates, independent of WPD, stable across USB reconnections). Note: changes when file size or dates change. " +
 			"Connection (device PUID — stable on same USB port). " +
 			"Session (ObjectId — unique within a single Connect() only).",
 		Arity = ArgumentArity.ZeroOrOne,

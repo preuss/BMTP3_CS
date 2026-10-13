@@ -79,13 +79,13 @@ public class ConsolesProgram
 		BackupConsoleCommand4InitConfig initConfigCommand4 = new() { ServiceProvider = serviceProvider };
 		rootCommand.Subcommands.Add(initConfigCommand4);
 
-		//ReplaceHelp(rootCommand);
+		ReplaceHelp(rootCommand, new CustomHelpAction());
 
 		ParseResult parseResult = rootCommand.Parse(args);
 		return await parseResult.InvokeAsync();
 	}
 
-	private static void ReplaceHelp(Command command)
+	internal static void ReplaceHelp(Command command, CustomHelpAction helpAction)
 	{
 		HelpOption? old = command.Options
 			.OfType<HelpOption>()
@@ -96,15 +96,15 @@ public class ConsolesProgram
 			command.Options.Remove(old);
 		}
 
-		command.Add(new HelpOption("-h", "--help")
+		command.Add(new HelpOption("-?", "-h", "--help")
 		{
 			Description = "Show help and usage information",
-			Action = new CustomHelpAction()
+			Action = helpAction
 		});
 
 		foreach(Command sub in command.Subcommands)
 		{
-			ReplaceHelp(sub);
+			ReplaceHelp(sub, helpAction);
 		}
 	}
 
