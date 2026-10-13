@@ -31,7 +31,13 @@ public class ConsolesProgram
 
 	public static async Task<int> Main(string[] args)
 	{
-		HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+		// Do NOT pass args to the host builder. Host.CreateApplicationBuilder(args) implicitly adds a
+		// command-line config provider that re-parses argv with different syntax rules than
+		// System.CommandLine (it throws FormatException on "-r=false"). Nothing reads config from CLI
+		// args — all options flow through System.CommandLine -> BackupOptionsModel4 -> BackupPlanBuilder.
+		// No args = no second parser, no config pollution from CLI args, and no CLI-arg/config-key
+		// collisions (e.g. "--Environment" switching which appsettings file loads).
+		HostApplicationBuilder builder = Host.CreateApplicationBuilder();
 		List<IConfigSetup> configSetups = new()
 		{
 			new ConfigAppSetup()
