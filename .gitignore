@@ -406,3 +406,11 @@ FodyWeavers.xsd
 
 # JetBrains Rider
 *.sln.iml
+
+# Temporary working/scratch docs - never commit
+working_skipped.md
+prompt.txt
+prompt2.txt
+resume.txt
+rettelser_diff.txt
+

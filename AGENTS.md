@@ -77,6 +77,7 @@ Helpers/     → Utilities (PathHelper, Guard, TransformProgress)
 2. **Session state skal persisteres atomisk** — `SessionStateService.SaveAsync` i `finally` block.
 3. **Progress må aldrig dispatche async** — brug `TransformProgress<TInner,TOuter>` og `ActionProgress<T>`, aldrig `Progress<T>` i Core4.
 4. **Ændr aldrig formatering/stil i eksisterende filer** — kun nødvendige funktionelle ændringer; følg den enkelte fils eksisterende konvention (fx `if(` vs `if (`, `} else`-mønstre, trailing newline).
+5. **Midlertidige arbejds-docs committes aldrig** — `working_skipped.md`, `prompt*.txt`, `resume.txt` m.fl. er scratch-notes til sessionen, ikke programdokumentation. De ligger i `.gitignore`.
 
 ## Error Taxonomy
 
