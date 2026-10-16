@@ -221,4 +221,30 @@ public class RenameCollisionResolverTests
 		string relativeResult = result.TargetPath.Substring(endOfDir).TrimStart('\\', '/');
 		Assert.Equal("{deviceName}_photo_1", relativeResult);
 	}
+
+	[Fact]
+	public async Task Custom_FileNameWithInvalidChars_Sanitized()
+	{
+		RenameCollisionResolver resolver = CreateResolver();
+		string dir = GetUniqueNonExistentPath();
+		string intendedPath = Path.Combine(dir, "photo.jpg");
+
+		RenameCollisionRequest request = BaseRequest with
+		{
+			SourcePath = intendedPath,
+			IntendedTargetPath = intendedPath,
+			FileName = "a*b.jpg",
+			RelativeFilePath = "a*b.jpg",
+			RenameStrategy = RenameStrategy.CustomPattern,
+			CustomRenamePattern = "{fileName}_{count}",
+		};
+
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken);
+
+		Assert.Equal(CollisionResolutionAction.Move, result.Action);
+		int endOfDir = dir.Length;
+		string relativeResult = result.TargetPath.Substring(endOfDir).TrimStart('\\', '/');
+		Assert.Equal("a_b_1", relativeResult);
+		Assert.DoesNotContain("*", result.TargetPath);
+	}
 }

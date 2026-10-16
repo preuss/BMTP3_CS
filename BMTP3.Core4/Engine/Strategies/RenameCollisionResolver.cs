@@ -155,7 +155,10 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 			["count"] = count.ToString(),
 		});
 
+		// Validates the pattern output (rejects ':', '.', '..').
 		relative = PathHelper.NormalizeCustomRelativePath(relative);
+		// Replaces characters Windows rejects (e.g. '*' from a source file name).
+		relative = PathHelper.SanitizeRelativePath(relative);
 
 		return Path.Combine(dir, relative);
 	}

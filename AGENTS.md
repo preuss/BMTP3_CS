@@ -78,6 +78,7 @@ Helpers/     → Utilities (PathHelper, Guard, TransformProgress)
 3. **Progress må aldrig dispatche async** — brug `TransformProgress<TInner,TOuter>` og `ActionProgress<T>`, aldrig `Progress<T>` i Core4.
 4. **Ændr aldrig formatering/stil i eksisterende filer** — kun nødvendige funktionelle ændringer; følg den enkelte fils eksisterende konvention (fx `if(` vs `if (`, `} else`-mønstre, trailing newline).
 5. **Midlertidige arbejds-docs committes aldrig** — `working_skipped.md`, `prompt*.txt`, `resume.txt` m.fl. er scratch-notes til sessionen, ikke programdokumentation. De ligger i `.gitignore`.
+6. **Flerlinjede kald/definitioner** — bryder man argumenterne til nye linjer, skal den afsluttende `);`/`)` stå på sin **egen** linje (både kald og ctor/metode-definitioner).
 
 ## Error Taxonomy
 
@@ -114,6 +115,48 @@ Normaliseringsregler:
 | **DRY** | `TransformProgress<T>` genbruges til scanning + download. `ParseEnum<T>` central |
 | **Progress determinisme** | `Progress<T>` forbudt i Core4. Kun synkrone wrappers |
 | **Forensic evidence** | Temp-filer ved fejl bevares (slettes ikke blindt) |
+
+---
+
+## Regler for al kode (obligatoriske)
+
+**1. SOLID-principperne:**
+- **SRP** — én enhed/funktion har kun én grund til at ændre sig og udfører kun én opgave.
+- **OCP** — åben for udvidelse, lukket for modifikation.
+- **LSP** — subtyper skal kunne erstatte deres basetyper uden at bryde systemet.
+- **ISP** — mange specifikke interfaces frem for ét stort generelt.
+- **DIP** — afhæng af abstraktioner, ikke konkrete implementationer.
+
+**2. Arkitektur & domænemodeller:**
+- **Separation of Concerns** — skarp opdeling af forretningslogik, datavalidering, datatransformation og infrastruktur/IO.
+- **Clean / Hexagonal Architecture** — forretningskernen uafhængig af biblioteker, filsystem og rammeværk.
+- **Bounded Contexts (DDD)** — domænebegreber har præcise afgrænsninger og blandes aldrig.
+- **Avoid Primitive Obsession** — stærke typer, Value Objects eller Enums frem for rå strenge og heltal.
+- **High Cohesion & Low Coupling** — høj intern sammenhæng, minimale og klare afhængigheder udad.
+
+**3. Kontrakt, validering & sikkerhed:**
+- **Design by Contract (DbC)** — eksplicitte Preconditions, Postconditions og Invariants.
+- **Input Validation vs. Data Transformation** — validering (boundary-tjek) og transformation (syntaks/normalisering) adskilt i hver sine enheder (fx `Normalize*` ≠ `Sanitize*`).
+- **Parse, Don't Validate** — omdan uverificeret input til sikre typer ved systemgrænsen.
+- **Fail-Fast** — afvis ugyldig data/usikre tilstande omgående med eksplicitte exceptions; gæt eller fald aldrig tilbage til standardværdier.
+- **Defense in Depth** — stol aldrig på at data er renset/valideret i et andet eller tidligere lag.
+- **Principle of Least Privilege (PoLP)** — enheder må kun have adgang til absolut nødvendige ressourcer og data.
+
+**4. Adfærd & funktionsdesign:**
+- **Command Query Separation (CQS)** — en funktion ændrer enten tilstand (Command) eller returnerer data (Query), aldrig begge.
+- **Side-Effect Free Functions** — foretræk rene funktioner uden skjulte globale bivirkninger.
+- **Immutability by Default** — data og objekter ændres ikke efter oprettelse, medmindre eksplicit krævet.
+- **YAGNI** — implementer ikke uombedt "ekstra" logik eller gætterier om fremtidige behov.
+- **KISS** — den mest direkte og læsbare løsning uden over-engineering.
+- **DRY** — logik findes kun ét autoritativt sted.
+
+**5. Kodekvalitet & navngivning:**
+- **POLA (Least Surprise)** — koden opfører sig nøjagtigt som navn og signatur antyder, uden usynlige bonus-handlinger (navn == adfærd).
+- **Intention-Revealing Names** — navne beskriver HVAD formålet er, ikke HVORDAN det udføres internt.
+- **Self-Documenting Code** — koden udtrykker sin egen mening uden lange kommentarer.
+- **Explicit over Implicit** — gør afhængigheder, antagelser og returneringer tydelige frem for implicitte.
+
+**Gate før "færdig":** auditér HELE din egen diff mod reglerne ovenfor; find ≥1 brud → ret det eller stop og spørg. Aldrig "færdig" med et åbent brud.
 
 ---
 

@@ -1,6 +1,7 @@
 ﻿using BMTP3.Common.MessageFormatterParser;
 using BMTP3.Core4.Api.Models.Enums;
 using BMTP3.Core4.Helpers;
+using Microsoft.Extensions.Logging;
 
 namespace BMTP3.Core4.Engine.Strategies;
 
@@ -8,42 +9,61 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 {
 	private readonly IMessageFormatter _formatter;
 	private readonly IFileFormatValuesFactory _formatValuesFactory;
+	private readonly ILogger<TargetPathResolver> _logger;
 
-	public TargetPathResolver(IMessageFormatter formatter, IFileFormatValuesFactory formatValuesFactory)
+	public TargetPathResolver(
+		IMessageFormatter formatter,
+		IFileFormatValuesFactory formatValuesFactory,
+		ILogger<TargetPathResolver> logger
+	)
 	{
 		_formatter = formatter ?? throw new ArgumentNullException(nameof(formatter));
 		_formatValuesFactory = formatValuesFactory ?? throw new ArgumentNullException(nameof(formatValuesFactory));
+		_logger = logger ?? throw new ArgumentNullException(nameof(logger));
 	}
 
 	public string Resolve(TargetPathResolveRequest request)
 	{
 		return request.OutputStructureStrategy switch
 		{
-			OutputStructureStrategy.PreserveHierarchy => ResolvePreserveHierarchy(request.DestinationRoot, request.RelativeDirectoryPath, request.FileName),
-			OutputStructureStrategy.Flat => ResolveFlat(request.DestinationRoot, request.FileName),
-			OutputStructureStrategy.CustomPathPattern => ResolveCustomPathPattern(request),
+			OutputStructureStrategy.PreserveHierarchy => ResolvePreserveHierarchy(request.DestinationRoot, request.RelativeDirectoryPath, request.FileName, _logger),
+			OutputStructureStrategy.Flat => ResolveFlat(request.DestinationRoot, request.FileName, _logger),
+			OutputStructureStrategy.CustomPathPattern => ResolveCustomPathPattern(request, _formatter, _formatValuesFactory, _logger),
 			_ => throw new ArgumentOutOfRangeException(nameof(request.OutputStructureStrategy), request.OutputStructureStrategy, "Unknown output structure strategy."),
 		};
 	}
 
-	private static string ResolvePreserveHierarchy(string destinationRoot, string? relativeDirectoryPath, string fileName)
+	private static string ResolvePreserveHierarchy(string destinationRoot, string? relativeDirectoryPath, string fileName, ILogger logger)
 	{
-		string normalizedRelativeDirectoryPath = NormalizeRelativeDirectoryPath(relativeDirectoryPath);
+		// Combine the source-derived parts, then sanitize once: sanitizing the whole relative path
+		// covers every segment. The destination root is combined afterwards because its drive colon
+		// is legal there and must never be sanitized.
+		string relativePath = string.IsNullOrWhiteSpace(relativeDirectoryPath)
+			? fileName
+			: Path.Combine(relativeDirectoryPath, fileName);
+		string sanitizedRelativePath = SanitizeRelativePath(relativePath);
+		LogIfSanitizedChange(logger, relativePath, sanitizedRelativePath, "Relative path");
 
-		if(normalizedRelativeDirectoryPath.Length == 0)
-		{
-			return Path.Combine(destinationRoot, fileName);
-		}
+		string finalRelativePath = NormalizeRelativeDirectoryPath(sanitizedRelativePath);
 
-		return Path.Combine(destinationRoot, normalizedRelativeDirectoryPath, fileName);
+		return Path.Combine(destinationRoot, finalRelativePath);
 	}
 
-	private static string ResolveFlat(string destinationRoot, string fileName)
+	private static string ResolveFlat(string destinationRoot, string fileName, ILogger logger)
 	{
-		return Path.Combine(destinationRoot, fileName);
+		string sanitizedFileName = SanitizeRelativePath(fileName);
+
+		LogIfSanitizedChange(logger, fileName, sanitizedFileName, "File name");
+
+		return Path.Combine(destinationRoot, sanitizedFileName);
 	}
 
-	private string ResolveCustomPathPattern(TargetPathResolveRequest request)
+	private static string ResolveCustomPathPattern(
+		TargetPathResolveRequest request,
+		IMessageFormatter formatter,
+		IFileFormatValuesFactory formatValuesFactory,
+		ILogger logger
+	)
 	{
 		if(string.IsNullOrWhiteSpace(request.CustomPattern))
 		{
@@ -56,20 +76,39 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 			CreateFileDate: request.CreateFileDate,
 			ItemId: request.ItemId,
 			StrongHash: request.StrongHash,
-			SourceDetails: request.SourceDetails);
+			SourceDetails: request.SourceDetails
+		);
 
-		Dictionary<string, object> values = _formatValuesFactory.Create(valuesRequest);
+		Dictionary<string, object> values = formatValuesFactory.Create(valuesRequest);
 
-		PreparedMessageFormat prepared = new(_formatter, request.CustomPattern, values);
+		PreparedMessageFormat prepared = new(formatter, request.CustomPattern, values);
 
 		string relativePath = prepared.Format();
-		relativePath = PathHelper.NormalizeCustomRelativePath(relativePath);
+		string normalizedRelativePath = NormalizeRelativeDirectoryPath(relativePath);
+		string sanitizedRelativePath = SanitizeRelativePath(normalizedRelativePath);
 
-		return Path.Combine(request.DestinationRoot, relativePath);
+		LogIfSanitizedChange(logger, normalizedRelativePath, sanitizedRelativePath, "Custom path output");
+
+		return Path.Combine(request.DestinationRoot, sanitizedRelativePath);
 	}
 
 	private static string NormalizeRelativeDirectoryPath(string? relativeDirectoryPath)
 	{
 		return PathHelper.NormalizeCustomRelativePath(relativeDirectoryPath, normalizeNull: true);
+	}
+
+	private static string SanitizeRelativePath(string relativePath)
+	{
+		return PathHelper.SanitizeRelativePath(relativePath);
+	}
+
+	private static void LogIfSanitizedChange(ILogger logger, string? original, string sanitized, string label)
+	{
+		if(original is null || string.Equals(original, sanitized, StringComparison.Ordinal))
+		{
+			return;
+		}
+
+		logger.LogDebug("{Label} sanitized for destination: '{Original}' -> '{Sanitized}'", label, original, sanitized);
 	}
 }

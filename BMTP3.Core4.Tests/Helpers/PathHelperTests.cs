@@ -275,4 +275,169 @@ public class PathHelperTests
 	{
 		Assert.Throws<ArgumentException>(() => PathHelper.TrimSeparators("a/b", '|'));
 	}
+
+	// ------------------------------------------------------------
+	// SanitizeFileNameComponent
+	// ------------------------------------------------------------
+
+	[Theory]
+	[InlineData("a*b.log", "a_b.log")]
+	[InlineData("a?b.log", "a_b.log")]
+	[InlineData("a<b>c.log", "a_b_c.log")]
+	[InlineData("a|b.log", "a_b.log")]
+	[InlineData("a:b.log", "a_b.log")]
+	[InlineData("a\"b.log", "a_b.log")]
+	[InlineData("a/b.log", "a_b.log")]
+	[InlineData("a\\b.log", "a_b.log")]
+	[InlineData("a\tb.log", "a_b.log")]
+	[InlineData("a\u0001b.log", "a_b.log")]
+	[InlineData("***", "___")]
+	public void SanitizeFileNameComponent_ReplacesReservedCharacters(string input, string expected)
+	{
+		Assert.Equal(expected, PathHelper.SanitizeFileNameComponent(input));
+	}
+
+	[Theory]
+	[InlineData("img_100@Phone.jpg")]
+	[InlineData("ferie æøå bil.jpg")]
+	[InlineData("navn mellemrum.jpg")]
+	[InlineData(".gitignore")]
+	[InlineData("photo (2026) [kopi].jpg")]
+	public void SanitizeFileNameComponent_LegalCharacters_Unchanged(string name)
+	{
+		Assert.Equal(name, PathHelper.SanitizeFileNameComponent(name));
+	}
+
+	[Theory]
+	[InlineData("foo.", "foo")]
+	[InlineData("foo ", "foo")]
+	[InlineData("foo. ", "foo")]
+	[InlineData("folder.v1.", "folder.v1")]
+	public void SanitizeFileNameComponent_TrailingDotOrSpace_Trimmed(string input, string expected)
+	{
+		Assert.Equal(expected, PathHelper.SanitizeFileNameComponent(input));
+	}
+
+	[Fact]
+	public void SanitizeFileNameComponent_LeadingDotOrSpace_Preserved()
+	{
+		Assert.Equal(".gitignore", PathHelper.SanitizeFileNameComponent(".gitignore"));
+		Assert.Equal(" .gitignore", PathHelper.SanitizeFileNameComponent(" .gitignore"));
+	}
+
+	[Theory]
+	[InlineData("")]
+	[InlineData("...")]
+	[InlineData("..")]
+	[InlineData("   ")]
+	public void SanitizeFileNameComponent_EmptyAfterSanitize_ReturnsUnderscore(string input)
+	{
+		Assert.Equal("_", PathHelper.SanitizeFileNameComponent(input));
+	}
+
+	[Theory]
+	[InlineData("CON", "CON_")]
+	[InlineData("con", "con_")]
+	[InlineData("NUL.txt", "NUL_.txt")]
+	[InlineData("CON.file", "CON_.file")]
+	[InlineData("COM1.log", "COM1_.log")]
+	[InlineData("lpt1.dat", "lpt1_.dat")]
+	[InlineData("aux", "aux_")]
+	[InlineData("CON.", "CON_")]
+	public void SanitizeFileNameComponent_ReservedDeviceName_GetsSuffix(string input, string expected)
+	{
+		Assert.Equal(expected, PathHelper.SanitizeFileNameComponent(input));
+	}
+
+	[Theory]
+	[InlineData("CONSOLE.txt")]
+	[InlineData("COM10")]
+	[InlineData("NULX")]
+	[InlineData("LPT10")]
+	public void SanitizeFileNameComponent_NonReservedNames_Unchanged(string name)
+	{
+		Assert.Equal(name, PathHelper.SanitizeFileNameComponent(name));
+	}
+
+	[Theory]
+	[InlineData("a*b.log")]
+	[InlineData("CON")]
+	[InlineData("foo.")]
+	[InlineData("NUL.txt")]
+	[InlineData("a_b.log")]
+	public void SanitizeFileNameComponent_Idempotent(string input)
+	{
+		string firstPass = PathHelper.SanitizeFileNameComponent(input);
+		string secondPass = PathHelper.SanitizeFileNameComponent(firstPass);
+
+		Assert.Equal(firstPass, secondPass);
+	}
+
+	[Fact]
+	public void SanitizeFileNameComponent_Null_Throws()
+	{
+		Assert.Throws<ArgumentNullException>(() => PathHelper.SanitizeFileNameComponent(null!));
+	}
+
+	[Fact]
+	public void SanitizeFileNameComponent_RealWorldMtpName_OnlyAsteriskReplaced()
+	{
+		string raw = "HilinkSvc_null_evt_17.0.4.313_2844af23b5bc39a0f4961aab67d8ddf*c4bc558b533201209b84f4415ee7b3_@1789845320822.log";
+
+		string sanitized = PathHelper.SanitizeFileNameComponent(raw);
+
+		Assert.DoesNotContain("*", sanitized);
+		Assert.Contains("@1789845320822.log", sanitized);
+		Assert.Contains("ddf_c4bc558b", sanitized);
+		Assert.Equal(raw.Length, sanitized.Length);
+	}
+
+	// ------------------------------------------------------------
+	// SanitizeRelativePath
+	// ------------------------------------------------------------
+
+	[Theory]
+	[InlineData("a*/b?/c.txt", @"a_/b_/c.txt")]
+	[InlineData("Android/data/com.huawei.hilink.framework/files/Log", @"Android/data/com.huawei.hilink.framework/files/Log")]
+	[InlineData(@"vacation\2026", @"vacation\2026")]
+	[InlineData("/lead/", "/lead/")]
+	[InlineData("", "")]
+	public void SanitizeRelativePath_SanitizesEachSegment(string input, string expected)
+	{
+		Assert.Equal(expected, PathHelper.SanitizeRelativePath(input));
+	}
+
+	[Fact]
+	public void SanitizeRelativePath_TraversalSegments_CollapseToUnderscore()
+	{
+		Assert.Equal(@"a/_/b", PathHelper.SanitizeRelativePath("a/../b"));
+		Assert.Equal(@"_/b", PathHelper.SanitizeRelativePath("./b"));
+	}
+
+	[Theory]
+	[InlineData("CON/file.txt", @"CON_/file.txt")]
+	[InlineData("aux\\sub\\nul.dat", @"aux_\sub\nul_.dat")]
+	public void SanitizeRelativePath_ReservedDeviceNameSegment_GetsSuffix(string input, string expected)
+	{
+		Assert.Equal(expected, PathHelper.SanitizeRelativePath(input));
+	}
+
+	[Fact]
+	public void SanitizeRelativePath_MixedSeparatorsAndEmptyComponents_Preserved()
+	{
+		Assert.Equal(@"a/b\c", PathHelper.SanitizeRelativePath("a/b\\c"));
+		Assert.Equal(@"a//b", PathHelper.SanitizeRelativePath("a//b"));
+	}
+
+	[Fact]
+	public void SanitizeRelativePath_LegalCharactersAndUnicode_Unchanged()
+	{
+		Assert.Equal(@"ferie æøå/@name", PathHelper.SanitizeRelativePath("ferie æøå/@name"));
+	}
+
+	[Fact]
+	public void SanitizeRelativePath_Null_Throws()
+	{
+		Assert.Throws<ArgumentNullException>(() => PathHelper.SanitizeRelativePath(null!));
+	}
 }

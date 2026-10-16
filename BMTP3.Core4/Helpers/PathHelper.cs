@@ -411,6 +411,151 @@ internal static class PathHelper
 			.TrimStart(CanonicalSeparator);
 	}
 
+	// Windows device names that must not be used as a file or directory name.
+	// The check applies to the stem (everything before the first dot), so both
+	// "CON" and "NUL.txt" are caught.
+	private static readonly string[] ReservedDeviceNames =
+	{
+		"CON", "PRN", "AUX", "NUL",
+		"COM1", "COM2", "COM3", "COM4", "COM5", "COM6", "COM7", "COM8", "COM9",
+		"LPT1", "LPT2", "LPT3", "LPT4", "LPT5", "LPT6", "LPT7", "LPT8", "LPT9"
+	};
+
+	/// <summary>
+	/// Turns a single file or directory name into a name that is valid on Windows.
+	/// </summary>
+	/// <remarks>
+	/// The transformation is <b>deterministic</b> (no time, culture or file system state),
+	/// <b>total for non-null input</b> (never throws a formatting error) and <b>idempotent</b>
+	/// (<c>f(f(x)) == f(x)</c>), so it is safe to call for every backup run and on resume.
+	///
+	/// Steps:
+	/// <list type="number">
+	///   <item><description>
+	///   Every reserved character (<c>0x00</c>-<c>0x1F</c> and <c>\ / : * ? " &lt; &gt; |</c>)
+	///   is replaced with <c>_</c>.
+	///   </description></item>
+	///   <item><description>
+	///   Trailing spaces and dots are trimmed. Leading characters are preserved, because
+	///   Windows allows them (e.g. <c>.gitignore</c>).
+	///   </description></item>
+	///   <item><description>
+	///   An empty result becomes <c>_</c>.
+	///   </description></item>
+	///   <item><description>
+	///   A reserved device name gets an underscore inserted after its stem:
+	///   <c>CON</c> → <c>CON_</c>, <c>NUL.txt</c> → <c>NUL_.txt</c>.
+	///   </description></item>
+	/// </list>
+	///
+	/// The mapping is lossy on purpose: only characters that Windows refuses are touched,
+	/// so legal characters such as <c>@</c> or <c>æøå</c> pass through unchanged. The
+	/// original name stays available in the sidecar and session state.
+	/// </remarks>
+	/// <param name="name">The raw name. Must not be <c>null</c>.</param>
+	/// <returns>A Windows-safe equivalent of <paramref name="name"/>.</returns>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="name"/> is <c>null</c>.</exception>
+	public static string SanitizeFileNameComponent(string name)
+	{
+		ArgumentNullException.ThrowIfNull(name);
+
+		if(name.Length == 0)
+			return "_";
+
+		char[] sanitized = name.ToCharArray();
+
+		for(int i = 0; i < sanitized.Length; i++)
+		{
+			if(sanitized[i] < ' ' || sanitized[i] is '\\' or '/' or ':' or '*' or '?' or '"' or '<' or '>' or '|')
+				sanitized[i] = '_';
+		}
+
+		string result = new string(sanitized).TrimEnd(' ', '.');
+
+		if(result.Length == 0)
+			return "_";
+
+		int stemEnd = result.IndexOf('.');
+
+		if(stemEnd < 0)
+		{
+			stemEnd = result.Length;
+		}
+
+		string stem = result.Substring(0, stemEnd);
+
+		if(IsReservedDeviceName(stem))
+		{
+			return stem + "_" + result.Substring(stemEnd);
+		}
+
+		return result;
+	}
+
+	/// <summary>
+	/// Sanitizes every component of a relative path so that the resulting path is valid on Windows.
+	/// </summary>
+	/// <remarks>
+	/// The path is split on both <c>\</c> and <c>/</c> before each component is passed through
+	/// <see cref="SanitizeFileNameComponent"/>. Only the components are rewritten: the separators
+	/// and the overall structure (including empty components) are preserved, so this method never
+	/// normalizes. Use <see cref="NormalizeCustomRelativePath"/> for separator and segment
+	/// normalization.
+	/// A <c>.</c> or <c>..</c> component collapses to <c>_</c> because the component sanitizer
+	/// trims trailing dots, so a leaked traversal component cannot escape the destination root.
+	/// </remarks>
+	/// <param name="relativePath">The raw relative path. Must not be <c>null</c>.</param>
+	/// <returns>A Windows-safe relative path that keeps the input separators.</returns>
+	/// <exception cref="ArgumentNullException">Thrown when <paramref name="relativePath"/> is <c>null</c>.</exception>
+	public static string SanitizeRelativePath(string relativePath)
+	{
+		ArgumentNullException.ThrowIfNull(relativePath);
+
+		List<string> pieces = new();
+
+		int segmentStart = 0;
+
+		for(int i = 0; i <= relativePath.Length; i++)
+		{
+			bool atEnd = i == relativePath.Length;
+
+			if(!atEnd)
+			{
+				char current = relativePath[i];
+
+				if(current != FileSystemSeparator && current != CanonicalSeparator)
+				{
+					continue;
+				}
+			}
+
+			if(i > segmentStart)
+			{
+				pieces.Add(SanitizeFileNameComponent(relativePath.Substring(segmentStart, i - segmentStart)));
+			}
+
+			if(!atEnd)
+			{
+				pieces.Add(relativePath[i].ToString());
+			}
+
+			segmentStart = i + 1;
+		}
+
+		return string.Concat(pieces);
+	}
+
+	/// <summary>
+	/// Returns whether <paramref name="stem"/> is a reserved Windows device name.
+	/// Comparison is case-insensitive, matching how Windows resolves these names.
+	/// </summary>
+	private static bool IsReservedDeviceName(string stem)
+	{
+		return Array.Exists(
+			ReservedDeviceNames,
+			reserved => string.Equals(stem, reserved, StringComparison.OrdinalIgnoreCase));
+	}
+
 	#region LegacyPathHelpers (to be removed after canonical refactor)
 
 	/// <summary>

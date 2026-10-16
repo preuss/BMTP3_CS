@@ -520,7 +520,7 @@ internal sealed class BackupEngine : IBackupEngine
 								LastAccessDateTime = record.Metadata.AccessedDateTime,
 								BackupStartDateTime = backupStartTime,
 								SourceRelativeFilePath = record.Item.RelativeFilePath,
-								SanitizedSourceRelativeFilePath = record.Item.RelativeFilePath?.Replace(':', '_'),
+								SanitizedSourceRelativeFilePath = record.Item.RelativeFilePath is null ? null : PathHelper.SanitizeRelativePath(record.Item.RelativeFilePath),
 								TargetRelativeFilePath = Path.GetRelativePath(plan.Destination, targetPath),
 								Hashes = record.Metadata.ComputedHashes,
 								SourceDetails = record.SourceDetails,
