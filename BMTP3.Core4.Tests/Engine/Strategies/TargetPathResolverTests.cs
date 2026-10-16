@@ -325,6 +325,53 @@ public class TargetPathResolverTests
 	}
 
 	[Fact]
+	public void Resolve_CustomPathPattern_SourceFileNameWithColon_Sanitized()
+	{
+		// A source file name may legally contain ':' (e.g. on MTP). The custom pattern output is
+		// sanitized before it is normalized, so the colon never reaches path validation.
+		TargetPathResolver realResolver = new(
+			new FakeMessageFormatter(),
+			new FileFormatValuesFactory(),
+			NullLogger<TargetPathResolver>.Instance
+		);
+		TargetPathResolveRequest request = new(
+			DestinationRoot: "D:\\Backup",
+			RelativeDirectoryPath: null,
+			FileName: "IMG:1.jpg",
+			OutputStructureStrategy: OutputStructureStrategy.CustomPathPattern,
+			CreateFileDate: TestDate,
+			ItemId: "abc",
+			StrongHash: null,
+			CustomPattern: "{fileName}.{ext}",
+			SourceDetails: null
+		);
+
+		string result = realResolver.Resolve(request);
+
+		Assert.Equal("D:\\Backup\\IMG_1.jpg", result);
+	}
+
+	[Fact]
+	public void Resolve_CustomPathPattern_PatternWithColon_Sanitized()
+	{
+		TargetPathResolveRequest request = new(
+			DestinationRoot: "D:\\Backup",
+			RelativeDirectoryPath: null,
+			FileName: "photo.jpg",
+			OutputStructureStrategy: OutputStructureStrategy.CustomPathPattern,
+			CreateFileDate: TestDate,
+			ItemId: "abc",
+			StrongHash: null,
+			CustomPattern: "a:b/{fileName}",
+			SourceDetails: null
+		);
+
+		string result = _resolver.Resolve(request);
+
+		Assert.Equal("D:\\Backup\\a_b\\photo", result);
+	}
+
+	[Fact]
 	public void Resolve_DestinationRoot_DriveColonPreserved()
 	{
 		// The user-supplied root must never be sanitized: its drive colon is legal there.

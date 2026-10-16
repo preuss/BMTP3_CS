@@ -155,10 +155,11 @@ internal sealed class RenameCollisionResolver : IRenameCollisionResolver
 			["count"] = count.ToString(),
 		});
 
-		// Validates the pattern output (rejects ':', '.', '..').
-		relative = PathHelper.NormalizeCustomRelativePath(relative);
-		// Replaces characters Windows rejects (e.g. '*' from a source file name).
+		// The pattern output is a relative path (folders + file name). Replace every character
+		// Windows rejects ('*', ':' etc.) that came from the source path.
 		relative = PathHelper.SanitizeRelativePath(relative);
+		// Normalizes separators, collapses empty segments, and rejects '.' / '..' traversal.
+		relative = PathHelper.NormalizeCustomRelativePath(relative);
 
 		return Path.Combine(dir, relative);
 	}

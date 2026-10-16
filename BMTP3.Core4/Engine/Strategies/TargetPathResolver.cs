@@ -84,12 +84,12 @@ internal sealed class TargetPathResolver : ITargetPathResolver
 		PreparedMessageFormat prepared = new(formatter, request.CustomPattern, values);
 
 		string relativePath = prepared.Format();
-		string normalizedRelativePath = NormalizeRelativeDirectoryPath(relativePath);
-		string sanitizedRelativePath = SanitizeRelativePath(normalizedRelativePath);
+		string sanitizedRelativePath = SanitizeRelativePath(relativePath);
+		LogIfSanitizedChange(logger, relativePath, sanitizedRelativePath, "Custom path output");
 
-		LogIfSanitizedChange(logger, normalizedRelativePath, sanitizedRelativePath, "Custom path output");
+		string finalRelativePath = NormalizeRelativeDirectoryPath(sanitizedRelativePath);
 
-		return Path.Combine(request.DestinationRoot, sanitizedRelativePath);
+		return Path.Combine(request.DestinationRoot, finalRelativePath);
 	}
 
 	private static string NormalizeRelativeDirectoryPath(string? relativeDirectoryPath)

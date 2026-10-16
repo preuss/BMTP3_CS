@@ -87,7 +87,7 @@ Helpers/     → Utilities (PathHelper, Guard, TransformProgress)
 | **Transient** | IOException (disk full), COMException (MTP disconnect) | Retry med backoff |
 | **Persistent** | FileNotFoundException, UnauthorizedAccessException | Fail item, log, stop hvis `StopOnError` |
 | **Fatal** | OutOfMemoryException, engine invariant broken | Kast straks, stop engine |
-| **Optional** | Sidecar write fejl, index update fejl | Log warning, fortsæt |
+| **Optional** | — (ej i brug) | Sidecar-/index-skrivefejl er fail-fast i koden: log + kast → item `Failed` → stop hvis `StopOnError` |
 
 ## Doc Conflict Resolution
 
@@ -173,6 +173,7 @@ Normaliseringsregler:
 | `BackupPlan4Config.cs` (DTO med nested config-klasser) — beholdes, manuel mapping er eksplicit og testbar. Consoles er ikke kritisk. | ✅ RETAINED |
 | Core/Core2/Core3 archived — ALLE filer i Core2/Core3-flowet (uanset projekt) er readonly | ✅ Regel |
 | `private` constructor/`_optionsModels` i `BaseConsoleCommand` | ⚠️ WONTFIX |
+| Long path (>260) — .NET 10 tilføjer implicit `\\?\`-prefix | ✅ Dækket — intet manifest/registry nødvendigt; rest-loft: 255 tegn pr. component |
 
 ---
 

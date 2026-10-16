@@ -247,4 +247,29 @@ public class RenameCollisionResolverTests
 		Assert.Equal("a_b_1", relativeResult);
 		Assert.DoesNotContain("*", result.TargetPath);
 	}
+
+	[Fact]
+	public async Task Custom_FileNameWithColon_Sanitized()
+	{
+		RenameCollisionResolver resolver = CreateResolver();
+		string dir = GetUniqueNonExistentPath();
+		string intendedPath = Path.Combine(dir, "photo.jpg");
+
+		RenameCollisionRequest request = BaseRequest with
+		{
+			SourcePath = intendedPath,
+			IntendedTargetPath = intendedPath,
+			FileName = "IMG:1.jpg",
+			RelativeFilePath = "IMG:1.jpg",
+			RenameStrategy = RenameStrategy.CustomPattern,
+			CustomRenamePattern = "{fileName}_{count}",
+		};
+
+		RenameCollisionResult result = await resolver.ResolveAsync(request, new NoOpThrottler(), TestContext.Current.CancellationToken);
+
+		Assert.Equal(CollisionResolutionAction.Move, result.Action);
+		int endOfDir = dir.Length;
+		string relativeResult = result.TargetPath.Substring(endOfDir).TrimStart('\\', '/');
+		Assert.Equal("IMG_1_1", relativeResult);
+	}
 }
